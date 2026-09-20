@@ -15,8 +15,18 @@ test('card click navigates to event detail and renders event info', async ({
   await expect(page.getByText('Featured', { exact: true })).toBeVisible();
   await expect(page.getByText('Pragati Maidan Exhibition Grounds')).toBeVisible();
   await expect(page.getByText('Delhi', { exact: true })).toBeVisible();
-  await expect(page.getByText(/AVAILABLE:\s*[\d,]+\s*\/\s*10,?000\s*seats/i)).toBeVisible();
-  await expect(page.getByText('PRICE PER TICKET: $300')).toBeVisible();
+  // "Available" (label) and "n / 10000 seats" (value) are separate sibling text
+  // nodes in the DOM — no "AVAILABLE:" prefix joins them into one node.
+  const availableLabel = page.getByText('Available', { exact: true });
+  await expect(availableLabel).toBeVisible();
+  await expect(availableLabel.locator('xpath=following-sibling::p[1]')).toHaveText(
+    /[\d,]+\s*\/\s*10,?000\s*seats/i
+  );
+  // "Price per ticket" (label) and "$300" (value) are likewise separate
+  // sibling text nodes — no ":" joins them into one node.
+  const priceLabel = page.getByText('Price per ticket', { exact: true });
+  await expect(priceLabel).toBeVisible();
+  await expect(priceLabel.locator('xpath=following-sibling::p[1]')).toHaveText('$300');
   await expect(page.getByText('Book Tickets', { exact: false }).first()).toBeVisible();
 });
 
@@ -33,7 +43,10 @@ test('"Book Now" button navigates to event detail and renders event info', async
   await expect(eventDetailPage.heading()).toHaveText(EVENTS.HOLLYWOOD_MONSOON_NIGHT.title);
   await expect(page.getByText('Concert', { exact: true })).toBeVisible();
   await expect(page.getByText('Dome, NSCI SVP Stadium')).toBeVisible();
-  await expect(page.getByText('PRICE PER TICKET: $2,500')).toBeVisible();
+  // See comment in the previous test: label and value are separate DOM nodes.
+  const priceLabel = page.getByText('Price per ticket', { exact: true });
+  await expect(priceLabel).toBeVisible();
+  await expect(priceLabel.locator('xpath=following-sibling::p[1]')).toHaveText('$2,500');
   await expect(page.getByText('Book Tickets', { exact: false }).first()).toBeVisible();
 });
 

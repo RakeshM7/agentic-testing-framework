@@ -39,34 +39,49 @@ export class EventDetailPage {
     return this.page.getByRole('heading', { level: 1 });
   }
 
-  /** Parses "AVAILABLE: 8912 / 10000 seats" into { available, total }. */
+  /**
+   * Parses the available-seats pair into { available, total }. The DOM renders
+   * "Available" (label) and "229 / 500 seats" (value) as two separate sibling
+   * text nodes with no ":" joining them — there is no single "AVAILABLE: ..."
+   * text node anywhere in the page.
+   */
   async getAvailableSeats(): Promise<{ available: number; total: number }> {
-    const text = await this.page.getByText(/AVAILABLE:\s*[\d,]+\s*\/\s*[\d,]+\s*seats/i).innerText();
+    const label = this.page.getByText('Available', { exact: true });
+    const text = await label.locator('xpath=following-sibling::p[1]').innerText();
     const match = text.match(/([\d,]+)\s*\/\s*([\d,]+)/);
     if (!match) throw new Error(`Could not parse available-seats text: "${text}"`);
     return { available: Number(match[1].replace(/,/g, '')), total: Number(match[2].replace(/,/g, '')) };
   }
 
   /**
-   * Parses the order summary block, e.g. "$300 × 1 ticket = $300" + "Total $300",
-   * into structured numbers. This is the client-side-computed total the test
-   * cases assert on (price/ticket × quantity) — no network call is involved.
+   * Parses the order summary block into structured numbers. The line-item
+   * ("$300 × 1 ticket") and its line total ("$300") are separate sibling
+   * <span> text nodes with no "=" joining them; "Total" and its value ("$300")
+   * are likewise separate sibling <span> text nodes with no ":" joining them.
+   * This is the client-side-computed total the test cases assert on
+   * (price/ticket × quantity) — no network call is involved.
    */
   async getOrderSummary(): Promise<OrderSummary> {
-    const lineText = await this.page
-      .getByText(/\$[\d,]+\s*×\s*\d+\s*tickets?\s*=\s*\$[\d,]+/)
-      .innerText();
-    const lineMatch = lineText.match(/\$([\d,]+)\s*×\s*(\d+)\s*tickets?\s*=\s*\$([\d,]+)/);
+    const lineItemSpan = this.page
+      .locator('form span')
+      .filter({ hasText: /^\$[\d,]+\s*×\s*\d+\s*tickets?$/ });
+    const lineText = await lineItemSpan.innerText();
+    const lineMatch = lineText.match(/\$([\d,]+)\s*×\s*(\d+)\s*tickets?/);
     if (!lineMatch) throw new Error(`Could not parse order summary line: "${lineText}"`);
 
-    const totalText = await this.page.getByText(/^Total\s*\$[\d,]+/).innerText();
-    const totalMatch = totalText.match(/\$([\d,]+)/);
-    if (!totalMatch) throw new Error(`Could not parse total text: "${totalText}"`);
+    const lineTotalText = await lineItemSpan.locator('xpath=following-sibling::span[1]').innerText();
+    const lineTotalMatch = lineTotalText.match(/\$([\d,]+)/);
+    if (!lineTotalMatch) throw new Error(`Could not parse line total text: "${lineTotalText}"`);
+
+    const totalLabelSpan = this.page.locator('form span').filter({ hasText: /^Total$/ });
+    const totalValueText = await totalLabelSpan.locator('xpath=following-sibling::span[1]').innerText();
+    const totalMatch = totalValueText.match(/\$([\d,]+)/);
+    if (!totalMatch) throw new Error(`Could not parse total text: "${totalValueText}"`);
 
     return {
       pricePerTicket: Number(lineMatch[1].replace(/,/g, '')),
       quantity: Number(lineMatch[2]),
-      lineTotal: Number(lineMatch[3].replace(/,/g, '')),
+      lineTotal: Number(lineTotalMatch[1].replace(/,/g, '')),
       total: Number(totalMatch[1].replace(/,/g, '')),
     };
   }
@@ -94,9 +109,19 @@ export class EventDetailPage {
     await this.confirmBookingButton.click();
   }
 
-  /** Asserts the booking widget's static shape (header, fields, default state) without submitting. */
+  /**
+   * Asserts the booking widget's static shape (header, fields, default state)
+   * without submitting. The header renders as three separate DOM nodes —
+   * "Book Tickets" (heading), "$1,500" (sibling span), "per ticket" (sibling
+   * paragraph) — with no em dash joining them into one text node.
+   */
   async expectBookingWidgetVisible(pricePerTicket: number) {
-    await expect(this.page.getByText(`Book Tickets — $${pricePerTicket.toLocaleString()} per ticket`)).toBeVisible();
+    const heading = this.page.getByRole('heading', { name: 'Book Tickets' });
+    await expect(heading).toBeVisible();
+    await expect(heading.locator('xpath=following-sibling::span[1]')).toHaveText(
+      `$${pricePerTicket.toLocaleString()}`
+    );
+    await expect(this.page.getByText('per ticket', { exact: true })).toBeVisible();
     await expect(this.fullNameInput).toBeVisible();
     await expect(this.fullNameInput).toHaveValue('');
     await expect(this.emailInput).toBeVisible();

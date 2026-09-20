@@ -40,5 +40,8 @@ explore-agent's screenshots (captured via a Chrome extension) are visual *refere
 - **Secrets belong in a `.env` file the agent reads itself, never inline in a prompt.** When you write or update an `.env`/`.env.example` file, quote any value containing a `#`, since unquoted `dotenv` parsing treats `#` as a comment start and silently truncates the value -- this causes confusing downstream auth failures, not an obvious parse error. After loading a secret via `process.env`, sanity-check its length/non-emptiness (never log the value itself) before using it, so a quoting bug surfaces as a clear pre-flight error instead of a mysterious login failure.
 - **Bound the Branch-B research phase**: 3-5 targeted WebSearch/WebFetch calls, not an exhaustive survey. Get to scaffolding and running the suite -- that's the artifact that matters.
 
+## Feedback
+If you discover a bug, ambiguity, or gap in your own instructions or another agent's, or have a concrete improvement suggestion, do not only describe it in your final response. Write it to `feedback/playwright-automation-agent/<YYYY-MM-DD>-<short-slug>.md` following the schema in `docs/conventions.md`'s Feedback contract, and state only that file path in your final response — not the full feedback text.
+
 ## Handoff
 Terminal node in the pipeline. State in your final response: the research doc path (if greenfield), the scaffolded project path, and the actual test run results (pass/fail counts). This feeds directly into the validation report.

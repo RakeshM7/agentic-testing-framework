@@ -106,15 +106,16 @@ sequenceDiagram
 ```
 agentic-testing-framework/
 │
-├── .claude/agents/                 # THE FRAMEWORK — 5 subagent definitions
+├── .claude/agents/                 # THE FRAMEWORK — 6 subagent definitions
 │   ├── explore-agent.md
 │   ├── requirements-clarification-agent.md
 │   ├── testcase-generator-agent.md
 │   ├── playwright-automation-agent.md
-│   └── api-testing-agent.md
+│   ├── api-testing-agent.md
+│   └── feedback-implementor-agent.md
 │
 ├── docs/
-│   ├── conventions.md               # pipeline order + artifact path contract (the "glue")
+│   ├── conventions.md               # pipeline order + artifact path + feedback file contract (the "glue")
 │   ├── validation-report.md         # evidence the agents work, per-agent feedback
 │   └── playwright-framework-research.md   # produced BY playwright-automation-agent (example output)
 │
@@ -124,9 +125,30 @@ agentic-testing-framework/
 │   ├── testcases/{<feature>-testcases.<ext>, testcases-summary.md}
 │   └── api/{discovered-endpoints.json, api-test-plan.md}
 │
+├── feedback/<source-agent-name>/<date>-<slug>.md   # FEEDBACK LOOP — one folder per filing agent
+│                                                     # (traceable by folder name); each file gets a
+│                                                     # ## Resolution section appended in place once
+│                                                     # feedback-implementor-agent processes it
+│
 ├── playwright-tests/                 # EXECUTABLE OUTPUT — self-contained, liftable into target repo
 └── api-tests/{playwright-api/, k6/}  # EXECUTABLE OUTPUT — self-contained, liftable into target repo
 ```
+
+## Feedback loop architecture
+
+The five task agents and `feedback-implementor-agent` form a closed loop, kept deliberately out of the linear per-target pipeline (§ diagrams above) since it's invoked ad hoc, not on every run:
+
+```mermaid
+flowchart LR
+    A["Any agent<br/>(explore/clarify/testcase/<br/>playwright/api)"] -- "writes" --> F[("feedback/&lt;agent-name&gt;/&lt;date&gt;-&lt;slug&gt;.md")]
+    A -- "states file path only<br/>(never feedback text)" --> H[Human / coordinator]
+    H -- "passes the SAME path" --> FI["feedback-implementor-agent"]
+    FI -- "reads" --> F
+    FI -- "edits" --> TGT["agent .md / generated code / docs"]
+    FI -- "appends ## Resolution to" --> F
+```
+
+The point of passing a **file path** rather than feedback text at every arrow above is to avoid re-transmitting the same content through multiple LLM calls — each hop reads the file once from disk instead of re-generating or re-summarizing it, and the file itself (finding + eventual resolution, in one place) is what makes every piece of feedback traceable back to the agent that raised it and auditable after the fact.
 
 Three tiers, three different lifetimes:
 1. **`.claude/agents/`** — the actual product of this repo. Rarely changes; versioned carefully.

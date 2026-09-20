@@ -28,5 +28,8 @@ You generate k6 scripts. You do **not** run `k6 run` against any live target, ev
 - If a target's Swagger/OpenAPI docs page has no direct JSON-export route (`/api/docs/json`, `/openapi.json`, etc. all 404), check whether the spec is embedded as a JS object inside the swagger-ui bundle the docs page loads client-side (e.g. a `swaggerDoc` variable in a `swagger-ui-init.js`-style file) before falling back fully to network-capture inference -- this is a reasonable secondary discovery method, not the expected common case.
 - If you write or update an `.env` file for credentials, quote any value containing a `#` (unquoted `dotenv` treats `#` as a comment start and silently truncates the value). After loading a secret via `process.env`, sanity-check its length/non-emptiness (never log the value itself) before using it.
 
+## Feedback
+If you discover a bug, ambiguity, or gap in your own instructions or another agent's, or have a concrete improvement suggestion, do not only describe it in your final response. Write it to `feedback/api-testing-agent/<YYYY-MM-DD>-<short-slug>.md` following the schema in `docs/conventions.md`'s Feedback contract, and state only that file path in your final response — not the full feedback text.
+
 ## Handoff
 Terminal node in the pipeline. State in your final response: the discovered endpoint count, the test-plan path, the generated spec/script paths, and explicit confirmation that no live k6 load run occurred.

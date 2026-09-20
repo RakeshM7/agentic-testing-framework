@@ -1,12 +1,12 @@
 # Agentic Testing Framework
 
-A set of five specialized Claude Code subagents that together plan and execute Manual, Automation (Playwright), UI Visual, and API (Playwright + K6) testing for a web application — from "here's a URL" to a scaffolded, running test suite plus a full API test plan.
+A set of six specialized Claude Code subagents that together plan and execute Manual, Automation (Playwright), UI Visual, and API (Playwright + K6) testing for a web application — from "here's a URL" to a scaffolded, running test suite plus a full API test plan — and close the loop on their own feedback.
 
-See [`architecture.md`](architecture.md) for the pipeline diagram and design rationale, [`docs/conventions.md`](docs/conventions.md) for the artifact handoff contract, and [`docs/validation-report.md`](docs/validation-report.md) for a real end-to-end dogfood run of every agent against a live app, with per-agent feedback.
+See [`architecture.md`](architecture.md) for the pipeline diagram and design rationale, [`docs/conventions.md`](docs/conventions.md) for the artifact handoff and feedback contracts, and [`docs/validation-report.md`](docs/validation-report.md) for a real end-to-end dogfood run of every agent against a live app, with per-agent feedback.
 
 ## What this repo is
 
-This is a **framework**, not a finished test suite for one product. The deliverable is the five agent definitions in `.claude/agents/` — concise, ready-to-deploy Claude Code subagents you point at *any* target web app. `artifacts/eventhub/`, `playwright-tests/`, and `api-tests/` in this repo are not the framework itself; they're the real output of one validation run (against the public demo site `eventhub.rahulshettyacademy.com`), kept in the repo as a worked example and as evidence the agents actually work, not as a template to edit by hand.
+This is a **framework**, not a finished test suite for one product. The deliverable is the six agent definitions in `.claude/agents/` — concise, ready-to-deploy Claude Code subagents you point at *any* target web app. `artifacts/eventhub/`, `playwright-tests/`, `api-tests/`, and `feedback/` in this repo are not the framework itself; they're the real output of one validation run (against the public demo site `eventhub.rahulshettyacademy.com`), kept in the repo as a worked example and as evidence the agents actually work, not as a template to edit by hand.
 
 ## Agents
 
@@ -17,6 +17,7 @@ This is a **framework**, not a finished test suite for one product. The delivera
 | [`testcase-generator-agent`](.claude/agents/testcase-generator-agent.md) | Generates manual test cases in the user's confirmed format (Gherkin / Markdown table / CSV / TestRail import), with full edge-case traceability. | Read, Write, Glob, Grep | sonnet |
 | [`playwright-automation-agent`](.claude/agents/playwright-automation-agent.md) | Scaffolds or extends a Playwright suite (functional + visual-regression). Matches an existing repo's conventions if one exists; researches best practices and lays out a new framework from scratch if not. | Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch | sonnet |
 | [`api-testing-agent`](.claude/agents/api-testing-agent.md) | Discovers the target's API surface (OpenAPI/Swagger preferred, network-capture fallback), writes an exhaustive test plan, and generates Playwright API tests + k6 load-test scripts. Never runs a live load test. | Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch | sonnet |
+| [`feedback-implementor-agent`](.claude/agents/feedback-implementor-agent.md) | Reads feedback file(s) filed by the other agents (never raw feedback text) and implements the fixes -- agent definitions, generated code, or docs -- verifying each and appending a Resolution section back to the same file. | Read, Write, Edit, Glob, Grep, Bash | sonnet |
 
 ## What it covers
 
@@ -127,3 +128,13 @@ k6 run api-tests/k6/scripts/<script>.js   # only against a target you own/contro
 ### 6. Read the artifacts, don't just trust the summaries
 
 Every stage's real output lives under `artifacts/<target-slug>/`, `playwright-tests/`, and `api-tests/`. Treat an agent's final chat response as a claim to verify against those files and against an actual `npx playwright test` run, not as ground truth on its own.
+
+### 7. Close the loop on feedback
+
+Any agent above can, mid-task, file feedback about a bug, ambiguity, or improvement it found — in its own instructions, another agent's, or in generated code — instead of just mentioning it in chat. It writes that feedback to `feedback/<agent-name>/<date>-<slug>.md` (schema in [`docs/conventions.md`](docs/conventions.md)) and states only the file path in its response. Pass that same file path — not the feedback text — to `feedback-implementor-agent`:
+
+```
+Use feedback-implementor-agent on feedback/<agent-name>/<date>-<slug>.md.
+```
+
+**Check before moving on**: the same file now has a `## Resolution` section appended, with a Fixed/Skipped/Deferred status per finding and what was actually changed.

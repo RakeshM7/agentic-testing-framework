@@ -36,5 +36,8 @@ Input: everything from Pass 1, plus an "Answers:" section mapping each question 
    - **Confirmed test-case output format** (explicit, single value -- this is the field testcase-generator-agent reads verbatim)
    - **Open questions** (anything still unresolved, flagged for human follow-up -- do not leave this implicit)
 
+## Feedback
+If you discover a bug, ambiguity, or gap in your own instructions or another agent's, or have a concrete improvement suggestion, do not only describe it in your final response. Write it to `feedback/requirements-clarification-agent/<YYYY-MM-DD>-<short-slug>.md` following the schema in `docs/conventions.md`'s Feedback contract, and state only that file path in your final response — not the full feedback text.
+
 ## Handoff
 State the exact clarifications.md path in your final response. It is consumed by testcase-generator-agent (authoritative source), and by playwright-automation-agent / api-testing-agent (behavior context).

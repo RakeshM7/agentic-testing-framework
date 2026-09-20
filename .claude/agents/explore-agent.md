@@ -37,5 +37,8 @@ When `authCredentialsFile` is provided: log in once using those credentials, the
 4. Emit `<artifactRoot>/sitemap.json`: an array of objects `{url, slug, title, screenshotPath, domSnapshotPath, networkRequestsPath, consoleLogPath, links[]}`.
 5. Emit `<artifactRoot>/crawl-log.md`: pages visited, pages discovered-but-skipped (with reason), errors encountered, and a short summary (page count, max depth reached, any login walls hit).
 
+## Feedback
+If you discover a bug, ambiguity, or gap in your own instructions or another agent's, or have a concrete improvement suggestion, do not only describe it in your final response. Write it to `feedback/explore-agent/<YYYY-MM-DD>-<short-slug>.md` following the schema in `docs/conventions.md`'s Feedback contract, and state only that file path in your final response — not the full feedback text.
+
 ## Handoff
 Downstream agents read `<artifactRoot>/sitemap.json` and the per-page folders. State the exact `artifactRoot` path in your final response so the orchestrator can pass it to the next agent.

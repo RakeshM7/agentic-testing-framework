@@ -15,6 +15,7 @@ All pipeline artifacts for a given target live under `artifacts/<target-slug>/`,
 | 3 | `testcase-generator-agent` | `artifacts/<target>/testcases/<feature-slug>-testcases.<ext>` + `testcases-summary.md` | `playwright-automation-agent` (cases to automate), `api-testing-agent` (functional cross-reference) |
 | 4 | `playwright-automation-agent` | `docs/playwright-framework-research.md` (greenfield only) + `playwright-tests/` project | Terminal |
 | 5 | `api-testing-agent` | `artifacts/<target>/api/{discovered-endpoints.json, api-test-plan.md}` + `api-tests/playwright-api/` + `api-tests/k6/` | Terminal |
+| 6 | `feedback-implementor-agent` | Fixes applied to whatever files a feedback file's findings concern + a `## Resolution` section appended to that same feedback file | Terminal (invoked ad hoc, not part of the linear per-target pipeline) |
 
 ## The two-pass clarification handshake
 
@@ -36,3 +37,42 @@ Any orchestrator invoking this agent must expect two calls, not one.
 ## Executable project scaffolds
 
 `playwright-tests/` and `api-tests/playwright-api/` are independent, self-contained Node projects (own `package.json` each), separate from the `artifacts/` handoff zone, so either can be lifted directly into a real target product repo.
+
+## Feedback contract
+
+Any agent — current or future, including this one — that discovers a bug, ambiguity, or gap in its own instructions, another agent's instructions, or previously generated code/artifacts, or that has a concrete improvement suggestion, writes it to a dedicated **feedback file** instead of only describing it in its final chat response. This keeps the coordinator from having to re-transmit long feedback text through further LLM calls (lossy and expensive), and keeps every piece of feedback traceable to the exact agent that raised it.
+
+### Where feedback lives
+
+```
+feedback/<source-agent-name>/<YYYY-MM-DD>-<short-slug>.md
+```
+
+`<source-agent-name>` must exactly match the filing agent's own `name` field (e.g. `playwright-automation-agent`) — this is what makes a feedback file traceable to its source without needing to parse its content. One file per submission; a single file may bundle multiple findings from the same run, but don't append unrelated findings from later runs into an old file.
+
+### Feedback file schema
+
+```markdown
+---
+source_agent: <name matching .claude/agents/<name>.md>
+date: <YYYY-MM-DD>
+target: <target-slug, or "framework" if not tied to a specific target run>
+related_files:
+  - <path to each file this finding concerns, e.g. .claude/agents/playwright-automation-agent.md>
+  - <path to a generated artifact/spec file if the bug is IN generated output, not the agent definition>
+severity: <blocking | high | medium | low>
+---
+
+## Finding 1: <short title>
+**Summary:** <one or two sentences>
+**Evidence:** <what was observed -- error text, file:line, screenshot path, command output, etc.>
+**Suggested fix:** <concrete and actionable, not just "investigate">
+
+## Finding 2: ...
+```
+
+### How it's consumed
+
+1. An agent that files feedback states **only the file path** in its final response to the coordinator — never the full feedback text inline.
+2. The coordinator passes that same file path (unread, or lightly skimmed for prioritization — never retyped or paraphrased) to `feedback-implementor-agent`.
+3. `feedback-implementor-agent` reads the file itself, implements each finding's suggested fix, verifies it where possible (re-run tests, typecheck, `k6 inspect`, etc.), and appends a dated `## Resolution` section to the **same** file recording status (`Fixed` / `Skipped` / `Deferred`) and why — so the file remains the permanent, traceable record of both the problem and its resolution.
