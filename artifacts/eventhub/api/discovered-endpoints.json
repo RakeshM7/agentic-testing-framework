@@ -1,0 +1,2139 @@
+{
+  "target": "eventhub",
+  "apiHost": "https://api.eventhub.rahulshettyacademy.com",
+  "baseUrl": "https://api.eventhub.rahulshettyacademy.com/api",
+  "discoverySource": {
+    "primary": {
+      "type": "OpenAPI/Swagger spec",
+      "renderedDocsUrl": "https://api.eventhub.rahulshettyacademy.com/api/docs/",
+      "specExtractionUrl": "https://api.eventhub.rahulshettyacademy.com/api/docs/swagger-ui-init.js",
+      "note": "No dedicated JSON export route exists (/api/docs/json, /api/docs-json, /openapi.json etc. all 404 or return the swagger-ui HTML shell). The full OpenAPI 3.0.0 document is embedded as the `swaggerDoc` object inside swagger-ui-init.js, which swagger-ui's static HTML bundle loads client-side. Extracted via regex/Node from that file. openapi=3.0.0, info.title='EventHub API', info.version='1.0.0'."
+    },
+    "secondary": {
+      "type": "explore-agent network captures (fallback/cross-reference only)",
+      "files": [
+        "artifacts/eventhub/explore/pages/home/network-requests.json",
+        "artifacts/eventhub/explore/pages/login/network-requests.json",
+        "artifacts/eventhub/explore/pages/register/network-requests.json",
+        "artifacts/eventhub/explore/pages/home-authenticated/network-requests.json",
+        "artifacts/eventhub/explore/pages/events/network-requests.json",
+        "artifacts/eventhub/explore/pages/event-detail/network-requests.json",
+        "artifacts/eventhub/explore/pages/my-bookings/network-requests.json",
+        "artifacts/eventhub/explore/pages/admin/network-requests.json"
+      ],
+      "note": "As predicted by explore-agent's crawl-log, client-visible XHR/fetch capture across all 8 page folders is sparse because this Next.js frontend fetches almost everything server-side via RSC. The only client-visible API call observed in ANY capture is GET https://api.eventhub.rahulshettyacademy.com/api/config (seen in home/ and login/ captures), which matches GET /config in the Swagger spec exactly -- this cross-reference confirms the Swagger spec is live/accurate for at least this endpoint. Also of note: all 8 captures independently observed intermittent 503s on Next.js RSC prefetches (_rsc= query requests) for /events/283, /events/284, /events/285 when prefetched from the /events listing or home page -- this is a frontend RSC/SSR reliability signal, not a documented REST endpoint, so it is not in the endpoint table below but IS carried into the test plan's reliability/negative section per the clarifications doc."
+    }
+  },
+  "contractDiscrepancyFlag": {
+    "issue": "Swagger spec declares `security: [{bearerAuth: []}]` ONLY on GET /auth/me. GET/POST /bookings, GET/PUT/DELETE /bookings/:id, GET /bookings/ref/:ref, and all /events endpoints are documented with no security requirement at all. However info.description states 'Each registered user gets a fully isolated sandbox -- events and bookings are private to their account,' which implies bookings (and possibly events) ARE user-scoped and should require a bearer token in practice.",
+    "impact": "This is either (a) a spec-documentation bug where @ApiBearerAuth()/security annotations were omitted on most controllers, or (b) these routes are genuinely unauthenticated globally-shared data despite the per-account-sandbox description. Both are plausible for a scaffolded/demo NestJS+Swagger app.",
+    "testPlanTreatment": "Encoded as an explicit Auth/contract test case per affected endpoint: call with a valid token, with no Authorization header, and with an invalid/malformed token, and assert whatever the live API actually does (200 vs 401) is treated as the ground truth going forward -- the spec's silence on `security` is not assumed to mean 'no auth enforced.'"
+  },
+  "totalEndpointsDiscovered": 15,
+  "endpoints": [
+    {
+      "method": "POST",
+      "pathTemplate": "/api/auth/register",
+      "resource": "Auth",
+      "summary": "Register a new user",
+      "description": "Creates a new user account and returns a JWT token. Each registered user gets a fully isolated sandbox \u2014 events and bookings are private to their account.",
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [],
+      "requestBodySchema": {
+        "$refName": "AuthInput",
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "student@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "example": "secret123"
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Account created successfully",
+          "schema": {
+            "$refName": "AuthResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "token": {
+                "type": "string",
+                "description": "JWT bearer token \u2014 valid for 7 days. Pass as Authorization header on all protected routes.",
+                "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              },
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 42
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "student@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Validation error \u2014 invalid email format or password too short, or email already registered",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Validation failed"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "example": "email"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "A valid email is required"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": {
+        "email": "student@example.com",
+        "password": "secret123"
+      },
+      "samplePathParamValues": null,
+      "sampleSuccessResponse": {
+        "statusCode": 201,
+        "body": {
+          "success": true,
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "user": {
+            "id": 42,
+            "email": "student@example.com"
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "pathTemplate": "/api/auth/login",
+      "resource": "Auth",
+      "summary": "Log in with existing credentials",
+      "description": "Authenticates a user and returns a JWT token. Store the token and send it as a Bearer token in the Authorization header on all subsequent requests.",
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [],
+      "requestBodySchema": {
+        "$refName": "AuthInput",
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "student@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "example": "secret123"
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Login successful",
+          "schema": {
+            "$refName": "AuthResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "token": {
+                "type": "string",
+                "description": "JWT bearer token \u2014 valid for 7 days. Pass as Authorization header on all protected routes.",
+                "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              },
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 42
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "student@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Wrong password or validation error",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Invalid credentials"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "No account found for this email",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "User not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": {
+        "email": "student@example.com",
+        "password": "secret123"
+      },
+      "samplePathParamValues": null,
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "user": {
+            "id": 42,
+            "email": "student@example.com"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "pathTemplate": "/api/auth/me",
+      "resource": "Auth",
+      "summary": "Get the currently authenticated user",
+      "description": "Validates the bearer token and returns the decoded user identity. Useful for verifying a token is still valid.",
+      "authHeaderDeclaredInSpec": true,
+      "authScheme": "Bearer JWT (Authorization: Bearer <token>)",
+      "queryParams": [],
+      "pathParams": [],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "Token is valid \u2014 returns user identity",
+          "schema": {
+            "$refName": "MeResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "user": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "integer",
+                    "example": 42
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "student@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "Missing or invalid token",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Unauthorized"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": null,
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "user": {
+            "userId": 42,
+            "email": "student@example.com"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "pathTemplate": "/api/bookings",
+      "resource": "Bookings",
+      "summary": "List all bookings",
+      "description": "Returns a paginated list of all bookings, each including full event details.",
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [
+        {
+          "name": "eventId",
+          "required": false,
+          "schema": {
+            "type": "integer"
+          }
+        },
+        {
+          "name": "status",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "cancelled"
+            ]
+          }
+        },
+        {
+          "name": "page",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "default": 1,
+            "minimum": 1
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      ],
+      "pathParams": [],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "Paginated list of bookings",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "data": {
+                "type": "array",
+                "items": {
+                  "$refName": "Booking",
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "eventId": {
+                      "type": "integer",
+                      "example": 3
+                    },
+                    "customerName": {
+                      "type": "string",
+                      "example": "Priya Sharma"
+                    },
+                    "customerEmail": {
+                      "type": "string",
+                      "example": "priya.sharma@email.com"
+                    },
+                    "customerPhone": {
+                      "type": "string",
+                      "example": "+91-9876543210"
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "example": 2
+                    },
+                    "totalPrice": {
+                      "type": "number",
+                      "format": "float",
+                      "example": 3000
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "confirmed",
+                        "cancelled"
+                      ],
+                      "example": "confirmed"
+                    },
+                    "bookingRef": {
+                      "type": "string",
+                      "example": "EVT-A1B2C3"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "event": {
+                      "$ref": "#/components/schemas/Event"
+                    }
+                  }
+                }
+              },
+              "pagination": {
+                "$refName": "PaginationMeta",
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "integer",
+                    "example": 48
+                  },
+                  "page": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "example": 10
+                  },
+                  "totalPages": {
+                    "type": "integer",
+                    "example": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": null,
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "data": [
+            {
+              "id": 1,
+              "eventId": 3,
+              "customerName": "Priya Sharma",
+              "customerEmail": "priya.sharma@email.com",
+              "customerPhone": "+91-9876543210",
+              "quantity": 2,
+              "totalPrice": 3000,
+              "status": "confirmed",
+              "bookingRef": "EVT-A1B2C3",
+              "createdAt": null,
+              "updatedAt": null,
+              "event": null
+            }
+          ],
+          "pagination": {
+            "total": 48,
+            "page": 1,
+            "limit": 10,
+            "totalPages": 5
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "pathTemplate": "/api/bookings",
+      "resource": "Bookings",
+      "summary": "Create a booking (buy tickets)",
+      "description": "Books tickets for an event. The service will:\n1. Verify the event exists\n2. Check sufficient seats are available\n3. Calculate the total price\n4. Generate a unique booking reference (EVT-XXXXXX)\n5. Atomically create the booking and decrement available seats\n",
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [],
+      "requestBodySchema": {
+        "$refName": "CreateBookingInput",
+        "type": "object",
+        "required": [
+          "eventId",
+          "customerName",
+          "customerEmail",
+          "customerPhone",
+          "quantity"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "integer",
+            "example": 1
+          },
+          "customerName": {
+            "type": "string",
+            "minLength": 2,
+            "example": "Priya Sharma"
+          },
+          "customerEmail": {
+            "type": "string",
+            "format": "email",
+            "example": "priya.sharma@email.com"
+          },
+          "customerPhone": {
+            "type": "string",
+            "minLength": 10,
+            "example": "+91-9876543210"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "example": 2
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Booking confirmed",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "data": {
+                "$refName": "Booking",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "eventId": {
+                    "type": "integer",
+                    "example": 3
+                  },
+                  "customerName": {
+                    "type": "string",
+                    "example": "Priya Sharma"
+                  },
+                  "customerEmail": {
+                    "type": "string",
+                    "example": "priya.sharma@email.com"
+                  },
+                  "customerPhone": {
+                    "type": "string",
+                    "example": "+91-9876543210"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "example": 2
+                  },
+                  "totalPrice": {
+                    "type": "number",
+                    "format": "float",
+                    "example": 3000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "confirmed",
+                      "cancelled"
+                    ],
+                    "example": "confirmed"
+                  },
+                  "bookingRef": {
+                    "type": "string",
+                    "example": "EVT-A1B2C3"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "event": {
+                    "$ref": "#/components/schemas/Event"
+                  }
+                }
+              },
+              "message": {
+                "type": "string",
+                "example": "Booking confirmed!"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Validation error or insufficient seats",
+          "schema": {
+            "oneOf": [
+              {
+                "$refName": "ValidationErrorResponse",
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "error": {
+                    "type": "string",
+                    "example": "Validation failed"
+                  },
+                  "details": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "$refName": "ErrorResponse",
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "error": {
+                    "type": "string",
+                    "example": "Resource not found"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "404": {
+          "description": "Event not found",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": {
+        "eventId": 1,
+        "customerName": "Priya Sharma",
+        "customerEmail": "priya.sharma@email.com",
+        "customerPhone": "+91-9876543210",
+        "quantity": 2
+      },
+      "samplePathParamValues": null,
+      "sampleSuccessResponse": {
+        "statusCode": 201,
+        "body": {
+          "success": true,
+          "data": {
+            "id": 1,
+            "eventId": 3,
+            "customerName": "Priya Sharma",
+            "customerEmail": "priya.sharma@email.com",
+            "customerPhone": "+91-9876543210",
+            "quantity": 2,
+            "totalPrice": 3000,
+            "status": "confirmed",
+            "bookingRef": "EVT-A1B2C3",
+            "createdAt": null,
+            "updatedAt": null,
+            "event": null
+          },
+          "message": "Booking confirmed!"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "pathTemplate": "/api/bookings/ref/{ref}",
+      "resource": "Bookings",
+      "summary": "Look up a booking by reference code",
+      "description": "Retrieves a booking using the unique booking reference (e.g. EVT-A1B2C3).",
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [
+        {
+          "name": "ref",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "Booking found",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "data": {
+                "$refName": "Booking",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "eventId": {
+                    "type": "integer",
+                    "example": 3
+                  },
+                  "customerName": {
+                    "type": "string",
+                    "example": "Priya Sharma"
+                  },
+                  "customerEmail": {
+                    "type": "string",
+                    "example": "priya.sharma@email.com"
+                  },
+                  "customerPhone": {
+                    "type": "string",
+                    "example": "+91-9876543210"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "example": 2
+                  },
+                  "totalPrice": {
+                    "type": "number",
+                    "format": "float",
+                    "example": 3000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "confirmed",
+                      "cancelled"
+                    ],
+                    "example": "confirmed"
+                  },
+                  "bookingRef": {
+                    "type": "string",
+                    "example": "EVT-A1B2C3"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "event": {
+                    "$ref": "#/components/schemas/Event"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Booking not found",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": {
+        "ref": "EVT-A1B2C3"
+      },
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id": 1,
+            "eventId": 3,
+            "customerName": "Priya Sharma",
+            "customerEmail": "priya.sharma@email.com",
+            "customerPhone": "+91-9876543210",
+            "quantity": 2,
+            "totalPrice": 3000,
+            "status": "confirmed",
+            "bookingRef": "EVT-A1B2C3",
+            "createdAt": null,
+            "updatedAt": null,
+            "event": null
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "pathTemplate": "/api/bookings/{id}",
+      "resource": "Bookings",
+      "summary": "Get a single booking by ID",
+      "description": null,
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "Booking found",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "data": {
+                "$refName": "Booking",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "eventId": {
+                    "type": "integer",
+                    "example": 3
+                  },
+                  "customerName": {
+                    "type": "string",
+                    "example": "Priya Sharma"
+                  },
+                  "customerEmail": {
+                    "type": "string",
+                    "example": "priya.sharma@email.com"
+                  },
+                  "customerPhone": {
+                    "type": "string",
+                    "example": "+91-9876543210"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "example": 2
+                  },
+                  "totalPrice": {
+                    "type": "number",
+                    "format": "float",
+                    "example": 3000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "confirmed",
+                      "cancelled"
+                    ],
+                    "example": "confirmed"
+                  },
+                  "bookingRef": {
+                    "type": "string",
+                    "example": "EVT-A1B2C3"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "event": {
+                    "$ref": "#/components/schemas/Event"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Booking not found",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": {
+        "id": 1
+      },
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id": 1,
+            "eventId": 3,
+            "customerName": "Priya Sharma",
+            "customerEmail": "priya.sharma@email.com",
+            "customerPhone": "+91-9876543210",
+            "quantity": 2,
+            "totalPrice": 3000,
+            "status": "confirmed",
+            "bookingRef": "EVT-A1B2C3",
+            "createdAt": null,
+            "updatedAt": null,
+            "event": null
+          }
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "pathTemplate": "/api/bookings/{id}",
+      "resource": "Bookings",
+      "summary": "Cancel a booking",
+      "description": "Cancels (permanently deletes) a booking and atomically restores the\nreleased seats back to the event's `availableSeats` count.\n",
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "Booking cancelled and seats restored",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "message": {
+                "type": "string",
+                "example": "Booking cancelled"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Booking not found",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": {
+        "id": 1
+      },
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "message": "Booking cancelled"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "pathTemplate": "/api/events",
+      "resource": "Events",
+      "summary": "List all events",
+      "description": "Returns a paginated list of events. Supports filtering by category, city, and free-text search.",
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [
+        {
+          "name": "category",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "Conference",
+              "Concert",
+              "Sports",
+              "Workshop",
+              "Festival"
+            ]
+          }
+        },
+        {
+          "name": "city",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "search",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "default": 1,
+            "minimum": 1
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      ],
+      "pathParams": [],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "Paginated list of events",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "data": {
+                "type": "array",
+                "items": {
+                  "$refName": "Event",
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "title": {
+                      "type": "string",
+                      "example": "Tech Summit 2026"
+                    },
+                    "description": {
+                      "type": "string",
+                      "example": "A premier technology conference bringing together industry leaders."
+                    },
+                    "category": {
+                      "type": "string",
+                      "example": "Conference"
+                    },
+                    "venue": {
+                      "type": "string",
+                      "example": "Bangalore International Centre"
+                    },
+                    "city": {
+                      "type": "string",
+                      "example": "Bangalore"
+                    },
+                    "eventDate": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-06-15T09:00:00.000Z"
+                    },
+                    "price": {
+                      "type": "number",
+                      "format": "float",
+                      "example": 1500
+                    },
+                    "totalSeats": {
+                      "type": "integer",
+                      "example": 500
+                    },
+                    "availableSeats": {
+                      "type": "integer",
+                      "example": 342
+                    },
+                    "imageUrl": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "https://example.com/images/tech-summit.jpg"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              },
+              "pagination": {
+                "$refName": "PaginationMeta",
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "integer",
+                    "example": 48
+                  },
+                  "page": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "example": 10
+                  },
+                  "totalPages": {
+                    "type": "integer",
+                    "example": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": null,
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "data": [
+            {
+              "id": 1,
+              "title": "Tech Summit 2026",
+              "description": "A premier technology conference bringing together industry leaders.",
+              "category": "Conference",
+              "venue": "Bangalore International Centre",
+              "city": "Bangalore",
+              "eventDate": "2026-06-15T09:00:00.000Z",
+              "price": 1500,
+              "totalSeats": 500,
+              "availableSeats": 342,
+              "imageUrl": "https://example.com/images/tech-summit.jpg",
+              "createdAt": null,
+              "updatedAt": null
+            }
+          ],
+          "pagination": {
+            "total": 48,
+            "page": 1,
+            "limit": 10,
+            "totalPages": 5
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "pathTemplate": "/api/events",
+      "resource": "Events",
+      "summary": "Create a new event",
+      "description": "Creates an event. `availableSeats` is automatically set equal to `totalSeats`.",
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [],
+      "requestBodySchema": {
+        "$refName": "CreateEventInput",
+        "type": "object",
+        "required": [
+          "title",
+          "category",
+          "venue",
+          "city",
+          "eventDate",
+          "price",
+          "totalSeats"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Tech Summit 2026"
+          },
+          "description": {
+            "type": "string",
+            "example": "A premier technology conference."
+          },
+          "category": {
+            "type": "string",
+            "example": "Conference"
+          },
+          "venue": {
+            "type": "string",
+            "example": "Bangalore International Centre"
+          },
+          "city": {
+            "type": "string",
+            "example": "Bangalore"
+          },
+          "eventDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-06-15T09:00:00.000Z"
+          },
+          "price": {
+            "type": "number",
+            "example": 1500
+          },
+          "totalSeats": {
+            "type": "integer",
+            "example": 500
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://example.com/banner.jpg"
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Event created successfully",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "data": {
+                "$refName": "Event",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "example": "Tech Summit 2026"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "A premier technology conference bringing together industry leaders."
+                  },
+                  "category": {
+                    "type": "string",
+                    "example": "Conference"
+                  },
+                  "venue": {
+                    "type": "string",
+                    "example": "Bangalore International Centre"
+                  },
+                  "city": {
+                    "type": "string",
+                    "example": "Bangalore"
+                  },
+                  "eventDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-06-15T09:00:00.000Z"
+                  },
+                  "price": {
+                    "type": "number",
+                    "format": "float",
+                    "example": 1500
+                  },
+                  "totalSeats": {
+                    "type": "integer",
+                    "example": 500
+                  },
+                  "availableSeats": {
+                    "type": "integer",
+                    "example": 342
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "https://example.com/images/tech-summit.jpg"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              },
+              "message": {
+                "type": "string",
+                "example": "Event created successfully"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Validation error",
+          "schema": {
+            "$refName": "ValidationErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Validation failed"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": {
+        "title": "Tech Summit 2026",
+        "description": "A premier technology conference.",
+        "category": "Conference",
+        "venue": "Bangalore International Centre",
+        "city": "Bangalore",
+        "eventDate": "2026-06-15T09:00:00.000Z",
+        "price": 1500,
+        "totalSeats": 500,
+        "imageUrl": "https://example.com/banner.jpg"
+      },
+      "samplePathParamValues": null,
+      "sampleSuccessResponse": {
+        "statusCode": 201,
+        "body": {
+          "success": true,
+          "data": {
+            "id": 1,
+            "title": "Tech Summit 2026",
+            "description": "A premier technology conference bringing together industry leaders.",
+            "category": "Conference",
+            "venue": "Bangalore International Centre",
+            "city": "Bangalore",
+            "eventDate": "2026-06-15T09:00:00.000Z",
+            "price": 1500,
+            "totalSeats": 500,
+            "availableSeats": 342,
+            "imageUrl": "https://example.com/images/tech-summit.jpg",
+            "createdAt": null,
+            "updatedAt": null
+          },
+          "message": "Event created successfully"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "pathTemplate": "/api/events/{id}",
+      "resource": "Events",
+      "summary": "Get a single event by ID",
+      "description": null,
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "Event found",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "data": {
+                "$refName": "Event",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "example": "Tech Summit 2026"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "A premier technology conference bringing together industry leaders."
+                  },
+                  "category": {
+                    "type": "string",
+                    "example": "Conference"
+                  },
+                  "venue": {
+                    "type": "string",
+                    "example": "Bangalore International Centre"
+                  },
+                  "city": {
+                    "type": "string",
+                    "example": "Bangalore"
+                  },
+                  "eventDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-06-15T09:00:00.000Z"
+                  },
+                  "price": {
+                    "type": "number",
+                    "format": "float",
+                    "example": 1500
+                  },
+                  "totalSeats": {
+                    "type": "integer",
+                    "example": 500
+                  },
+                  "availableSeats": {
+                    "type": "integer",
+                    "example": 342
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "https://example.com/images/tech-summit.jpg"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Event not found",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": {
+        "id": 283
+      },
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id": 1,
+            "title": "Tech Summit 2026",
+            "description": "A premier technology conference bringing together industry leaders.",
+            "category": "Conference",
+            "venue": "Bangalore International Centre",
+            "city": "Bangalore",
+            "eventDate": "2026-06-15T09:00:00.000Z",
+            "price": 1500,
+            "totalSeats": 500,
+            "availableSeats": 342,
+            "imageUrl": "https://example.com/images/tech-summit.jpg",
+            "createdAt": null,
+            "updatedAt": null
+          }
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "pathTemplate": "/api/events/{id}",
+      "resource": "Events",
+      "summary": "Update an event",
+      "description": null,
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBodySchema": {
+        "$refName": "CreateEventInput",
+        "type": "object",
+        "required": [
+          "title",
+          "category",
+          "venue",
+          "city",
+          "eventDate",
+          "price",
+          "totalSeats"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Tech Summit 2026"
+          },
+          "description": {
+            "type": "string",
+            "example": "A premier technology conference."
+          },
+          "category": {
+            "type": "string",
+            "example": "Conference"
+          },
+          "venue": {
+            "type": "string",
+            "example": "Bangalore International Centre"
+          },
+          "city": {
+            "type": "string",
+            "example": "Bangalore"
+          },
+          "eventDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-06-15T09:00:00.000Z"
+          },
+          "price": {
+            "type": "number",
+            "example": 1500
+          },
+          "totalSeats": {
+            "type": "integer",
+            "example": 500
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://example.com/banner.jpg"
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Event updated successfully",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "data": {
+                "$refName": "Event",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "example": "Tech Summit 2026"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "A premier technology conference bringing together industry leaders."
+                  },
+                  "category": {
+                    "type": "string",
+                    "example": "Conference"
+                  },
+                  "venue": {
+                    "type": "string",
+                    "example": "Bangalore International Centre"
+                  },
+                  "city": {
+                    "type": "string",
+                    "example": "Bangalore"
+                  },
+                  "eventDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-06-15T09:00:00.000Z"
+                  },
+                  "price": {
+                    "type": "number",
+                    "format": "float",
+                    "example": 1500
+                  },
+                  "totalSeats": {
+                    "type": "integer",
+                    "example": 500
+                  },
+                  "availableSeats": {
+                    "type": "integer",
+                    "example": 342
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "https://example.com/images/tech-summit.jpg"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              },
+              "message": {
+                "type": "string",
+                "example": "Event updated successfully"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Validation error",
+          "schema": {
+            "$refName": "ValidationErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Validation failed"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Event not found",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": {
+        "title": "Tech Summit 2026",
+        "description": "A premier technology conference.",
+        "category": "Conference",
+        "venue": "Bangalore International Centre",
+        "city": "Bangalore",
+        "eventDate": "2026-06-15T09:00:00.000Z",
+        "price": 1500,
+        "totalSeats": 500,
+        "imageUrl": "https://example.com/banner.jpg"
+      },
+      "samplePathParamValues": {
+        "id": 283
+      },
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id": 1,
+            "title": "Tech Summit 2026",
+            "description": "A premier technology conference bringing together industry leaders.",
+            "category": "Conference",
+            "venue": "Bangalore International Centre",
+            "city": "Bangalore",
+            "eventDate": "2026-06-15T09:00:00.000Z",
+            "price": 1500,
+            "totalSeats": 500,
+            "availableSeats": 342,
+            "imageUrl": "https://example.com/images/tech-summit.jpg",
+            "createdAt": null,
+            "updatedAt": null
+          },
+          "message": "Event updated successfully"
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "pathTemplate": "/api/events/{id}",
+      "resource": "Events",
+      "summary": "Delete an event",
+      "description": "Permanently deletes an event and all associated bookings (cascade).",
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "Event deleted successfully",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "message": {
+                "type": "string",
+                "example": "Event deleted successfully"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Event not found",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal server error",
+          "schema": {
+            "$refName": "ErrorResponse",
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "error": {
+                "type": "string",
+                "example": "Resource not found"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": {
+        "id": 283
+      },
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "success": true,
+          "message": "Event deleted successfully"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "pathTemplate": "/api/health",
+      "resource": "Health",
+      "summary": "API health check",
+      "description": null,
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "API is running",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "example": "ok"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "dbStatus": {
+                "type": "string",
+                "example": "connected"
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": null,
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "status": "ok",
+          "timestamp": null,
+          "dbStatus": "connected"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "pathTemplate": "/api/config",
+      "resource": "Config",
+      "summary": "Get public feature flags",
+      "description": null,
+      "authHeaderDeclaredInSpec": false,
+      "authScheme": null,
+      "queryParams": [],
+      "pathParams": [],
+      "requestBodySchema": null,
+      "responses": {
+        "200": {
+          "description": "Feature flag values",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "showExploreLinks": {
+                "type": "boolean",
+                "example": false
+              }
+            }
+          }
+        }
+      },
+      "sampleRequestBody": null,
+      "samplePathParamValues": null,
+      "sampleSuccessResponse": {
+        "statusCode": 200,
+        "body": {
+          "showExploreLinks": false
+        }
+      }
+    }
+  ]
+}

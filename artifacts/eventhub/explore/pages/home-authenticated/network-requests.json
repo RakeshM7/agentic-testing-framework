@@ -1,0 +1,17 @@
+{
+  "page": "https://eventhub.rahulshettyacademy.com/ (authenticated)",
+  "note": "Requests captured after page reload while authenticated as akashmrakesh+1@gmail.com. Includes Next.js RSC prefetch requests for linked routes (events, bookings, and specific event detail pages 283/284/285 — these are hover-prefetches of cards visible on the page, not requests this agent triggered by clicking) plus Next/Image asset loads. Event IDs 283, 284, 285 discovered via prefetch URLs.",
+  "requests": [
+    { "url": "data:image/svg+xml,... (decorative grid background pattern)", "method": "GET", "statusCode": 200, "type": "image (inline data URI)" },
+    { "url": "https://eventhub.rahulshettyacademy.com/events?_rsc=19zvn", "method": "GET", "statusCode": 200, "type": "rsc-prefetch" },
+    { "url": "https://eventhub.rahulshettyacademy.com/bookings?_rsc=19zvn", "method": "GET", "statusCode": 200, "type": "rsc-prefetch" },
+    { "url": "https://eventhub.rahulshettyacademy.com/_next/static/chunks/app/events/page-728cf6bb1749b178.js", "method": "GET", "statusCode": 200, "type": "script" },
+    { "url": "https://eventhub.rahulshettyacademy.com/_next/static/chunks/app/bookings/page-53e4289a65ded2a1.js", "method": "GET", "statusCode": 200, "type": "script" },
+    { "url": "https://eventhub.rahulshettyacademy.com/_next/image?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1605810230434-7631ac76ec81%3Fw%3D800&w=828&q=75", "method": "GET", "statusCode": 200, "type": "image" },
+    { "url": "https://eventhub.rahulshettyacademy.com/_next/image?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1501281668745-f7f57925c3b4%3Fw%3D800&w=828&q=75", "method": "GET", "statusCode": 200, "type": "image" },
+    { "url": "https://eventhub.rahulshettyacademy.com/_next/image?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1540575467063-178a50c2df87%3Fw%3D800&w=828&q=75", "method": "GET", "statusCode": 200, "type": "image" },
+    { "url": "https://eventhub.rahulshettyacademy.com/events/285?_rsc=19zvn", "method": "GET", "statusCode": 200, "type": "rsc-prefetch", "apiNote": "Featured event id=285" },
+    { "url": "https://eventhub.rahulshettyacademy.com/events/284?_rsc=19zvn", "method": "GET", "statusCode": 503, "type": "rsc-prefetch", "apiNote": "Featured event id=284 — SERVER ERROR (503) on prefetch. Interesting for bug/negative-testing follow-up: this specific event page appears to fail server-side rendering." },
+    { "url": "https://eventhub.rahulshettyacademy.com/events/283?_rsc=19zvn", "method": "GET", "statusCode": 200, "type": "rsc-prefetch", "apiNote": "Featured event id=283" }
+  ]
+}

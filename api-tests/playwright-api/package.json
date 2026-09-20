@@ -1,0 +1,21 @@
+{
+  "name": "eventhub-api-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright API (request-fixture) test suite for the EventHub REST API (https://api.eventhub.rahulshettyacademy.com). Read-only (GET) against the live third-party target, per the api-testing-agent's guardrails -- see README.md.",
+  "scripts": {
+    "test": "playwright test",
+    "test:auth": "playwright test tests/auth.spec.ts",
+    "test:events": "playwright test tests/events.spec.ts",
+    "test:bookings": "playwright test tests/bookings.spec.ts",
+    "test:health": "playwright test tests/health.spec.ts",
+    "test:config": "playwright test tests/config.spec.ts",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.7.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,12 @@
+node_modules/
+playwright-tests/playwright-report/
+playwright-tests/test-results/
+api-tests/playwright-api/playwright-report/
+api-tests/playwright-api/test-results/
+.env
+.env.*
+!.env.example
+!**/.env.example
+playwright-tests/.auth/
+*.log
+.DS_Store

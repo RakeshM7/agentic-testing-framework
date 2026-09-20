@@ -1,0 +1,4 @@
+Console log — https://eventhub.rahulshettyacademy.com/events (authenticated as akashmrakesh+1@gmail.com)
+Captured via read_console_messages (pattern: ".*").
+
+No console messages (log/warn/error/info) were emitted during this page load.

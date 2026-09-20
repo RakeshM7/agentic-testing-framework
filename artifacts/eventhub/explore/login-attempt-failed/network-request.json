@@ -1,0 +1,8 @@
+[
+  {
+    "url": "https://api.eventhub.rahulshettyacademy.com/api/auth/login",
+    "method": "POST",
+    "statusCode": 400,
+    "note": "Login attempt with user-supplied credentials (akashmrakesh@gmail.com) returned 400. UI toast displayed: 'Invalid email or password'. Attempted exactly once with the exact credentials provided by the user; no variations were guessed and no registration was attempted, per instructions."
+  }
+]
