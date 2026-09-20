@@ -88,12 +88,14 @@ export class EventDetailPage {
 
   async incrementQty(times = 1) {
     for (let i = 0; i < times; i++) {
+      if (await this.incrementButton.isDisabled()) return;
       await this.incrementButton.click();
     }
   }
 
   async decrementQty(times = 1) {
     for (let i = 0; i < times; i++) {
+      if (await this.decrementButton.isDisabled()) return;
       await this.decrementButton.click();
     }
   }

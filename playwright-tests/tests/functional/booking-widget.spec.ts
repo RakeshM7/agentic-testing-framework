@@ -54,6 +54,7 @@ test('decrement at minimum quantity (1) does not go below 1', async ({ eventDeta
   summary = await eventDetailPage.getOrderSummary();
   expect(summary.quantity).toBe(1);
   expect(summary.total).toBe(EVENTS.DILLI_DIWALI_MELA.price);
+  await expect(eventDetailPage.decrementButton).toBeDisabled();
 });
 
 // TC-event-booking-011 — Ticket stepper at maximum (qty = 10): "+" is blocked (P1)
@@ -70,6 +71,7 @@ test('increment at maximum quantity (10) does not exceed 10', async ({ eventDeta
   summary = await eventDetailPage.getOrderSummary();
   expect(summary.quantity).toBe(10);
   expect(summary.total).toBe(price * 10);
+  await expect(eventDetailPage.incrementButton).toBeDisabled();
 });
 
 // TC-event-booking-019 — Order total recalculates correctly across a full stepper sequence,
