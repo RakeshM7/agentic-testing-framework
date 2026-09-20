@@ -1,10 +1,18 @@
 import { test as base } from '@playwright/test';
 import { EventsListingPage } from '../pages/EventsListingPage';
 import { EventDetailPage } from '../pages/EventDetailPage';
+import { LoginPage } from '../pages/LoginPage';
+import { RegisterPage } from '../pages/RegisterPage';
+import { BookingsPage } from '../pages/BookingsPage';
+import { AdminEventsPage } from '../pages/AdminEventsPage';
 
 type Fixtures = {
   eventsListingPage: EventsListingPage;
   eventDetailPage: EventDetailPage;
+  loginPage: LoginPage;
+  registerPage: RegisterPage;
+  bookingsPage: BookingsPage;
+  adminEventsPage: AdminEventsPage;
 };
 
 /**
@@ -18,6 +26,18 @@ export const test = base.extend<Fixtures>({
   },
   eventDetailPage: async ({ page }, use) => {
     await use(new EventDetailPage(page));
+  },
+  loginPage: async ({ page }, use) => {
+    await use(new LoginPage(page));
+  },
+  registerPage: async ({ page }, use) => {
+    await use(new RegisterPage(page));
+  },
+  bookingsPage: async ({ page }, use) => {
+    await use(new BookingsPage(page));
+  },
+  adminEventsPage: async ({ page }, use) => {
+    await use(new AdminEventsPage(page));
   },
 });
 

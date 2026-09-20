@@ -1,0 +1,97 @@
+# Run-config — EventHub, app-wide coverage (everything event-booking excluded)
+#
+# The existing artifacts/eventhub/* run already covers the event-booking flow
+# end to end (browse -> detail -> booking widget -> confirm). That run's
+# clarifications doc explicitly marks auth/registration and admin/RBAC flows
+# OUT OF SCOPE. This config picks up everything else so the pipeline covers
+# the entire application, not just one feature.
+#
+# explore-agent's stage output (artifacts/eventhub/explore/sitemap.json) is
+# already on disk from that prior run, including an authenticated crawl of
+# /events, /events/{id}, /bookings, /admin/events -- the orchestrator will
+# detect it and skip straight to clarification.
+
+target:
+  url: https://eventhub.rahulshettyacademy.com
+  maxPages: 15
+  maxDepth: 2
+
+feature:
+  slug: app-wide
+  description: >
+    Everything in the EventHub application outside the already-covered
+    event-booking flow (event-booking has its own separate clarifications/
+    testcases under the "event-booking" feature slug and must not be
+    duplicated here). In scope:
+    (1) Registration (/register) -- email/password/confirm-password fields,
+    displayed password policy (>=8 chars, 1 uppercase, 1 number, 1 special
+    char), Create Account submit, duplicate-email handling, link to /login.
+    (2) Login (/login) -- valid credentials, invalid credentials (a real
+    400 "Invalid email or password" was already observed during exploration),
+    empty-field submission, link to /register.
+    (3) Events listing search & filtering (/events) -- free-text search box,
+    "All Categories" filter (Conference/Concert/Sports/Workshop/Festival),
+    "All Cities" filter (Mumbai/Bangalore/Delhi/Hyderabad/Chennai/Pune),
+    and combinations thereof. (Card click / Book Now navigation itself is
+    already covered by event-booking -- do not re-test that part here.)
+    (4) My Bookings management (/bookings) -- empty state, and the
+    "Clear all bookings" destructive bulk action (never actually clicked
+    live; treat as a mutating action requiring the same non-execution
+    stance as booking confirmation).
+    (5) Admin event management (/admin/events, reachable only via the
+    Admin nav dropdown for an admin-capable account) -- the "+ New Event"
+    creation form (Title, Description, Category, City, Venue, Event Date &
+    Time, Price, Total Seats, Image URL) and its field validation; the
+    documented business rule that an account may have at most 6 events,
+    and adding a 7th auto-evicts (FIFO) the oldest; the "All Events" table
+    where the 3 seeded/featured events are marked Read-only and cannot be
+    edited or deleted via this UI.
+    (6) Role-based access control -- the crawled account
+    (akashmrakesh+1@gmail.com) is admin-capable (sees the Admin nav item
+    and can reach /admin/events). Write test cases for the expected
+    behavior of a non-admin/plain consumer account attempting to reach
+    /admin/events directly (expect redirect/403) -- flag as unconfirmed
+    since no non-admin account was crawled.
+  requirement_docs: []
+
+authorizations:
+  authenticated_crawl: true
+  credentials_file: playwright-tests/.env
+  allow_mutating_api_tests: false
+
+testcases:
+  output_format: markdown-table
+
+defaults:
+  unconfirmed_behavior_policy: assume-standard-and-flag
+  unconfirmed_edge_case_policy: flag-as-unconfirmed-case
+
+answers:
+  - match: "duplicate email"
+    answer: "Assume the backend rejects a duplicate email at registration with a clear error; flag as an assumption since it was never exercised live. Error is shown as an inline message near the email field (e.g. 'Email already registered')."
+  - match: "duplicate-email"
+    answer: "Assume the backend rejects a duplicate email at registration with a clear error; flag as an assumption since it was never exercised live. Error is shown as an inline message near the email field (e.g. 'Email already registered')."
+  - match: "successful registration"
+    answer: "Successful registration auto-logs the user in and redirects to /events (or home); write this as the expected/assumed behavior since Create Account was never submitted live."
+  - match: "clear all bookings"
+    answer: "Never execute live -- write as a documented-but-fixme case, same stance as booking confirmation. Expected behavior: empties the My Bookings list for that account only."
+  - match: "non-admin"
+    answer: "Write as a flagged/unconfirmed RBAC case: expect redirect to / or a 403, since no non-admin account was available to crawl."
+  - match: "role-based access"
+    answer: "In scope for this run (overrides the event-booking run's out-of-scope note, which only applied to that feature)."
+  - match: "6-event"
+    answer: "Treat as a confirmed business rule from the admin page's own banner text; write both the at-limit and over-limit (FIFO eviction) cases as boundary tests. This one flow is an explicit exception to the general non-mutation stance: playwright-automation-agent should actually create events up to and past the 6-event limit (7th event) using the admin-capable account to verify FIFO eviction live, then clean up the created events afterward. No other mutating action in this run is authorized by this exception."
+  - match: "6 events"
+    answer: "Treat as a confirmed business rule from the admin page's own banner text; write both the at-limit and over-limit (FIFO eviction) cases as boundary tests. This one flow is an explicit exception to the general non-mutation stance: playwright-automation-agent should actually create events up to and past the 6-event limit (7th event) using the admin-capable account to verify FIFO eviction live, then clean up the created events afterward. No other mutating action in this run is authorized by this exception."
+  - match: "los angeles"
+    answer: "Not expected/known behavior -- flag as a likely bug. 'Hollywood Monsoon Night' (city = Los Angeles) is unreachable via the City filter dropdown since Los Angeles isn't one of its options; write the test case noting this as a probable data/dropdown mismatch bug rather than asserting it as intended."
+  - match: "search"
+    answer: "Free-text match against event title/venue/city, case-insensitive; flag as assumption if not directly confirmed by DOM inspection."
+  - match: "output format"
+    answer: "markdown-table, same as the event-booking run, for consistency across the suite."
+
+feedback_loop:
+  auto_invoke_implementor: true
+
+git:
+  auto_commit: false

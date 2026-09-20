@@ -8,12 +8,14 @@ import { test, expect } from '@playwright/test';
  * on first run; the resulting PNGs under tests/visual/*-snapshots/ are the
  * true golden baselines going forward and should be committed.
  *
- * Login is the only unauthenticated, always-available, stable-content page
- * discovered by explore-agent (chosen for visual coverage since it renders
- * without depending on the shared account's live seat-count state). The
- * events listing is covered too since it's the richest, most regression-prone
- * surface (card grid + filters) and its 3 seeded fixture events are stable
- * "Featured"/"Read-only" data, per the clarifications doc.
+ * Login and Register are the two unauthenticated, always-available, stable-content pages
+ * discovered by explore-agent (chosen for visual coverage since they render without depending on
+ * the shared account's live seat-count state). The events listing is covered too since it's the
+ * richest, most regression-prone surface (card grid + filters) and its 3 seeded fixture events
+ * are stable "Featured"/"Read-only" data, per the clarifications doc. My Bookings' empty state is
+ * covered as the app-wide suite's key authenticated page — stable because the fixture account has
+ * zero bookings (directly observed, not expected to change since no booking is ever completed
+ * live by this suite).
  */
 
 test.describe('visual regression @visual', () => {
@@ -31,6 +33,29 @@ test.describe('visual regression @visual', () => {
       await expect(page).toHaveScreenshot('login-page.png', {
         fullPage: true,
       });
+    });
+
+    // app-wide: /register is the other stable, unauthenticated, always-available page (form
+    // shape + password-policy list are static content, no live/seat-count data to mask).
+    test('register page', async ({ page }) => {
+      await page.goto('/register');
+      await expect(page.getByRole('button', { name: 'Create Account' })).toBeVisible();
+
+      await expect(page).toHaveScreenshot('register-page.png', {
+        fullPage: true,
+      });
+    });
+  });
+
+  // app-wide: /bookings in its empty state for the suite's fixture account (zero bookings,
+  // directly observed and stable — see tests/functional/my-bookings.spec.ts). Authenticated via
+  // the default "chromium" project storageState.
+  test('my bookings page (empty state)', async ({ page }) => {
+    await page.goto('/bookings');
+    await expect(page.getByRole('heading', { name: 'My Bookings' })).toBeVisible();
+
+    await expect(page).toHaveScreenshot('my-bookings-empty.png', {
+      fullPage: true,
     });
   });
 

@@ -36,6 +36,8 @@ Input: everything from Pass 1, plus an "Answers:" section mapping each question 
    - **Confirmed test-case output format** (explicit, single value -- this is the field testcase-generator-agent reads verbatim)
    - **Open questions** (anything still unresolved, flagged for human follow-up -- do not leave this implicit)
 
+   When a ruling touches whether a form/flow may be executed live under a non-mutation policy, state the ruling separately for (a) submissions that could succeed and mutate real data and (b) submissions expected to be blocked by validation before any mutation occurs (e.g. a deliberately invalid field value that the UI/API is expected to reject client- or server-side). A blanket "no live execution" ruling written for case (a) must not be left to silently read as also covering case (b) -- say explicitly whether negative/validation-only sub-cases are permitted to run live, the same way you would for the positive case.
+
 ## Feedback
 If you discover a bug, ambiguity, or gap in your own instructions or another agent's, or have a concrete improvement suggestion, do not only describe it in your final response. Write it to `feedback/requirements-clarification-agent/<YYYY-MM-DD>-<short-slug>.md` following the schema in `docs/conventions.md`'s Feedback contract, and state only that file path in your final response — not the full feedback text.
 

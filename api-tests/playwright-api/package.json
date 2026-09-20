@@ -2,14 +2,19 @@
   "name": "eventhub-api-tests",
   "version": "1.0.0",
   "private": true,
-  "description": "Playwright API (request-fixture) test suite for the EventHub REST API (https://api.eventhub.rahulshettyacademy.com). Read-only (GET) against the live third-party target, per the api-testing-agent's guardrails -- see README.md.",
+  "description": "Playwright API (request-fixture) test suite for the EventHub REST API (https://api.eventhub.rahulshettyacademy.com). Covers both the event-booking and app-wide (registration, login, events search/filter, My Bookings, admin, RBAC) features. Read-only (GET) against the live third-party target, plus the sanctioned non-mutating POST /auth/login exception, per the api-testing-agent's guardrails -- see README.md.",
   "scripts": {
     "test": "playwright test",
     "test:auth": "playwright test tests/auth.spec.ts",
+    "test:login": "playwright test tests/login.spec.ts",
     "test:events": "playwright test tests/events.spec.ts",
+    "test:events-search-filter": "playwright test tests/events-search-filter.spec.ts",
     "test:bookings": "playwright test tests/bookings.spec.ts",
+    "test:admin-events": "playwright test tests/admin-events.spec.ts",
+    "test:rbac": "playwright test tests/rbac.spec.ts",
     "test:health": "playwright test tests/health.spec.ts",
     "test:config": "playwright test tests/config.spec.ts",
+    "test:app-wide": "playwright test tests/login.spec.ts tests/events-search-filter.spec.ts tests/admin-events.spec.ts tests/rbac.spec.ts",
     "report": "playwright show-report"
   },
   "devDependencies": {

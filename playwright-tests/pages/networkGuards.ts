@@ -22,3 +22,13 @@ export async function blockLiveBookingMutations(page: Page) {
     }
   });
 }
+
+/**
+ * Same guard as {@link blockLiveBookingMutations}, exposed under a feature-neutral name for the
+ * app-wide suite's negative specs (registration/login validation) that intentionally submit
+ * invalid data expecting client-side validation to block it. Verified live (see
+ * playwright-automation-agent's dev notes): submitting an invalid registration/login form makes
+ * zero requests to `/api/auth/register` or `/api/auth/login` — this guard is defense-in-depth for
+ * if that assumption is ever wrong, not a workaround for a known gap.
+ */
+export const blockLiveApiMutations = blockLiveBookingMutations;

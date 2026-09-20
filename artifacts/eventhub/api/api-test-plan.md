@@ -2,8 +2,19 @@
 
 Target: `https://eventhub.rahulshettyacademy.com` (frontend) / `https://api.eventhub.rahulshettyacademy.com` (API host)
 Feature cross-reference: `artifacts/eventhub/clarifications/event-booking-clarifications.md`,
-`artifacts/eventhub/testcases/event-booking-testcases.md`
+`artifacts/eventhub/testcases/event-booking-testcases.md`,
+`artifacts/eventhub/clarifications/app-wide-clarifications.md`,
+`artifacts/eventhub/testcases/app-wide-testcases.md`
 Endpoint inventory: `artifacts/eventhub/api/discovered-endpoints.json`
+
+**This document covers two feature runs against the same 15-endpoint API surface:**
+- Sections 1–13 (original): the `event-booking` feature (booking creation/cancellation flow).
+- Sections 14–19 (added by the `app-wide` run, 2026-09-20): registration, login,
+  events search/filtering, My Bookings management, admin event management, and RBAC. No new
+  endpoints were discovered for this second pass — see `discovered-endpoints.json`'s
+  `appWideRunExtension` key for the re-verification note and feature-to-endpoint map. Sections
+  1–13 are left as originally written; the app-wide sections extend/cross-reference them rather
+  than duplicating their content.
 
 ## Discovery summary
 
@@ -261,6 +272,124 @@ is fully covered functionally by the existing UI test suite
 
 ---
 
+## App-wide feature sections (added 2026-09-20)
+
+Cross-reference: `artifacts/eventhub/clarifications/app-wide-clarifications.md`,
+`artifacts/eventhub/testcases/app-wide-testcases.md` (TC-app-wide-001 through -039). The guardrails
+from the top of this document apply identically here: **GET-only against the live target**, plus
+the same single sanctioned exception pattern used for `POST /auth/login` in section 2 above — this
+run additionally exercises `POST /auth/login`'s negative paths live (see section 15) because doing
+so authenticates against existing accounts without creating or mutating any data, the same
+justification already used for the happy-path login call. `POST /auth/register` and all
+Events-mutation routes (`POST`/`PUT`/`DELETE /events/:id`) remain **not executed** in any form —
+including invalid-payload attempts — per this run's explicit authorization scope.
+
+### 14. App-wide feature → endpoint traceability
+
+| App-wide feature | Backing endpoint(s) | Executable this run? |
+|---|---|---|
+| Registration (`/register`) | `POST /auth/register` | No — documented only (section 1, extended in section 16) |
+| Login (`/login`) | `POST /auth/login` | Yes — functional + negative, live (section 15) |
+| Events search & filtering (`/events`) | `GET /events` (query params `category`, `city`, `search`) | Yes — live (section 17, extends section 4) |
+| My Bookings management (`/bookings`) | `GET /bookings`, `GET /bookings/:id`, `GET /bookings/ref/:ref`, `DELETE /bookings/:id` | Read paths yes (sections 7–9, already covered, not duplicated); `DELETE` no |
+| "Clear all bookings" bulk action | No dedicated endpoint discovered — see `discovered-endpoints.json`'s `unbackedFrontendFeatures` | No — documented only (section 18) |
+| Admin event management (`/admin/events`) — create/edit/delete | `POST /events`, `PUT /events/:id`, `DELETE /events/:id` | No — documented only (section 6, extended in section 18) |
+| Admin 6-event / FIFO-eviction rule | `POST /events` (business logic inline, no separate route — see `discovered-endpoints.json`) | No — documented only, orchestrator-overridden (section 18) |
+| RBAC (admin vs non-admin) | No dedicated endpoint/role field found | Partially — schema-absence check only, live (section 19) |
+
+### 15. `POST /auth/login` — expanded live coverage (supersedes section 2's "not auto-executed" note for negative cases)
+
+Unlike section 2 above (written during the `event-booking` run, which only executed the happy-path
+login as a fixture setup step), this run's `login.spec.ts` **does** execute the negative sub-cases
+below live, because none of them create or mutate any business data — they only authenticate (or
+fail to authenticate) against existing accounts, the same category of call already sanctioned for
+the happy path.
+
+| Category | Scenario | Expected |
+|---|---|---|
+| Functional | Valid `EVENTHUB_EMAIL` / `EVENTHUB_PASSWORD` | 200, `AuthResponse` (`success:true`, non-empty `token`, `user.email` matches) |
+| Negative | Directly-observed fixture: `akashmrakesh@gmail.com` + any password | 400 — **directly observed during explore-agent's app-wide crawl**, not a guess (`artifacts/eventhub/explore/login-attempt-failed/network-request.json`); UI toast was "Invalid email or password" |
+| Negative | Correct `EVENTHUB_EMAIL`, deliberately wrong password | 400, `{"success":false,"error":"..."}` |
+| Negative | Well-formed but never-registered email | Verify: 400 vs 404 — spec documents both as plausible (`400` = wrong password/validation, `404` = "User not found"); live behavior for this exact case is not yet directly observed, so this case asserts "one of {400,404}" rather than a single hard-coded value |
+| Negative | Missing `password` field entirely | 400, `ValidationErrorResponse` |
+| Negative | Missing `email` field entirely | 400, `ValidationErrorResponse` |
+| Negative | Malformed email (no `@`) | 400, validation error on `email` |
+| Negative | Empty request body `{}` | 400 |
+| Schema | Success response matches `AuthResponse`; failure responses have `success:false` + string `error` | pass |
+
+### 16. `POST /auth/register` — extended documentation (not executed; extends section 1)
+
+**Password-policy contract discrepancy** (see `discovered-endpoints.json`'s
+`passwordPolicyDiscrepancy`): the frontend enforces ≥8 chars / 1 uppercase / 1 number / 1 special
+character client-side (verified live by the UI suite to block submission with zero network calls
+for every violation), but the documented `AuthInput` schema backing this endpoint only declares
+`minLength: 6` with no complexity constraints. Whether the *backend* independently enforces the
+same complexity policy, or relies entirely on the frontend, is an open contract question — **not
+resolvable without calling `POST /auth/register` directly, which is out of scope this run.**
+Flagged for a future authorized run.
+
+| Category | Scenario | Expected | Executed? |
+|---|---|---|---|
+| Negative | Password satisfying only the backend's documented `minLength:6` but violating the frontend's complexity policy (e.g. `"abcdef"`) | Contract question: does the backend reject this server-side, or would it be accepted if the frontend's client-side gate were bypassed? | Not executed — requires a live `POST /auth/register` call |
+| Negative | Duplicate email (TC-app-wide-017) | 400, `{"error":"..."}` (assumed "email already registered") | Not executed — would create/attempt a real account |
+| Boundary | Successful registration (TC-app-wide-002 / -020) | 201, `AuthResponse`, assumed auto-login semantics at the UI layer (not an API-contract concern — the API itself just returns a token) | Not executed — creates a real account |
+
+### 17. `GET /events` — search/filter combination & data-anomaly extensions (extends section 4)
+
+New live-executed coverage in `events-search-filter.spec.ts`, on top of (not duplicating) the
+basic single-filter and pagination coverage already in `events.spec.ts`:
+
+| Category | Scenario | Expected |
+|---|---|---|
+| Functional | `category=Concert&city=Los Angeles` combined (matches event 284 only) | 200, AND/intersection semantics — result set is the intersection of both filters, not the union (resolves TC-app-wide-027's open question at the API level) |
+| Functional | `category=Concert&city=Delhi` combined (a combination matching **zero** seeded events — 284 is Concert but not Delhi; 285 is Delhi but not Concert) | 200, empty `data:[]` — confirms AND semantics, since OR/union would incorrectly still return one of them |
+| Negative/Boundary | `search=zzz-no-match-zzz` (matches no seeded event) | 200, empty `data:[]`, not a 404/500 (TC-app-wide-016) |
+| Boundary — data anomaly | `city=Los Angeles` (URL-encoded) — **not a selectable option in the frontend's City filter dropdown**, but a real seeded event (284) has exactly this city value | 200, event 284 present in the result — demonstrates the API itself has no problem with this city value; the gap is purely in the frontend's fixed 6-option dropdown (Mumbai/Bangalore/Delhi/Hyderabad/Chennai/Pune). **Documents the likely data/dropdown-mismatch bug flagged in the clarifications doc at the API level**: the API can select this event by city, the UI cannot. |
+| Schema/contract | `city` query param has no `enum` constraint in the spec (unlike `category`, which does) | Confirmed by spec inspection — cross-referenced against the Los Angeles case above |
+
+### 18. Unbacked frontend features — "Clear all bookings" and 6-event FIFO eviction (NOT EXECUTED, no endpoint to call safely)
+
+Neither feature has a dedicated endpoint in the live OpenAPI spec (re-verified this run — see
+`discovered-endpoints.json`'s `unbackedFrontendFeatures`). Both are documented here as
+functional/negative/boundary scenarios per the invocation's explicit instruction, but **no
+generated test calls any endpoint for either feature** — there is no safe read-only way to exercise
+them, and the underlying primitives they'd rely on (`DELETE /bookings/:id` looped, or `POST
+/events` at the 6/7-event boundary) are themselves excluded from execution this run.
+
+**"Clear all bookings" (`/bookings` page):**
+
+| Category | Scenario | Expected | Notes |
+|---|---|---|---|
+| Functional | Account with ≥1 existing booking clicks "Clear all bookings" | All bookings for that account are removed; `GET /bookings` (scoped to the account, if auth scoping is real — see the existing contract discrepancy in section 7) afterward returns empty `data:[]` | Likely implemented as N×`DELETE /bookings/:id` client-side, or an undocumented bulk route — see `discovered-endpoints.json` |
+| Negative | Account with zero bookings clicks "Clear all bookings" | Idempotent no-op — list is already empty, no error | Assumed, unverified |
+| Boundary | Concurrent "Clear all" while a booking is being created elsewhere | Race condition possible if implemented as a client-side loop rather than a server-side atomic bulk-delete transaction | Flagged as an architectural risk worth a human follow-up if this feature is ever load-tested |
+
+**6-event-max / 7th-event-FIFO-eviction (`/admin/events` page):**
+
+| Category | Scenario | Expected | Notes |
+|---|---|---|---|
+| Boundary | Admin account at exactly 5 events adds a 6th (at-limit boundary, TC-app-wide-036) | `POST /events` → 201; 6th event added normally, no eviction (per the admin banner's own copy) | Orchestrator explicitly declined to authorize live execution — see clarifications doc |
+| Boundary | Admin account at exactly 6 events adds a 7th (over-limit boundary, TC-app-wide-037) | `POST /events` → 201 for the new event; the oldest of the 6 existing events is automatically evicted server-side (assumed to be a cascading delete of that event's bookings too, consistent with the documented `DELETE /events/:id` cascade behavior in section 6, though this is inferred, not confirmed) | Same orchestrator override; also flagged: whether the evicted event's *existing bookings* are cascade-deleted or handled some other way is unconfirmed |
+| Negative | Tie-breaking behavior when multiple events share the same `createdAt` (sub-second precision boundary) | Unconfirmed — which event is "oldest" in a tie is not documented | Flagged for human follow-up only |
+
+### 19. RBAC / Authorization — schema findings + non-admin placeholder
+
+Authorization/RBAC is explicitly in scope for the app-wide suite (unlike `event-booking`, where
+it's out of scope) per the clarifications doc's "Non-functional constraints" section. At the API
+level, the *only* safe, GET-only, live-executable coverage is a schema/contract check — genuine
+authorization-bypass testing (calling `POST`/`PUT`/`DELETE /events` with a non-admin or invalid
+token to see if the mutation succeeds anyway) requires calling those mutating routes, which is
+explicitly out of scope this run regardless of the token used.
+
+| Category | Scenario | Expected | Executed? |
+|---|---|---|---|
+| Schema/contract | `GET /auth/me`'s `MeResponse` does not expose any `role`/`isAdmin`/`permissions` field | Confirmed by spec inspection; live-asserted in `rbac.spec.ts` that the actual response for the (admin-capable) dogfood account also only contains `userId`/`email` | Yes — live, GET-only |
+| Auth/contract | Whether `POST /events`, `PUT /events/:id`, `DELETE /events/:id` actually reject a non-admin or missing token, or accept any caller regardless of role (the core RBAC-bypass question) | **Unresolved.** The spec declares no `security` requirement on any of these three routes. Whether admin-gating is UI-only (zero backend enforcement) or server-enforced-but-undocumented cannot be determined without calling them | Not executed — the mutating routes themselves are out of scope this run, independent of which token/credential would be used |
+| RBAC placeholder | Non-admin account navigating directly to `/admin/events` (TC-app-wide-039) | Assumed: redirect to `/` or 403 | Not executed — no non-admin EventHub account exists or is registered this run (same fixture gap as the UI suite's `test.fixme` for this case) |
+| Cross-check | Seeded events 283/284/285 render as "Read-only" (no Edit/Delete) in the admin UI table — does the `Event` schema expose any field (e.g. an owner/creator id, or a `readOnly`/`featured` boolean) that would explain this at the data level? | No such field exists in the documented `Event` schema (`id, title, description, category, venue, city, eventDate, price, totalSeats, availableSeats, imageUrl, createdAt, updatedAt`) — the "Read-only" designation for these 3 events appears to be a **frontend-only** concept (e.g. a hardcoded id allowlist), not something the API itself is aware of. This is a notable finding: if true, a `PUT`/`DELETE` call against event 283/284/285's id might not actually be rejected server-side either — same unresolved RBAC-bypass question as above, now specifically scoped to the "Read-only" seeded events | Schema-inspection finding, live-asserted via `GET /events/283` etc. (read-only) in `admin-events.spec.ts` |
+
+---
+
 ## Performance section — candidate endpoints and suggested k6 profiles
 
 Per the hard rule, **none of these are executed live**. Scripts are generated for static review /
@@ -274,6 +403,8 @@ by a human who accepts that responsibility.
 | `GET /bookings` | Read-heavy, paginated, potentially large result sets at scale | Ramp 0→20 VUs over 20s, hold 20 VUs for 1m | `http_req_duration{p(95)}<800ms`, `http_req_failed<1%` |
 | `POST /bookings` | Write-path with atomic seat-decrement logic — the endpoint most likely to reveal race conditions (overselling) or lock contention under concurrent load. Script generated for a controlled/authorized environment only — **never point this at the live production/demo target** | 10 VUs, 1 iteration each, all fired within a ~2s window against a *single* low-availability event id (deliberately designed to test the atomic-decrement guarantee, not to overload the server) | `http_req_failed<1%`, and a post-run custom check that `sum(quantities of all 201 responses) <= seats available at test start` (i.e. no overselling) |
 | `GET /health` | Cheap synthetic-monitoring / uptime-style check candidate | 5 VUs constant for 1m | `http_req_duration{p(95)}<200ms`, `http_req_failed<0.1%` |
+| `GET /events` (search/filter variants) | Added by the app-wide run: the search box and category/city filters are the primary interaction on `/events` beyond plain listing; a `search=` query is plausibly a `LIKE`/full-text lookup with different query-plan characteristics (and likely higher latency variance) than the plain paginated list already covered above | Ramp 0→25 VUs over 20s, hold 25 VUs for 90s, cycling through `search=`, `category=`, `city=`, and combined-filter requests | `http_req_duration{p(95)}<900ms` (slightly looser than plain listing, given `search=` query-plan uncertainty), `http_req_failed<1%` |
+| `POST /auth/login` | Added by the app-wide run: login is a high-frequency entry-point endpoint. Non-mutating (authenticates existing accounts only), but repeated automated login attempts against a *shared public demo account* risk looking like credential-stuffing/brute-force traffic to any rate-limiting or security monitoring in front of the API — script defaults `BASE_URL` to a local/staging host for this reason (see script header), same caution pattern as the `POST /bookings` creation script | 10 VUs, 1 iteration each, fired within a ~5s window against one fixed valid account | `http_req_failed<1%`, `http_req_duration{p(95)}<600ms`, plus a manual post-run check (documented in the script) that no account lockout/rate-limit response (429) appeared |
 
 ---
 
@@ -289,3 +420,16 @@ TC-009's sold-out placeholder) — the API-level negative/boundary cases above (
 insufficient-seats and quantity-at-max-availability rows) are the more directly executable path to
 eventually resolving those open questions, once the guardrail against live mutating calls is lifted
 for an authorized run.
+
+**App-wide traceability:** `app-wide-testcases.md`'s 39 UI-level test cases map onto sections 14–19
+above as follows — TC-app-wide-003/004/011/012/021/022/023 (login form/behavior) → section 15;
+TC-app-wide-001/002/013/014/015/017/018/019/020 (registration) → section 16 (all "DO NOT EXECUTE
+LIVE" registration cases stay documented-only at the API level too, consistent with the UI suite's
+own `test.fixme` treatment); TC-app-wide-005/006/007/016/024/025/026/027/028 (events search/filter,
+including the Los Angeles data anomaly) → section 17; TC-app-wide-008/029/030 (My Bookings, "Clear
+all bookings") → sections 7–9 (existing, not duplicated) + section 18; TC-app-wide-009/010/031
+through -038 (admin event management, 6-event FIFO eviction) → section 18; TC-app-wide-039 (RBAC
+non-admin placeholder) → section 19. Of the 39 UI test cases, 12 are flagged "DO NOT EXECUTE LIVE" —
+every one of those 12 has a corresponding "not executed" row in this document's app-wide sections,
+with no generated Playwright API test calling the underlying mutating endpoint in any of those 12
+cases.
