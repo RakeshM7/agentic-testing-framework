@@ -1,6 +1,6 @@
 # Pipeline Conventions
 
-This framework has **no orchestrator script**. The pipeline order and artifact handoffs are enforced entirely by convention: every agent's system prompt (`.claude/agents/*.md`) reads from and writes to the same fixed paths documented here, and a human or top-level session invokes the agents in order via the Agent/Task tool (`subagent_type` matching each agent's `name`).
+This framework has **no orchestrator script** — there is no separate process, server, or CLI that drives the pipeline. There is, however, an **orchestrator agent** (`orchestrator-agent`, an LLM subagent like any other) that can drive the other six agents end to end from a single run-config file — see "Orchestrator & run-config contract" below. Either way, the pipeline order and artifact handoffs are enforced entirely by convention: every agent's system prompt (`.claude/agents/*.md`) reads from and writes to the same fixed paths documented here. Running the pipeline manually (a human or top-level session invoking each agent in order via the Agent/Task tool, `subagent_type` matching each agent's `name`) and running it through `orchestrator-agent` both follow this same contract — the orchestrator is a convenience on top of it, not a different pipeline.
 
 ## Artifact root
 
@@ -16,16 +16,51 @@ All pipeline artifacts for a given target live under `artifacts/<target-slug>/`,
 | 4 | `playwright-automation-agent` | `docs/playwright-framework-research.md` (greenfield only) + `playwright-tests/` project | Terminal |
 | 5 | `api-testing-agent` | `artifacts/<target>/api/{discovered-endpoints.json, api-test-plan.md}` + `api-tests/playwright-api/` + `api-tests/k6/` | Terminal |
 | 6 | `feedback-implementor-agent` | Fixes applied to whatever files a feedback file's findings concern + a `## Resolution` section appended to that same feedback file | Terminal (invoked ad hoc, not part of the linear per-target pipeline) |
+| — | `orchestrator-agent` | `artifacts/<target>/run-report.md`, plus drives stages 1–6 above in order via the same paths | Hub, not a stage — invoked once per run instead of the other six being invoked by hand |
 
 ## The two-pass clarification handshake
 
 `requirements-clarification-agent` cannot block mid-run for human input (subagents are single-shot request/response). It self-detects its pass by whether the invocation prompt contains an `Answers:` section:
 
 - **Pass 1** (no `Answers:` section): returns a structured, tagged question list and writes no artifact.
-- The orchestrating session relays those questions to the user (e.g. via `AskUserQuestion`), collects real answers.
+- Whoever invoked it resolves those questions — either a human session relaying them via `AskUserQuestion`, or `orchestrator-agent` matching them against a run-config file's `answers`/`defaults` (see below).
 - **Pass 2** (prompt re-sent with an `Answers:` section appended): writes the final `clarifications.md`.
 
 Any orchestrator invoking this agent must expect two calls, not one.
+
+## Orchestrator & run-config contract
+
+`orchestrator-agent` is the hub in this framework's hub-and-spoke model: invoke it once, with one run-config file, and it drives stages 1–6 in order, passing each stage's real artifact path to the next — the same handoff contract as a manual run, just not invoked by hand.
+
+### The constraint that shapes this whole section
+
+`orchestrator-agent` is itself a subagent, so it inherits the same limitation described above: **it cannot reliably call `AskUserQuestion`.** A run-config file is not a convenience layered on top of an otherwise-interactive orchestrator — it is the *only* channel through which most recurring questions get answered without a human touchpoint. Anything the config doesn't cover still halts the run (see "Halting and resuming" below); the orchestrator never guesses at a `[Blocking]` question regardless of what the config does or doesn't say.
+
+### Run-config file
+
+One YAML file configures one full pipeline pass: one target, one feature. A worked example lives at `config/run-config.example.yaml`. Top-level keys:
+
+| Key | Purpose |
+|---|---|
+| `target.url` / `maxPages` / `maxDepth` | Passed straight to `explore-agent`. `target.url` is the only required field in the whole file. |
+| `feature.slug` / `description` / `requirement_docs` | Passed to `requirements-clarification-agent` as Pass 1 grounding. |
+| `authorizations.authenticated_crawl` / `credentials_file` | Opt-in exception to explore-agent's read-only default. `credentials_file` is always a **file path**, never inline secret values — the credential-leakage classifier blocks inline secrets in an agent prompt regardless. |
+| `authorizations.allow_mutating_api_tests` | Opt-in exception to api-testing-agent's GET-only default, for a target the user controls. **Cannot** enable a live k6 run at any value — that rule is hard-coded in `api-testing-agent` itself, not controlled by this file. |
+| `testcases.output_format` | The format `testcase-generator-agent` should confirm and use. |
+| `defaults.unconfirmed_behavior_policy` / `unconfirmed_edge_case_policy` | Applied only to `[Nice-to-have]`-tagged Pass-1 questions that `answers` doesn't already cover. Never applied to `[Blocking]` questions. |
+| `answers` | A list of `{match, answer}` pairs. The orchestrator resolves a Pass-1 question by a case-insensitive substring match of `match` against the question text; first match wins. This is the main lever for avoiding a halt on a question you already anticipate. |
+| `feedback_loop.auto_invoke_implementor` | Whether the orchestrator hands any feedback files filed mid-run straight to `feedback-implementor-agent` (default `true`) or just reports their paths. |
+| `git.auto_commit` | Whether the orchestrator may run `git commit` at all. Default/absent is `false` — the orchestrator never commits unless this is explicitly `true`. |
+
+### Halting and resuming
+
+If, after matching against `answers` and applying `defaults` to nice-to-have questions, any `[Blocking]` question is still unanswered, the orchestrator stops at that point and reports: which stages completed, every artifact produced so far, and the unanswered question(s) verbatim. A human adds an `answers` entry (or answers directly) and re-invokes the orchestrator with the same `configPath`.
+
+Re-invocation is naturally resumable, with no separate state file: before running any stage, the orchestrator checks whether that stage's conventional output artifact already exists and skips straight past it if so. The artifacts on disk are the state.
+
+### What the config can never do
+
+The config can only exercise opt-in exceptions a spoke agent already defines in its own persona (an authenticated crawl, a wider API test scope). It can never override a spoke agent's hard rule — explore-agent's read-only default beyond an authorized crawl, api-testing-agent's no-live-k6-run rule, playwright-automation-agent's no-live-mutation default. Those are enforced inside each spoke agent's own definition and are not parameters.
 
 ## Standing safety guardrails (apply across the whole framework)
 

@@ -1,0 +1,61 @@
+# Agentic Testing Framework — run configuration
+#
+# Pre-answers orchestrator-agent's common, recurring questions so a run
+# doesn't stall mid-pipeline waiting on a human. Full schema and matching
+# rules: docs/conventions.md, "Orchestrator & run-config contract".
+#
+# Copy this file (e.g. to config/eventhub.yaml), fill in your target, and
+# invoke orchestrator-agent with that path. Never put actual secret VALUES
+# in this file — only paths to a .env-style credentials file the target
+# agents read themselves.
+
+target:
+  url: https://eventhub.rahulshettyacademy.com
+  # slug: eventhub              # optional — derived from url's hostname if omitted
+  maxPages: 15
+  maxDepth: 2
+
+feature:
+  slug: event-booking
+  description: >
+    Browse events, view event details, and book/register for an event.
+  requirement_docs: []          # optional: paths to requirement docs / mockups, if any exist
+
+# --- Authorization for anything beyond an agent's safe-by-default behavior.
+# The orchestrator can only exercise opt-in exceptions the spoke agents
+# already define — it can never override a hard rule (see orchestrator-agent.md).
+authorizations:
+  authenticated_crawl: false    # true = explore-agent logs in past the wall using credentials_file
+  credentials_file: null        # e.g. playwright-tests/.env — a FILE PATH, never inline values
+  allow_mutating_api_tests: false  # true = api-testing-agent may generate write-path (POST/PUT/DELETE)
+                                    # Playwright API specs for a target you control. Never enables a
+                                    # live k6 run — that rule is hard-coded in api-testing-agent itself
+                                    # and this file cannot change it, at any value.
+
+testcases:
+  output_format: markdown-table # markdown-table | gherkin | csv | testrail
+
+# --- Applied only to [Nice-to-have]-tagged clarification questions that
+# `answers` below doesn't already cover. Never applied to [Blocking]
+# questions — those always halt the run if unanswered, by design.
+defaults:
+  unconfirmed_behavior_policy: assume-standard-and-flag   # assume-standard-and-flag | skip-coverage
+  unconfirmed_edge_case_policy: flag-as-unconfirmed-case  # flag-as-unconfirmed-case | omit
+
+# --- Free-form pre-answers for specific questions you already anticipate.
+# The orchestrator matches a Pass-1 question to an entry here by a
+# case-insensitive substring match against `match`; first match wins.
+# Add as many as you like — this is the main lever for avoiding a halt.
+answers:
+  - match: "role-based access"
+    answer: "Out of scope for this run."
+  - match: "duplicate booking"
+    answer: "Assume duplicates are permitted; flag as an assumption."
+  - match: "sold-out"
+    answer: "Write as a flagged/unconfirmed case if no sold-out fixture exists."
+
+feedback_loop:
+  auto_invoke_implementor: true  # false = orchestrator only reports filed feedback file paths
+
+git:
+  auto_commit: false             # orchestrator never runs `git commit` unless this is explicitly true

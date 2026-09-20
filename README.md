@@ -1,17 +1,18 @@
 # Agentic Testing Framework
 
-A set of six specialized Claude Code subagents that together plan and execute Manual, Automation (Playwright), UI Visual, and API (Playwright + K6) testing for a web application — from "here's a URL" to a scaffolded, running test suite plus a full API test plan — and close the loop on their own feedback.
+A set of seven specialized Claude Code subagents — six spokes plus one orchestrator hub — that together plan and execute Manual, Automation (Playwright), UI Visual, and API (Playwright + K6) testing for a web application — from "here's a URL" to a scaffolded, running test suite plus a full API test plan — and close the loop on their own feedback.
 
 See [`architecture.md`](architecture.md) for the pipeline diagram and design rationale, [`docs/conventions.md`](docs/conventions.md) for the artifact handoff and feedback contracts, and [`docs/validation-report.md`](docs/validation-report.md) for a real end-to-end dogfood run of every agent against a live app, with per-agent feedback.
 
 ## What this repo is
 
-This is a **framework**, not a finished test suite for one product. The deliverable is the six agent definitions in `.claude/agents/` — concise, ready-to-deploy Claude Code subagents you point at *any* target web app. `artifacts/eventhub/`, `playwright-tests/`, `api-tests/`, and `feedback/` in this repo are not the framework itself; they're the real output of one validation run (against the public demo site `eventhub.rahulshettyacademy.com`), kept in the repo as a worked example and as evidence the agents actually work, not as a template to edit by hand.
+This is a **framework**, not a finished test suite for one product. The deliverable is the seven agent definitions in `.claude/agents/` — concise, ready-to-deploy Claude Code subagents you point at *any* target web app — plus a run-config schema (`config/run-config.example.yaml`) that lets the orchestrator drive all six spokes without stalling on questions you can answer in advance. `artifacts/eventhub/`, `playwright-tests/`, `api-tests/`, and `feedback/` in this repo are not the framework itself; they're the real output of one validation run (against the public demo site `eventhub.rahulshettyacademy.com`), kept in the repo as a worked example and as evidence the agents actually work, not as a template to edit by hand.
 
 ## Agents
 
 | Agent | Role | Tools | Model |
 |---|---|---|---|
+| [`orchestrator-agent`](.claude/agents/orchestrator-agent.md) | The hub. Takes one run-config YAML file and drives the six spokes below in order, resolving recurring questions from the config instead of stalling for human input. Halts and reports if it hits something the config doesn't cover. | Agent(the 6 spokes), Read, Write, Glob, Grep, Bash | sonnet |
 | [`explore-agent`](.claude/agents/explore-agent.md) | Crawls a target UI, builds a sitemap, captures a baseline snapshot (screenshot + DOM + network + console) per page. Optional opt-in authenticated-crawl mode via a credentials file. | Read, Write, Glob, Grep, Bash, Chrome browser tools | sonnet |
 | [`requirements-clarification-agent`](.claude/agents/requirements-clarification-agent.md) | Two-pass interview: asks the user about behavior, edge cases, and desired test-case format, then writes an authoritative clarifications doc from their answers. | Read, Write, Glob, Grep, WebFetch | sonnet |
 | [`testcase-generator-agent`](.claude/agents/testcase-generator-agent.md) | Generates manual test cases in the user's confirmed format (Gherkin / Markdown table / CSV / TestRail import), with full edge-case traceability. | Read, Write, Glob, Grep | sonnet |
@@ -29,7 +30,7 @@ This is a **framework**, not a finished test suite for one product. The delivera
 
 ## What it does not cover
 
-- **No orchestrator.** There is no script that chains the five agents automatically. A human (or a top-level Claude Code session acting on a human's behalf) invokes each agent in order and passes the previous stage's artifact path forward. See the pipeline diagram in `architecture.md`.
+- **No orchestrator *script* or background process.** `orchestrator-agent` is an LLM subagent, not a daemon — it still runs as a single invocation you (or a scheduler) start, and it still can't interrupt itself to ask you something an interactive session could. See "Orchestrated run" below and the pipeline diagram in `architecture.md`.
 - **No fully autonomous exploration of authenticated apps.** `explore-agent` will not guess or infer credentials; by default it stops at any login wall. Getting past one requires an explicit, human-authorized credentials file.
 - **No mobile, desktop, or non-web testing.** The framework is scoped to web applications reachable by a browser and/or an HTTP API.
 - **No test-management-system integration.** Test cases are written to files in the format you choose; importing them into TestRail/Jira/Zephyr/etc. is a manual step.
@@ -47,8 +48,27 @@ These are documented in full, with root causes, in [`docs/validation-report.md`]
 - **`.env` values containing `#` must be quoted.** Unquoted, `dotenv` treats `#` as a comment start and silently truncates the value — this caused a real, confusing login failure during validation before the root cause was found.
 - **Demo/shared environments can be flaky or rotate accounts.** During validation, a previously-working test account's password was rejected minutes later with no code change on our side — plausibly an environment-level reset. Don't assume a credential that worked once will keep working against a shared third-party demo target.
 - **Explore-agent's screenshots are not Playwright visual baselines.** They're reference material for deciding what to cover; `playwright-automation-agent` generates its own golden images via `--update-snapshots`.
+- **`orchestrator-agent` cannot call `AskUserQuestion`.** It's a subagent, same as the other six — only the top-level session a human is actually driving reliably has that tool. This is exactly why the run-config file exists (see below), and exactly why an unanswered `[Blocking]` question still halts the run instead of the orchestrator finding some other way to ask.
+- **The orchestrator needs all six spoke types registered too.** It hits the same session-hot-load limitation as everything else, one level deeper — it can't natively delegate to `explore-agent` etc. until a fresh session has all seven definitions loaded.
+
+## Orchestrated run (recommended once you have a run-config)
+
+Instead of invoking the six spokes by hand (the step-by-step walkthrough below), copy [`config/run-config.example.yaml`](config/run-config.example.yaml), fill in your target and the questions you can already answer, and invoke the hub once:
+
+```
+Use orchestrator-agent with configPath=config/<your-run>.yaml.
+```
+
+It drives explore → clarify → testcases → automation → API testing → (if any feedback got filed) the feedback loop, in order, reusing any stage whose output already exists on disk. Two outcomes:
+
+- **Completed** — read `artifacts/<target-slug>/run-report.md` for what ran, what got skipped as already-done, every artifact path, and which `defaults`/`answers` from your config got applied where.
+- **Halted at stage N** — the response names the exact stage and, if it's the clarification stage, the exact unanswered `[Blocking]` question(s). Add an `answers` entry (or a more specific `feature.description`) to your config and re-invoke with the same `configPath`; completed stages won't re-run.
+
+The full schema, matching rules, and what the config can never override (a spoke agent's own hard safety rules) are documented in [`docs/conventions.md`](docs/conventions.md)'s "Orchestrator & run-config contract".
 
 ## How to use this repo — step by step
+
+The orchestrated run above is the fast path once you have a config. The manual walkthrough below is what it's actually doing at each stage — useful for understanding the pipeline, debugging a halted orchestrator run, or running a single stage on its own.
 
 ### 1. Point `explore-agent` at your target
 

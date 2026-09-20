@@ -2,12 +2,13 @@
 
 ## Design summary
 
-Five single-purpose Claude Code subagents, each scoped to one stage of the testing lifecycle, connected by **convention** rather than by code: every agent reads and writes fixed, documented file paths (`docs/conventions.md`), and a human (or a top-level Claude Code session acting on the human's behalf) invokes them in order. There is no orchestrator process, no shared runtime, and no agent-to-agent direct communication — the filesystem *is* the integration layer.
+Six single-purpose Claude Code subagents, each scoped to one stage of the testing lifecycle, connected by **convention** rather than by code: every agent reads and writes fixed, documented file paths (`docs/conventions.md`). A seventh agent, `orchestrator-agent`, is a hub that drives those six in order from a single run-config file — but it is layered *on top of* the same file-based contract, not a different mechanism. Either a human invokes the six spokes directly, or `orchestrator-agent` does, one call at a time, via the Agent tool scoped to exactly those six subagent types. There is no separate orchestrator *process*, no shared runtime, and no agent-to-agent direct communication outside that one hub relationship — the filesystem is still the integration layer even when the hub is doing the invoking.
 
 This is a deliberate choice, not a gap:
 - It keeps each agent's definition small, auditable, and independently testable.
-- It keeps a human in the loop at the one point that genuinely needs judgment (requirements clarification) without needing to build a bidirectional interactive-subagent protocol.
+- It keeps a human in the loop at the one point that genuinely needs judgment (requirements clarification) — either directly, or through a run-config file that pre-answers the recurring cases so the orchestrator doesn't need to interrupt for them.
 - It means the artifacts are useful even if you only ever run one agent — e.g. you can run `explore-agent` alone just to get a sitemap and screenshots, with nothing downstream required.
+- It means the orchestrator adds convenience without adding a second source of truth: it reuses the exact same artifact paths a manual run would, so a run started by hand and finished by the orchestrator (or vice versa) just works.
 
 ## Component / pipeline diagram
 
@@ -101,12 +102,39 @@ sequenceDiagram
     Note over API: k6 inspect only — never k6 run against a live target
 ```
 
+## Hub-and-spoke diagram — orchestrated run
+
+`orchestrator-agent` is the hub; the other six are spokes it calls one at a time via the Agent tool. It is itself a subagent, so it cannot call `AskUserQuestion` — the run-config file is what lets it resolve most recurring questions without a human touchpoint. Anything the config doesn't cover still halts the run rather than being guessed.
+
+```mermaid
+flowchart TD
+    CFG[("run-config.yaml")]
+    H["Human"] -- "invoke once" --> O["orchestrator-agent"]
+    CFG -- "read at step 0" --> O
+
+    O -- "1" --> EA["explore-agent"]
+    O -- "2 (Pass 1, then Pass 2 with\nconfig-resolved answers)" --> RC["requirements-\nclarification-agent"]
+    O -- "3" --> TG["testcase-\ngenerator-agent"]
+    O -- "4" --> PW["playwright-\nautomation-agent"]
+    O -- "5" --> API["api-testing-agent"]
+    O -. "6, only if feedback\nfiled mid-run" .-> FI["feedback-\nimplementor-agent"]
+
+    EA & RC & TG & PW & API & FI -.->|"same artifact paths\nas a manual run"| FS[("artifacts/ · playwright-tests/\napi-tests/ · feedback/")]
+
+    O -- "Completed → run-report.md,\nor Halted at stage N →\nexact unanswered question" --> H
+
+    style CFG fill:#eef5ee,stroke:#3a7a3a
+```
+
+**Resumability, not retries.** Before invoking any spoke, the orchestrator checks whether that stage's conventional output artifact already exists and skips straight past it if so — the artifacts on disk are the checkpoint, so re-invoking after a halt (with an updated config) resumes rather than restarts. It does not automatically retry a *failed* stage (an environmental blocker like a disconnected browser or a rate limit surfaces immediately, per the same "halt and report, don't guess or loop" posture as everything else in this framework).
+
 ## Directory architecture
 
 ```
 agentic-testing-framework/
 │
-├── .claude/agents/                 # THE FRAMEWORK — 6 subagent definitions
+├── .claude/agents/                 # THE FRAMEWORK — 7 subagent definitions
+│   ├── orchestrator-agent.md        # the hub — Agent(the other 6), never a script
 │   ├── explore-agent.md
 │   ├── requirements-clarification-agent.md
 │   ├── testcase-generator-agent.md
@@ -114,8 +142,11 @@ agentic-testing-framework/
 │   ├── api-testing-agent.md
 │   └── feedback-implementor-agent.md
 │
+├── config/
+│   └── run-config.example.yaml      # one target + one feature per file; the orchestrator's only input
+│
 ├── docs/
-│   ├── conventions.md               # pipeline order + artifact path + feedback file contract (the "glue")
+│   ├── conventions.md               # pipeline order + artifact path + feedback file + run-config contract
 │   ├── validation-report.md         # evidence the agents work, per-agent feedback
 │   └── playwright-framework-research.md   # produced BY playwright-automation-agent (example output)
 │
@@ -123,7 +154,8 @@ agentic-testing-framework/
 │   ├── explore/{sitemap.json, crawl-log.md, pages/<slug>/*}
 │   ├── clarifications/<feature>-clarifications.md
 │   ├── testcases/{<feature>-testcases.<ext>, testcases-summary.md}
-│   └── api/{discovered-endpoints.json, api-test-plan.md}
+│   ├── api/{discovered-endpoints.json, api-test-plan.md}
+│   └── run-report.md                # written by orchestrator-agent, only on an orchestrated run
 │
 ├── feedback/<source-agent-name>/<date>-<slug>.md   # FEEDBACK LOOP — one folder per filing agent
 │                                                     # (traceable by folder name); each file gets a
@@ -150,10 +182,11 @@ flowchart LR
 
 The point of passing a **file path** rather than feedback text at every arrow above is to avoid re-transmitting the same content through multiple LLM calls — each hop reads the file once from disk instead of re-generating or re-summarizing it, and the file itself (finding + eventual resolution, in one place) is what makes every piece of feedback traceable back to the agent that raised it and auditable after the fact.
 
-Three tiers, three different lifetimes:
+Four tiers, four different lifetimes:
 1. **`.claude/agents/`** — the actual product of this repo. Rarely changes; versioned carefully.
-2. **`artifacts/<target-slug>/`** — throwaway-ish, per-engagement handoff data. One folder per target app.
-3. **`playwright-tests/` / `api-tests/`** — real, standalone, deployable test projects, meant to be copied into whatever repo actually owns the target product once they're good enough.
+2. **`config/`** — one file per target/feature you run repeatedly, worth keeping and refining (each answered question you add is one less halt next time). More stable than `artifacts/`, less stable than the agent definitions.
+3. **`artifacts/<target-slug>/`** — throwaway-ish, per-engagement handoff data. One folder per target app.
+4. **`playwright-tests/` / `api-tests/`** — real, standalone, deployable test projects, meant to be copied into whatever repo actually owns the target product once they're good enough.
 
 ## Safety architecture
 
@@ -168,6 +201,7 @@ Three independent guardrail layers, each enforced at a different point:
 
 ## Runtime / deployment model
 
-- **No long-running orchestrator.** Each agent invocation is a single request/response Task-tool call. State lives entirely in the filesystem (`artifacts/`, `playwright-tests/`, `api-tests/`), not in agent memory.
-- **Session-scoped agent registration.** `.claude/agents/*.md` files are loaded when a Claude Code session starts; a file added or edited mid-session is not picked up by that session's Agent tool. A new session is required before a new/changed `subagent_type` is invocable.
-- **Portable by design.** Copying the five `.md` files into any other repo's `.claude/agents/` makes the framework available there — nothing in this repo is hardcoded to the `eventhub` example target beyond the `artifacts/eventhub/` example data itself.
+- **No long-running process, orchestrated or not.** Each agent invocation — including `orchestrator-agent`'s own invocations of its six spokes — is a single request/response Task-tool call. State lives entirely in the filesystem (`artifacts/`, `playwright-tests/`, `api-tests/`, `feedback/`), not in agent memory. The orchestrator doesn't hold a session open across stages any more than a human clicking through them by hand would; it just doesn't need to be re-prompted between clicks.
+- **Session-scoped agent registration — doubly true for the orchestrator.** `.claude/agents/*.md` files are loaded when a Claude Code session starts; a file added or edited mid-session is not picked up by that session's Agent tool. `orchestrator-agent` needs all six spoke types *also* registered before it can natively delegate to them — a new session is required for the whole set, not just the orchestrator's own file.
+- **The orchestrator cannot escalate to a human mid-run.** It has no `AskUserQuestion` access (no subagent does). A run-config file is the only way to pre-resolve what would otherwise be an interactive question; anything left unresolved halts the run rather than the orchestrator finding another channel to ask.
+- **Portable by design.** Copying the seven `.md` files into any other repo's `.claude/agents/` makes the framework available there — nothing in this repo is hardcoded to the `eventhub` example target beyond the `artifacts/eventhub/` example data and `config/run-config.example.yaml`'s sample values.
