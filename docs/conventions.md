@@ -1,6 +1,20 @@
 # Pipeline Conventions
 
-This framework has **no orchestrator script** — there is no separate process, server, or CLI that drives the pipeline. There is, however, an **orchestrator agent** (`orchestrator-agent`, an LLM subagent like any other) that can drive the other six agents end to end from a single run-config file — see "Orchestrator & run-config contract" below. Either way, the pipeline order and artifact handoffs are enforced entirely by convention: every agent's system prompt (`.claude/agents/*.md`) reads from and writes to the same fixed paths documented here. Running the pipeline manually (a human or top-level session invoking each agent in order via the Agent/Task tool, `subagent_type` matching each agent's `name`) and running it through `orchestrator-agent` both follow this same contract — the orchestrator is a convenience on top of it, not a different pipeline.
+This framework has **no orchestrator script** — there is no separate process, server, or CLI that drives the pipeline. There is, however, an **orchestrator agent** (`orchestrator-agent`, an LLM subagent like any other) that can drive the other six agents end to end from a single run-config file — see "Orchestrator & run-config contract" below. Either way, the pipeline order and artifact handoffs are enforced entirely by convention: every agent's system prompt reads from and writes to the same fixed paths documented here, regardless of which platform flavor is running it (see "Platform flavors" immediately below). Running the pipeline manually (a human or top-level session invoking each agent in order) and running it through `orchestrator-agent` both follow this same contract — the orchestrator is a convenience on top of it, not a different pipeline.
+
+## Platform flavors
+
+This framework's seven personas exist in two parallel renderings, sharing everything documented in the rest of this file:
+
+| | Claude Code | GitHub Copilot |
+|---|---|---|
+| Canonical source | `claude-agents/*.md` | `copilot-agents/*.agent.md` |
+| Discovery path | `.claude/agents/` (symlink to the source dir) | `.github/agents/` (symlink to the source dir) |
+| Subagent invocation | `Agent` tool | `tools: ['agent']` + `agents:` frontmatter |
+| Human-input gap | none (`AskUserQuestion`) | no equivalent — questions land as plain chat text; pre-answer via a run-config's `answers`/`defaults` to avoid a halt |
+| Model config | `model:` field, patched from `config/models.yaml` | `model:` field, patched from `config/models.yaml` |
+
+Never hand-edit a `model:` frontmatter line directly in either flavor — `config/models.yaml` is the single source of truth; run `node scripts/sync-agent-models.mjs` after changing it. Copilot-specific setup (MCP server for browser automation, the `target:` field, orchestration caveats) is documented separately in `docs/copilot-setup.md` rather than duplicated here — everything below this section applies to both flavors equally.
 
 ## Artifact root
 
@@ -23,7 +37,7 @@ All pipeline artifacts for a given target live under `artifacts/<target-slug>/`,
 `requirements-clarification-agent` cannot block mid-run for human input (subagents are single-shot request/response). It self-detects its pass by whether the invocation prompt contains an `Answers:` section:
 
 - **Pass 1** (no `Answers:` section): returns a structured, tagged question list and writes no artifact.
-- Whoever invoked it resolves those questions — either a human session relaying them via `AskUserQuestion`, or `orchestrator-agent` matching them against a run-config file's `answers`/`defaults` (see below).
+- Whoever invoked it resolves those questions — a human answering directly in chat (via `AskUserQuestion` on Claude Code; as plain chat text on Copilot, which has no structured equivalent), or `orchestrator-agent` matching them against a run-config file's `answers`/`defaults` (see below).
 - **Pass 2** (prompt re-sent with an `Answers:` section appended): writes the final `clarifications.md`.
 
 Any orchestrator invoking this agent must expect two calls, not one.
@@ -34,7 +48,7 @@ Any orchestrator invoking this agent must expect two calls, not one.
 
 ### The constraint that shapes this whole section
 
-`orchestrator-agent` is itself a subagent, so it inherits the same limitation described above: **it cannot reliably call `AskUserQuestion`.** A run-config file is not a convenience layered on top of an otherwise-interactive orchestrator — it is the *only* channel through which most recurring questions get answered without a human touchpoint. Anything the config doesn't cover still halts the run (see "Halting and resuming" below); the orchestrator never guesses at a `[Blocking]` question regardless of what the config does or doesn't say.
+`orchestrator-agent` is itself a subagent, so it inherits the same limitation described above: **it cannot reliably pause for a structured human question-and-wait** (Claude Code's `AskUserQuestion`, or its non-existent Copilot equivalent — see `docs/copilot-setup.md`). A run-config file is not a convenience layered on top of an otherwise-interactive orchestrator — it is the *only* channel through which most recurring questions get answered without a human touchpoint. Anything the config doesn't cover still halts the run (see "Halting and resuming" below); the orchestrator never guesses at a `[Blocking]` question regardless of what the config does or doesn't say.
 
 ### Run-config file
 
@@ -100,11 +114,11 @@ feedback/<source-agent-name>/<YYYY-MM-DD>-<short-slug>.md
 
 ```markdown
 ---
-source_agent: <name matching .claude/agents/<name>.md>
+source_agent: <name matching the filing agent's own `name:` frontmatter field, e.g. playwright-automation-agent>
 date: <YYYY-MM-DD>
 target: <target-slug, or "framework" if not tied to a specific target run>
 related_files:
-  - <path to each file this finding concerns, e.g. .claude/agents/playwright-automation-agent.md>
+  - <path to each file this finding concerns, e.g. claude-agents/playwright-automation-agent.md and/or copilot-agents/playwright-automation-agent.agent.md>
   - <path to a generated artifact/spec file if the bug is IN generated output, not the agent definition>
 severity: <blocking | high | medium | low>
 ---
