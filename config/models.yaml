@@ -1,0 +1,45 @@
+# Single source of truth for which model each agent uses, per platform.
+#
+# Do NOT hand-edit the `model:` frontmatter line in claude-agents/*.md or
+# copilot-agents/*.agent.md directly -- the next run of
+# scripts/sync-agent-models.mjs will overwrite it with whatever is here.
+# Edit this file, then run:
+#
+#   node scripts/sync-agent-models.mjs
+#
+# `claude` values must be values Claude Code's own `model:` frontmatter
+# field accepts (an alias -- sonnet | opus | haiku -- or a pinned model id).
+# `copilot` values must be model ids Copilot's `model:` frontmatter field
+# accepts in your organization/subscription (Copilot brokers multiple
+# providers -- GPT, Claude, Gemini, etc.); a list is a prioritized fallback
+# order, not a set Copilot picks from at random. Exact valid ids drift over
+# time -- verify against your Copilot instance before relying on a value.
+
+agents:
+  orchestrator-agent:
+    claude: sonnet
+    copilot: [claude-sonnet-4.5, gpt-5]
+
+  explore-agent:
+    claude: sonnet
+    copilot: [gpt-5]
+
+  requirements-clarification-agent:
+    claude: sonnet
+    copilot: [claude-sonnet-4.5, gpt-5]
+
+  testcase-generator-agent:
+    claude: sonnet
+    copilot: [gpt-5]
+
+  playwright-automation-agent:
+    claude: sonnet
+    copilot: [claude-sonnet-4.5, gpt-5]
+
+  api-testing-agent:
+    claude: sonnet
+    copilot: [claude-sonnet-4.5, gpt-5]
+
+  feedback-implementor-agent:
+    claude: sonnet
+    copilot: [claude-sonnet-4.5, gpt-5]
