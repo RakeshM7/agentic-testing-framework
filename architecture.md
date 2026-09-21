@@ -25,7 +25,7 @@ flowchart LR
     MODELS -. "model: frontmatter" .-> CO
 ```
 
-Neither flavor is a copy of the other's file — each is hand-authored for its platform's own tool/frontmatter vocabulary — but both implement the identical seven responsibilities against the identical artifact paths, so a run started in one flavor produces artifacts the other can read. See `docs/copilot-setup.md` for what's mechanically different about the Copilot rendering (orchestration mechanism, the missing structured-question tool, browser automation via the Playwright MCP server instead of `mcp__claude-in-chrome__*`).
+Neither flavor is a copy of the other's file — each is hand-authored for its platform's own tool/frontmatter vocabulary — but both implement the identical seven responsibilities against the identical artifact paths, so a run started in one flavor produces artifacts the other can read. Both flavors drive `explore-agent`'s browser crawl through the same Playwright MCP server, just registered under each platform's own config file (`.mcp.json` for Claude Code, `.vscode/mcp.json` for Copilot) and referenced with each platform's own tool-name syntax (`mcp__playwright__browser_navigate` vs. `playwright/browser_navigate`). See `docs/copilot-setup.md` for what's mechanically different about the Copilot rendering (orchestration mechanism, the missing structured-question tool).
 
 ## Component / pipeline diagram
 

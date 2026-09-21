@@ -7,7 +7,7 @@ This framework ships in **two flavors**, sharing one artifact/config contract:
 | | Claude Code | GitHub Copilot |
 |---|---|---|
 | Agent files | [`claude-agents/`](claude-agents/) (discovered via the `.claude/agents` symlink) | [`copilot-agents/`](copilot-agents/) (discovered via the `.github/agents` symlink, both VS Code and GitHub's cloud coding agent) |
-| Setup | Works out of the box | See [`docs/copilot-setup.md`](docs/copilot-setup.md) (Playwright MCP server, etc.) |
+| Setup | Playwright MCP server registered via the committed [`.mcp.json`](.mcp.json) (installed on first use via `npx -y @playwright/mcp@latest`) | See [`docs/copilot-setup.md`](docs/copilot-setup.md) (same Playwright MCP server, registered via `.vscode/mcp.json`) |
 | Model/provider | Anthropic only, via Claude Code | GPT / Claude / Gemini, brokered by Copilot |
 
 Both flavors are controlled from the **same** `config/models.yaml` — see "Configuring which model/provider each agent uses" below — and read/write the **same** `artifacts/`, `playwright-tests/`, `api-tests/`, and `feedback/` trees, so a run started in one flavor produces output the other can pick up.
