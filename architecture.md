@@ -96,15 +96,15 @@ sequenceDiagram
     PW->>PW: npm install, playwright install, run suite
     PW-->>H: real pass/fail counts
 
-    H->>API: sitemap (network captures) + testcases
+    H->>API: sitemap (network captures) + testcases + mode
     API->>FS: discovered-endpoints.json + api-test-plan.md
     API->>FS: Playwright API specs + k6 scripts
-    Note over API: k6 inspect only — never k6 run against a live target
+    Note over API: readonly (default): k6 inspect only, GET-only specs.<br/>full-run: full-method specs executed + k6 run against target.
 ```
 
 ## Hub-and-spoke diagram — orchestrated run
 
-`orchestrator-agent` is the hub; the other six are spokes it calls one at a time via the Agent tool. It is itself a subagent, so it cannot call `AskUserQuestion` — the run-config file is what lets it resolve most recurring questions without a human touchpoint. Anything the config doesn't cover still halts the run rather than being guessed.
+`orchestrator-agent` is the hub; the other six are spokes it calls one at a time via the Agent tool. It is itself a subagent, so it cannot call `AskUserQuestion` — the run-config file is what lets it resolve most recurring questions without a human touchpoint. Anything the config doesn't cover still halts the run rather than being guessed. The config's `authorizations.mode` (`readonly` default, or `full-run`) is passed straight through to explore-agent, playwright-automation-agent, and api-testing-agent unchanged — the orchestrator never sets or upgrades it itself.
 
 ```mermaid
 flowchart TD
@@ -152,11 +152,12 @@ agentic-testing-framework/
 │   └── playwright-framework-research.md   # produced BY playwright-automation-agent (example output)
 │
 ├── artifacts/<target-slug>/         # PIPELINE HANDOFF ZONE — stages 1-3 output, per target
-│   ├── explore/{sitemap.json, crawl-log.md, pages/<slug>/*}
+│   ├── explore/{sitemap.json, crawl-log.md, pages/<slug>/*, created-entities.json (full-run only)}
 │   ├── clarifications/<feature>-clarifications.md
 │   ├── testcases/{<feature>-testcases.<ext>, testcases-summary.md}
-│   ├── api/{discovered-endpoints.json, api-test-plan.md}
+│   ├── api/{discovered-endpoints.json, api-test-plan.md, created-entities.json (full-run only)}
 │   └── run-report.md                # written by orchestrator-agent, only on an orchestrated run
+│                                     # (states the active authorizations.mode up front)
 │
 ├── feedback/<source-agent-name>/<date>-<slug>.md   # FEEDBACK LOOP — one folder per filing agent
 │                                                     # (traceable by folder name); each file gets a
