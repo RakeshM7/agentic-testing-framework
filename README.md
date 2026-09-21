@@ -13,11 +13,11 @@ This is a **framework**, not a finished test suite for one product. The delivera
 | Agent | Role | Tools | Model |
 |---|---|---|---|
 | [`orchestrator-agent`](.claude/agents/orchestrator-agent.md) | The hub. Takes one run-config YAML file and drives the six spokes below in order, resolving recurring questions from the config instead of stalling for human input. Halts and reports if it hits something the config doesn't cover. | Agent(the 6 spokes), Read, Write, Glob, Grep, Bash | sonnet |
-| [`explore-agent`](.claude/agents/explore-agent.md) | Crawls a target UI, builds a sitemap, captures a baseline snapshot (screenshot + DOM + network + console) per page. Optional opt-in authenticated-crawl mode via a credentials file. | Read, Write, Glob, Grep, Bash, Chrome browser tools | sonnet |
+| [`explore-agent`](.claude/agents/explore-agent.md) | Crawls a target UI, builds a sitemap, captures a baseline snapshot (screenshot + DOM + network + console) per page. Non-mutating by default; performs full UI interaction (forms, create/update/delete) when the run-config sets `authorizations.mode: full-run`. Optional opt-in authenticated-crawl mode via a credentials file, independent of that flag. | Read, Write, Glob, Grep, Bash, Chrome browser tools | sonnet |
 | [`requirements-clarification-agent`](.claude/agents/requirements-clarification-agent.md) | Two-pass interview: asks the user about behavior, edge cases, and desired test-case format, then writes an authoritative clarifications doc from their answers. | Read, Write, Glob, Grep, WebFetch | sonnet |
 | [`testcase-generator-agent`](.claude/agents/testcase-generator-agent.md) | Generates manual test cases in the user's confirmed format (Gherkin / Markdown table / CSV / TestRail import), with full edge-case traceability. | Read, Write, Glob, Grep | sonnet |
-| [`playwright-automation-agent`](.claude/agents/playwright-automation-agent.md) | Scaffolds or extends a Playwright suite (functional + visual-regression). Matches an existing repo's conventions if one exists; researches best practices and lays out a new framework from scratch if not. | Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch | sonnet |
-| [`api-testing-agent`](.claude/agents/api-testing-agent.md) | Discovers the target's API surface (OpenAPI/Swagger preferred, network-capture fallback), writes an exhaustive test plan, and generates Playwright API tests + k6 load-test scripts. Never runs a live load test. | Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch | sonnet |
+| [`playwright-automation-agent`](.claude/agents/playwright-automation-agent.md) | Scaffolds or extends a Playwright suite (functional + visual-regression). Matches an existing repo's conventions if one exists; researches best practices and lays out a new framework from scratch if not. Generates mutating specs (booking/checkout/create/delete) but only executes them live under `authorizations.mode: full-run`; otherwise they're generated but skipped at run time. | Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch | sonnet |
+| [`api-testing-agent`](.claude/agents/api-testing-agent.md) | Discovers the target's API surface (OpenAPI/Swagger preferred, network-capture fallback), writes an exhaustive test plan, and generates Playwright API tests + k6 load-test scripts. Defaults to GET-only tests and never runs a live load test; under `authorizations.mode: full-run` it generates/executes full GET/POST/PUT/PATCH/DELETE coverage and may run `k6 run` live. | Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch | sonnet |
 | [`feedback-implementor-agent`](.claude/agents/feedback-implementor-agent.md) | Reads feedback file(s) filed by the other agents (never raw feedback text) and implements the fixes -- agent definitions, generated code, or docs -- verifying each and appending a Resolution section back to the same file. | Read, Write, Edit, Glob, Grep, Bash | sonnet |
 
 ## What it covers
@@ -26,16 +26,16 @@ This is a **framework**, not a finished test suite for one product. The delivera
 - **UI functional automation**: a real, running Playwright project (POM, fixtures, auth setup, CI-ready config) — either extending your existing suite in your existing style, or built from researched best practices if you have none.
 - **UI visual testing**: baseline page snapshots during exploration, plus Playwright's own `toHaveScreenshot()` visual-regression specs generated as part of the automation suite (the two are deliberately not conflated — see [`architecture.md`](architecture.md)).
 - **API testing**: endpoint discovery, a full functional/negative/boundary/auth/schema/performance scenario matrix, executable Playwright API tests, and k6 load-test scripts.
-- **Safety by default**: every agent is read-only/non-mutating against a live target unless a step explicitly requires and is told to authenticate, and even then it never performs a real booking/payment/delete or a live k6 load run without a human explicitly directing it to a target they control.
+- **Mode-gated safety, not all-or-nothing**: a single `authorizations.mode` flag in the run-config (`readonly`, the default, or `full-run`) governs every agent uniformly. `readonly` keeps every agent non-mutating against a live target (explore-agent never clicks a mutating control, api-testing-agent stays GET-only and never runs k6 live, playwright-automation-agent generates but skips mutating specs). `full-run` — set explicitly, per target, by a human who owns or is authorized to test that target — lets every agent perform full CRUD/UI actions and a live k6 load run. Even then, destructive actions (delete/cancel/remove) are scoped to entities that run's own agent created, never pre-existing or other users' data — see "Safety architecture" in [`architecture.md`](architecture.md).
 
 ## What it does not cover
 
 - **No orchestrator *script* or background process.** `orchestrator-agent` is an LLM subagent, not a daemon — it still runs as a single invocation you (or a scheduler) start, and it still can't interrupt itself to ask you something an interactive session could. See "Orchestrated run" below and the pipeline diagram in `architecture.md`.
-- **No fully autonomous exploration of authenticated apps.** `explore-agent` will not guess or infer credentials; by default it stops at any login wall. Getting past one requires an explicit, human-authorized credentials file.
+- **No fully autonomous exploration of authenticated apps.** `explore-agent` will not guess or infer credentials; by default it stops at any login wall. Getting past one requires an explicit, human-authorized credentials file — independent of `authorizations.mode`, which controls mutation, not login.
 - **No mobile, desktop, or non-web testing.** The framework is scoped to web applications reachable by a browser and/or an HTTP API.
 - **No test-management-system integration.** Test cases are written to files in the format you choose; importing them into TestRail/Jira/Zephyr/etc. is a manual step.
 - **No CI wiring.** `playwright-automation-agent` documents a CI recommendation in its research doc but does not create pipeline config (GitHub Actions, Jenkins, etc.).
-- **No live performance testing by default.** `api-testing-agent` generates k6 scripts but will never run `k6 run` against a target on its own; a human decides when and where to actually generate load.
+- **No live performance testing by default.** `api-testing-agent` generates k6 scripts but only runs `k6 run` against a target when the run-config explicitly sets `authorizations.mode: full-run` for that target — a human still decides, up front and per target, when and where load may actually be generated.
 - **No security/penetration testing.** Auth and authorization test cases check for correct *behavior*, not for exploitable vulnerabilities.
 
 ## Limitations (learned from real dogfooding)
@@ -53,7 +53,7 @@ These are documented in full, with root causes, in [`docs/validation-report.md`]
 
 ## Orchestrated run (recommended once you have a run-config)
 
-Instead of invoking the six spokes by hand (the step-by-step walkthrough below), copy [`config/run-config.example.yaml`](config/run-config.example.yaml), fill in your target and the questions you can already answer, and invoke the hub once:
+Instead of invoking the six spokes by hand (the step-by-step walkthrough below), copy [`config/run-config.example.yaml`](config/run-config.example.yaml), fill in your target and the questions you can already answer, decide `authorizations.mode` (`readonly` unless you own/are authorized to fully test this target), and invoke the hub once:
 
 ```
 Use orchestrator-agent with configPath=config/<your-run>.yaml.
@@ -61,7 +61,7 @@ Use orchestrator-agent with configPath=config/<your-run>.yaml.
 
 It drives explore → clarify → testcases → automation → API testing → (if any feedback got filed) the feedback loop, in order, reusing any stage whose output already exists on disk. Two outcomes:
 
-- **Completed** — read `artifacts/<target-slug>/run-report.md` for what ran, what got skipped as already-done, every artifact path, and which `defaults`/`answers` from your config got applied where.
+- **Completed** — read `artifacts/<target-slug>/run-report.md` for the active `authorizations.mode`, what ran, what got skipped as already-done, every artifact path, and which `defaults`/`answers` from your config got applied where.
 - **Halted at stage N** — the response names the exact stage and, if it's the clarification stage, the exact unanswered `[Blocking]` question(s). Add an `answers` entry (or a more specific `feature.description`) to your config and re-invoke with the same `configPath`; completed stages won't re-run.
 
 The full schema, matching rules, and what the config can never override (a spoke agent's own hard safety rules) are documented in [`docs/conventions.md`](docs/conventions.md)'s "Orchestrator & run-config contract".

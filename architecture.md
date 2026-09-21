@@ -17,7 +17,7 @@ flowchart TD
     H[Human / orchestrating session]
 
     subgraph Stage1["1 · Discovery"]
-        EA["explore-agent<br/>(read-only crawl, optional<br/>opt-in authenticated mode)"]
+        EA["explore-agent<br/>(non-mutating crawl by default;<br/>full UI interaction under mode: full-run;<br/>optional opt-in authenticated mode)"]
     end
 
     subgraph Stage2["2 · Requirements"]
@@ -33,7 +33,7 @@ flowchart TD
     end
 
     subgraph Stage4b["4b · API testing"]
-        API["api-testing-agent<br/>(plan + Playwright API + k6, never run live)"]
+        API["api-testing-agent<br/>(plan + Playwright API + k6;<br/>GET-only/no live k6 by default,<br/>full CRUD + live k6 under mode: full-run)"]
     end
 
     TARGET[("Target web app<br/>(UI + API)")]
@@ -55,13 +55,13 @@ flowchart TD
     ART3 --> PW
     ART1 --> PW
     ART2 --> PW
-    PW -- "reads/writes (safe subset only)" --> TARGET
+    PW -- "reads/writes (mode-gated:<br/>mutations skipped in readonly,<br/>executed in full-run)" --> TARGET
     PW -- "research doc + running suite" --> OUT1[("docs/*-research.md<br/>playwright-tests/")]
 
     ART3 --> API
     ART1 --> API
-    API -- "read-only discovery + GET-only tests" --> TARGET
-    API -- "test plan + specs + scripts<br/>(k6 generated, never run live)" --> OUT2[("api-tests/")]
+    API -- "discovery + tests<br/>(GET-only in readonly,<br/>full CRUD in full-run)" --> TARGET
+    API -- "test plan + specs + scripts<br/>(k6 generated always;<br/>k6 run only in full-run)" --> OUT2[("api-tests/")]
 
     style TARGET fill:#f8d7da,stroke:#c0392b
     style H fill:#d4edda,stroke:#27ae60
@@ -144,6 +144,7 @@ agentic-testing-framework/
 │
 ├── config/
 │   └── run-config.example.yaml      # one target + one feature per file; the orchestrator's only input
+│                                     # (authorizations.mode: readonly|full-run is the master safety switch)
 │
 ├── docs/
 │   ├── conventions.md               # pipeline order + artifact path + feedback file + run-config contract
@@ -190,14 +191,14 @@ Four tiers, four different lifetimes:
 
 ## Safety architecture
 
-Three independent guardrail layers, each enforced at a different point:
+Four independent guardrail layers, each enforced at a different point:
 
 | Layer | Mechanism | Where |
 |---|---|---|
-| **Default read-only** | Agents never click destructive/mutating UI elements or call non-GET APIs against a live target unless a step's own persona explicitly carves out a narrow, justified exception (e.g. one login call to obtain a token). | Baked into every agent's system prompt |
+| **`authorizations.mode`: one master switch, opt-in per target** | A single run-config field, `readonly` (default, used whenever the field is absent) or `full-run`, governs explore-agent, playwright-automation-agent, and api-testing-agent uniformly. `readonly`: no mutating UI clicks/form submissions, API tests stay GET-only, mutating Playwright specs are generated but skipped, k6 is never run live. `full-run`: full UI interaction, full GET/POST/PUT/PATCH/DELETE API coverage, mutating specs execute, and a live `k6 run` is permitted. An agent must see `mode: full-run` explicitly in its own invocation prompt — it is never inferred from a target "looking safe" or from any other instruction. `orchestrator-agent` only ever passes through what the config says; it never sets or escalates the mode itself. | Baked into every executing agent's system prompt + the run-config schema (`docs/conventions.md`) |
+| **Self-created-entity scoping for destructive actions — holds in both modes** | Even under `mode: full-run`, a destructive action (delete/cancel/remove) may only target an entity that agent's own run created — each agent tracks what it creates in a `created-entities.json` log and checks against it before deleting anything. Pre-existing data, seed data, and other users' data are never valid delete/cancel targets, at any mode. An irreversible real-world side effect with no test/sandbox path (e.g. capturing a real payment) is skipped with a stated reason rather than completed, regardless of mode. | Agent persona hard rule, not a config parameter |
 | **No inline secrets** | Claude Code's own credential-leakage classifier blocks plaintext secrets inside an agent prompt. Agents are designed to read credentials from a `.env`-style file instead. | Platform-enforced + agent design |
-| **No live load testing** | `api-testing-agent` generates k6 scripts but is hard-instructed to never run `k6 run` against any target; static `k6 inspect`/manual review only. | Agent persona hard rule |
-| **Human authorization for exceptions** | Anything beyond the default (authenticated crawling, running a generated k6 script for real, mutating a target) requires an explicit, scoped, human-given instruction — never inferred or assumed by an agent. | Human-in-the-loop, per invocation |
+| **Human authorization for exceptions** | Both `authorizations.mode: full-run` and an authenticated crawl (`authorizations.authenticated_crawl` + `credentials_file`) are opt-in fields a human sets explicitly in the run-config for a specific target — never inferred or assumed by an agent. `feedback-implementor-agent` never runs `k6 run` for its own fix-verification purposes regardless of any target's mode; that exception belongs to api-testing-agent's real pipeline run only. | Human-in-the-loop, per invocation |
 
 ## Runtime / deployment model
 
