@@ -17,9 +17,13 @@ export default defineConfig({
   },
   use: {
     baseURL: 'https://eventhub.rahulshettyacademy.com',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: 'always',
+    screenshot: 'always',
+    video: 'always',
+    launchOptions: {
+      slowMo: 1000,
+    },
+    headless: false,
   },
   projects: [
     {
