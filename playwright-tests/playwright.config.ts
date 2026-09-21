@@ -17,9 +17,9 @@ export default defineConfig({
   },
   use: {
     baseURL: 'https://eventhub.rahulshettyacademy.com',
-    trace: 'always',
-    screenshot: 'always',
-    video: 'always',
+    trace: 'on',
+    screenshot: 'on',
+    video: 'on',
     launchOptions: {
       slowMo: 1000,
     },
