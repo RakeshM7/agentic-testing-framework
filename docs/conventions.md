@@ -44,8 +44,8 @@ One YAML file configures one full pipeline pass: one target, one feature. A work
 |---|---|
 | `target.url` / `maxPages` / `maxDepth` | Passed straight to `explore-agent`. `target.url` is the only required field in the whole file. |
 | `feature.slug` / `description` / `requirement_docs` | Passed to `requirements-clarification-agent` as Pass 1 grounding. |
-| `authorizations.authenticated_crawl` / `credentials_file` | Opt-in exception to explore-agent's read-only default. `credentials_file` is always a **file path**, never inline secret values — the credential-leakage classifier blocks inline secrets in an agent prompt regardless. |
-| `authorizations.allow_mutating_api_tests` | Opt-in exception to api-testing-agent's GET-only default, for a target the user controls. **Cannot** enable a live k6 run at any value — that rule is hard-coded in `api-testing-agent` itself, not controlled by this file. |
+| `authorizations.mode` | The master switch for every spoke agent's safe-vs-full posture: `readonly` (default when absent) or `full-run`. `readonly` = explore-agent stays a non-mutating crawler, api-testing-agent's generated Playwright specs default to GET-only and it never runs `k6 run` live, playwright-automation-agent generates mutating specs but skips them at run time. `full-run` = explore-agent performs full UI interaction, api-testing-agent generates and executes full GET/POST/PUT/PATCH/DELETE coverage and may run a live k6 load test, and playwright-automation-agent executes mutating specs live. In `full-run`, every agent still self-scopes destructive actions (delete/cancel/remove) to entities that agent's own run created — see each agent's own persona for its `created-entities.json` contract. This is not something the config can loosen further. |
+| `authorizations.authenticated_crawl` / `credentials_file` | Opt-in exception to explore-agent's read-only default, orthogonal to `mode` — logging in requires real credentials regardless of `mode`. `credentials_file` is always a **file path**, never inline secret values — the credential-leakage classifier blocks inline secrets in an agent prompt regardless. |
 | `testcases.output_format` | The format `testcase-generator-agent` should confirm and use. |
 | `defaults.unconfirmed_behavior_policy` / `unconfirmed_edge_case_policy` | Applied only to `[Nice-to-have]`-tagged Pass-1 questions that `answers` doesn't already cover. Never applied to `[Blocking]` questions. |
 | `answers` | A list of `{match, answer}` pairs. The orchestrator resolves a Pass-1 question by a case-insensitive substring match of `match` against the question text, first match wins, **after normalizing both strings** (replace `-`/`_` with a space, then collapse runs of whitespace to one space) so that generation-time punctuation variance (e.g. `duplicate-email` vs. `duplicate email`) doesn't produce a false-negative miss. Because substring matching can still produce a false positive if `match` is a short/common word that happens to appear inside an unrelated question, prefer specific, multi-word `match` strings over single common words, and where a topic could plausibly be phrased with either a hyphen or a space, list both forms as separate `answers` entries rather than relying on the normalization alone. This is the main lever for avoiding a halt on a question you already anticipate. |
@@ -60,14 +60,25 @@ Re-invocation is naturally resumable, with no separate state file: before runnin
 
 ### What the config can never do
 
-The config can only exercise opt-in exceptions a spoke agent already defines in its own persona (an authenticated crawl, a wider API test scope). It can never override a spoke agent's hard rule — explore-agent's read-only default beyond an authorized crawl, api-testing-agent's no-live-k6-run rule, playwright-automation-agent's no-live-mutation default. Those are enforced inside each spoke agent's own definition and are not parameters.
+The config can only exercise opt-in exceptions a spoke agent already defines in its own persona: an authenticated crawl, and — via `authorizations.mode: full-run` — full UI/API mutation and a live k6 run. It can never override a spoke agent's *inner* hard rule: even in `full-run`, every agent still scopes destructive actions (delete/cancel/remove) to entities it created itself this run, never pre-existing or other users' data, and never completes an irreversible real-world side effect (e.g. a real payment) with no test/sandbox path available. Those inner rules are enforced inside each spoke agent's own definition and are not parameters.
 
 ## Standing safety guardrails (apply across the whole framework)
 
+**By default (`authorizations.mode` absent or `readonly`):**
 - `explore-agent` is strictly read-only: no form submissions, no destructive/mutating clicks.
-- `api-testing-agent` never executes a live k6 load run against any target; it generates scripts and validates them statically only (`k6 inspect`).
-- `api-testing-agent`'s generated Playwright API tests default to read-only (GET) calls against live third-party targets.
+- `api-testing-agent` never executes a live k6 load run against any target; it generates scripts and validates them statically only (`k6 inspect`). Its generated Playwright API tests default to read-only (GET) calls against live third-party targets.
+- `playwright-automation-agent` generates mutating specs but skips them at run time instead of executing them live.
+
+**When a run-config explicitly sets `authorizations.mode: full-run` for a target the user controls:**
+- `explore-agent` performs full UI interaction (forms, create/update/delete) during its crawl.
+- `api-testing-agent` generates and executes full GET/POST/PUT/PATCH/DELETE coverage, and may run a live k6 load test.
+- `playwright-automation-agent` executes mutating specs (booking/checkout/create/delete) live.
+- **This is opt-in per run, per target, and never inferred** — an agent must see `mode: full-run` explicitly in its invocation prompt, never assume it from a target "looking safe" or from any other part of the prompt.
+- **Even in `full-run`, destructive actions (delete/cancel/remove) stay scoped to entities that run's agent created itself** (tracked in a `created-entities.json` per agent) — never pre-existing data, seed data, or another user's data. An irreversible real-world side effect with no test/sandbox path (e.g. a real payment) is skipped with a stated reason rather than completed.
+
+**Always, regardless of mode:**
 - `playwright-automation-agent` generates its own visual-regression golden baselines inside the scaffolded project (via `--update-snapshots`); it does not treat `explore-agent`'s screenshots as pixel-compatible baselines.
+- `feedback-implementor-agent` never runs `k6 run` against a live target for its own fix-verification purposes — `full-run` authorizes api-testing-agent's live k6 execution during a real pipeline run, not this agent's verification step.
 
 ## Executable project scaffolds
 

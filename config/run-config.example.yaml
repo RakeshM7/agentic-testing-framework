@@ -25,12 +25,25 @@ feature:
 # The orchestrator can only exercise opt-in exceptions the spoke agents
 # already define — it can never override a hard rule (see orchestrator-agent.md).
 authorizations:
+  mode: readonly                # readonly (default) | full-run
+                                 # readonly   = explore-agent stays a non-mutating crawler;
+                                 #              api-testing-agent's Playwright specs default to
+                                 #              GET-only and it never runs k6 live;
+                                 #              playwright-automation-agent generates mutating
+                                 #              specs but skips them at run time.
+                                 # full-run   = explore-agent performs full UI interaction
+                                 #              (forms/create/update/delete); api-testing-agent
+                                 #              generates+executes full GET/POST/PUT/PATCH/DELETE
+                                 #              coverage and may run a live k6 load test;
+                                 #              playwright-automation-agent executes mutating
+                                 #              specs live.
+                                 # ONLY set full-run for a target you own or are explicitly
+                                 # authorized to test. Even in full-run, every agent still
+                                 # scopes delete/cancel actions to entities it created itself
+                                 # this run (see each agent's created-entities.json contract) —
+                                 # this file cannot loosen that inner scoping.
   authenticated_crawl: false    # true = explore-agent logs in past the wall using credentials_file
   credentials_file: null        # e.g. playwright-tests/.env — a FILE PATH, never inline values
-  allow_mutating_api_tests: false  # true = api-testing-agent may generate write-path (POST/PUT/DELETE)
-                                    # Playwright API specs for a target you control. Never enables a
-                                    # live k6 run — that rule is hard-coded in api-testing-agent itself
-                                    # and this file cannot change it, at any value.
 
 testcases:
   output_format: markdown-table # markdown-table | gherkin | csv | testrail

@@ -129,7 +129,7 @@ npx playwright test tests/visual --update-snapshots   # generate visual baseline
 npx playwright test
 ```
 
-**Check before moving on**: a real pass/fail count, not a claim. Review any `test.fixme()`-skipped cases and their reasons.
+**Check before moving on**: a real pass/fail count, not a claim. In `readonly` mode (the default), review any `test.skip()`-tagged mutating cases and their reasons — they were generated but intentionally not executed; re-run with `authorizations.mode: full-run` to have the agent execute them live.
 
 ### 5. Generate API test coverage
 
@@ -138,7 +138,7 @@ Use api-testing-agent, targeting <the app's API>, using the network-requests.jso
 under artifacts/<target-slug>/explore/pages/*/ and any OpenAPI/Swagger docs you know about.
 ```
 
-**Check before moving on**: `artifacts/<target-slug>/api/api-test-plan.md` and `discovered-endpoints.json` exist; `api-tests/playwright-api/` collects real tests (`npx playwright test --list`); `api-tests/k6/` scripts exist but were **not** run — running them against a real target is a separate, deliberate decision you make yourself:
+**Check before moving on**: `artifacts/<target-slug>/api/api-test-plan.md` and `discovered-endpoints.json` exist; `api-tests/playwright-api/` collects real tests (`npx playwright test --list`). In `readonly` mode (the default), `api-tests/k6/` scripts exist but were **not** run, and Playwright API specs stayed GET-only. If you invoked the agent directly with `mode: full-run` (or ran it via the orchestrator with that `authorizations.mode`), it already executed the full-method Playwright suite and, if authorized, the k6 run itself — check its final response and `api-tests/k6/results/` rather than assuming nothing ran. To run either yourself afterward:
 
 ```bash
 cd api-tests/playwright-api && npm install && npm test

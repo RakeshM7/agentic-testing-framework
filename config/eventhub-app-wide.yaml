@@ -55,9 +55,9 @@ feature:
   requirement_docs: []
 
 authorizations:
+  mode: readonly  # readonly (default) | full-run — see config/run-config.example.yaml for what each implies
   authenticated_crawl: true
   credentials_file: playwright-tests/.env
-  allow_mutating_api_tests: false
 
 testcases:
   output_format: markdown-table
