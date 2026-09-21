@@ -79,9 +79,9 @@ sequenceDiagram
     participant API as api-testing-agent
     participant FS as artifacts/ (filesystem)
 
-    H->>EA: target URL, maxPages/maxDepth
-    EA->>FS: sitemap.json, per-page snapshots
-    Note over EA: stops at login wall by default
+    H->>EA: target URL, mode, maxPages/maxDepth
+    EA->>FS: sitemap.json, per-page snapshots, created-entities.json (full-run only)
+    Note over EA: stops at login wall by default; mutates only in mode: full-run,<br/>and only deletes entities it created itself
 
     H->>RC: Pass 1 (sitemap + any docs)
     RC-->>H: tagged question list [Blocking]/[Nice-to-have]
