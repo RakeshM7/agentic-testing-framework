@@ -2,8 +2,10 @@
 
 **Config:** `config/eventhub-app-wide.yaml`
 **Target:** https://eventhub.rahulshettyacademy.com (slug: `eventhub`)
-**Run date:** 2026-09-20
-**Overall status:** Completed (after one mid-run halt, resolved by the human adding `answers` entries, and one transient-network retry at Stage 4)
+**Run date:** 2026-09-21
+**Overall status:** Completed — resumed from existing artifacts and validated current suites; UI visual baselines have 4 environment-sensitive failures
+
+**Validation run:** `authorizations.mode=readonly` preserved. No live mutations, live k6 run, or commit performed. All conventional pipeline outputs already existed, so stages 1–6 were skipped/reused; current UI/API suites were then executed for validation.
 
 ## Stage-by-stage summary
 
@@ -15,6 +17,14 @@
 | 4 | playwright-automation-agent | Ran (1st attempt killed by transient API/network error mid-run; retried from scratch, resumability of upstream artifacts preserved) | `playwright-tests/` (extended) — see below |
 | 5 | api-testing-agent | Ran | `artifacts/eventhub/api/discovered-endpoints.json` (extended), `artifacts/eventhub/api/api-test-plan.md` (extended), `api-tests/playwright-api/` (extended), `api-tests/k6/` (extended) |
 | 6 | feedback-implementor-agent | Ran, auto-invoked (`feedback_loop.auto_invoke_implementor: true`) on all 4 feedback files filed during this run | See "Feedback filed and resolved" below |
+
+## Current validation (2026-09-21)
+
+- UI suite: **47 passed, 17 skipped, 4 failed** out of 68. TypeScript check and test listing passed. The four failures are visual snapshots for Login, Register, My Bookings, and Events Listing; Playwright reported baseline/current viewport width differences (1265px vs. 1280px), so these are baseline/environment drift signals rather than functional assertion failures.
+- API suite: **20 passed, 4 skipped**. TypeScript check and test listing passed.
+- k6 scripts: app-wide `events-search-load-test.js` and `auth-login-load-test.js` passed `node --check`. No live k6 load test was run, per readonly guardrails.
+- Feedback: no feedback files were modified during this validation run, so no new feedback-implementor invocation was required.
+- Environment note: the terminal initially lacked standard runtime tools on `PATH`; validation succeeded using the installed absolute Node/npm paths.
 
 ## Mid-run halt and resolution (Stage 2)
 

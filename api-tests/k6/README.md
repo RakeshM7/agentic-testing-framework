@@ -71,3 +71,11 @@ rationale behind each number). The booking-creation script additionally expects 
 concurrency and documents (via `teardown()` console output) how a human should manually verify no
 seats were oversold. The login script similarly documents (via `teardown()`) that a human should
 check for 429 (rate-limited) responses before drawing performance conclusions.
+
+## HTML report
+
+`results/report.html` is a static, human-readable summary of every `results/*.json` file, built
+deterministically by `node scripts/generate-k6-report.mjs` (run from the repo root; also wired as
+`npm --prefix scripts run generate-k6-report`). It reads whatever result JSON files are present,
+makes no network calls, and is safe to re-run at any time -- it's the last step api-testing-agent
+runs after any `k6 inspect`/`k6 run` validation, and it prints the report's path to stdout.
