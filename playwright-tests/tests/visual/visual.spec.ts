@@ -26,10 +26,12 @@ test.describe('visual regression @visual', () => {
   test.describe('unauthenticated', () => {
     test.use({ storageState: { cookies: [], origins: [] } });
 
-    test('login page', async ({ page }) => {
+    test('Validate if Login page - loading the page in an unauthenticated context - matches the visual regression baseline', async ({ page }) => {
+      // Step 1: Navigate to /login and verify the Sign In button is visible.
       await page.goto('/login');
       await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
 
+      // Step 2: Take a full-page screenshot and compare against the golden baseline.
       await expect(page).toHaveScreenshot('login-page.png', {
         fullPage: true,
       });
@@ -37,10 +39,12 @@ test.describe('visual regression @visual', () => {
 
     // app-wide: /register is the other stable, unauthenticated, always-available page (form
     // shape + password-policy list are static content, no live/seat-count data to mask).
-    test('register page', async ({ page }) => {
+    test('Validate if Register page - loading the page in an unauthenticated context - matches the visual regression baseline', async ({ page }) => {
+      // Step 1: Navigate to /register and verify the Create Account button is visible.
       await page.goto('/register');
       await expect(page.getByRole('button', { name: 'Create Account' })).toBeVisible();
 
+      // Step 2: Take a full-page screenshot and compare against the golden baseline.
       await expect(page).toHaveScreenshot('register-page.png', {
         fullPage: true,
       });
@@ -50,25 +54,32 @@ test.describe('visual regression @visual', () => {
   // app-wide: /bookings in its empty state for the suite's fixture account (zero bookings,
   // directly observed and stable — see tests/functional/my-bookings.spec.ts). Authenticated via
   // the default "chromium" project storageState.
-  test('my bookings page (empty state)', async ({ page }) => {
+  test('Validate if My Bookings page - loading the empty state for the fixture account - matches the visual regression baseline', async ({ page }) => {
+    // Step 1: Navigate to /bookings and verify the "My Bookings" heading is visible.
     await page.goto('/bookings');
     await expect(page.getByRole('heading', { name: 'My Bookings' })).toBeVisible();
 
+    // Step 2: Take a full-page screenshot and compare against the golden baseline.
     await expect(page).toHaveScreenshot('my-bookings-empty.png', {
       fullPage: true,
     });
   });
 
-  test('events listing page', async ({ page }) => {
+  test('Validate if Events Listing page - loading the page with all seeded events - matches the visual regression baseline', async ({ page }) => {
+    // Step 1: Navigate to /events and verify the "Upcoming Events" heading is visible.
     await page.goto('/events');
     await expect(page.getByRole('heading', { name: 'Upcoming Events' })).toBeVisible();
 
+    // Step 2: Mask the dynamic "seats available" text, since other testers' live bookings can
+    // change each event's count between exploration and any given run of this spec.
     // This is a live, shared third-party demo site: other testers' real bookings can
     // change each event's "seats available" count between exploration and any given
     // run of this spec. Mask that dynamic text so the visual diff isn't flaky on a
     // number that isn't a real regression.
     const seatCounts = page.getByText(/seats available/i);
 
+    // Step 3: Take a full-page screenshot (with the seat counts masked) and compare against the
+    // golden baseline.
     await expect(page).toHaveScreenshot('events-listing-page.png', {
       fullPage: true,
       mask: [seatCounts],

@@ -14,13 +14,16 @@ import { test, expect, EVENTS } from '../../fixtures/base';
  * (title + booking widget) reliably, independent of listing-page prefetch state.
  */
 for (const event of [EVENTS.DILLI_DIWALI_MELA, EVENTS.HOLLYWOOD_MONSOON_NIGHT, EVENTS.WORLD_TECH_SUMMIT]) {
-  test(`direct navigation to /events/${event.id} (${event.title}) renders successfully`, async ({
+  test(`Validate if Event Detail page - directly navigating to /events/${event.id} (${event.title}) - renders successfully independent of listing-page prefetch state`, async ({
     page,
     eventDetailPage,
   }) => {
+    // Step 1: Navigate directly to the event's detail route (not via the listing page).
     const response = await page.goto(`/events/${event.id}`);
+    // Step 2: Verify the route responds with a 2xx status.
     expect(response?.ok(), `expected /events/${event.id} to respond with a 2xx status`).toBe(true);
 
+    // Step 3: Verify the event title renders and the Confirm Booking button is visible.
     await expect(eventDetailPage.heading()).toHaveText(event.title);
     await expect(eventDetailPage.confirmBookingButton).toBeVisible();
   });

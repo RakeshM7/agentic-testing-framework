@@ -1,14 +1,17 @@
 import { test, expect, EVENTS } from '../../fixtures/base';
 
 // TC-event-booking-001 — Navigate to event detail via event card click (P0)
-test('card click navigates to event detail and renders event info', async ({
+test('Validate if Events Listing page - clicking an event card - navigates to the event detail page and renders its info', async ({
   page,
   eventsListingPage,
   eventDetailPage,
 }) => {
+  // Step 1: Navigate to /events and click the Dilli Diwali Mela event card.
   await eventsListingPage.goto();
   await eventsListingPage.clickEventCard(EVENTS.DILLI_DIWALI_MELA.id);
 
+  // Step 2: Verify the URL and rendered event details (heading, category, badge, venue, city,
+  // availability, price, and "Book Tickets").
   await expect(page).toHaveURL(`/events/${EVENTS.DILLI_DIWALI_MELA.id}`);
   await expect(eventDetailPage.heading()).toHaveText('Dilli Diwali Mela');
   await expect(page.getByText('Festival', { exact: true })).toBeVisible();
@@ -31,14 +34,16 @@ test('card click navigates to event detail and renders event info', async ({
 });
 
 // TC-event-booking-002 — Navigate to event detail via standalone "Book Now" button (P0)
-test('"Book Now" button navigates to event detail and renders event info', async ({
+test('Validate if Events Listing page - clicking the standalone "Book Now" button - navigates to the event detail page and renders its info', async ({
   page,
   eventsListingPage,
   eventDetailPage,
 }) => {
+  // Step 1: Navigate to /events and click the "Book Now" button for Hollywood Monsoon Night.
   await eventsListingPage.goto();
   await eventsListingPage.clickBookNow(EVENTS.HOLLYWOOD_MONSOON_NIGHT.id);
 
+  // Step 2: Verify the URL and rendered event details.
   await expect(page).toHaveURL(`/events/${EVENTS.HOLLYWOOD_MONSOON_NIGHT.id}`);
   await expect(eventDetailPage.heading()).toHaveText(EVENTS.HOLLYWOOD_MONSOON_NIGHT.title);
   await expect(page.getByText('Concert', { exact: true })).toBeVisible();
@@ -51,24 +56,27 @@ test('"Book Now" button navigates to event detail and renders event info', async
 });
 
 // TC-event-booking-017 — Both entry points render the identical booking widget (P2)
-test('card click and "Book Now" both land on the same event detail with identical widget', async ({
+test('Validate if Events Listing page - reaching event detail via card click versus the "Book Now" button - lands on the same page with an identical booking widget', async ({
   page,
   eventsListingPage,
   eventDetailPage,
 }) => {
   const { id, price } = EVENTS.WORLD_TECH_SUMMIT;
 
+  // Step 1: Navigate to /events, click the event card, and capture the order summary.
   await eventsListingPage.goto();
   await eventsListingPage.clickEventCard(id);
   await expect(page).toHaveURL(`/events/${id}`);
   const viaCard = await eventDetailPage.getOrderSummary();
   await eventDetailPage.expectBookingWidgetVisible(price);
 
+  // Step 2: Navigate back to /events, click "Book Now" instead, and capture the order summary.
   await eventsListingPage.goto();
   await eventsListingPage.clickBookNow(id);
   await expect(page).toHaveURL(`/events/${id}`);
   const viaBookNow = await eventDetailPage.getOrderSummary();
   await eventDetailPage.expectBookingWidgetVisible(price);
 
+  // Step 3: Verify both entry points produced an identical order summary.
   expect(viaBookNow).toEqual(viaCard);
 });
