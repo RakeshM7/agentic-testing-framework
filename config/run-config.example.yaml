@@ -25,7 +25,7 @@ feature:
 # The orchestrator can only exercise opt-in exceptions the spoke agents
 # already define — it can never override a hard rule (see orchestrator-agent.md).
 authorizations:
-  mode: readonly                # readonly (default) | full-run
+  mode: full-run                # readonly (default) | full-run
                                  # readonly   = explore-agent stays a non-mutating crawler;
                                  #              api-testing-agent's Playwright specs default to
                                  #              GET-only and it never runs k6 live;
@@ -42,11 +42,22 @@ authorizations:
                                  # scopes delete/cancel actions to entities it created itself
                                  # this run (see each agent's created-entities.json contract) —
                                  # this file cannot loosen that inner scoping.
-  authenticated_crawl: false    # true = explore-agent logs in past the wall using credentials_file
-  credentials_file: null        # e.g. playwright-tests/.env — a FILE PATH, never inline values
+  authenticated_crawl: true    # true = explore-agent performs an authenticated crawl using
+                                 #        session_state_file below (never by typing credentials
+                                 #        itself — see docs/conventions.md's session_state_file entry)
+  credentials_file: null        # e.g. playwright-tests/.env — a FILE PATH, never inline values.
+                                 # Used by playwright-automation-agent / api-testing-agent's own
+                                 # scripted logins, NOT read by explore-agent.
+  session_state_file: null      # e.g. playwright-tests/.auth/handoff.json — a pre-authenticated
+                                 # Playwright storageState (or session-cookie value file) a human
+                                 # produced by completing login (+ any CAPTCHA/MFA) once,
+                                 # interactively, out-of-band. Required for explore-agent's
+                                 # authenticated_crawl; also the documented fallback for
+                                 # playwright-automation-agent/api-testing-agent when their own
+                                 # scripted/API-level login is blocked by a CAPTCHA/MFA challenge.
 
 testcases:
-  output_format: markdown-table # markdown-table | gherkin | csv | testrail
+  output_format: gherkin # markdown-table | gherkin | csv | testrail
 
 # --- Applied only to [Nice-to-have]-tagged clarification questions that
 # `answers` below doesn't already cover. Never applied to [Blocking]

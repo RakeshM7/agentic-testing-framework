@@ -1,0 +1,438 @@
+{
+  "target": "rakesh-freshsales-ind-sep21",
+  "baseUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com",
+  "discoveryMethod": "Aggregated from explore-agent's per-page network-requests.json (artifacts/rakesh-freshsales-ind-sep21/explore/pages/*/network-requests.json) and crawl-log.md. No OpenAPI/Swagger spec was found for this tenant (Freshsales is a closed-source Freshworks SaaS product; its internal `/crm/sales/*` app API is undocumented outside Freshworks' own developer docs for the public v2 API, which is a *different*, token-based surface this tenant's UI does not appear to call from these pages). Request/response BODY shapes were not captured by explore-agent (its network-requests.json records only url/method/statusCode) -- schemas below are inferred from endpoint naming, the `include=` query params observed, and dom-snapshot.md annotations, and are flagged as INFERRED where not directly observed.",
+  "authMechanism": {
+    "type": "session-cookie (server-rendered signin redirect), NOT a bearer/API token",
+    "evidence": "Unauthenticated GET https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/{contacts,deals,sales_accounts} exhibits CONTENT-NEGOTIATED auth-failure behavior, confirmed live by this agent (read-only GETs, 2026-09-21, both via curl and via real Playwright APIRequestContext calls in tests/freshsales/auth.spec.ts -- all 5 assertions pass): with `Accept: */*` (curl's default, and any plain browser navigation) it returns a 302 redirect to /crm/sales/signin; with `Accept: application/json` (this project's default header, and any real API client) it returns 401 with a JSON body `{\"login\":\"failed\",\"message\":null}`. All captured authenticated calls carry no Authorization header in explore-agent's captures; auth is via the browser session cookie set at login.",
+    "liveAuthBlocker": "CONFIRMED INHERITED BLOCKER: scripted UI login against this tenant reliably triggers a Google reCAPTCHA challenge (see feedback/playwright-automation-agent/2026-09-21-freshsales-recaptcha-blocks-scripted-login.md). Because auth here is a session cookie obtained only via a full interactive login, and Playwright's APIRequestContext (used by this agent's specs) cannot solve a visual CAPTCHA any more than a scripted browser can, api-testing-agent inherits the identical wall: no authenticated GET/POST/PUT/PATCH/DELETE call against any /crm/sales/* endpoint could be executed live this run. See api-test-plan.md 'Execution status' section and api-tests/playwright-api/README.md for full detail."
+  },
+  "endpoints": [
+    {
+      "resource": "session",
+      "method": "POST",
+      "pathTemplate": "/api/v2/session",
+      "queryParams": ["session_token", "checkSessionOnlyOnce"],
+      "authRequired": true,
+      "sampleRequest": null,
+      "sampleResponse": null,
+      "observedStatus": 200,
+      "note": "Session-liveness check called on every authenticated page load, not a login endpoint. Captured on contacts-list, accounts-list pages."
+    },
+    {
+      "resource": "contacts",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/contacts",
+      "queryParams": ["include=owner,sales_accounts,creater,source,updater,campaign,contact_status,lead_score_information,territory,emails,lookup_information,lists,lifecycle_stage,lost_reason,tags,social_handler"],
+      "authRequired": true,
+      "sampleRequest": {
+        "INFERRED": true,
+        "shape": { "first_name": "string", "last_name": "string", "emails": [{ "value": "string", "is_primary": true }], "sales_accounts": [{ "id": "number|null", "name": "string (for inline create)" }] }
+      },
+      "sampleResponse": { "INFERRED": true, "shape": { "id": "number", "first_name": "string", "last_name": "string", "contact_status": { "id": "number", "name": "string" }, "lifecycle_stage": { "id": "number", "name": "string" } } },
+      "observedStatus": 200,
+      "note": "Creates a Contact. Confirmed live 2026-09-21 by explore-agent -- created id 402219350782, 'Explore AgentTestLead'."
+    },
+    {
+      "resource": "contacts",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/contacts/:id",
+      "queryParams": ["include=owner,sales_accounts,creater,source,updater,campaign,contact_status,lead_score_information,territory,emails,lookup_information,lists,lifecycle_stage,lost_reason,tags"],
+      "authRequired": true,
+      "sampleResponse": { "INFERRED": true },
+      "observedStatus": 200,
+      "note": "Confirmed live against id 402219350782."
+    },
+    {
+      "resource": "contacts",
+      "method": "PUT",
+      "pathTemplate": "/crm/sales/contacts/:id",
+      "queryParams": ["include=owner,sales_accounts,creater,source,updater,campaign,contact_status,lead_score_information,territory,emails,lookup_information,lists,lifecycle_stage,lost_reason,tags,social_handler"],
+      "authRequired": true,
+      "sampleRequest": { "INFERRED": true, "shape": { "contact_status_id": "number" } },
+      "observedStatus": 200,
+      "note": "Confirmed live: used to move Status New -> Qualified, which server-side auto-promotes lifecycle_stage to 'Sales Qualified Lead'."
+    },
+    {
+      "resource": "contacts",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/contacts/:id/duplicates",
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Duplicate-email/-record detection check, called on contact detail load. Exact request/response body not captured; UX behavior unconfirmed per clarifications doc Open Question 1."
+    },
+    {
+      "resource": "contacts",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/contacts/:id/connections",
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Related-record connections widget."
+    },
+    {
+      "resource": "contacts",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/contacts/:id/notes",
+      "queryParams": ["per_page", "page", "include=creater", "highlight_mention", "sort"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "contacts",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/contacts/detail_page_customizations",
+      "queryParams": ["version"],
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Layout/customization metadata, not record data."
+    },
+    {
+      "resource": "contacts",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/contacts/overview_sections",
+      "queryParams": ["version"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "sales_accounts",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/sales_accounts",
+      "authRequired": true,
+      "sampleRequest": { "INFERRED": true, "shape": { "name": "string" } },
+      "observedStatus": 200,
+      "note": "Creates an Account. Confirmed live -- created 'Explore Test Co' via the inline 'Add new account' affordance on the Add Contact form."
+    },
+    {
+      "resource": "sales_accounts",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/sales_accounts",
+      "queryParams": ["include", "load_as_per_list_page_config", "page", "per_page", "segment_id", "sort", "sort_type", "name"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "sales_accounts",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/sales_accounts/filters",
+      "queryParams": ["append_default_segments"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "sales_accounts",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/sales_accounts/filters/:segmentId",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "sales_accounts",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/sales_account/filters",
+      "queryParams": ["type", "start", "end"],
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Note singular 'sales_account' vs plural 'sales_accounts' elsewhere -- verified from captured traffic, not a typo introduced here."
+    },
+    {
+      "resource": "sales_accounts",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/sales_accounts/view_rollup_detail",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "deals",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/deals",
+      "authRequired": true,
+      "sampleRequest": { "INFERRED": true, "shape": { "name": "string", "amount": "number", "deal_pipeline_id": "number", "contacts": [{ "id": "number" }], "sales_account_id": "number" } },
+      "observedStatus": null,
+      "note": "Implicit endpoint (via the Add-deal form) per crawl-log; not directly captured with a status code in any network-requests.json page, but referenced in crawl-log.md's endpoint summary and clarifications doc. Confirmed to exist by the fact that Deal id 402012367593 was created live this same run."
+    },
+    {
+      "resource": "deals",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/deals/:id",
+      "queryParams": ["include=owner,creater,updater,contacts(_details),sales_account,deal_pipeline,deal_stage,deal_type,territory,currency,source,deal_reason,campaign,deal_product,deal_payment_status,lookup_information,tags"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "deals",
+      "method": "PUT",
+      "pathTemplate": "/crm/sales/deals/:id",
+      "queryParams": ["include=owner,creater,updater,contacts,sales_account,deal_pipeline,deal_stage,deal_type,territory,currency,source,deal_reason,campaign,deal_product,deal_payment_status,lookup_information,tags"],
+      "authRequired": true,
+      "sampleRequest": { "INFERRED": true, "shape": { "deal_stage_id": "number" } },
+      "observedStatus": 200,
+      "note": "Confirmed live x4 in one page load: stage transitions Qualification -> Discovery -> Demo -> Negotiation, each a separate PUT."
+    },
+    {
+      "resource": "deals",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/deals",
+      "queryParams": ["include=lookup_information", "load_as_per_list_page_config", "per_page", "segment_id", "sort", "sort_type"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "deals",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/deals/filters",
+      "queryParams": ["append_default_segments"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "deals",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/deals/view_rollup_detail",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "deals",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/deals/kanban_funnels",
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Kanban aggregation: pipeline funnel totals per stage."
+    },
+    {
+      "resource": "deals",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/deals/kanban_headers",
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Kanban column headers/counts."
+    },
+    {
+      "resource": "deals",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/deals/view/:viewId/aggregated_data",
+      "queryParams": ["group_by_type=deal_stage_id", "group_by_value[]", "include", "load_as_per_kanban_page_config", "page", "per_page", "sort", "sort_type"],
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Per-stage-column deal cards for the Kanban board. Re-confirmed after the TC-004-equivalent stage move (deals-kanban-after-move page) that the moved deal now appears grouped under the Negotiation stage id."
+    },
+    {
+      "resource": "deals",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/deals/:id/sales_activities",
+      "queryParams": ["deleted_activity_count"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "deals",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/deals/:id/activity_counts",
+      "queryParams": ["types[]=appointments", "types[]=tasks", "types[]=notes"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "deals",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/deals/:id/tasks",
+      "queryParams": ["include", "page", "per_page", "type", "sort", "sort_type", "load_multi_attributes"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "tasks",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/tasks",
+      "authRequired": true,
+      "sampleRequest": { "INFERRED": true, "shape": { "title": "string", "due_date": "string (ISO date/time)", "owner_id": "number", "targetable_type": "'Deal'", "targetable_id": "number" } },
+      "observedStatus": 201,
+      "note": "Confirmed live -- created Task 'Follow up with Explore Test Co on negotiation terms' linked to deal 402012367593."
+    },
+    {
+      "resource": "sales_activities",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/sales_activities (or an equivalent endpoint -- NOT captured)",
+      "authRequired": true,
+      "observedStatus": null,
+      "note": "Call-log and Note creation endpoints were NOT captured live by explore-agent (crawl-log.md and clarifications doc both flag this explicitly -- only Task creation was exercised). The deal-detail page's action bar exposes 'Call log' and note affordances (per contact-detail dom-snapshot.md: 'Top action bar: Email | Call log | Task | Meeting | Sales activities'); the exact request path/shape must be discovered live at execution time, which requires the authenticated session this run could not obtain. Playwright specs for Call/Note creation are written defensively (see api-test-plan.md) but are unexecutable until that auth blocker is resolved."
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/lifecycle_stages",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/contact_statuses",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/deal_pipelines",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/deal_stages",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/deal_reasons",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/owners",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/teams",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/territories",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/business_types",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/industry_types",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/sales_activity_entity_types",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "selectors",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/selector/sales_activity_types/:typeId/sales_activity_outcomes",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "settings",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/settings/deal_pipelines",
+      "queryParams": ["include=deal_stages"],
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Grounding source for the confirmed pipeline stage order: New, Qualification, Discovery, Demo, Negotiation, Won, Lost."
+    },
+    {
+      "resource": "settings",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/settings/module_customizations/:moduleId/column_customization",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "settings",
+      "method": "PUT",
+      "pathTemplate": "/crm/sales/settings/agent_heartbeat",
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Session-keepalive ping, not app data."
+    },
+    {
+      "resource": "settings",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/settings/carousel",
+      "queryParams": ["includes=deals_carousel"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "misc",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/left_nav_bar",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "misc",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/import_csv/recent_imports",
+      "queryParams": ["status_order", "limit", "current_user", "module", "include"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "misc",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/search/auto_suggest/sales_accounts_full_details.json",
+      "queryParams": ["q", "qf=name"],
+      "authRequired": true,
+      "observedStatus": 200,
+      "note": "Typeahead used by the Add Contact form's inline Account field."
+    },
+    {
+      "resource": "misc",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/freddy/out_of_office/suggestions",
+      "queryParams": ["context_type", "context_id", "source_type"],
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "misc",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/notes/entity_notes_count",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "misc",
+      "method": "POST",
+      "pathTemplate": "/crm/sales/quotas/freddy/filterize",
+      "authRequired": true,
+      "observedStatus": 200
+    },
+    {
+      "resource": "leads",
+      "method": "GET",
+      "pathTemplate": "/crm/sales/leads",
+      "authRequired": true,
+      "observedStatus": 403,
+      "note": "OUT OF SCOPE per the finalized clarifications doc (human decision, Q2) -- listed here for completeness of discovery only. No test case targets this endpoint; do not add negative-403 coverage for it (deliberate, not an oversight)."
+    }
+  ],
+  "excludedThirdPartyEndpoints": [
+    { "url": "rum.haystack.es/freshsales/analytics", "reason": "third-party analytics telemetry, returns 503 consistently, not app API" },
+    { "url": "freshworks-rts/_logs", "reason": "third-party logging" },
+    { "url": "fast.appcues.com", "reason": "third-party onboarding widget, expired account" },
+    { "url": "rts-static-prod.freshworksapi.com (websocket)", "reason": "real-time sync channel, not a REST endpoint; out of scope for request-based API testing" }
+  ]
+}

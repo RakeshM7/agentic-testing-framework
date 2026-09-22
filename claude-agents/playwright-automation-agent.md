@@ -15,12 +15,19 @@ Read `mode` from the invocation prompt (the orchestrator passes this straight fr
 - **`mode: readonly` (default):** you may still *generate* a spec for a mutating flow (booking/checkout/registration/delete) from testcase-generator-agent's output, but tag it (e.g. `test.skip(true, 'mutating flow -- requires authorizations.mode: full-run')`) so it does not execute against the live target during this run. Non-mutating flows (navigation, search/filter, read-only assertions, form validation that's expected to be rejected before any mutation) run normally.
 - **`mode: full-run`:** generate mutating specs as real, executing tests. **Scope any delete/cancel/remove step to an entity the suite itself created earlier in the same spec or run** -- capture the id/identifier returned from the create step and use it in the delete step; never target a delete/cancel action at a pre-existing or seed-data id. If a flow requires an irreversible real-world side effect with no test/sandbox mode available (e.g. capturing a real payment with no test card path), skip only that assertion/step with a clear reason rather than completing it.
 
+## Auth fallback -- CAPTCHA/MFA-gated scripted login
+If a target's scripted login reliably triggers a challenge you cannot complete (CAPTCHA, MFA, device verification), treat it as a hard blocker to report, not a puzzle to solve or bypass -- the same category as an irreversible real-world side effect with no test/sandbox path, above; solving or circumventing it is out of scope regardless of `mode`. Reproduce it at least a couple of times across different launch configs (headless/headed, bundled Chromium vs. a real browser channel, instant vs. human-paced input) before concluding it isn't a transient flake. Then:
+- If `authorizations.session_state_file` is set, use it directly as the project's `storageState` for the affected target's project(s) instead of running the scripted login/setup flow -- this skips the blocked step entirely rather than working around it.
+- Otherwise, leave the generated login/setup spec real and failing-for-a-documented reason (never silently absent, never faked as passing), let every dependent test report as skipped-due-to-failed-dependency, and still implement and run live any spec reachable without a session (e.g. an unauthenticated-redirect check, or a public page's visual baseline) so the run isn't a total loss.
+- File this as feedback (see below) so a recurrence on a future target is recognized immediately instead of re-diagnosed from scratch.
+
 ## Inputs
 - Target repo path (may be this same framework repo in a greenfield engagement).
 - `mode` (optional, default `readonly`) — see Mode above.
 - `artifacts/<target>/testcases/*` from testcase-generator-agent.
 - `artifacts/<target>/explore/sitemap.json` + page snapshots from explore-agent.
 - `artifacts/<target>/clarifications/*-clarifications.md`.
+- `authorizations.session_state_file` (optional) — see "Auth fallback" above.
 
 ## Step 0 -- Detect which branch applies
 Search the target repo for `playwright.config.*`, a `@playwright/test` dependency in `package.json`, and existing `/tests` or `/e2e` directories.

@@ -2,7 +2,7 @@
   "name": "eventhub-api-tests",
   "version": "1.0.0",
   "private": true,
-  "description": "Playwright API (request-fixture) test suite for the EventHub REST API (https://api.eventhub.rahulshettyacademy.com). Covers both the event-booking and app-wide (registration, login, events search/filter, My Bookings, admin, RBAC) features. Read-only (GET) against the live third-party target, plus the sanctioned non-mutating POST /auth/login exception, per the api-testing-agent's guardrails -- see README.md.",
+  "description": "Playwright API (request-fixture) test suite covering two targets: EventHub (https://api.eventhub.rahulshettyacademy.com -- event-booking + app-wide features, read-only GET plus the sanctioned non-mutating POST /auth/login exception) and Freshsales (rakesh-freshsales-ind-sep21.myfreshworks.com -- lead-to-deal-pipeline feature, full-run-authorized GET/POST/PUT coverage, currently mostly blocked live by a reCAPTCHA-gated login wall -- see README.md).",
   "scripts": {
     "test": "playwright test",
     "test:auth": "playwright test tests/auth.spec.ts",
@@ -15,6 +15,8 @@
     "test:health": "playwright test tests/health.spec.ts",
     "test:config": "playwright test tests/config.spec.ts",
     "test:app-wide": "playwright test tests/login.spec.ts tests/events-search-filter.spec.ts tests/admin-events.spec.ts tests/rbac.spec.ts",
+    "test:freshsales": "playwright test --project=freshsales-api",
+    "test:freshsales:auth": "playwright test --project=freshsales-api tests/freshsales/auth.spec.ts",
     "report": "playwright show-report"
   },
   "devDependencies": {

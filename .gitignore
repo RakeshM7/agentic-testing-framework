@@ -8,6 +8,7 @@ api-tests/k6/results/
 .env.*
 !.env.example
 !**/.env.example
+!**/.env.*.example
 playwright-tests/.auth/
 *.log
 .DS_Store

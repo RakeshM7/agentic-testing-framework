@@ -1,0 +1,109 @@
+[
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/view/402015942732?per_page=25",
+    "slug": "contacts-list",
+    "title": "Contacts : Freshsales",
+    "screenshotPath": "pages/contacts-list/screenshot.png",
+    "domSnapshotPath": "pages/contacts-list/dom-snapshot.md",
+    "networkRequestsPath": "pages/contacts-list/network-requests.json",
+    "consoleLogPath": "pages/contacts-list/console-log.txt",
+    "links": [
+      "/crm/sales/contacts/402213988056",
+      "/crm/sales/contacts/402213988058",
+      "/crm/sales/contacts/402213988049",
+      "/crm/sales/contacts/402213988051",
+      "/crm/sales/contacts/402213988068",
+      "/crm/sales/contacts/402213988071",
+      "/crm/sales/contacts/402213988075",
+      "/crm/sales/contacts/402213988079",
+      "/crm/sales/contacts/402213988080",
+      "/crm/sales/contacts/402213988070",
+      "/crm/sales/accounts",
+      "/crm/sales/deals",
+      "/crm/sales/my_dashboards"
+    ]
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/view/402015942758?per_page=25",
+    "slug": "accounts-list",
+    "title": "Accounts : Freshsales",
+    "screenshotPath": "pages/accounts-list/screenshot.png",
+    "domSnapshotPath": "pages/accounts-list/dom-snapshot.md",
+    "networkRequestsPath": "pages/accounts-list/network-requests.json",
+    "consoleLogPath": "pages/accounts-list/console-log.txt",
+    "links": [
+      "/crm/sales/accounts/402012650925",
+      "/crm/sales/contacts",
+      "/crm/sales/deals"
+    ]
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744?per_page=25&sort=amount",
+    "slug": "deals-kanban",
+    "title": "Deals : Freshsales",
+    "screenshotPath": "pages/deals-kanban/screenshot.png",
+    "domSnapshotPath": "pages/deals-kanban/dom-snapshot.md",
+    "networkRequestsPath": "pages/deals-kanban/network-requests.json",
+    "consoleLogPath": "pages/deals-kanban/console-log.txt",
+    "links": [
+      "/crm/sales/deals/402012367593",
+      "/crm/sales/contacts",
+      "/crm/sales/accounts"
+    ]
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402219350782",
+    "slug": "contact-detail-explore-agenttestlead",
+    "title": "Contact : Explore AgentTestLead (explore.agent.testlead@example.com) : Freshsales",
+    "screenshotPath": "pages/contact-detail-explore-agenttestlead/screenshot.png",
+    "domSnapshotPath": "pages/contact-detail-explore-agenttestlead/dom-snapshot.md",
+    "networkRequestsPath": "pages/contact-detail-explore-agenttestlead/network-requests.json",
+    "consoleLogPath": "pages/contact-detail-explore-agenttestlead/console-log.txt",
+    "links": [
+      "/crm/sales/accounts/402012650925",
+      "/crm/sales/deals/402012367593"
+    ],
+    "note": "Entity created this run (full-run mode). Stand-in for a 'Lead' since this tenant has no Leads module for this user role."
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012367593",
+    "slug": "deal-detail-explore-test-co",
+    "title": "Deal : Explore Test Co - Pipeline Kanban Test Deal : Freshsales",
+    "screenshotPath": "pages/deal-detail-explore-test-co/screenshot.png",
+    "domSnapshotPath": "pages/deal-detail-explore-test-co/dom-snapshot.md",
+    "networkRequestsPath": "pages/deal-detail-explore-test-co/network-requests.json",
+    "consoleLogPath": "pages/deal-detail-explore-test-co/console-log.txt",
+    "links": [
+      "/crm/sales/contacts/402219350782",
+      "/crm/sales/accounts/402012650925"
+    ],
+    "note": "Entity created this run (full-run mode). Moved through pipeline stages New->Qualification->Discovery->Demo->Negotiation; task activity logged against it."
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744?per_page=25&sort=amount",
+    "slug": "deals-kanban-after-move",
+    "title": "Deals : Freshsales",
+    "screenshotPath": "pages/deals-kanban-after-move/screenshot.png",
+    "domSnapshotPath": "pages/deals-kanban-after-move/dom-snapshot.md",
+    "networkRequestsPath": "pages/deals-kanban-after-move/network-requests.json",
+    "consoleLogPath": "pages/deals-kanban-after-move/console-log.txt",
+    "links": [
+      "/crm/sales/deals/402012367593"
+    ],
+    "note": "Re-visit of the Kanban board confirming the created deal now renders in the Negotiation column."
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012650925",
+    "slug": "account-detail-explore-test-co",
+    "title": "Account : Explore Test Co : Freshsales",
+    "screenshotPath": "pages/account-detail-explore-test-co/screenshot.png",
+    "domSnapshotPath": "pages/account-detail-explore-test-co/dom-snapshot.md",
+    "networkRequestsPath": "pages/account-detail-explore-test-co/network-requests.json",
+    "consoleLogPath": "pages/account-detail-explore-test-co/console-log.txt",
+    "links": [
+      "/crm/sales/contacts/402219350782",
+      "/crm/sales/deals/402012367593"
+    ],
+    "note": "Entity created this run (full-run mode, auto-created via inline account creation from the Add Contact form)."
+  }
+]
