@@ -51,7 +51,7 @@ feature:
     and can reach /admin/events). Write test cases for the expected
     behavior of a non-admin/plain consumer account attempting to reach
     /admin/events directly (expect redirect/403) -- flag as unconfirmed
-    since no non-admin account was crawled.
+    since no non-admin account was crawled
   requirement_docs: []
 
 authorizations:
