@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/api-fixtures';
 
 // GET /health -- no auth, no params. See artifacts/eventhub/api/api-test-plan.md section 12.
 

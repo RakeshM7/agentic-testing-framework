@@ -25,7 +25,7 @@ feature:
 # The orchestrator can only exercise opt-in exceptions the spoke agents
 # already define — it can never override a hard rule (see orchestrator-agent.md).
 authorizations:
-  mode: full-run                # readonly (default) | full-run
+  mode: readonly                # readonly (default) | full-run
                                  # readonly   = explore-agent stays a non-mutating crawler;
                                  #              api-testing-agent's Playwright specs default to
                                  #              GET-only and it never runs k6 live;
@@ -79,7 +79,7 @@ answers:
     answer: "Write as a flagged/unconfirmed case if no sold-out fixture exists."
 
 feedback_loop:
-  auto_invoke_implementor: true  # false = orchestrator only reports filed feedback file paths
+  auto_invoke_implementor: false  # false = orchestrator only reports filed feedback file paths
 
 git:
   auto_commit: false             # orchestrator never runs `git commit` unless this is explicitly true

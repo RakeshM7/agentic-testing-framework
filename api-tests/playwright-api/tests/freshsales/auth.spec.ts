@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/api-fixtures';
 
 // Auth-boundary checks for the rakesh-freshsales-ind-sep21 tenant's /crm/sales/* app API.
 //

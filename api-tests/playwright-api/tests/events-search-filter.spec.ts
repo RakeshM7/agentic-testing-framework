@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/api-fixtures';
 
 // GET /events -- search/filter combination & data-anomaly coverage for the app-wide feature
 // (events search & filtering on /events). See artifacts/eventhub/api/api-test-plan.md section 17.

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/api-fixtures';
 
 // POST /auth/login -- functional + negative coverage. See artifacts/eventhub/api/api-test-plan.md
 // section 15 (app-wide run, added 2026-09-20).

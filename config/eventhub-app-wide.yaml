@@ -91,7 +91,7 @@ answers:
     answer: "markdown-table, same as the event-booking run, for consistency across the suite."
 
 feedback_loop:
-  auto_invoke_implementor: true
+  auto_invoke_implementor: false
 
 git:
   auto_commit: false

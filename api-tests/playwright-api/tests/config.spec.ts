@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/api-fixtures';
 
 // GET /config -- no auth, no params. See artifacts/eventhub/api/api-test-plan.md section 13.
 // Cross-referenced against the live network capture: home/network-requests.json and

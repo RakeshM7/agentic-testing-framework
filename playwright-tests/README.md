@@ -158,3 +158,8 @@ passes live.
 
 See the filed feedback file for this finding (path in this run's automation report) for the fuller
 writeup of what was tried.
+
+## Safety and run modes
+
+- Default runs are headless with trace/video/screenshots kept only on failure. For local debugging: `HEADED=1 npx playwright test` (adds `slowMo: 500`).
+- Specs built on `fixtures/base.ts` / `fixtures/freshsales.ts` abort every non-GET request unless `AUTHORIZATIONS_MODE=full-run` is set in the environment. Set it only for a target you are authorized to mutate.

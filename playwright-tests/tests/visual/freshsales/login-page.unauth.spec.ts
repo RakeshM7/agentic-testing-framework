@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../../fixtures/base';
 
 /**
  * Visual-regression coverage for the Freshsales tenant's login page — the one page in this

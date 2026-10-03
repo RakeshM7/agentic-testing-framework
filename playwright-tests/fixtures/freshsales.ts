@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { guardedTest } from './mutationGuard';
 import fs from 'fs';
 import path from 'path';
 import { ContactsPage } from '../pages/freshsales/ContactsPage';
@@ -16,7 +16,7 @@ type Fixtures = {
 };
 
 /** Extends the base Playwright test with Freshsales page-object fixtures. */
-export const test = base.extend<Fixtures>({
+export const test = guardedTest.extend<Fixtures>({
   loginPage: async ({ page }, use) => {
     await use(new LoginPage(page));
   },
@@ -34,7 +34,7 @@ export const test = base.extend<Fixtures>({
   },
 });
 
-export const expect = base.expect;
+export { expect } from '@playwright/test';
 
 /**
  * created-entities.json tracker for this run's live-mutating Freshsales specs, per the

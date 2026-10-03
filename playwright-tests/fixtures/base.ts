@@ -1,4 +1,5 @@
 import { test as base } from '@playwright/test';
+import { guardedTest } from './mutationGuard';
 import { EventsListingPage } from '../pages/EventsListingPage';
 import { EventDetailPage } from '../pages/EventDetailPage';
 import { LoginPage } from '../pages/LoginPage';
@@ -20,7 +21,7 @@ type Fixtures = {
  * Runs against the shared authenticated `page` (storageState is applied at
  * the project level in playwright.config.ts via the `setup` project).
  */
-export const test = base.extend<Fixtures>({
+export const test = guardedTest.extend<Fixtures>({
   eventsListingPage: async ({ page }, use) => {
     await use(new EventsListingPage(page));
   },

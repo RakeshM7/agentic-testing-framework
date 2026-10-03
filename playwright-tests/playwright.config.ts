@@ -12,9 +12,10 @@ const FRESHSALES_AUTH_FILE = path.join(__dirname, '.auth', 'freshsales-user.json
 // session/baseURL.
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  // The suites share one live account per target, so keep files serial-by-default in workers.
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
   workers: process.env.CI ? 2 : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
   timeout: 30_000,
@@ -23,13 +24,14 @@ export default defineConfig({
   },
   use: {
     baseURL: 'https://eventhub.rahulshettyacademy.com',
-    trace: 'on',
-    screenshot: 'on',
-    video: 'on',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    // Headed + slowMo only for local debugging: HEADED=1 npx playwright test
     launchOptions: {
-      slowMo: 500,
+      slowMo: process.env.HEADED ? 500 : 0,
     },
-    headless: false,
+    headless: !process.env.HEADED,
   },
   projects: [
     {

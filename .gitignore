@@ -13,3 +13,8 @@ playwright-tests/.auth/
 *.log
 .DS_Store
 
+
+# Authenticated crawl captures may contain tokens/PII -- keep local, never commit
+artifacts/**/network-requests.json
+artifacts/**/network-request.json
+artifacts/**/console-log.txt
