@@ -18,7 +18,7 @@ Never hand-edit a `model:` frontmatter line directly in either flavor — `confi
 
 ## Artifact root
 
-All pipeline artifacts for a given target live under `artifacts/<target-slug>/`, where `<target-slug>` is the target's hostname, lowercased with non-alphanumeric characters replaced by `-` (e.g. `eventhub.rahulshettyacademy.com` → `eventhub`).
+All pipeline artifacts for a given target live under `artifacts/<target-slug>/`, where `<target-slug>` is the target hostname's first label, lowercased with non-alphanumeric characters replaced by `-` (computed by `scripts/run-config.mjs`; e.g. `eventhub.rahulshettyacademy.com` → `eventhub`).
 
 ## Pipeline order and handoff contract
 
@@ -52,7 +52,7 @@ Any orchestrator invoking this agent must expect two calls, not one.
 
 ### Run-config file
 
-One YAML file configures one full pipeline pass: one target, one feature. A worked example lives at `config/run-config.example.yaml`. Top-level keys:
+One YAML file configures one full pipeline pass: one target, one feature. A worked example lives at `config/run-config.example.yaml`. The config is validated, and its slug/answer-matching computed, by `node scripts/run-config.mjs validate|match` (not by LLM judgment). Top-level keys:
 
 | Key | Purpose |
 |---|---|
@@ -64,7 +64,7 @@ One YAML file configures one full pipeline pass: one target, one feature. A work
 | `testcases.output_format` | The format `testcase-generator-agent` should confirm and use. |
 | `defaults.unconfirmed_behavior_policy` / `unconfirmed_edge_case_policy` | Applied only to `[Nice-to-have]`-tagged Pass-1 questions that `answers` doesn't already cover. Never applied to `[Blocking]` questions. |
 | `answers` | A list of `{match, answer}` pairs. The orchestrator resolves a Pass-1 question by a case-insensitive substring match of `match` against the question text, first match wins, **after normalizing both strings** (replace `-`/`_` with a space, then collapse runs of whitespace to one space) so that generation-time punctuation variance (e.g. `duplicate-email` vs. `duplicate email`) doesn't produce a false-negative miss. Because substring matching can still produce a false positive if `match` is a short/common word that happens to appear inside an unrelated question, prefer specific, multi-word `match` strings over single common words, and where a topic could plausibly be phrased with either a hyphen or a space, list both forms as separate `answers` entries rather than relying on the normalization alone. This is the main lever for avoiding a halt on a question you already anticipate. |
-| `feedback_loop.auto_invoke_implementor` | Whether the orchestrator hands any feedback files filed mid-run straight to `feedback-implementor-agent` (default `true`) or just reports their paths. |
+| `feedback_loop.auto_invoke_implementor` | Whether the orchestrator hands any feedback files filed mid-run straight to `feedback-implementor-agent` (default `false`; set `true` only for reviewed runs, since the implementor edits agent prompts) or just reports their paths. |
 | `git.auto_commit` | Whether the orchestrator may run `git commit` at all. Default/absent is `false` — the orchestrator never commits unless this is explicitly `true`. |
 
 ### Halting and resuming
