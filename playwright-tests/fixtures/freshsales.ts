@@ -63,15 +63,28 @@ const CREATED_ENTITIES_FILE = path.join(
 );
 
 export function recordCreatedEntity(entity: CreatedEntity) {
-  let existing: CreatedEntity[] = [];
-  try {
-    existing = JSON.parse(fs.readFileSync(CREATED_ENTITIES_FILE, 'utf-8'));
-  } catch {
-    existing = [];
-  }
-  existing.push(entity);
+  // Serialize the read-modify-write across parallel workers with an atomic mkdir lock; a parse
+  // error is surfaced (not swallowed) so a corrupt log is never silently overwritten.
   fs.mkdirSync(path.dirname(CREATED_ENTITIES_FILE), { recursive: true });
-  fs.writeFileSync(CREATED_ENTITIES_FILE, JSON.stringify(existing, null, 2) + '\n');
+  const lock = CREATED_ENTITIES_FILE + '.lock';
+  const deadline = Date.now() + 5_000;
+  for (;;) {
+    try {
+      fs.mkdirSync(lock);
+      break;
+    } catch (err: any) {
+      if (err.code !== 'EEXIST' || Date.now() > deadline) throw err;
+    }
+  }
+  try {
+    const existing: CreatedEntity[] = fs.existsSync(CREATED_ENTITIES_FILE)
+      ? JSON.parse(fs.readFileSync(CREATED_ENTITIES_FILE, 'utf-8'))
+      : [];
+    existing.push(entity);
+    fs.writeFileSync(CREATED_ENTITIES_FILE, JSON.stringify(existing, null, 2) + '\n');
+  } finally {
+    fs.rmdirSync(lock);
+  }
 }
 
 /** Ground-truth tenant fixtures, per the clarifications doc's grounding reference section. */
