@@ -1,0 +1,43 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: scripts — install, unit tests, model drift check
+        working-directory: scripts
+        run: |
+          npm ci
+          node --test run-config.test.mjs
+          node sync-agent-models.mjs --check
+      - name: validate shipped run-configs
+        run: |
+          for f in config/run-config*.yaml config/eventhub-app-wide.yaml; do
+            node scripts/run-config.mjs validate "$f" > /dev/null
+          done
+      - name: shipped examples must default to readonly
+        run: "! grep -E '^\\s+mode: full-run' config/run-config*.example.yaml"
+      - name: playwright-tests — typecheck
+        working-directory: playwright-tests
+        run: |
+          npm ci
+          npx tsc --noEmit
+      - name: api-tests — typecheck
+        working-directory: api-tests/playwright-api
+        run: |
+          npm ci
+          npx tsc --noEmit
+      - name: k6 scripts parse (static, never executed live)
+        uses: grafana/setup-k6-action@v1
+      - run: |
+          for f in api-tests/k6/scripts/*-test.js; do
+            k6 inspect -e BASE_URL=http://localhost:3001 "$f" > /dev/null
+          done

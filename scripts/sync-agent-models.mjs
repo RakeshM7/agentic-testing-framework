@@ -3,7 +3,8 @@
 // copilot-agents/*.agent.md file from the single source of truth at
 // config/models.yaml. See that file's header comment for the config format.
 //
-// Usage: node scripts/sync-agent-models.mjs
+// Usage: node scripts/sync-agent-models.mjs [--check]
+//   --check  write nothing; exit 1 if any file's `model:` line differs from config/models.yaml (for CI).
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -23,6 +24,8 @@ function renderYamlValue(value) {
 // Replaces the first `model: ...` line found inside the YAML frontmatter
 // block (between the first two `---` lines) with `model: <newValue>`.
 // Leaves every other line -- frontmatter or body -- untouched.
+const CHECK = process.argv.includes("--check");
+
 function patchModelLine(filePath, newValue) {
   const original = readFileSync(filePath, "utf8");
   const lines = original.split("\n");
@@ -51,7 +54,7 @@ function patchModelLine(filePath, newValue) {
   if (next === original) {
     return false;
   }
-  writeFileSync(filePath, next, "utf8");
+  if (!CHECK) writeFileSync(filePath, next, "utf8");
   return true;
 }
 
@@ -81,13 +84,14 @@ function main() {
       }
       const didChange = patchModelLine(file, value);
       if (didChange) {
-        console.log(`updated: ${path.relative(repoRoot, file)} -> model: ${renderYamlValue(value)}`);
+        console.log(`${CHECK ? "drift" : "updated"}: ${path.relative(repoRoot, file)} -> model: ${renderYamlValue(value)}`);
         changed++;
       }
     }
   }
 
-  console.log(`\n${changed} file(s) updated, ${skipped} skipped (missing).`);
+  console.log(`\n${changed} file(s) ${CHECK ? "out of sync" : "updated"}, ${skipped} skipped (missing).`);
+  if (CHECK && changed > 0) process.exit(1);
 }
 
 main();
