@@ -1,3 +1,0 @@
-[
-  {"note": "This page's fetch/XHR calls resolved before network capture was attached (navigation raced the read_network_requests call). Confirmed via RTS console log that the account record 402012650925 loaded and subscribed to realtime updates. See contact-detail and deal-detail pages' network-requests.json for the equivalent GET /crm/sales/accounts/<id> and related endpoint shapes."}
-]

@@ -1,7 +1,0 @@
-[
-  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/kanban_headers", "method": "POST", "statusCode": 200},
-  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744/aggregated_data?group_by_type=deal_stage_id&group_by_value[]=402001912039&group_by_value[]=402001912040&group_by_value[]=402001912041&group_by_value[]=402001912042&include=lookup_information&load_as_per_kanban_page_config=true&page=1&per_page=10&sort=updated_at&sort_type=desc", "method": "GET", "statusCode": 200},
-  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744/aggregated_data?group_by_type=deal_stage_id&group_by_value[]=402001912043&include=lookup_information&load_as_per_kanban_page_config=true&page=1&per_page=10&sort=updated_at&sort_type=desc", "method": "GET", "statusCode": 200},
-  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/notes/entity_notes_count", "method": "POST", "statusCode": 200},
-  {"url": "https://rum.haystack.es/freshsales/analytics", "method": "POST", "statusCode": 503, "note": "third-party analytics, not app API"}
-]

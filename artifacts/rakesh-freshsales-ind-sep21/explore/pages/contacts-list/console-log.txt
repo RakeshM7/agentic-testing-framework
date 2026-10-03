@@ -1,2 +1,0 @@
-[21:35:20] [DEBUG] (freshcaller widget) SDK INITIALISED
-[21:35:20] [DEBUG] (freshcaller widget) WIDGET READY

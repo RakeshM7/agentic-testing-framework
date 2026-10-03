@@ -1,4 +1,0 @@
-Console log — https://eventhub.rahulshettyacademy.com/login
-Captured via read_console_messages (pattern: ".*") across multiple visits (direct + redirected from /, /events, /dashboard, /bookings, /admin).
-
-No console messages (log/warn/error/info) were emitted during any of these page loads.

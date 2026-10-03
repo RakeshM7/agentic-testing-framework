@@ -1,1 +1,0 @@
-[21:40:21] [LOG] (RTS realtime) Received Data on channel contact_402219350782: {"type":"model_change", ...} (real-time sync notification after status update)

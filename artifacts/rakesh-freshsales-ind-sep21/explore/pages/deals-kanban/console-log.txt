@@ -1,3 +1,0 @@
-[21:37:15] [LOG] (perf-collector) PERFORMANCE : RouteInteractionReady
-[21:37:15] [LOG] (perf-collector) PERFORMANCE : MeaningfulPaint
-[21:37:15] [LOG] (perf-collector) PERFORMANCE : RouteRenderTime
