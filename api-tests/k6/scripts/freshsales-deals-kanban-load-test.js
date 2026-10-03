@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { requireBaseUrl } from './lib/guard.js';
 
 /**
  * Load profile for the Deals Kanban board's 3-call load unit:
@@ -25,7 +26,7 @@ import { Rate, Trend } from 'k6/metrics';
  *     -e FRESHSALES_SESSION_COOKIE="<the cookie string>"
  */
 
-const BASE_URL = __ENV.BASE_URL || 'https://rakesh-freshsales-ind-sep21.myfreshworks.com';
+const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
 const SESSION_COOKIE = __ENV.FRESHSALES_SESSION_COOKIE || '';
 // Tenant-specific constants observed in explore-agent's captures (deals-kanban/network-requests.json)
 const DEALS_VIEW_ID = __ENV.FRESHSALES_DEALS_VIEW_ID || '402015942744';

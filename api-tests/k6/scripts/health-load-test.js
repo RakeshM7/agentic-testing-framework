@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { requireBaseUrl } from './lib/guard.js';
 
 /**
  * Lightweight synthetic-monitoring-style load profile for GET /health.
@@ -9,7 +10,7 @@ import { Rate, Trend } from 'k6/metrics';
  * validation) may have been run against this script -- never `k6 run` against the live target.
  */
 
-const BASE_URL = __ENV.BASE_URL || 'https://api.eventhub.rahulshettyacademy.com/api';
+const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
 
 const failureRate = new Rate('health_failed');
 const duration = new Trend('health_duration', true);

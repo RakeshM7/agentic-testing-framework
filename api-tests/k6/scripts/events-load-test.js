@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { requireBaseUrl } from './lib/guard.js';
 
 /**
  * Load profile for GET /events (listing) and GET /events/:id (detail).
@@ -19,7 +20,7 @@ import { Rate, Trend } from 'k6/metrics';
  *    independent of that frontend-layer flakiness.
  */
 
-const BASE_URL = __ENV.BASE_URL || 'https://api.eventhub.rahulshettyacademy.com/api';
+const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
 const KNOWN_EVENT_IDS = [283, 284, 285]; // seeded fixtures: World Tech Summit / Hollywood Monsoon Night / Dilli Diwali Mela
 
 const listFailureRate = new Rate('events_list_failed');

@@ -127,3 +127,10 @@ k6 run scripts/freshsales-deals-kanban-load-test.js  -e FRESHSALES_SESSION_COOKI
 
 Both scripts' `teardown()` hooks print a reminder to verify no requests silently 401'd mid-run
 (a session expiring partway through would look like *faster*, not failing, latency).
+
+## Safety: explicit `BASE_URL` + host allowlist
+
+No script has a default target. `scripts/lib/guard.js` requires `BASE_URL` and refuses any host not in
+`K6_ALLOWED_HOSTS` (comma-separated; localhost/127.0.0.1 always allowed). Static validation therefore needs a
+dummy value: `k6 inspect -e BASE_URL=http://localhost:3001 scripts/<file>.js`. Live runs additionally need
+`authorizations.mode: full-run` (enforced by `.claude/hooks/guard-bash.mjs` for Claude Code sessions).

@@ -139,3 +139,15 @@ severity: <blocking | high | medium | low>
 1. An agent that files feedback states **only the file path** in its final response to the coordinator — never the full feedback text inline.
 2. The coordinator passes that same file path (unread, or lightly skimmed for prioritization — never retyped or paraphrased) to `feedback-implementor-agent`.
 3. `feedback-implementor-agent` reads the file itself, implements each finding's suggested fix, verifies it where possible (re-run tests, typecheck, `k6 inspect`, etc.), and appends a dated `## Resolution` section to the **same** file recording status (`Fixed` / `Skipped` / `Deferred`) and why — so the file remains the permanent, traceable record of both the problem and its resolution.
+
+
+### Code-level enforcement of `authorizations.mode`
+
+Prose is not the only guard. A human sets `AUTHORIZATIONS_MODE=full-run` in the environment for a run they are authorized to mutate; without it:
+- `.claude/hooks/guard-bash.mjs` (PreToolUse hook, `.claude/settings.json`) blocks live k6 runs and mutating `curl` from Claude Code.
+- `playwright-tests/fixtures/mutationGuard.ts` aborts non-GET browser requests, and `api-tests/playwright-api/fixtures/mutationGuard.ts` throws on non-GET `request.*` calls, for every spec built on the shared fixtures. Auth setup projects are exempt (they must POST a login).
+- k6 scripts have no default host: `BASE_URL` is required and must be in `K6_ALLOWED_HOSTS` (see `api-tests/k6/README.md`).
+
+### `created-entities.json` shape (all agents)
+
+An array of `{type, identifier, url, createdAt, note?}`; api-testing-agent additionally records resource and endpoint inside `note`. Writers must append, never overwrite.

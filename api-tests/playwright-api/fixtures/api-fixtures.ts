@@ -1,4 +1,5 @@
-import { test as base, expect, APIRequestContext } from '@playwright/test';
+import { expect, APIRequestContext } from '@playwright/test';
+import { guardedTest } from './mutationGuard';
 
 /**
  * Shared fixtures for the EventHub API test suite.
@@ -25,7 +26,7 @@ type ApiFixtures = {
   authToken: string;
 };
 
-export const test = base.extend<{}, ApiFixtures>({
+export const test = guardedTest.extend<{}, ApiFixtures>({
   authToken: [
     async ({ playwright }, use) => {
       const email = process.env.EVENTHUB_EMAIL;

@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { requireBaseUrl } from './lib/guard.js';
 
 /**
  * Load profile for GET /crm/sales/contacts (paginated list, read-only).
@@ -24,7 +25,7 @@ import { Rate, Trend } from 'k6/metrics';
  *        -e FRESHSALES_SESSION_COOKIE="<the cookie string>"
  */
 
-const BASE_URL = __ENV.BASE_URL || 'https://rakesh-freshsales-ind-sep21.myfreshworks.com';
+const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
 const SESSION_COOKIE = __ENV.FRESHSALES_SESSION_COOKIE || '';
 
 const failureRate = new Rate('freshsales_contacts_list_failed');

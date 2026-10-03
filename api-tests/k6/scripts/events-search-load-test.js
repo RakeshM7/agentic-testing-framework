@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { requireBaseUrl } from './lib/guard.js';
 
 /**
  * Load profile for GET /events search/filter variants (search=, category=, city=, and combined
@@ -20,7 +21,7 @@ import { Rate, Trend } from 'k6/metrics';
  * just correctness (already covered functionally in events-search-filter.spec.ts).
  */
 
-const BASE_URL = __ENV.BASE_URL || 'https://api.eventhub.rahulshettyacademy.com/api';
+const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
 
 const SEARCH_TERMS = ['Tech', 'Diwali', 'Monsoon', 'Summit', 'zzz-no-match-zzz'];
 const CATEGORIES = ['Conference', 'Concert', 'Festival', 'Sports', 'Workshop'];

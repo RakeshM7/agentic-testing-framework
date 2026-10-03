@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { requireBaseUrl } from './lib/guard.js';
 
 /**
  * Load profile for POST /auth/login -- added by the app-wide run (login feature).
@@ -24,7 +25,7 @@ import { Rate, Trend } from 'k6/metrics';
  * ================================================================================================
  */
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:3001/api'; // deliberately NOT the production host by default
+const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
 const LOGIN_EMAIL = __ENV.LOGIN_EMAIL || 'dogfood-account@example.com'; // point at a dedicated load-test account, not a real user's account
 const LOGIN_PASSWORD = __ENV.LOGIN_PASSWORD || 'change-me';
 

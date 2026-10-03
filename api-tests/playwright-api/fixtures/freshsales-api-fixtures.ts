@@ -1,4 +1,5 @@
-import { test as base, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { guardedTest } from './mutationGuard';
 
 /**
  * Shared fixture for the Freshsales (`rakesh-freshsales-ind-sep21`) API test suite.
@@ -29,7 +30,7 @@ type FreshsalesFixtures = {
   freshsalesSessionCookie: string | null;
 };
 
-export const test = base.extend<FreshsalesFixtures>({
+export const test = guardedTest.extend<FreshsalesFixtures>({
   freshsalesSessionCookie: async ({}, use) => {
     const cookie = process.env.FRESHSALES_SESSION_COOKIE || null;
     await use(cookie && cookie.trim().length > 0 ? cookie : null);
