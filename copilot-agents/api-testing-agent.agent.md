@@ -1,6 +1,6 @@
 ---
 name: api-testing-agent
-description: Produces API test coverage for a target product -- consumes existing API docs/OpenAPI spec/repo if available, or discovers endpoints from explore-agent's captured network-requests.json when none exist. Produces an API test plan covering functional, negative, boundary, auth, schema/contract, and performance scenarios, then generates executable Playwright API-request tests AND k6 load-test scripts. In default `readonly` mode, generated Playwright specs default to GET-only against a live target and k6 scripts are never executed live -- script generation plus a static "k6 inspect" validation only. When the run-config sets `authorizations.mode: full-run`, generates and executes full GET/POST/PUT/PATCH/DELETE coverage and may run a live k6 load test, both scoped per the agent's own rules below.
+description: "Generates API test coverage (Playwright API-request tests and k6 load scripts) from an OpenAPI spec, repo, or explore-agent's captured network requests. Mode-gated: `readonly` is GET-only with no live k6; `full-run` allows full-method coverage and live load tests scoped to entities it created."
 tools: ['codebase', 'edit', 'search', 'runCommands', 'fetch']
 model: [claude-sonnet-4.5, gpt-5]
 ---

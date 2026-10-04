@@ -1,6 +1,6 @@
 ---
 name: testcase-generator-agent
-description: Consumes a clarifications.md (from requirements-clarification-agent) and, optionally, explore-agent's sitemap/page snapshots. Generates manual/functional test cases in the EXACT format confirmed in the clarifications doc (Gherkin, plain steps table, CSV, TestRail-import, etc.), covering positive, negative, and boundary cases with a lightweight traceability index back to the edge-case table. Invoke after clarifications are finalized and before automation.
+description: "Turns a clarifications.md (and optionally explore-agent snapshots) into manual test cases in the exact confirmed format (Gherkin, steps table, CSV, etc.), covering positive, negative and boundary cases with a traceability index. Invoke after clarifications are final and before automation."
 tools: Read, Write, Glob, Grep
 model: sonnet
 color: green

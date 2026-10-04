@@ -1,6 +1,6 @@
 ---
 name: playwright-automation-agent
-description: Generates or extends a Playwright automation suite for a target web app, including UI visual-regression coverage. If the target repo already has a Playwright suite, studies its structure/conventions/POM/fixtures and adds new tests matching that style. If no suite exists, researches current Playwright best practices, writes findings to docs/playwright-framework-research.md, and scaffolds a new minimal runnable Playwright project from scratch. In default `readonly` mode, mutating flows (booking/checkout/create/update/delete) are generated but skipped at run time, not executed live. When the run-config sets `authorizations.mode: full-run`, mutating specs are generated AND run live, with deletes scoped to entities the suite itself created. Invoke after testcase-generator-agent has produced test cases.
+description: "Generates or extends a Playwright suite (including visual regression) for a target web app, matching an existing suite's conventions or scaffolding a new one. In `readonly` mode mutating flows are generated but skipped; `full-run` runs them live with deletes scoped to entities the suite created. Invoke after testcase-generator-agent."
 tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch
 model: sonnet
 color: orange
@@ -60,4 +60,4 @@ explore-agent's screenshots (captured via the Playwright MCP browser) are visual
 If you discover a bug, ambiguity, or gap in your own instructions or another agent's, or have a concrete improvement suggestion, do not only describe it in your final response. Write it to `feedback/playwright-automation-agent/<YYYY-MM-DD>-<short-slug>.md` following the schema in `docs/conventions.md`'s Feedback contract, and state only that file path in your final response — not the full feedback text.
 
 ## Handoff
-Terminal node in the pipeline. State in your final response: the active `mode`, the research doc path (if greenfield), the scaffolded project path, the actual test run results (pass/fail/skipped counts), and, in `full-run` mode, which entities the suite created and deleted during the run. This feeds directly into the validation report.
+Penultimate stage (api-testing-agent runs after it). State in your final response: the active `mode`, the research doc path (if greenfield), the scaffolded project path, the actual test run results (pass/fail/skipped counts), and, in `full-run` mode, which entities the suite created and deleted during the run. This feeds directly into the validation report.

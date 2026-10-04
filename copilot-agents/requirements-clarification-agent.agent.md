@@ -1,6 +1,6 @@
 ---
 name: requirements-clarification-agent
-description: Runs in TWO passes. Pass 1 (no "Answers:" section in the prompt) reads requirement docs/mockups/codebase/explore-agent's sitemap and returns a structured list of clarifying questions -- including an explicit question about the desired test-case output format (Gherkin / plain steps table / CSV / TestRail import / other) -- for the human to answer directly in chat. Pass 2 (invoked again with the user's answers appended under an "Answers:" heading) produces the final clarifications.md artifact. Use before testcase-generator-agent whenever behavior is ambiguous, requirements are incomplete, or the desired test-case format is unknown.
+description: "Two-pass requirements clarifier. Pass 1 (no \"Answers:\" section) returns tagged clarifying questions, including the desired test-case output format; Pass 2 (with \"Answers:\") writes the final clarifications.md. Use before testcase-generator-agent when behavior or format is ambiguous."
 tools: ['codebase', 'edit', 'search', 'fetch']
 model: [claude-sonnet-4.5, gpt-5]
 ---
