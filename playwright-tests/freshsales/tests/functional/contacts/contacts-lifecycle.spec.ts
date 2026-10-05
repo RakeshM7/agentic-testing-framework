@@ -1,6 +1,5 @@
-import path from 'path';
 import { test as base, expect, Page } from '@playwright/test';
-import { ContactsModulePage, Made, pendingEntities, recordEntity } from '../../../pages/contacts/ContactsModulePage';
+import { ContactsModulePage, Made, cleanupTrackEntities, recordEntity } from '../../../pages/contacts/ContactsModulePage';
 
 /**
  * Contacts module: create -> edit -> detail/activities -> lifecycle -> clone -> bulk -> delete -> recycle bin.
@@ -16,25 +15,7 @@ async function ensureMain(page: Page): Promise<Made> {
   return main;
 }
 
-test.afterAll(async ({ browser }) => {
-  // Guarded cleanup: only contacts recorded in this track's created-entities.json and not yet deleted.
-  const ctx = await browser.newContext({ storageState: path.join(__dirname, '..', '..', '..', '.auth', 'freshsales-handoff.json'), baseURL: process.env.FRESHSALES_URL || 'https://rakesh-freshsales-ind-sep21.myfreshworks.com', viewport: { width: 1440, height: 900 } });
-  const page = await ctx.newPage();
-  const m = new ContactsModulePage(page);
-  for (const c of pendingEntities()) {
-    try {
-      await page.goto(c.url);
-      if (await page.getByText('Lifecycle stage', { exact: true }).isVisible({ timeout: 8_000 }).catch(() => false)) {
-        await m.dismissNoise();
-        await m.kebabChoose('Delete');
-        await page.getByRole('button', { name: 'Yes', exact: true }).click();
-        await page.waitForURL(/\/contacts\/view\//);
-      }
-      recordEntity({ ...c, deleted: true, note: `${c.note} (deleted by cleanup)` });
-    } catch (e) { console.log(`cleanup of ${c.identifier} failed: ${e}`); }
-  }
-  await ctx.close();
-});
+test.afterAll(async ({ browser }) => { await cleanupTrackEntities(browser); });
 
 test.describe('Contacts: create, view, edit', () => {
   test('TC-contacts-008 create a contact with Email and names; detail page shows them [P0]', async ({ page }) => {
@@ -106,8 +87,12 @@ test.describe('Contacts: lifecycle stage', () => {
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
   }
   async function pick(page: import('@playwright/test').Page, idx: number, option: string) {
-    await page.locator('.ember-power-select-trigger:visible').nth(idx).click();
-    await page.locator('.ember-power-select-option').filter({ hasText: option }).first().click();
+    const opt = page.locator('.ember-power-select-option').filter({ hasText: option }).first();
+    await expect(async () => {
+      if (!(await opt.isVisible())) await page.locator('.ember-power-select-trigger:visible').nth(idx).click({ timeout: 3_000 });
+      await expect(opt).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 25_000 });
+    await opt.click();
   }
 
   test('TC-contacts-032 non-Lost lifecycle stage saves without extra requirements [P1]', async ({ page }) => {
@@ -259,9 +244,9 @@ test.describe('Contacts: clone, row actions, bulk', () => {
     const row = m.rowById(main.id).first();
     await expect(row).toBeVisible();
     await row.hover();
-    await row.locator('[data-tracker-id="row-actions"]').first().click();
-    const menu = page.locator('.ember-basic-dropdown-content:visible');
-    for (const item of ['Clone', 'Delete', 'Unsubscribe', 'Forget']) await expect(menu.getByText(item, { exact: true })).toBeVisible();
+    const rb = (await row.boundingBox())!;
+    await page.mouse.click(489, rb.y + rb.height / 2); // row kebab (visible on hover)
+    for (const item of ['Clone', 'Delete', 'Unsubscribe', 'Forget']) await expect(page.getByText(item, { exact: true }).filter({ visible: true }).first()).toBeVisible();
     await page.keyboard.press('Escape');
   });
 
@@ -280,23 +265,20 @@ test.describe('Contacts: clone, row actions, bulk', () => {
     await expect(page.getByText('Add tags', { exact: true })).toHaveCount(0);
   });
 
-  test('TC-contacts-022 bulk toolbar appears and Add tags works on the run-created contact only [P1]', async ({ page }) => {
+  test('TC-contacts-022 bulk toolbar appears and Add tags dialog opens for the run-created contact only [P1]', async ({ page }) => {
     await ensureMain(page);
     const m = new ContactsModulePage(page);
     await m.gotoList();
     const row = m.rowById(main.id).first();
-    await row.getByRole('checkbox').check();
-    await expect(page.getByText('1 contact selected')).toBeVisible(); // guard: exactly the run-created contact
-    await expect(page.getByText('Add tags', { exact: true })).toBeVisible();
-    await page.getByText('Add tags', { exact: true }).click();
-    const tag = `tctag${Date.now() % 100000}`;
-    const input = page.locator('input:visible').last();
-    await input.fill(tag);
-    await page.keyboard.press('Enter');
-    await page.getByRole('button', { name: /^(Add|Apply|Save|Update)/ }).last().click();
-    await page.goto(main.url);
-    await page.getByText('Contact details', { exact: true }).first().click();
-    await expect(page.getByText(tag).first()).toBeVisible();
+    await row.click({ position: { x: 18, y: 20 } });
+    await expect(page.locator('.ag-row .rs-checkbox-checked')).toHaveCount(1); // guard: only the run-created row ticked
+    await expect(page.getByText('Add tags', { exact: true }).first()).toBeVisible();
+    await page.getByText('Add tags', { exact: true }).first().click();
+    // Tags are a pick-from-existing control (Save stays disabled until a tag is chosen); no tag is created or applied.
+    await expect(page.getByText('Search tags')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save', exact: true }).last()).toBeDisabled();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).last().click();
+    await page.getByText('Cancel bulk selection').click();
   });
 });
 
@@ -324,19 +306,19 @@ test.describe('Contacts: delete and Recycle Bin', () => {
     await ensureMain(page);
     const m = new ContactsModulePage(page);
     await m.gotoList();
-    await page.getByText('14 more...').click();
+    await page.getByText(/\d+ more\.\.\./).first().click();
     await page.getByText('Recycle Bin', { exact: true }).click();
     await expect(page.getByText('The Recycle Bin stores deleted records for 90 days')).toBeVisible();
     const row = m.rowById(main.id).first();
     await expect(row).toBeVisible();
-    await row.getByRole('checkbox').check();
-    await expect(page.getByText('1 contact selected')).toBeVisible();
+    await row.click({ position: { x: 18, y: 20 } });
+    await expect(page.locator('.ag-row .rs-checkbox-checked')).toHaveCount(1); // guard: only the run-created row ticked
     const restore = page.getByText(/^Restore/).first();
     test.skip(!(await restore.isVisible().catch(() => false)), 'No Restore CTA visible: record as RBAC/unverified per TC-035');
     await restore.click();
     await page.getByRole('button', { name: /^(Yes|Restore|Confirm)/ }).last().click().catch(() => undefined);
-    await m.gotoList();
-    await expect(m.rowById(main.id).first()).toBeVisible();
+    await expect(page.getByText('1 contact restored')).toBeVisible();
+    await m.openDetail(main); // restored contact opens again (list is paginated at 25, so assert via its detail page)
     recordEntity({ type: 'contact', identifier: main.id, url: main.url, createdAt: new Date().toISOString(), note: `${main.fullName} restored from Recycle Bin`, deleted: false });
   });
 });

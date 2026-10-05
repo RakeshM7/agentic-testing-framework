@@ -125,3 +125,36 @@ export class ContactsModulePage extends BasePage {
     recordEntity({ type: 'contact', identifier: m.id, url: m.url, createdAt: new Date().toISOString(), note: `${m.fullName} deleted`, deleted: true });
   }
 }
+
+/**
+ * Guarded cleanup: deletes only contacts recorded in this track's created-entities.json (TCContacts-prefixed) that are
+ * still live; marks an entity deleted only when the delete was confirmed (or the contact is already gone).
+ */
+export async function cleanupTrackEntities(browser: import('@playwright/test').Browser, only?: (note: string) => boolean) {
+  const ctx = await browser.newContext({
+    storageState: path.join(__dirname, '..', '..', '.auth', 'freshsales-handoff.json'),
+    baseURL: process.env.FRESHSALES_URL || 'https://rakesh-freshsales-ind-sep21.myfreshworks.com',
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await ctx.newPage();
+  const m = new ContactsModulePage(page);
+  for (const c of pendingEntities().filter((e) => e.note.includes('TCContacts') && (!only || only(e.note)))) {
+    try {
+      await page.goto(c.url);
+      const lifecycle = page.getByText('Lifecycle stage', { exact: true });
+      const gone = page.getByText('This contact is not in the CRM');
+      await lifecycle.or(gone).first().waitFor({ timeout: 30_000 }).catch(() => undefined);
+      const live = await lifecycle.isVisible();
+      if (live) {
+        await m.dismissNoise();
+        await m.kebabChoose('Delete');
+        await page.getByRole('button', { name: 'Yes', exact: true }).click();
+        await page.waitForURL(/\/contacts\/view\//, { timeout: 20_000 });
+        recordEntity({ ...c, deleted: true, note: `${c.note} (deleted by cleanup)` });
+      } else if (await gone.isVisible()) {
+        recordEntity({ ...c, deleted: true, note: `${c.note} (already gone)` });
+      }
+    } catch (e) { console.log(`cleanup of ${c.identifier} failed: ${e}`); }
+  }
+  await ctx.close();
+}
