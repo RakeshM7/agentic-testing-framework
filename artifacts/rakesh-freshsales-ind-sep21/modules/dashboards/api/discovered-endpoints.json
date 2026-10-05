@@ -1,0 +1,14 @@
+{
+ "note": "Dashboard tabs/widgets are rendered by an embedded third-party Freshreports app (freshworkscrm-ind.freshreports.com, JWT iframe auth) which is out of scope. Only tenant-host /crm/sales endpoints are covered. Per-page network-requests.json files are copies of one capture.",
+ "host": "https://rakesh-freshsales-ind-sep21.myfreshworks.com",
+ "endpoints": [
+  {"method":"GET","path":"/crm/sales/analytics_dashboard","auth":"session cookie","response":"{analytic_widgets:[{id,name,position,static,type,iframe_url(contains JWT; never recorded),external_id,sample_report,hidden,internal_name}],hide_demo_widget}","verified_live":true},
+  {"method":"POST","path":"/crm/sales/analytics_dashboard","auth":"session cookie","note":"observed in capture (adds a curated report tab); request body not captured, mutates the user's real dashboard config -> not tested","verified_live":false},
+  {"method":"GET","path":"/crm/sales/analytic_reports","auth":"session cookie","response":"{analytic_reports:[{id,name,curated}]}","verified_live":true},
+  {"method":"GET","path":"/crm/sales/analytics_dashboard/:id","auth":"session cookie","response":"404 {errors:{code,message[]}} for unknown id","verified_live":true},
+  {"method":"GET","path":"/crm/sales/activities_dashboard","query":["page","per_page","start_date","end_date","include","filter_by","date_filter_type","tasks[]","reminders[]","has_appointments","is_open_activities","is_completed_activities","is_overdue_activities"],"response":"{activities_dashboard:[],meta:{has_next,calendar_sync_enabled_types,total_count,total_pages}}","verified_live":true},
+  {"method":"GET","path":"/crm/sales/activities_dashboard/summary","response":"{summary:[]}","verified_live":true},
+  {"method":"GET","path":"/crm/sales/activities_dashboard/available_user_widgets","response":"{user_widgets:[{name,position,type,is_selected}]}","verified_live":true}
+ ],
+ "excluded_third_party": ["freshworkscrm-ind.freshreports.com/api/v1/* (reportgroups, reports, attributes, sources...)"]
+}

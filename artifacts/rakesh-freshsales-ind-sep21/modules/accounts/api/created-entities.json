@@ -1,0 +1,163 @@
+[
+  {
+    "id": 402012713879,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T00:00:00Z",
+    "deleted": true,
+    "note": "authoring probe, deleted"
+  },
+  {
+    "id": 402012713882,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T00:00:00Z",
+    "deleted": true,
+    "note": "authoring probe, deleted"
+  },
+  {
+    "id": 402012713883,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T00:00:00Z",
+    "deleted": true,
+    "note": "authoring probe, deleted"
+  },
+  {
+    "id": 402012713884,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T00:00:00Z",
+    "deleted": true,
+    "note": "authoring probe, deleted"
+  },
+  {
+    "id": 402012713886,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:27.406Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713887,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:27.466Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713888,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:27.999Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713889,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:29.065Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713890,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:29.348Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713891,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:29.368Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713892,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T00:00:00Z",
+    "note": "authoring probe (name length)",
+    "deleted": true
+  },
+  {
+    "id": 402012713893,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T00:00:00Z",
+    "note": "authoring probe (name length)",
+    "deleted": true
+  },
+  {
+    "id": 402012713894,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T00:00:00Z",
+    "note": "authoring probe (name length)",
+    "deleted": true
+  },
+  {
+    "id": 402012713895,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:57.834Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713896,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:57.956Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713897,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:58.018Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713899,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:58.589Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713898,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:58.593Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713900,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:59.287Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713901,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:59.622Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713902,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:44:59.904Z",
+    "deleted": true
+  },
+  {
+    "id": 402012713903,
+    "resource": "sales_account",
+    "endpoint": "/crm/sales/sales_accounts",
+    "createdAt": "2026-10-05T10:45:00.333Z",
+    "deleted": true
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "source": "live probe 2026-10-05 with session hand-off + CSRF token (explore per-page network files were placeholders)",
+  "base": "https://rakesh-freshsales-ind-sep21.myfreshworks.com",
+  "endpoints": [
+    {"method":"GET","path":"/crm/sales/sales_accounts/filters","auth":"cookie","sampleResponse":"{filters:[{id,name:'My Accounts'|'All Accounts'|...}]}"},
+    {"method":"GET","path":"/crm/sales/sales_accounts/view/:segment_id","query":["page","per_page","sort","sort_type"],"auth":"cookie","sampleResponse":"{sales_accounts:[{id,name,website,phone,number_of_employees,annual_revenue,owner_id,open_deals_count,links}]}"},
+    {"method":"GET","path":"/crm/sales/sales_accounts","query":["segment_id (required, else 403)","page","per_page"],"auth":"cookie"},
+    {"method":"GET","path":"/crm/sales/sales_accounts/:id","query":["include=tags"],"auth":"cookie","sampleResponse":"{sales_account:{...}}"},
+    {"method":"GET","path":"/crm/sales/sales_accounts/:id/contacts","auth":"cookie","sampleResponse":"[]"},
+    {"method":"GET","path":"/crm/sales/sales_accounts/:id/notes","auth":"cookie","sampleResponse":"{notes:[],meta:{total_pages,total}}"},
+    {"method":"POST","path":"/crm/sales/sales_accounts","auth":"cookie + X-CSRF-Token","sampleRequest":"{sales_account:{name,website,phone,number_of_employees,annual_revenue}}","sampleResponse":"200 {sales_account:{id,...}} | 400 {errors:{code:400,message:[...]}}"},
+    {"method":"PUT","path":"/crm/sales/sales_accounts/:id","auth":"cookie + X-CSRF-Token","sampleRequest":"{sales_account:{name}}"},
+    {"method":"DELETE","path":"/crm/sales/sales_accounts/:id","auth":"cookie + X-CSRF-Token","sampleResponse":"200 true (record then 404 on GET)"},
+    {"method":"GET","path":"/crm/sales/settings/sales_accounts/forms","auth":"cookie","note":"field metadata; probed only"}
+  ],
+  "notUsable": ["/crm/sales/sales_accounts/:id/activities (404)", "bulk/forget/restore/import endpoints not identified; covered only by UI track"]
+}
