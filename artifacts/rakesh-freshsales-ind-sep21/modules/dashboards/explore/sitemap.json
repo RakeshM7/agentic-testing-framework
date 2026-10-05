@@ -1,0 +1,122 @@
+[
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=353503",
+  "slug": "sales-essentials-dashboard",
+  "title": "Sales Essentials Dashboard (tab 353503)",
+  "screenshotPath": "pages/sales-essentials-dashboard/screenshot.png",
+  "domSnapshotPath": "pages/sales-essentials-dashboard/dom-snapshot.md",
+  "networkRequestsPath": "pages/sales-essentials-dashboard/network-requests.json",
+  "consoleLogPath": "pages/sales-essentials-dashboard/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=81767",
+  "slug": "sales-dashboard",
+  "title": "Sales Dashboard (tab 81767)",
+  "screenshotPath": "pages/sales-dashboard/screenshot.png",
+  "domSnapshotPath": "pages/sales-dashboard/dom-snapshot.md",
+  "networkRequestsPath": "pages/sales-dashboard/network-requests.json",
+  "consoleLogPath": "pages/sales-dashboard/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=activities",
+  "slug": "activities-dashboard",
+  "title": "Activities Dashboard (tab=activities)",
+  "screenshotPath": "pages/activities-dashboard/screenshot.png",
+  "domSnapshotPath": "pages/activities-dashboard/dom-snapshot.md",
+  "networkRequestsPath": "pages/activities-dashboard/network-requests.json",
+  "consoleLogPath": "pages/activities-dashboard/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=activities",
+  "slug": "activities-configure-widgets",
+  "title": "Configure widgets drawer",
+  "screenshotPath": "pages/activities-configure-widgets/screenshot.png",
+  "domSnapshotPath": "pages/activities-configure-widgets/dom-snapshot.md",
+  "networkRequestsPath": "pages/activities-configure-widgets/network-requests.json",
+  "consoleLogPath": "pages/activities-configure-widgets/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=activities",
+  "slug": "activities-type-filter",
+  "title": "Activity type filter dropdown",
+  "screenshotPath": "pages/activities-type-filter/screenshot.png",
+  "domSnapshotPath": "pages/activities-type-filter/dom-snapshot.md",
+  "networkRequestsPath": "pages/activities-type-filter/network-requests.json",
+  "consoleLogPath": "pages/activities-type-filter/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=activities",
+  "slug": "activities-more-menu",
+  "title": "Activities More menu",
+  "screenshotPath": "pages/activities-more-menu/screenshot.png",
+  "domSnapshotPath": "pages/activities-more-menu/dom-snapshot.md",
+  "networkRequestsPath": "pages/activities-more-menu/network-requests.json",
+  "consoleLogPath": "pages/activities-more-menu/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=activities",
+  "slug": "new-dashboard-menu",
+  "title": "Add report dropdown (+ tab)",
+  "screenshotPath": "pages/new-dashboard-menu/screenshot.png",
+  "domSnapshotPath": "pages/new-dashboard-menu/dom-snapshot.md",
+  "networkRequestsPath": "pages/new-dashboard-menu/network-requests.json",
+  "consoleLogPath": "pages/new-dashboard-menu/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=18846",
+  "slug": "sales-trends-report-tab",
+  "title": "Sales Trends curated report tab (tab 18846, created by this run, removed)",
+  "screenshotPath": "pages/sales-trends-report-tab/screenshot.png",
+  "domSnapshotPath": "pages/sales-trends-report-tab/dom-snapshot.md",
+  "networkRequestsPath": "pages/sales-trends-report-tab/network-requests.json",
+  "consoleLogPath": "pages/sales-trends-report-tab/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=18846",
+  "slug": "dashboard-export-menu",
+  "title": "Export menu",
+  "screenshotPath": "pages/dashboard-export-menu/screenshot.png",
+  "domSnapshotPath": "pages/dashboard-export-menu/dom-snapshot.md",
+  "networkRequestsPath": "pages/dashboard-export-menu/network-requests.json",
+  "consoleLogPath": "pages/dashboard-export-menu/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=18846",
+  "slug": "dashboard-edit-curated",
+  "title": "Edit mode of curated dashboard",
+  "screenshotPath": "pages/dashboard-edit-curated/screenshot.png",
+  "domSnapshotPath": "pages/dashboard-edit-curated/dom-snapshot.md",
+  "networkRequestsPath": "pages/dashboard-edit-curated/network-requests.json",
+  "consoleLogPath": "pages/dashboard-edit-curated/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=18846",
+  "slug": "dashboard-filter-panel",
+  "title": "Filters panel (edit mode)",
+  "screenshotPath": "pages/dashboard-filter-panel/screenshot.png",
+  "domSnapshotPath": "pages/dashboard-filter-panel/dom-snapshot.md",
+  "networkRequestsPath": "pages/dashboard-filter-panel/network-requests.json",
+  "consoleLogPath": "pages/dashboard-filter-panel/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=353503",
+  "slug": "sales-essentials-deals-page",
+  "title": "Sales Essentials > Deals page",
+  "screenshotPath": "pages/sales-essentials-deals-page/screenshot.png",
+  "domSnapshotPath": "pages/sales-essentials-deals-page/dom-snapshot.md",
+  "networkRequestsPath": "pages/sales-essentials-deals-page/network-requests.json",
+  "consoleLogPath": "pages/sales-essentials-deals-page/console-log.txt",
+  "links": []
+ }
+]

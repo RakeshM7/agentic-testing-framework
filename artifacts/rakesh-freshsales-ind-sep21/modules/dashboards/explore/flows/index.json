@@ -1,0 +1,79 @@
+[
+ {
+  "slug": "open-dashboards",
+  "title": "Open the Dashboards module",
+  "goal": "Open the Dashboards module",
+  "kind": "navigation",
+  "entryPage": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards",
+  "navPath": "Dashboards",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/open-dashboards.md"
+ },
+ {
+  "slug": "switch-dashboard-tab",
+  "title": "Switch between dashboards",
+  "goal": "Switch between dashboards",
+  "kind": "navigation",
+  "entryPage": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards",
+  "navPath": "Dashboards",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/switch-dashboard-tab.md"
+ },
+ {
+  "slug": "configure-activities-widgets",
+  "title": "Open Configure widgets on Activities Dashboard",
+  "goal": "Open Configure widgets on Activities Dashboard",
+  "kind": "settings",
+  "entryPage": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards",
+  "navPath": "Dashboards > Activities Dashboard",
+  "stepCount": 4,
+  "mutating": false,
+  "file": "flows/configure-activities-widgets.md"
+ },
+ {
+  "slug": "filter-activity-types",
+  "title": "Open the activity-type filter",
+  "goal": "Open the activity-type filter",
+  "kind": "search-filter",
+  "entryPage": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards",
+  "navPath": "Dashboards > Activities Dashboard",
+  "stepCount": 5,
+  "mutating": false,
+  "file": "flows/filter-activity-types.md"
+ },
+ {
+  "slug": "add-report-tab",
+  "title": "Add a curated report as a dashboard tab, then remove it",
+  "goal": "Add a curated report as a dashboard tab, then remove it",
+  "kind": "create",
+  "entryPage": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards",
+  "navPath": "Dashboards > +",
+  "stepCount": 5,
+  "mutating": true,
+  "file": "flows/add-report-tab.md"
+ },
+ {
+  "slug": "export-dashboard",
+  "title": "Open Export menu of a dashboard",
+  "goal": "Open Export menu of a dashboard",
+  "kind": "import-export",
+  "entryPage": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards",
+  "navPath": "Dashboards > any tab",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/export-dashboard.md"
+ },
+ {
+  "slug": "edit-curated-dashboard",
+  "title": "Enter and discard edit mode on a curated dashboard",
+  "goal": "Enter and discard edit mode on a curated dashboard",
+  "kind": "update",
+  "entryPage": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards",
+  "navPath": "Dashboards > Sales Trends > Edit",
+  "stepCount": 3,
+  "mutating": false,
+  "file": "flows/edit-curated-dashboard.md"
+ }
+]

@@ -1,0 +1,161 @@
+{
+ "nodes": [
+  {
+   "id": "products-list",
+   "url": "/crm/sales/products/view/402015942778?per_page=25",
+   "title": "Products"
+  },
+  {
+   "id": "product-detail",
+   "url": "(drawer over products list)",
+   "title": "Product drawer"
+  },
+  {
+   "id": "product-add-form",
+   "url": "(drawer, Add product)",
+   "title": "Add product"
+  },
+  {
+   "id": "product-clone-form",
+   "url": "(drawer, Clone product)",
+   "title": "Clone product"
+  },
+  {
+   "id": "cpq-settings",
+   "url": "/crm/sales/settings/cpq",
+   "title": "CPQ Settings"
+  },
+  {
+   "id": "cpq-document-templates",
+   "url": "/crm/sales/settings/cpq-document-templates",
+   "title": "Document Templates"
+  },
+  {
+   "id": "quotes-list",
+   "url": "/crm/sales/cpq_documents/view/402015942782?per_page=25",
+   "title": "Quotes"
+  },
+  {
+   "id": "quote-add-form",
+   "url": "(drawer, + > Add Quote)",
+   "title": "Add quote"
+  },
+  {
+   "id": "quote-detail",
+   "url": "/crm/sales/cpq_documents/<id>?dealId=<dealId>",
+   "title": "Quote detail"
+  }
+ ],
+ "edges": [
+  {
+   "from": "products-list",
+   "to": "product-detail",
+   "via": {
+    "label": "<product name>",
+    "role": "link",
+    "kind": "opens-overlay"
+   },
+   "mutating": false
+  },
+  {
+   "from": "products-list",
+   "to": "product-add-form",
+   "via": {
+    "label": "Add product",
+    "role": "button",
+    "kind": "opens-overlay"
+   },
+   "mutating": false
+  },
+  {
+   "from": "product-detail",
+   "to": "product-clone-form",
+   "via": {
+    "label": "Clone",
+    "role": "menuitem",
+    "kind": "opens-overlay"
+   },
+   "mutating": false
+  },
+  {
+   "from": "products-list",
+   "to": "cpq-settings",
+   "via": {
+    "label": "Pricing settings",
+    "role": "menuitem",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "cpq-settings",
+   "to": "cpq-document-templates",
+   "via": {
+    "label": "(URL)",
+    "role": "url",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "quotes-list",
+   "to": "cpq-document-templates",
+   "via": {
+    "label": "Manage Quote templates",
+    "role": "menuitem",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "products-list",
+   "to": "external:deals",
+   "via": {
+    "label": "Customize Product fields",
+    "role": "menuitem",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "deals(out of module)",
+   "to": "quote-add-form",
+   "via": {
+    "label": "+ > Add Quote",
+    "role": "button",
+    "kind": "opens-overlay"
+   },
+   "mutating": false
+  },
+  {
+   "from": "quote-add-form",
+   "to": "quote-detail",
+   "via": {
+    "label": "Save",
+    "role": "button",
+    "kind": "navigates"
+   },
+   "mutating": true
+  },
+  {
+   "from": "quote-detail",
+   "to": "quotes-list",
+   "via": {
+    "label": "Delete > Yes",
+    "role": "menuitem",
+    "kind": "navigates"
+   },
+   "mutating": true
+  },
+  {
+   "from": "quote-add-form",
+   "to": "cpq-document-templates",
+   "via": {
+    "label": "Manage templates (in Quote template dropdown)",
+    "role": "link",
+    "kind": "external"
+   },
+   "mutating": false
+  }
+ ]
+}

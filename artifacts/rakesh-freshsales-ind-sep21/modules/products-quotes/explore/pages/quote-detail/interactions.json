@@ -1,0 +1,56 @@
+[
+ {
+  "label": "Edit",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "not opened"
+ },
+ {
+  "label": "View activity",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Recent activity: 'Quote created'"
+ },
+ {
+  "label": "(kebab) > Clone / Delete / Forget",
+  "role": "menuitem",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "Delete executed on own quote (Confirm: Delete this Quote? Yes/No); Clone not run; Forget (GDPR) skipped"
+ },
+ {
+  "label": "Save dropdown > Save / Save PDF to Files / Download as PDF",
+  "role": "menuitem",
+  "kind": "download",
+  "skipped": true,
+  "reason": "not executed"
+ },
+ {
+  "label": "Preview",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "not opened"
+ },
+ {
+  "label": "Send to customer",
+  "role": "button",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "would email a real address"
+ },
+ {
+  "label": "Sync quote with deal",
+  "role": "switch",
+  "kind": "toggles",
+  "skipped": true,
+  "reason": "modifies deal sync"
+ },
+ {
+  "label": "Add or edit products",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "dialog with product search/category list, 'Add new product'; Save would change the pre-existing deal value, so Cancelled"
+ }
+]

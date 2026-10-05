@@ -1,0 +1,76 @@
+{
+ "nodes": [
+  {
+   "id": "activity-types",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-activity-type",
+   "title": "Sales Activities"
+  },
+  {
+   "id": "activity-custom-fields",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales_activities/forms",
+   "title": "Custom sales activities fields"
+  },
+  {
+   "id": "activity-field-dependencies",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales_activities/field-dependency-configurations",
+   "title": "Manage field dependencies"
+  },
+  {
+   "id": "activities-dashboard",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=activities",
+   "title": "Activities Dashboard"
+  },
+  {
+   "id": "activity-goals",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/activity-goals/view/402015942771",
+   "title": "Activity goals"
+  },
+  {
+   "id": "external-deals-detail",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012470485",
+   "title": "Deal detail (outside module, not followed)"
+  }
+ ],
+ "edges": [
+  {
+   "from": "activity-types",
+   "to": "activity-custom-fields",
+   "via": {
+    "label": "Customize fields",
+    "role": "button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "activity-custom-fields",
+   "to": "activity-field-dependencies",
+   "via": {
+    "label": "Manage field dependencies",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "activities-dashboard",
+   "to": "activity-goals",
+   "via": {
+    "label": "View activity goals",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "activities-dashboard",
+   "to": "external-deals-detail",
+   "via": {
+    "label": "AgentTest Deal (related record link)",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  }
+ ]
+}

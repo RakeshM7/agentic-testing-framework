@@ -1,0 +1,10 @@
+[
+ {
+  "type": "dashboard-tab (Sales Trends report)",
+  "identifier": "tab 18846",
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=18846",
+  "createdAt": "2026-10-04T19:43:13Z",
+  "removedAt": "2026-10-04T19:44:07Z",
+  "note": "created via + > Sales Trends; removed via tab X. Also unintended: Request demo click opened a Freshchat conversation which auto-created Freshdesk ticket 21095814 (not removable by me)"
+ }
+]

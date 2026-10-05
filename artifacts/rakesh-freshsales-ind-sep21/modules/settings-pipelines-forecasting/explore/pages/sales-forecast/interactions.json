@@ -1,0 +1,36 @@
+[
+ {
+  "label": "Enable Quotas and Forecasting",
+  "role": "toggle",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "tenant setting"
+ },
+ {
+  "label": "Add forecast category",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "drawer: Name*, Description; Cancel/Save"
+ },
+ {
+  "label": "Edit (pencil) on Best-case",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "not opened"
+ },
+ {
+  "label": "Default forecast category",
+  "role": "combobox",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "tenant setting"
+ },
+ {
+  "label": "Freddy AI deal insights / commit suggestions",
+  "role": "toggle",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "tenant setting"
+ }
+]

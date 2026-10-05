@@ -1,0 +1,91 @@
+{
+ "nodes": [
+  {
+   "id": "landing",
+   "url": "/crm/sales/analytics",
+   "title": "Analytics"
+  },
+  {
+   "id": "builder",
+   "url": "/crm/sales/analytics/reports/new/page/1",
+   "title": "New report"
+  },
+  {
+   "id": "view",
+   "url": "/crm/sales/analytics/reports/<id>/page/1",
+   "title": "Report view"
+  },
+  {
+   "id": "settings",
+   "url": "/crm/sales/analytics/settings/schedules",
+   "title": "Settings"
+  },
+  {
+   "id": "attr-new",
+   "url": "/crm/sales/analytics/custom-attributes/new",
+   "title": "New attribute"
+  }
+ ],
+ "edges": [
+  {
+   "from": "landing",
+   "to": "builder",
+   "via": {
+    "label": "New Report",
+    "role": "button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "builder",
+   "to": "view",
+   "via": {
+    "label": "Save",
+    "role": "button",
+    "kind": "mutates"
+   },
+   "mutating": true
+  },
+  {
+   "from": "view",
+   "to": "landing",
+   "via": {
+    "label": "Move to trash > Trash",
+    "role": "menuitem",
+    "kind": "mutates"
+   },
+   "mutating": true
+  },
+  {
+   "from": "landing",
+   "to": "view",
+   "via": {
+    "label": "report row name",
+    "role": "gridcell",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "landing",
+   "to": "settings",
+   "via": {
+    "label": "Settings",
+    "role": "nav",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "settings",
+   "to": "attr-new",
+   "via": {
+    "label": "Create Attribute",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  }
+ ]
+}

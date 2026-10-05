@@ -1,0 +1,21 @@
+[
+ {
+  "label": "Add quote",
+  "role": "button",
+  "kind": "opens-overlay"
+ },
+ {
+  "label": "(gear) > Manage Quote templates / Manage Quote types / Customize Quote fields",
+  "role": "menuitem",
+  "kind": "navigates",
+  "skipped": true,
+  "reason": "not followed (settings)"
+ },
+ {
+  "label": "Filters (1 applied)",
+  "role": "button",
+  "kind": "toggles",
+  "skipped": true,
+  "reason": "not opened"
+ }
+]

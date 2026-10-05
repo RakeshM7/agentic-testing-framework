@@ -1,0 +1,170 @@
+- generic [ref=f37e1]:
+  - generic [ref=f37e42]:
+    - generic [ref=f37e45]:
+      - generic [ref=f37e46]:
+        - link "Connect your mailbox" [ref=f37e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f37e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f37e49] [cursor=pointer]
+    - generic [ref=f37e52]:
+      - generic [ref=f37e56]:
+        - list [ref=f37e57]:
+          - listitem [ref=f37e58]
+          - listitem [ref=f37e62]:
+            - generic "Send email" [ref=f37e63] [cursor=pointer]
+          - listitem [ref=f37e67]:
+            - generic "What's new" [ref=f37e68] [cursor=pointer]: "1"
+          - listitem [ref=f37e73]:
+            - generic [ref=f37e74]: "5"
+          - listitem [ref=f37e80]
+          - listitem [ref=f37e81]:
+            - img "Your User Avatar" [ref=f37e85] [cursor=pointer]
+        - textbox "Search your CRM" [ref=f37e95]
+        - generic [ref=f37e97]:
+          - emphasis [ref=f37e98]: Your trial ends in 8 days
+          - link "Explore plans" [ref=f37e104] [cursor=pointer]:
+            - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+          - button "Request demo" [ref=f37e106] [cursor=pointer]
+      - navigation:
+        - generic [ref=f37e108]:
+          - link [ref=f37e112] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f37e116]:
+            - listitem "Dashboards" [ref=f37e117]:
+              - link [ref=f37e120] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f37e123]:
+              - link [ref=f37e126] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f37e129]:
+              - link [ref=f37e132] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f37e135]:
+              - link [ref=f37e138] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f37e141]:
+              - link [ref=f37e144] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f37e147]:
+              - link [ref=f37e150] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f37e153]:
+              - link [ref=f37e156] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f37e159]:
+            - generic "Phone" [ref=f37e160]
+            - generic "Freshworks Switcher" [ref=f37e163]:
+              - button "Freshworks Switcher" [ref=f37e164] [cursor=pointer]
+      - generic [ref=f37e166]:
+        - list [ref=f37e168]:
+          - listitem [ref=f37e531]:
+            - generic "My goals" [ref=f37e539] [cursor=pointer]: (0)
+            - list
+        - list [ref=f37e182]:
+          - listitem [ref=f37e183]:
+            - generic [ref=f37e184]:
+              - button "Add goal" [ref=f37e185] [cursor=pointer]
+              - button [ref=f37e187] [cursor=pointer]
+          - listitem [ref=f37e191]:
+            - button "Filters" [ref=f37e193] [cursor=pointer]
+      - generic [ref=f37e199]:
+        - generic [ref=f37e200]:
+          - generic [ref=f37e201]:
+            - text: Showing for
+            - generic [ref=f37e542] [cursor=pointer]: user goal type, all goal periods and 4 more filters
+          - generic [ref=f37e545]:
+            - generic [ref=f37e548]: No activity goals found.
+            - button "Add goal" [ref=f37e551] [cursor=pointer]
+        - generic [ref=f37e215]:
+          - heading "Need help configuring your settings? Try these resources:" [level=5] [ref=f37e216]
+          - list [ref=f37e218]:
+            - listitem [ref=f37e219]:
+              - link "What are activity goals?" [ref=f37e220] [cursor=pointer]:
+                - /url: //crmsupport.freshworks.com/en/support/solutions/articles/50000003604-what-are-activity-goals-
+    - dialog [active] [ref=f37e627]:
+      - generic [ref=f37e630]:
+        - generic [ref=f37e631]:
+          - generic [ref=f37e632]: Call Log
+          - button "Close" [ref=f37e633] [cursor=pointer]:
+            - generic [aria-hidden] [ref=f37e634]: 
+        - generic [ref=f37e635]:
+          - generic [ref=f37e638]:
+            - generic [ref=f37e639]:
+              - generic [ref=f37e640]: Call type*
+              - generic [ref=f37e643]:
+                - link "Outgoing " [ref=f37e644] [cursor=pointer]:
+                  - /url: javascript:void(0)
+                  - generic [ref=f37e645]: Outgoing
+                  - text: 
+                - button "Outgoing" [ref=f37e647] [cursor=pointer]
+            - generic [ref=f37e648]:
+              - generic [ref=f37e649]: Outcome
+              - button "Select an outcome" [ref=f37e654] [cursor=pointer]
+            - generic [ref=f37e657]:
+              - generic [ref=f37e658]: Associate this phone call with ?*
+              - generic [ref=f37e661]:
+                - link "Existing Contact " [ref=f37e662] [cursor=pointer]:
+                  - /url: javascript:void(0)
+                  - generic [ref=f37e663]: Existing Contact
+                  - text: 
+                - button "Existing Contact" [ref=f37e665] [cursor=pointer]
+            - generic [ref=f37e666]:
+              - generic [ref=f37e667]: Name*
+              - button "Enter last name" [ref=f37e672] [cursor=pointer]
+          - generic [ref=f37e675]:
+            - generic [ref=f37e676]: Notes
+            - generic [ref=f37e679]:
+              - generic [ref=f37e680]:
+                - button "Start typing or" [ref=f37e681] [cursor=pointer]
+                - button "use a template." [ref=f37e682] [cursor=pointer]
+                - button "mention-placeholder" [ref=f37e683] [cursor=pointer]: "@mention people to notify them."
+              - application [ref=f37e685]:
+                - paragraph [ref=f37e688]
+                - generic [ref=f37e692]:
+                  - button "14" [ref=f37e693] [cursor=pointer]
+                  - option [ref=f37e695] [cursor=pointer]: "8"
+                  - option [ref=f37e696] [cursor=pointer]: "9"
+                  - option [ref=f37e697] [cursor=pointer]: "10"
+                  - option [ref=f37e698] [cursor=pointer]: "11"
+                  - option [ref=f37e699] [cursor=pointer]: "12"
+                  - option [ref=f37e700] [cursor=pointer]: "14"
+                  - option [ref=f37e701] [cursor=pointer]: "18"
+                  - option [ref=f37e702] [cursor=pointer]: "24"
+                  - option [ref=f37e703] [cursor=pointer]: "30"
+                  - option [ref=f37e704] [cursor=pointer]: "36"
+                  - option [ref=f37e705] [cursor=pointer]: "48"
+                  - option [ref=f37e706] [cursor=pointer]: "60"
+                  - option [ref=f37e707] [cursor=pointer]: "72"
+                  - option [ref=f37e708] [cursor=pointer]: "96"
+                  - button "Bold" [ref=f37e709] [cursor=pointer]
+                  - button "Italic" [ref=f37e713] [cursor=pointer]
+                  - button "Underline" [ref=f37e717] [cursor=pointer]
+                  - generic [ref=f37e721]:
+                    - button "Ordered List" [ref=f37e722] [cursor=pointer]
+                    - button "Ordered List" [ref=f37e726] [cursor=pointer]
+                    - option [ref=f37e727] [cursor=pointer]: Default
+                    - option [ref=f37e728] [cursor=pointer]: Lower Alpha
+                    - option [ref=f37e729] [cursor=pointer]: Lower Greek
+                    - option [ref=f37e730] [cursor=pointer]: Lower Roman
+                    - option [ref=f37e731] [cursor=pointer]: Upper Alpha
+                    - option [ref=f37e732] [cursor=pointer]: Upper Roman
+                  - generic [ref=f37e733]:
+                    - button "Unordered List" [ref=f37e734] [cursor=pointer]
+                    - button "Unordered List" [ref=f37e738] [cursor=pointer]
+                    - option [ref=f37e739] [cursor=pointer]: Default
+                    - option [ref=f37e740] [cursor=pointer]: Circle
+                    - option [ref=f37e741] [cursor=pointer]: Disc
+                    - option [ref=f37e742] [cursor=pointer]: Square
+                  - button "Insert Link" [ref=f37e743] [cursor=pointer]
+        - generic [ref=f37e748]:
+          - button "Cancel" [ref=f37e749] [cursor=pointer]
+          - generic [ref=f37e751]:
+            - button "Save" [ref=f37e752] [cursor=pointer]
+            - button [ref=f37e754] [cursor=pointer]
+    - generic [ref=f37e222] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe
+  - status [ref=f37e758]

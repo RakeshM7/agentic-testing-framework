@@ -1,0 +1,635 @@
+[
+  {
+    "slug": "dashboards",
+    "name": "Dashboards",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards",
+    "navPath": [
+      "Dashboards"
+    ],
+    "description": "Configurable dashboards of widgets (default: Activities Dashboard, tab 353503).",
+    "howItWorks": "Landing opens the Activities Dashboard; Export and Edit buttons were disabled on landing. Widgets summarise CRM data across modules.",
+    "keyEntities": [
+      "Dashboard",
+      "Widget"
+    ],
+    "keyActions": [
+      "View dashboard",
+      "Switch dashboard tab",
+      "Edit",
+      "Export"
+    ],
+    "subPages": [],
+    "dependsOn": [
+      "contacts",
+      "accounts",
+      "deals"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "contacts",
+    "name": "Contacts",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts",
+    "navPath": [
+      "Contacts"
+    ],
+    "description": "Leads/contacts the team sells to. Table with saved views (All contacts, 14 more views).",
+    "howItWorks": "Table listing (default view id 402015942732, sorted by lead score) with name, account, job title, email, mobile, status, tags, sales owner. Toolbar: Customize table, Import contacts, Add contact, Table/other view toggle, Bulk actions, Filter by. Detail page at /contacts/<id>. Contact status uses lifecycle stages. 2 contacts exist (AgentTest Lead ...).",
+    "keyEntities": [
+      "Contact",
+      "Lifecycle stage",
+      "Tag",
+      "View"
+    ],
+    "keyActions": [
+      "Add contact",
+      "Import contacts",
+      "Filter",
+      "Bulk actions",
+      "Customize table",
+      "Open contact detail",
+      "Sort columns"
+    ],
+    "subPages": [
+      "/crm/sales/contacts/<id>"
+    ],
+    "dependsOn": [
+      "accounts"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ],
+    "mutationNotes": "Existing data are AgentTest records created by earlier runs; do not delete anything not created this run."
+  },
+  {
+    "slug": "accounts",
+    "name": "Accounts",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts",
+    "navPath": [
+      "Accounts"
+    ],
+    "description": "Companies associated with contacts and deals.",
+    "howItWorks": "Table listing with views, filter, bulk actions, Add account; detail page per account. Contacts and deals link to accounts.",
+    "keyEntities": [
+      "Account",
+      "View",
+      "Tag"
+    ],
+    "keyActions": [
+      "Add account",
+      "Filter",
+      "Bulk actions",
+      "Import accounts",
+      "Open account detail"
+    ],
+    "subPages": [
+      "/crm/sales/accounts/<id>"
+    ],
+    "dependsOn": [
+      "contacts"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "deals",
+    "name": "Deals",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals",
+    "navPath": [
+      "Deals"
+    ],
+    "description": "Sales opportunities in pipelines; Pipeline (kanban) view by default plus table view.",
+    "howItWorks": "Default view is a pipeline board with stage columns showing weighted value; 17 deals visible in All deals. Add deal, filter, view toggle (Pipeline/Table), bulk actions. Deals reference contacts and accounts and a pipeline/stage.",
+    "keyEntities": [
+      "Deal",
+      "Pipeline",
+      "Deal stage",
+      "Product"
+    ],
+    "keyActions": [
+      "Add deal",
+      "Drag deal between stages",
+      "Filter",
+      "Switch view",
+      "Open deal detail"
+    ],
+    "subPages": [
+      "/crm/sales/deals/<id>"
+    ],
+    "dependsOn": [
+      "contacts",
+      "accounts",
+      "settings-pipelines-forecasting"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "conversations",
+    "name": "Conversations (Email inbox)",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/awaiting_response",
+    "navPath": [
+      "Conversations"
+    ],
+    "description": "Email inbox: Team Inbox, Inbox, Sent, Scheduled, Drafts, Trash, Email Templates.",
+    "howItWorks": "Landing prompts 'Connect your Inbox to Freshsales' and a choice of email provider; no mailbox connected in this tenant, so mail lists are empty. Awaiting-response is the default route.",
+    "keyEntities": [
+      "Email",
+      "Team inbox",
+      "Email template"
+    ],
+    "keyActions": [
+      "Connect mailbox",
+      "Compose email",
+      "Browse folders",
+      "Manage templates"
+    ],
+    "subPages": [
+      "Team Inbox",
+      "Inbox",
+      "Sent",
+      "Scheduled",
+      "Drafts",
+      "Trash",
+      "Email Templates"
+    ],
+    "dependsOn": [
+      "contacts"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ],
+    "mutationNotes": "Connecting a mailbox needs third-party OAuth; not attempted."
+  },
+  {
+    "slug": "analytics",
+    "name": "Analytics (Reports)",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics",
+    "navPath": [
+      "Analytics"
+    ],
+    "description": "Reports library with Curated reports and New Report.",
+    "howItWorks": "Landing lists curated reports; New Report and Help Center buttons. Reports cover contacts, deals, activities.",
+    "keyEntities": [
+      "Report",
+      "Curated report"
+    ],
+    "keyActions": [
+      "New Report",
+      "Open report",
+      "Help Center"
+    ],
+    "subPages": [],
+    "dependsOn": [
+      "contacts",
+      "accounts",
+      "deals"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "products-quotes",
+    "name": "Products and Quotes (CPQ)",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/products",
+    "navPath": [
+      "Quick-create (+) > Add product / Add Quote"
+    ],
+    "description": "Product catalog (Products list) and quote documents (Add Quote) with CPQ settings and document templates.",
+    "howItWorks": "Products list at /products (view id 402015942778). Quotes are created via quick-create 'Add Quote'; settings under Admin Settings > Account Settings > CPQ Settings and Document Templates (Quotes). No Products/Quotes link in the main left nav; reached via URL or the + menu.",
+    "keyEntities": [
+      "Product",
+      "Quote/Document",
+      "Document template"
+    ],
+    "keyActions": [
+      "Add product",
+      "Add Quote",
+      "Import products",
+      "Configure CPQ"
+    ],
+    "subPages": [
+      "/crm/sales/settings/cpq",
+      "/crm/sales/settings/cpq-document-templates"
+    ],
+    "dependsOn": [
+      "deals"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "sales-sequences",
+    "name": "Sales Sequences",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/sales-sequences",
+    "navPath": [
+      "Quick-create (+) > Create sales sequence"
+    ],
+    "description": "Automated multi-step outreach sequences for contacts.",
+    "howItWorks": "Landing redirects to /sales-sequences/filters; creation wizard at /sales-sequences/contact/new (linked from setup guide and + menu).",
+    "keyEntities": [
+      "Sales sequence",
+      "Sequence step"
+    ],
+    "keyActions": [
+      "Create sales sequence",
+      "Enroll contacts"
+    ],
+    "subPages": [
+      "/crm/sales/sales-sequences/contact/new"
+    ],
+    "dependsOn": [
+      "contacts",
+      "conversations"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "sales-activities",
+    "name": "Sales Activities (tasks, meetings, calls)",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-activity-type",
+    "navPath": [
+      "Quick-create (+) > Add task / Add meeting / Add call log / Send SMS",
+      "Admin Settings > Deals & Pipelines > Sales Activities"
+    ],
+    "description": "Tasks, meetings, call logs and SMS recorded against records; activity types configured in settings.",
+    "howItWorks": "No standalone tasks page (/crm/sales/tasks returns Page Not Found). Activities are created from the + menu or from record detail pages; activity types are configured at settings/sales-activity-type; the Activities Dashboard summarises them.",
+    "keyEntities": [
+      "Task",
+      "Meeting/Appointment",
+      "Call log",
+      "SMS",
+      "Activity type"
+    ],
+    "keyActions": [
+      "Add task",
+      "Add meeting",
+      "Add call log",
+      "Send SMS",
+      "Configure activity types"
+    ],
+    "subPages": [],
+    "dependsOn": [
+      "contacts",
+      "accounts",
+      "deals"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "settings-data-model",
+    "name": "Admin: Fields, Custom Modules and Lifecycle",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings",
+    "navPath": [
+      "Admin Settings > Leads, Contacts, & Accounts"
+    ],
+    "description": "Customise contact/account fields, custom modules, lifecycle stages, scoring and lead-capture.",
+    "howItWorks": "Group lists: Website Embed Code (marketer app), Contacts (/settings/contacts/forms), Accounts (/settings/sales_accounts/forms), Custom Modules (/settings/module-customization), Contact Lifecycle Stages, Contact Scoring (predictive_scoring, Freddy), Web Forms, CRM Code Library, LinkedIn Lead Gen Forms. Account Settings group adds Tags, Currency.",
+    "keyEntities": [
+      "Field",
+      "Form layout",
+      "Custom module",
+      "Lifecycle stage",
+      "Web form",
+      "Tag"
+    ],
+    "keyActions": [
+      "Edit fields",
+      "Create custom module",
+      "Edit lifecycle stages",
+      "Create web form"
+    ],
+    "subPages": [
+      "settings/contacts/forms",
+      "settings/sales_accounts/forms",
+      "settings/module-customization",
+      "settings/lifecycle_stages",
+      "settings/predictive_scoring",
+      "settings/integrations/webform/classic",
+      "settings/integrations/freshsales-web",
+      "settings/linkedin-lead-capture",
+      "settings/tags"
+    ],
+    "dependsOn": [
+      "contacts",
+      "accounts"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "settings-pipelines-forecasting",
+    "name": "Admin: Deals, Pipelines and Forecasting",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/deal_pipeline",
+    "navPath": [
+      "Admin Settings > Deals & Pipelines"
+    ],
+    "description": "Deal fields, pipelines/stages, sales activity types, quotas and forecasting.",
+    "howItWorks": "Group lists Deals (/settings/deals/forms), Sales Activities, Pipelines (/settings/deal_pipeline), Quotas and Forecasting (/settings/sales-forecast; direct navigation errored/was blocked, possibly plan-gated, unverified).",
+    "keyEntities": [
+      "Pipeline",
+      "Deal stage",
+      "Deal field",
+      "Quota"
+    ],
+    "keyActions": [
+      "Edit pipeline stages",
+      "Edit deal fields",
+      "Set quotas"
+    ],
+    "subPages": [
+      "settings/deals/forms",
+      "settings/deal_pipeline",
+      "settings/sales-forecast"
+    ],
+    "dependsOn": [
+      "deals"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "settings-teams-territories",
+    "name": "Admin: Users, Roles, Territories",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/users/view/active",
+    "navPath": [
+      "Admin Settings > Teams & Territories"
+    ],
+    "description": "Users, roles, territories, auto-assignment rules, conversation groups.",
+    "howItWorks": "Links: Auto-assignment Rules, Users, Roles (/settings/roles), Territories, Conversation Groups (messaging app).",
+    "keyEntities": [
+      "User",
+      "Role",
+      "Territory",
+      "Assignment rule",
+      "Group"
+    ],
+    "keyActions": [
+      "Invite user",
+      "Edit role",
+      "Create territory",
+      "Create auto-assignment rule"
+    ],
+    "subPages": [
+      "settings/auto-assignment-rules",
+      "settings/users/view/active",
+      "settings/roles",
+      "settings/territories"
+    ],
+    "dependsOn": [],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ],
+    "mutationNotes": "Inviting users emails real addresses; avoid in full-run unless approved."
+  },
+  {
+    "slug": "data-import-migration",
+    "name": "Admin: Data Import and Migration",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/import-history",
+    "navPath": [
+      "Admin Settings > Data & Import"
+    ],
+    "description": "Imports for contacts, accounts, deals, custom modules, products, users; migrations from Salesforce, Insightly, Zoho, Pipedrive, SalesforceIQ, HubSpot; Import History.",
+    "howItWorks": "Tile page; each tile starts an import wizard (file upload). Import History at /import-history.",
+    "keyEntities": [
+      "Import job",
+      "Migration"
+    ],
+    "keyActions": [
+      "Import contacts",
+      "Import accounts",
+      "Import deals",
+      "Import products",
+      "View import history"
+    ],
+    "subPages": [
+      "import-history"
+    ],
+    "dependsOn": [
+      "contacts",
+      "accounts",
+      "deals"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ],
+    "mutationNotes": "Imports create many records; only with a purpose-built file in full-run."
+  },
+  {
+    "slug": "settings-email-channels",
+    "name": "Admin: Email and Channels",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/email/templates",
+    "navPath": [
+      "Admin Settings > Channels"
+    ],
+    "description": "Email templates, create-contacts-from-email, team inbox, email domains and (messaging app) chat/WhatsApp/SMS/etc channels.",
+    "howItWorks": "Sales app pages: settings/email/incoming, settings/email/team-inbox, settings/email/templates. Many channel and conversation settings live under /crm/messaging/settings/* (same origin, separate sub-app) -- web chat, WhatsApp, SMS, Facebook, Instagram, LINE, Apple Messages, SLA, canned responses, CSAT, labels, skills, etc. Marketing Email Configuration and Email Domains live under /crm/marketer.",
+    "keyEntities": [
+      "Email template",
+      "Team inbox",
+      "Channel",
+      "SLA policy",
+      "Canned response"
+    ],
+    "keyActions": [
+      "Create template",
+      "Configure channel",
+      "Configure SLA"
+    ],
+    "subPages": [
+      "settings/email/incoming",
+      "settings/email/team-inbox",
+      "settings/email/templates",
+      "/crm/messaging/settings/*"
+    ],
+    "dependsOn": [
+      "conversations"
+    ],
+    "reachable": true,
+    "sources": [
+      "K1"
+    ]
+  },
+  {
+    "slug": "settings-apps-integrations",
+    "name": "Admin: Apps and Integrations",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/integrations/third-party-applications/view/all",
+    "navPath": [
+      "Admin Settings > Apps & Integrations"
+    ],
+    "description": "Marketplace apps, tasks-and-tickets, conversation integrations/webhooks/mobile app.",
+    "howItWorks": "Marketplace Apps list at third-party-applications/view/all; conversation integrations and webhooks under /crm/messaging/settings.",
+    "keyEntities": [
+      "App",
+      "Webhook"
+    ],
+    "keyActions": [
+      "Install app",
+      "Configure webhook"
+    ],
+    "subPages": [],
+    "dependsOn": [],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ]
+  },
+  {
+    "slug": "settings-account",
+    "name": "Admin: Account and CRM Settings",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/account-settings",
+    "navPath": [
+      "Admin Settings > Account Settings"
+    ],
+    "description": "Global CRM settings, Audit Log, Announcements, Currency, Tags, Battlecards, CPQ settings, Plans & Billing, Freddy AI, agent status, business hours.",
+    "howItWorks": "Links: CRM Settings, Account Settings, Audit Log (/settings/audit-logs), Announcements, Currency, Tags, Battlecards (/settings/cms/solutions), CPQ Settings, Plans & Billing (/subscriptions, trial ends in 8 days).",
+    "keyEntities": [
+      "Setting",
+      "Audit log entry",
+      "Currency",
+      "Battlecard",
+      "Subscription"
+    ],
+    "keyActions": [
+      "Edit settings",
+      "View audit log",
+      "Manage currency"
+    ],
+    "subPages": [
+      "settings/crm-settings",
+      "settings/account-settings",
+      "settings/audit-logs",
+      "settings/announcements",
+      "settings/currency",
+      "settings/cms/solutions"
+    ],
+    "dependsOn": [],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ],
+    "mutationNotes": "Plans and Billing must not be changed."
+  },
+  {
+    "slug": "freshworks-admin-center",
+    "name": "Freshworks Admin Center",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/",
+    "navPath": [
+      "Freshworks Switcher > Admin Center (or root URL /)"
+    ],
+    "description": "Organization-level console: users, subscriptions, security, organization, audit logs.",
+    "howItWorks": "Root URL shows profile (Org Admin), org URL, My Accounts (Freshworks CRM tile to /crm/sales), explore other products, and Move Account form. Nav: Users (/users-groups/users), My Subscriptions, Security (/security/agents), Organization, Audit Logs.",
+    "keyEntities": [
+      "Organization",
+      "User",
+      "Subscription",
+      "Security policy"
+    ],
+    "keyActions": [
+      "Edit profile",
+      "Edit organization",
+      "Manage users",
+      "Move account"
+    ],
+    "subPages": [
+      "/users-groups/users",
+      "/subscriptions",
+      "/security/agents",
+      "/organization",
+      "/audit-logs"
+    ],
+    "dependsOn": [],
+    "reachable": true,
+    "sources": [
+      "K1",
+      "K2"
+    ],
+    "mutationNotes": "Move Account and organization edits are out of scope."
+  },
+  {
+    "slug": "marketing-lists",
+    "name": "Lists (Marketing Lists)",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/lists",
+    "navPath": [
+      "n/a"
+    ],
+    "description": "Contact groupings for campaigns (per API docs).",
+    "howItWorks": "Direct navigation to /crm/sales/lists returned 403 'You are not authorised to perform this operation'.",
+    "keyEntities": [
+      "Marketing list"
+    ],
+    "keyActions": [],
+    "subPages": [],
+    "dependsOn": [
+      "contacts"
+    ],
+    "reachable": false,
+    "sources": [
+      "K1",
+      "K2"
+    ],
+    "unreachableReason": "403 Access Denied at /crm/sales/lists; not in nav"
+  },
+  {
+    "slug": "workflows",
+    "name": "Workflows",
+    "entryUrl": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/workflows",
+    "navPath": [
+      "n/a"
+    ],
+    "description": "Rule-based automation (per support docs).",
+    "howItWorks": "/crm/sales/workflows and /settings/workflows return Page Not Found; no Workflows entry in Admin Settings for this trial plan/role.",
+    "keyEntities": [
+      "Workflow"
+    ],
+    "keyActions": [],
+    "subPages": [],
+    "dependsOn": [],
+    "reachable": false,
+    "sources": [
+      "K1",
+      "K2"
+    ],
+    "unreachableReason": "Page Not Found; no nav entry in this tenant (likely plan-gated)"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "question": "[Scope][Blocking] Explore-agent reached Sales Sequences via the Conversations tab > Sales Sequences (/crm/sales/sales-sequences/filters) rather than the Quick-create (+) path listed in discovery; should test cases use the Conversations > Sales Sequences path as the canonical entry point?",
+    "navigation": "Conversations > Sales Sequences (flow view-sequences-list); compare with the Quick-create (+) menu to see whether a sequence entry exists there.",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Blocking] Which of the exit and entry rules (e.g. enrollment limit, duplicate exclusion, Classic vs Smart schedule semantics) must tests verify, and can enrollment be tested without real contacts?",
+    "navigation": "Conversations > Sales Sequences > Create sales sequence (flow create-sales-sequence)",
+    "csvAnswer": "Enrolment cannot be tested without real contacts, Entry and exit rules are defined by the filter option that are present in the page"
+  },
+  {
+    "question": "[Behavior][Nice-to-have] Can the leftover sequence 'Explore Test Sequence' (id 402000016478) be deleted manually or via an approved delete?",
+    "navigation": "Conversations > Sales Sequences > row actions > Delete (flow create-sales-sequence)",
+    "csvAnswer": "Delete via an approved delete"
+  },
+  {
+    "question": "[Edge Case][Nice-to-have] What validation applies to the sequence name (empty, duplicate name, maximum length) on Save: is a duplicate name blocked, auto-suffixed, or allowed?",
+    "navigation": "Conversations > Sales Sequences > Create sales sequence > edit the name field at the top, add a task step, Save (flow create-sales-sequence)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Nice-to-have] Under full-run, may tests use 'Save and start' or the status toggle to activate a task-only sequence that has no enrolled contacts, or must every created sequence remain Inactive?",
+    "navigation": "Conversations > Sales Sequences > Create sales sequence > add a task step > Save and start vs Save (flow create-sales-sequence)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Nice-to-have] When a cloned sequence is saved, is the expected result an Inactive sequence named '<original> - Copy' with the same steps, and may clone-save be executed live on a sequence the run created itself (with the copy deleted afterwards)?",
+    "navigation": "Conversations > Sales Sequences > row actions > Clone, then Save (flow clone-and-share-sequence)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Nice-to-have] Should Share be tested by saving each option (Just me, Everyone, Selected users/teams/territories) on a run-created sequence, and what is the expected visibility result for another user; is a second user available?",
+    "navigation": "Conversations > Sales Sequences > row actions > Share (flow clone-and-share-sequence)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Nice-to-have] Is Edit (rename, change steps, change exit rules) and Delete in scope for run-created sequences, and what confirmation and post-delete behavior (removed from list, Trash/recoverable or permanent) is expected?",
+    "navigation": "Conversations > Sales Sequences > row actions > Edit / Delete, or sequence detail > Edit sequence (flows create-sales-sequence, clone-and-share-sequence)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Scope][Nice-to-have] Are the other step types (email, email reminder, LinkedIn task, call reminder, SMS), Accounts-type sequences, and Classic/Smart configuration in scope for test cases, given SMS/email may depend on unconfigured providers or mailboxes?",
+    "navigation": "Conversations > Sales Sequences > Create sales sequence > Add step options; Who can enter > Accounts; type selector Outbound/Classic/Smart (flow create-sales-sequence)",
+    "csvAnswer": ""
+  }
+]

@@ -1,0 +1,134 @@
+- generic [active] [ref=f36e1]:
+  - generic [ref=f36e42]:
+    - generic [ref=f36e45]:
+      - generic [ref=f36e46]:
+        - link "Connect your mailbox" [ref=f36e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+      - generic "Close" [ref=f36e48] [cursor=pointer]
+    - generic [ref=f36e51]:
+      - generic [ref=f36e52]:
+        - list [ref=f36e54]:
+          - listitem [ref=f36e55]:
+            - link "Admin Settings" [ref=f36e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f36e57]: Contact Lifecycle Stages
+        - generic [ref=f36e59]:
+          - list [ref=f36e60]:
+            - listitem [ref=f36e61]
+            - listitem [ref=f36e65]:
+              - generic "Send email" [ref=f36e66] [cursor=pointer]
+            - listitem [ref=f36e70]:
+              - generic "What's new" [ref=f36e71] [cursor=pointer]: "1"
+            - listitem [ref=f36e76]:
+              - generic [ref=f36e77]: "5"
+            - listitem [ref=f36e83]
+            - listitem [ref=f36e84]:
+              - img "Your User Avatar" [ref=f36e88] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f36e98]
+          - generic [ref=f36e100]:
+            - emphasis [ref=f36e101]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f36e107] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f36e109] [cursor=pointer]
+      - navigation:
+        - generic [ref=f36e111]:
+          - link [ref=f36e115] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f36e119]:
+            - listitem "Dashboards" [ref=f36e120]:
+              - link [ref=f36e123] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f36e126]:
+              - link [ref=f36e129] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f36e132]:
+              - link [ref=f36e135] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f36e138]:
+              - link [ref=f36e141] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f36e144]:
+              - link [ref=f36e147] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f36e150]:
+              - link [ref=f36e153] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f36e156]:
+              - link [ref=f36e159] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f36e162]:
+            - generic "Phone" [ref=f36e163]
+            - generic "Freshworks Switcher" [ref=f36e166]:
+              - button "Freshworks Switcher" [ref=f36e167] [cursor=pointer]
+      - generic [ref=f36e171]:
+        - generic [ref=f36e173]:
+          - heading "Contact Lifecycle Stages" [level=4] [ref=f36e179]
+          - generic [ref=f36e180]: "Customize everything about the default lifecycle stages: rename, reorder or disable them. Plus you can add a new stage that reflects your business process, like Evangelist or Marketing Qualified Lead. All statuses within a stage are customizable. If you want contacts to change stages automatically, use the rules at the bottom of this page."
+          - link "Learn more" [ref=f36e184] [cursor=pointer]:
+            - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002542-how-to-manage-lifecycle-stages-and-status-for-contacts-
+        - generic [ref=f36e195]:
+          - generic [ref=f36e196]:
+            - heading "Active stages" [level=4] [ref=f36e197]
+            - button "Add lifecycle stage" [ref=f36e198] [cursor=pointer]
+          - list [ref=f36e201]:
+            - list [ref=f36e202]:
+              - listitem [ref=f36e203]:
+                - listitem [ref=f36e204]:
+                  - generic [ref=f36e206]:
+                    - generic [ref=f36e207]:
+                      - generic [ref=f36e208]: 
+                      - generic [ref=f36e210]:
+                        - heading "Lead" [level=5] [ref=f36e211]
+                        - list [ref=f36e212]:
+                          - listitem [ref=f36e213]:
+                            - generic [ref=f36e214] [cursor=pointer]
+                    - list [ref=f36e219]:
+                      - listitem [ref=f36e220]:
+                        - generic [ref=f36e221]: New
+                      - listitem [ref=f36e226]:
+                        - generic [ref=f36e227]: Contacted
+                      - listitem [ref=f36e232]:
+                        - generic [ref=f36e233]: Interested
+                      - listitem [ref=f36e238]:
+                        - generic [ref=f36e239]: Unqualified
+              - listitem [ref=f36e244]:
+                - listitem [ref=f36e245]:
+                  - generic [ref=f36e253]:
+                    - generic [ref=f36e254]:
+                      - generic [ref=f36e255]: 
+                      - generic [ref=f36e257]:
+                        - heading "Sales Qualified Lead" [level=5] [ref=f36e258]
+                        - list [ref=f36e259]:
+                          - listitem [ref=f36e260]:
+                            - generic [ref=f36e261] [cursor=pointer]
+                    - list [ref=f36e266]:
+                      - listitem [ref=f36e267]:
+                        - generic [ref=f36e268]: Qualified
+                      - listitem [ref=f36e273]:
+                        - generic [ref=f36e274]: Lost
+            - listitem [ref=f36e279]:
+              - listitem [ref=f36e280]:
+                - generic [ref=f36e288]:
+                  - generic [ref=f36e290]:
+                    - heading "Customer" [level=5] [ref=f36e291]
+                    - list
+                  - list [ref=f36e292]:
+                    - listitem [ref=f36e293]:
+                      - generic [ref=f36e294]: Won
+                    - listitem [ref=f36e299]:
+                      - generic [ref=f36e300]: Churned
+        - generic [ref=f36e305]:
+          - heading "Rules for changing stages" [level=4] [ref=f36e306]
+          - generic [ref=f36e307]:
+            - generic [ref=f36e309] [cursor=pointer]
+            - generic [ref=f36e315]: Whenever a deal is added, change contact's stage to
+            - button "Sales Qualified Lead" [ref=f36e316] [cursor=pointer]
+          - generic [ref=f36e319]:
+            - generic [ref=f36e321] [cursor=pointer]
+            - generic [ref=f36e327]: Whenever a deal is won, change contact's stage to
+            - button "Customer" [ref=f36e328] [cursor=pointer]
+    - generic [ref=f36e332] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

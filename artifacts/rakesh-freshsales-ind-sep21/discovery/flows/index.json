@@ -1,0 +1,211 @@
+[
+  {
+    "slug": "open-dashboards",
+    "title": "Open Dashboards",
+    "goal": "Open Dashboards",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/my_dashboards?tab=353503",
+    "navPath": "Dashboards",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-dashboards.md"
+  },
+  {
+    "slug": "open-contacts",
+    "title": "Open the Contacts list",
+    "goal": "Open the Contacts list",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/contacts/view/402015942732",
+    "navPath": "Contacts",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-contacts.md"
+  },
+  {
+    "slug": "open-accounts",
+    "title": "Open the Accounts list",
+    "goal": "Open the Accounts list",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/accounts/view/402015942758",
+    "navPath": "Accounts",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-accounts.md"
+  },
+  {
+    "slug": "open-deals",
+    "title": "Open the Deals pipeline",
+    "goal": "Open the Deals pipeline",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/deals/view/402015942744",
+    "navPath": "Deals",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-deals.md"
+  },
+  {
+    "slug": "open-conversations",
+    "title": "Open Conversations (email inbox)",
+    "goal": "Open Conversations (email inbox)",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/conversations/awaiting_response",
+    "navPath": "Conversations",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-conversations.md"
+  },
+  {
+    "slug": "open-analytics",
+    "title": "Open Analytics",
+    "goal": "Open Analytics",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/analytics",
+    "navPath": "Analytics",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-analytics.md"
+  },
+  {
+    "slug": "open-admin-settings",
+    "title": "Open Admin Settings",
+    "goal": "Open Admin Settings",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "Admin Settings",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-admin-settings.md"
+  },
+  {
+    "slug": "open-settings-leads-contacts-accounts",
+    "title": "Open the Admin Settings group 'Leads, Contacts, & Accounts'",
+    "goal": "Open the Admin Settings group 'Leads, Contacts, & Accounts'",
+    "kind": "settings",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "Admin Settings > Leads, Contacts, & Accounts",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-settings-leads-contacts-accounts.md"
+  },
+  {
+    "slug": "open-settings-deals-pipelines",
+    "title": "Open the Admin Settings group 'Deals & Pipelines'",
+    "goal": "Open the Admin Settings group 'Deals & Pipelines'",
+    "kind": "settings",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "Admin Settings > Deals & Pipelines",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-settings-deals-pipelines.md"
+  },
+  {
+    "slug": "open-settings-teams-territories",
+    "title": "Open the Admin Settings group 'Teams & Territories'",
+    "goal": "Open the Admin Settings group 'Teams & Territories'",
+    "kind": "settings",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "Admin Settings > Teams & Territories",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-settings-teams-territories.md"
+  },
+  {
+    "slug": "open-settings-data-import",
+    "title": "Open the Admin Settings group 'Data & Import'",
+    "goal": "Open the Admin Settings group 'Data & Import'",
+    "kind": "settings",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "Admin Settings > Data & Import",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-settings-data-import.md"
+  },
+  {
+    "slug": "open-settings-channels",
+    "title": "Open the Admin Settings group 'Channels'",
+    "goal": "Open the Admin Settings group 'Channels'",
+    "kind": "settings",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "Admin Settings > Channels",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-settings-channels.md"
+  },
+  {
+    "slug": "open-settings-apps-integrations",
+    "title": "Open the Admin Settings group 'Apps & Integrations'",
+    "goal": "Open the Admin Settings group 'Apps & Integrations'",
+    "kind": "settings",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "Admin Settings > Apps & Integrations",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-settings-apps-integrations.md"
+  },
+  {
+    "slug": "open-settings-account-settings",
+    "title": "Open the Admin Settings group 'Account Settings'",
+    "goal": "Open the Admin Settings group 'Account Settings'",
+    "kind": "settings",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "Admin Settings > Account Settings",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-settings-account-settings.md"
+  },
+  {
+    "slug": "open-quick-create-menu",
+    "title": "Open the quick-create (+) menu",
+    "goal": "Open the quick-create (+) menu",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "+ (top bar)",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-quick-create-menu.md"
+  },
+  {
+    "slug": "open-user-menu",
+    "title": "Open the profile menu",
+    "goal": "Open the profile menu",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/settings",
+    "navPath": "Avatar (top bar)",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-user-menu.md"
+  },
+  {
+    "slug": "open-products",
+    "title": "Open the Products list",
+    "goal": "Open the Products list",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/products",
+    "navPath": "URL /crm/sales/products (no left-nav link)",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-products.md"
+  },
+  {
+    "slug": "open-sales-sequences",
+    "title": "Open Sales Sequences",
+    "goal": "Open Sales Sequences",
+    "kind": "navigation",
+    "entryPage": "/crm/sales/sales-sequences",
+    "navPath": "URL /crm/sales/sales-sequences",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-sales-sequences.md"
+  },
+  {
+    "slug": "open-admin-center",
+    "title": "Open the Freshworks Admin Center",
+    "goal": "Open the Freshworks Admin Center",
+    "kind": "navigation",
+    "entryPage": "/",
+    "navPath": "Root URL /",
+    "stepCount": 1,
+    "mutating": false,
+    "file": "flows/open-admin-center.md"
+  }
+]

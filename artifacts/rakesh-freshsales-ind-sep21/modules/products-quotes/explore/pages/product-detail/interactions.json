@@ -1,0 +1,33 @@
+[
+ {
+  "label": "(pencil)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Edit product drawer"
+ },
+ {
+  "label": "(kebab) > Delete",
+  "role": "menuitem",
+  "kind": "mutates",
+  "overlay": "Confirm: Delete this product and its related data? (Recycle Bin 90 days) No/Yes"
+ },
+ {
+  "label": "(kebab) > Clone",
+  "role": "menuitem",
+  "kind": "opens-overlay",
+  "overlay": "Clone product drawer"
+ },
+ {
+  "label": "Add or edit prices",
+  "role": "link",
+  "kind": "opens-overlay",
+  "overlay": "price dialog (seen in prior run)"
+ },
+ {
+  "label": "Manage fields",
+  "role": "link",
+  "kind": "navigates",
+  "skipped": true,
+  "reason": "leaves module"
+ }
+]

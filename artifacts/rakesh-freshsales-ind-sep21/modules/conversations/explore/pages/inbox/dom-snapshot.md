@@ -1,0 +1,192 @@
+- generic [active] [ref=f24e1]:
+  - generic [ref=f24e42]:
+    - generic [ref=f24e45]:
+      - generic [ref=f24e46]:
+        - link "Connect your mailbox" [ref=f24e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f24e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f24e49] [cursor=pointer]
+    - generic [ref=f24e52]:
+      - generic [ref=f24e56]:
+        - list [ref=f24e57]:
+          - listitem [ref=f24e58]
+          - listitem [ref=f24e62]:
+            - generic "Send email" [ref=f24e63] [cursor=pointer]
+          - listitem [ref=f24e67]:
+            - generic "What's new" [ref=f24e68] [cursor=pointer]: "1"
+          - listitem [ref=f24e73]:
+            - generic [ref=f24e74]: "5"
+          - listitem [ref=f24e80]
+          - listitem [ref=f24e81]:
+            - img "Your User Avatar" [ref=f24e85] [cursor=pointer]
+        - textbox "Search your CRM" [ref=f24e95]
+        - generic [ref=f24e97]:
+          - emphasis [ref=f24e98]: Your trial ends in 8 days
+          - link "Explore plans" [ref=f24e104] [cursor=pointer]:
+            - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+          - button "Request demo" [ref=f24e106] [cursor=pointer]
+      - navigation:
+        - generic [ref=f24e108]:
+          - link [ref=f24e112] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f24e116]:
+            - listitem "Dashboards" [ref=f24e117]:
+              - link [ref=f24e120] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f24e123]:
+              - link [ref=f24e126] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f24e129]:
+              - link [ref=f24e132] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f24e135]:
+              - link [ref=f24e138] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f24e141]:
+              - link [ref=f24e144] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f24e147]:
+              - link [ref=f24e150] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f24e153]:
+              - link [ref=f24e156] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f24e159]:
+            - generic "Phone" [ref=f24e160]
+            - generic "Freshworks Switcher" [ref=f24e163]:
+              - button "Freshworks Switcher" [ref=f24e164] [cursor=pointer]
+      - generic [ref=f24e166]:
+        - tablist [ref=f24e169]:
+          - listitem [ref=f24e170]:
+            - link "Conversations" [ref=f24e171]:
+              - /url: /crm/sales/conversations/inbox
+          - listitem [ref=f24e174]:
+            - link "Sales Sequences" [ref=f24e175] [cursor=pointer]:
+              - /url: /crm/sales/sales-sequences/filters
+        - generic [ref=f24e186]:
+          - generic [ref=f24e187] [cursor=pointer]: Email
+          - generic [ref=f24e196]:
+            - link "Awaiting Response" [ref=f24e199] [cursor=pointer]:
+              - /url: /crm/sales/conversations/awaiting_response
+            - generic [ref=f24e200]:
+              - link "Team Inbox" [ref=f24e202] [cursor=pointer]:
+                - /url: /crm/sales/conversations/team_inbox
+              - link [ref=f24e203] [cursor=pointer]:
+                - /url: /crm/sales/settings/email/team-inbox
+            - generic [ref=f24e211]:
+              - link "Inbox" [ref=f24e213] [cursor=pointer]:
+                - /url: /crm/sales/conversations/inbox
+              - link [ref=f24e214] [cursor=pointer]:
+                - /url: /crm/sales/personal-settings/connect-your-email
+            - link "Sent" [ref=f24e224] [cursor=pointer]:
+              - /url: /crm/sales/conversations/sent
+            - link "Scheduled" [ref=f24e227] [cursor=pointer]:
+              - /url: /crm/sales/conversations/scheduled
+            - link "Drafts" [ref=f24e230] [cursor=pointer]:
+              - /url: /crm/sales/conversations/drafts
+            - link "Trash" [ref=f24e233] [cursor=pointer]:
+              - /url: /crm/sales/conversations/trash
+            - link "Email Templates" [ref=f24e236] [cursor=pointer]:
+              - /url: /crm/sales/conversations/email-templates
+          - generic [ref=f24e237] [cursor=pointer]: Bulk Email
+          - generic [ref=f24e246]:
+            - link "Bulk email metrics" [ref=f24e249] [cursor=pointer]:
+              - /url: /crm/sales/conversations/email-bulk-metrics
+            - link "Bulk emails scheduled" [ref=f24e252] [cursor=pointer]:
+              - /url: /crm/sales/conversations/bulk_scheduled
+            - link "Bulk email drafts" [ref=f24e255] [cursor=pointer]:
+              - /url: /crm/sales/conversations/bulk_drafts
+          - generic [ref=f24e256] [cursor=pointer]: Email Tracking
+          - generic [ref=f24e265]:
+            - link "Opens" [ref=f24e268] [cursor=pointer]:
+              - /url: /crm/sales/conversations/opened
+            - link "Clicks" [ref=f24e271] [cursor=pointer]:
+              - /url: /crm/sales/conversations/clicked
+            - link "Bounces" [ref=f24e274] [cursor=pointer]:
+              - /url: /crm/sales/conversations/bounced
+          - generic [ref=f24e275] [cursor=pointer]: Phone
+          - generic [ref=f24e285]:
+            - generic [ref=f24e286]:
+              - link "All phone calls" [ref=f24e288] [cursor=pointer]:
+                - /url: /crm/sales/conversations/all_phone_calls
+              - link [ref=f24e289] [cursor=pointer]:
+                - /url: /crm/sales/settings/freshcaller
+            - link "Voicemail" [ref=f24e299] [cursor=pointer]:
+              - /url: /crm/sales/conversations/voicemail
+            - menuitem "Power Dialer List" [ref=f24e302] [cursor=pointer]
+          - generic [ref=f24e306] [cursor=pointer]: SMS
+          - generic [ref=f24e315]:
+            - link "All SMS" [ref=f24e318] [cursor=pointer]:
+              - /url: /crm/sales/conversations/all_sms
+            - link "SMS Templates" [ref=f24e321] [cursor=pointer]:
+              - /url: /crm/sales/conversations/sms-templates
+          - generic [ref=f24e322] [cursor=pointer]: Chat
+          - menuitem "Chat Inbox" [ref=f24e332] [cursor=pointer]
+        - generic [ref=f24e337]:
+          - button "Refresh" [ref=f24e340] [cursor=pointer]
+          - generic [ref=f24e342]:
+            - generic [ref=f24e346] [cursor=pointer]
+            - generic [ref=f24e350]:
+              - generic [ref=f24e351]:
+                - checkbox [ref=f24e356]
+                - generic [ref=f24e367]:
+                  - generic [ref=f24e368]: lauranordasample@gmail.com
+                  - generic [ref=f24e369]:
+                    - img "Incoming" [ref=f24e370]
+                    - generic [ref=f24e377]: 15 days ago
+                - generic [ref=f24e379]:
+                  - generic [ref=f24e382]:
+                    - button [ref=f24e383] [cursor=pointer]:
+                      - link "Add-on license for CRM Gold" [ref=f24e384]:
+                        - /url: /crm/sales/conversations/emails/402041528336
+                    - generic [ref=f24e387]: Hi Rakesh, We want an additional user license for a new sales rep we will onboard by the end of the month. Will share details soon. Regards, Laura
+                  - button [ref=f24e391] [cursor=pointer]
+              - generic [ref=f24e399]:
+                - checkbox [ref=f24e404]
+                - generic [ref=f24e407]:
+                  - img "Your User Avatar" [ref=f24e411]
+                  - generic [ref=f24e412]:
+                    - generic "Rakesh M <rakesh16083@cse.ssn.edu.in>" [ref=f24e417]
+                    - generic [ref=f24e418]:
+                      - img "Outgoing" [ref=f24e419]
+                      - generic [ref=f24e426]: 18 days ago
+                - generic [ref=f24e428]:
+                  - generic [ref=f24e431]:
+                    - button [ref=f24e432] [cursor=pointer]:
+                      - 'link "(Sample) Re: Final discussion about the deal" [ref=f24e433]':
+                        - /url: /crm/sales/conversations/emails/402041528318
+                    - text: (2)
+                    - generic [ref=f24e436]:
+                      - button "Opened" [ref=f24e437] [cursor=pointer]
+                      - button "Clicked" [ref=f24e442] [cursor=pointer]
+                    - generic [ref=f24e447]: Hello Jane, That’s good to know. Would the Hilton hotel work for you? Looking forward to the meeting. Rakesh
+                  - button [ref=f24e451] [cursor=pointer]
+              - generic [ref=f24e459]:
+                - checkbox [ref=f24e464]
+                - generic [ref=f24e467]:
+                  - img "Your User Avatar" [ref=f24e471]
+                  - generic [ref=f24e472]:
+                    - generic "Rakesh M <rakesh16083@cse.ssn.edu.in>" [ref=f24e477]
+                    - generic [ref=f24e478]:
+                      - img "Outgoing" [ref=f24e479]
+                      - generic [ref=f24e486]: 19 days ago
+                - generic [ref=f24e488]:
+                  - generic [ref=f24e491]:
+                    - button [ref=f24e492] [cursor=pointer]:
+                      - link "Want to see how CRM Gold can help you meet your sales goals?" [ref=f24e493]:
+                        - /url: /crm/sales/conversations/emails/402041528322
+                    - text: (5)
+                    - generic [ref=f24e496]:
+                      - button "Opened" [ref=f24e497] [cursor=pointer]
+                      - button "Clicked" [ref=f24e502] [cursor=pointer]
+                    - generic [ref=f24e507]: Hi Spector, Here is the contract with the details. Regards, Rakesh
+                  - button [ref=f24e511] [cursor=pointer]
+            - generic [ref=f24e520]:
+              - generic [ref=f24e521]: Showing 1 - 3 of 3
+              - list
+    - generic [ref=f24e523] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

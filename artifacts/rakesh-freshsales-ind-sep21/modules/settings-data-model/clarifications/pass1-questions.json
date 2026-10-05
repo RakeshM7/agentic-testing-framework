@@ -1,0 +1,57 @@
+[
+  {
+    "question": "[Behavior][Blocking] Does saving a new custom field/module/lifecycle stage enforce limits (max custom fields, trial plan limits) or reserved internal names, and what validation messages appear?",
+    "navigation": "Admin Settings > Contacts > Add field > Text field; flow view-add-contact-field-options",
+    "csvAnswer": "Limits are enforced, Find what are the limits by searching through the knowledge base"
+  },
+  {
+    "question": "[Scope][Blocking] Can the explorer be authorised to create and delete ZZ-Explore fields/tags in this admin area (the auto-mode classifier denied Save as shared-resource modification)?",
+    "navigation": "Admin Settings > Tags > Add a tag; flow view-tags",
+    "csvAnswer": "yes"
+  },
+  {
+    "question": "[Behavior][Nice-to-have] Is the Email field on contacts mandatory on save despite the Required checkbox appearing unchecked (only Quick-add/Read-only/Unique badges seen)?",
+    "navigation": "Admin Settings > Contacts > Email; flow view-contact-fields-list",
+    "csvAnswer": "Either Email / mobile / External ID is mandatory"
+  },
+  {
+    "question": "[Behavior][Nice-to-have] What happens to existing contacts when a lifecycle stage is disabled or deleted?",
+    "navigation": "Admin Settings > Contact Lifecycle Stages; flow view-lifecycle-stages",
+    "csvAnswer": "Contacts move to the first lifecycle stage"
+  },
+  {
+    "question": "[Scope][Blocking] Feature-mapping caveat: Tags was found under Admin Settings > Account Settings > Tags (not under the Leads, Contacts & Accounts group), and Contacts/Accounts 'forms' pages are field/layout editors -- should test cases treat Account Settings > Tags and these field/layout editors as the intended 'tags' and 'contact/account fields' flows?",
+    "navigation": "Admin Settings > Account Settings > Tags (flow view-tags); Admin Settings > Contacts / Accounts (flows view-contact-fields-list, view-account-fields-list)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Scope][Blocking] Under full-run, may tests create and then delete a custom module (ZZ-Explore, internal name cm_ prefix), and does Freshsales allow deleting a custom module afterwards (or is it permanent, which would leave tenant clutter)?",
+    "navigation": "Admin Settings > Custom Modules > Add module (flow view-custom-modules-and-add-module-form)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Scope][Blocking] Under full-run, may tests build and save a Web Form (and a LinkedIn Lead Gen form, which needs a LinkedIn connection) and delete them afterwards, given web forms are public-facing and none exist yet?",
+    "navigation": "Admin Settings > Web Forms > New web form (flow view-web-forms); Admin Settings > LinkedIn Lead Gen Forms (flow view-linkedin-lead-gen)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Edge Case][Nice-to-have] For the Add field form (required: Field label, Internal name, Field type), what should happen on empty label, duplicate label, duplicate or invalid-character internal name, and a name clashing with a system field -- expected message text if known?",
+    "navigation": "Admin Settings > Contacts > Add field > Text field (flow view-add-contact-field-options)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Edge Case][Nice-to-have] Are negative/validation-only submissions (e.g. empty required fields in the Add field, Add module, Add lifecycle stage or Add tag forms, expected to be blocked before any save) permitted to run live in every mode?",
+    "navigation": "Admin Settings > Custom Modules > Add module; Contact Lifecycle Stages > Add stage (flows view-custom-modules-and-add-module-form, view-lifecycle-stages)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Nice-to-have] For lifecycle stages, may tests toggle, reorder, add or delete stages and the two auto-rules (deal added -> Sales Qualified Lead; deal won -> Customer), or must the seeded stages and rules stay untouched, with only run-created ZZ-Explore stages modified?",
+    "navigation": "Admin Settings > Contact Lifecycle Stages (flow view-lifecycle-stages)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Nice-to-have] For Contact Scoring, may tests add positive/negative signals and change the automation threshold (currently 70 -> tag 'Likely to buy' and/or stage change), or is this view-only?",
+    "navigation": "Admin Settings > Contact Scoring (flow view-contact-scoring)",
+    "csvAnswer": ""
+  }
+]

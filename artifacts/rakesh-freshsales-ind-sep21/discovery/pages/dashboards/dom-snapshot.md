@@ -1,0 +1,91 @@
+- generic [active] [ref=f15e1]:
+  - generic [ref=f15e42]:
+    - generic [ref=f15e45]:
+      - generic [ref=f15e46]:
+        - link "Connect your mailbox" [ref=f15e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f15e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f15e49] [cursor=pointer]
+    - generic [ref=f15e52]:
+      - generic [ref=f15e53]:
+        - list [ref=f15e55]:
+          - listitem [ref=f15e56]: Dashboards
+        - generic [ref=f15e58]:
+          - list [ref=f15e59]:
+            - listitem [ref=f15e60]
+            - listitem [ref=f15e64]:
+              - generic "Send email" [ref=f15e65] [cursor=pointer]
+            - listitem [ref=f15e69]:
+              - generic "What's new" [ref=f15e70] [cursor=pointer]: "1"
+            - listitem [ref=f15e75]:
+              - generic [ref=f15e76]: "5"
+            - listitem [ref=f15e82]
+            - listitem [ref=f15e83]:
+              - img "Your User Avatar" [ref=f15e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f15e97]
+          - generic [ref=f15e99]:
+            - emphasis [ref=f15e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f15e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f15e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f15e110]:
+          - link [ref=f15e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f15e118]:
+            - listitem "Dashboards" [ref=f15e119]:
+              - link [ref=f15e122] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards?tab=353503
+            - listitem "Contacts" [ref=f15e125]:
+              - link [ref=f15e128] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f15e131]:
+              - link [ref=f15e134] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f15e137]:
+              - link [ref=f15e140] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f15e143]:
+              - link [ref=f15e146] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f15e149]:
+              - link [ref=f15e152] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f15e155]:
+              - link [ref=f15e158] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f15e161]:
+            - generic "Phone" [ref=f15e162]
+            - generic "Freshworks Switcher" [ref=f15e165]:
+              - button "Freshworks Switcher" [ref=f15e166] [cursor=pointer]
+      - generic [ref=f15e171]:
+        - generic [ref=f15e172] [cursor=pointer]: Sales Essentials Dashboard
+        - generic [ref=f15e180] [cursor=pointer]: Sales Dashboard
+        - generic [ref=f15e188] [cursor=pointer]: Activities Dashboard
+        - button [ref=f15e198] [cursor=pointer]
+      - iframe [ref=f15e208]:
+        - generic [ref=f19e1]:
+          - generic [ref=f19e10]:
+            - generic [ref=f19e12]:
+              - heading [level=2] [ref=f19e14]:
+                - button "" [ref=f19e17] [cursor=pointer]
+              - generic [ref=f19e20]:
+                - button "help" [ref=f19e24] [cursor=pointer]:
+                  - generic "help" [ref=f19e25]: 
+                - button "" [disabled] [ref=f19e27]
+                - button " Export" [disabled] [ref=f19e32]:
+                  - generic [ref=f19e33]:
+                    - generic [ref=f19e34]: 
+                    - generic [ref=f19e35]: Export
+                - button " Edit" [disabled] [ref=f19e37]:
+                  - generic [ref=f19e38]:
+                    - generic [ref=f19e39]: 
+                    - generic [ref=f19e41]: Edit
+            - generic [ref=f19e42]: Loading...
+          - status [ref=f19e44]
+    - generic [ref=f15e210] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

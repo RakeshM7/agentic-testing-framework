@@ -1,0 +1,70 @@
+[
+ {
+  "label": "Call / Task / Meeting / Sales activities / Add deal",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "not opened; would create linked records"
+ },
+ {
+  "label": "kebab (more)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Edit, Clone, Delete, Forget"
+ },
+ {
+  "label": "Edit",
+  "role": "menuitem",
+  "kind": "opens-overlay",
+  "overlay": "Edit account drawer"
+ },
+ {
+  "label": "Clone",
+  "role": "menuitem",
+  "kind": "opens-overlay",
+  "overlay": "clone drawer (cancelled)"
+ },
+ {
+  "label": "Delete",
+  "role": "menuitem",
+  "kind": "mutates",
+  "overlay": "Confirm dialog Delete this account? with checkbox Delete all the related contacts and deals, No/Yes"
+ },
+ {
+  "label": "Forget",
+  "role": "menuitem",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "GDPR-style permanent erase; not exercised"
+ },
+ {
+  "label": "Add parent account",
+  "role": "link",
+  "kind": "opens-overlay",
+  "skipped": true
+ },
+ {
+  "label": "Click to add tags",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Tags select with Cancel/Save (cancelled)"
+ },
+ {
+  "label": "Add a note...",
+  "role": "button",
+  "kind": "mutates",
+  "skipped": true
+ },
+ {
+  "label": "Tabs: Overview, Account details, Conversations, Activities, Contacts, Deals, Files, Freddy AI insights, Apps in marketplace",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "?tab=overview|entity-card-detail|conversations|recent-activities|contacts|deals|files|freddy"
+ },
+ {
+  "label": "Add contact / Add deal (Contacts/Deals tabs and overview)",
+  "role": "button",
+  "kind": "links-out",
+  "note": "leaves module"
+ }
+]

@@ -1,0 +1,14 @@
+[
+ {
+  "label": "Discard",
+  "role": "button",
+  "kind": "toggles",
+  "overlay": "exits edit mode"
+ },
+ {
+  "label": "filter",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Filters panel"
+ }
+]

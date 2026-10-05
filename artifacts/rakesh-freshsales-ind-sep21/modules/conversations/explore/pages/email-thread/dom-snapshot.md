@@ -1,0 +1,97 @@
+- generic [active] [ref=f24e1]:
+  - generic [ref=f24e42]:
+    - generic [ref=f24e45]:
+      - generic [ref=f24e46]:
+        - link "Connect your mailbox" [ref=f24e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f24e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f24e49] [cursor=pointer]
+    - generic [ref=f24e52]:
+      - generic [ref=f24e53]:
+        - list [ref=f24e528]:
+          - listitem [ref=f24e529]:
+            - link "Conversations" [ref=f24e530] [cursor=pointer]:
+              - /url: /crm/sales/conversations
+          - listitem [ref=f24e531]: Add-on license for CRM Gold
+        - generic [ref=f24e56]:
+          - list [ref=f24e57]:
+            - listitem [ref=f24e58]
+            - listitem [ref=f24e62]:
+              - generic "Send email" [ref=f24e63] [cursor=pointer]
+            - listitem [ref=f24e67]:
+              - generic "What's new" [ref=f24e68] [cursor=pointer]: "1"
+            - listitem [ref=f24e73]:
+              - generic [ref=f24e74]: "5"
+            - listitem [ref=f24e80]
+            - listitem [ref=f24e81]:
+              - img "Your User Avatar" [ref=f24e85] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f24e95]
+          - generic [ref=f24e97]:
+            - emphasis [ref=f24e98]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f24e104] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f24e106] [cursor=pointer]
+      - navigation:
+        - generic [ref=f24e108]:
+          - link [ref=f24e112] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f24e116]:
+            - listitem "Dashboards" [ref=f24e117]:
+              - link [ref=f24e120] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f24e123]:
+              - link [ref=f24e126] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f24e129]:
+              - link [ref=f24e132] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f24e135]:
+              - link [ref=f24e138] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f24e141]:
+              - link [ref=f24e144] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f24e147]:
+              - link [ref=f24e150] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f24e153]:
+              - link [ref=f24e156] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f24e159]:
+            - generic "Phone" [ref=f24e160]
+            - generic "Freshworks Switcher" [ref=f24e163]:
+              - button "Freshworks Switcher" [ref=f24e164] [cursor=pointer]
+      - generic [ref=f24e536]:
+        - button "Reply" [ref=f24e537] [cursor=pointer]
+        - button [ref=f24e540] [cursor=pointer]
+      - generic [ref=f24e546]:
+        - generic [ref=f24e555]:
+          - generic [ref=f24e556]:
+            - generic [ref=f24e558]:
+              - generic [ref=f24e559]: lauranordasample@gmail.com
+              - generic [ref=f24e561]:
+                - text: "To:"
+                - generic [ref=f24e562]: Rakesh M <rakesh16083@cse.ssn.edu.in>
+            - generic [ref=f24e567]:
+              - generic [ref=f24e568]: 15 days ago
+              - generic [ref=f24e569]:
+                - button [ref=f24e570] [cursor=pointer]
+                - button [ref=f24e578] [cursor=pointer]
+          - generic [ref=f24e583]:
+            - paragraph [ref=f24e584]: Hi Rakesh,
+            - paragraph [ref=f24e585]: We want an additional user license for a new sales rep we will onboard by the end of the month. Will share details soon.
+            - paragraph [ref=f24e586]: Regards, Laura
+        - generic [ref=f24e587]:
+          - img "Your User Avatar" [ref=f24e591]
+          - list [ref=f24e594]:
+            - listitem [ref=f24e595]:
+              - button "Reply" [ref=f24e596] [cursor=pointer]
+            - listitem [ref=f24e604]: /
+            - listitem [ref=f24e605]:
+              - button "Forward" [ref=f24e606] [cursor=pointer]
+    - generic [ref=f24e523] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

@@ -1,0 +1,14 @@
+[
+ {
+  "label": "Year 2026",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": ""
+ },
+ {
+  "label": "By month / By quarter",
+  "role": "button",
+  "kind": "toggles",
+  "detail": ""
+ }
+]

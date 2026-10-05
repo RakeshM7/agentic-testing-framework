@@ -1,0 +1,340 @@
+- generic [ref=f27e1]:
+  - generic [ref=f27e42]:
+    - generic [ref=f27e45]:
+      - generic [ref=f27e46]:
+        - link "Connect your mailbox" [ref=f27e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f27e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f27e49] [cursor=pointer]
+    - generic [ref=f27e52]:
+      - generic [ref=f27e53]:
+        - list [ref=f27e55]:
+          - listitem [ref=f27e56]: Deals
+        - generic [ref=f27e58]:
+          - list [ref=f27e59]:
+            - listitem [ref=f27e60]
+            - listitem [ref=f27e64]:
+              - generic "Send email" [ref=f27e65] [cursor=pointer]
+            - listitem [ref=f27e69]:
+              - generic "What's new" [ref=f27e70] [cursor=pointer]: "1"
+            - listitem [ref=f27e75]:
+              - generic [ref=f27e76]: "5"
+            - listitem [ref=f27e82]
+            - listitem [ref=f27e83]:
+              - img "Your User Avatar" [ref=f27e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f27e97]
+          - generic [ref=f27e99]:
+            - emphasis [ref=f27e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f27e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f27e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f27e110]:
+          - link [ref=f27e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f27e118]:
+            - listitem "Dashboards" [ref=f27e119]:
+              - link [ref=f27e122] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f27e125]:
+              - link [ref=f27e128] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f27e131]:
+              - link [ref=f27e134] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f27e137]:
+              - link [ref=f27e140] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f27e143]:
+              - link [ref=f27e146] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f27e149]:
+              - link [ref=f27e152] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f27e155]:
+              - link [ref=f27e158] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f27e161]:
+            - generic "Phone" [ref=f27e162]
+            - generic "Freshworks Switcher" [ref=f27e165]:
+              - button "Freshworks Switcher" [ref=f27e166] [cursor=pointer]
+      - generic [ref=f27e172]:
+        - generic [ref=f27e173]:
+          - generic [ref=f27e174]:
+            - generic [ref=f27e175]: Your Freshsales setup guide
+            - generic [ref=f27e176]:
+              - button "[object Object]" [ref=f27e179] [cursor=pointer]:
+                - button "Take an interactive tour" [ref=f27e180]
+              - button [ref=f27e190] [cursor=pointer]
+          - generic [ref=f27e194]:
+            - generic [ref=f27e198]:
+              - button "Personalize your CRM" [ref=f27e199] [cursor=pointer]
+              - button "Import contacts" [ref=f27e205] [cursor=pointer]
+              - button "Bring in website leads" [ref=f27e213] [cursor=pointer]
+              - button "Invite your team" [ref=f27e223] [cursor=pointer]
+              - button "Route leads to your team" [ref=f27e231] [cursor=pointer]
+              - button "Create sales sequence" [ref=f27e241] [cursor=pointer]
+              - button "Set up your sales pipeline" [ref=f27e252] [cursor=pointer]
+              - button "Add deal" [ref=f27e261] [cursor=pointer]
+            - button [ref=f27e274] [cursor=pointer]
+        - generic [ref=f27e278]:
+          - generic [ref=f27e279]:
+            - button [ref=f27e281]:
+              - button "All deals 17 button" [ref=f27e282]:
+                - generic [ref=f27e283]:
+                  - generic [ref=f27e284] [cursor=pointer]: All deals
+                  - generic [ref=f27e285]: "17"
+                  - button [ref=f27e287] [cursor=pointer]:
+                    - button "button" [ref=f27e288]:
+                      - generic [ref=f27e289]: $11.24K
+            - button "button ⌘ O" [ref=f27e298] [cursor=pointer]:
+              - generic [ref=f27e299]:
+                - button "button" [ref=f27e300]:
+                  - generic [ref=f27e301]: 13 more...
+                - generic [ref=f27e306]: ⌘ O
+          - generic [ref=f27e307]:
+            - button "button" [ref=f27e309] [cursor=pointer]:
+              - generic "Settings" [ref=f27e317]
+            - generic [ref=f27e319]:
+              - button "button" [ref=f27e320] [cursor=pointer]:
+                - generic [ref=f27e321]: Import deals
+              - button [ref=f27e327] [cursor=pointer]
+            - button "button" [ref=f27e333] [cursor=pointer]:
+              - generic [ref=f27e334]: Add deal
+        - generic [ref=f27e340]:
+          - generic [ref=f27e342]:
+            - generic [ref=f27e343]:
+              - button "Pipeline" [ref=f27e345] [cursor=pointer]
+              - button [ref=f27e353] [cursor=pointer]:
+                - button "button" [ref=f27e354]:
+                  - generic [ref=f27e361]:
+                    - generic [ref=f27e362]: Sort by
+                    - generic "Deal value" [ref=f27e365]
+              - button "button" [ref=f27e366] [cursor=pointer]:
+                - generic [ref=f27e367]: 1 filter applied
+              - button "button" [ref=f27e373] [cursor=pointer]:
+                - generic [ref=f27e374]: All deal owners
+            - generic [ref=f27e378]:
+              - generic [ref=f27e379] [cursor=pointer]: Quotas and Forecasting
+              - textbox "Search" [ref=f27e392]
+          - generic [ref=f27e394]:
+            - generic [ref=f27e395]:
+              - generic [ref=f27e397]:
+                - generic [ref=f27e398]:
+                  - generic [ref=f27e399]:
+                    - generic "New" [ref=f27e400]
+                    - generic [ref=f27e401]: "5"
+                  - button "Weighted value button" [ref=f27e591] [cursor=pointer]:
+                    - generic [ref=f27e592]:
+                      - generic "Weighted value" [ref=f27e594]
+                      - button "button" [ref=f27e595]:
+                        - generic [ref=f27e596]: $2.82K
+                - button [ref=f27e406] [cursor=pointer]
+              - generic [ref=f27e411]:
+                - button "open summary view $1,500 -- -- No products button" [ref=f27e603]:
+                  - generic [ref=f27e604]:
+                    - generic [ref=f27e605]:
+                      - button "open summary view" [ref=f27e609] [cursor=pointer]:
+                        - generic "AgentTest Deal 1791137293869" [ref=f27e610]
+                      - generic [ref=f27e612]:
+                        - generic [ref=f27e613]:
+                          - generic [ref=f27e614]: $1,500
+                          - generic [ref=f27e615]: "--"
+                        - generic [ref=f27e616]:
+                          - generic [ref=f27e617]: "--"
+                          - generic [ref=f27e620]: No products
+                    - button "button" [ref=f27e624] [cursor=pointer]:
+                      - generic [ref=f27e625]: Add note
+                - button "open summary view $1,500 -- -- No products button" [ref=f27e642]:
+                  - generic [ref=f27e643]:
+                    - generic [ref=f27e644]:
+                      - button "open summary view" [ref=f27e648] [cursor=pointer]:
+                        - generic "AgentTest Deal 1791137131568" [ref=f27e649]
+                      - generic [ref=f27e651]:
+                        - generic [ref=f27e652]:
+                          - generic [ref=f27e653]: $1,500
+                          - generic [ref=f27e654]: "--"
+                        - generic [ref=f27e655]:
+                          - generic [ref=f27e656]: "--"
+                          - generic [ref=f27e659]: No products
+                    - button "button" [ref=f27e663] [cursor=pointer]:
+                      - generic [ref=f27e664]: Add note
+                - button "open summary view $1,500 -- -- No products button" [ref=f27e681]:
+                  - generic [ref=f27e682]:
+                    - generic [ref=f27e683]:
+                      - button "open summary view" [ref=f27e687] [cursor=pointer]:
+                        - generic "AgentTest Deal 1791132451928" [ref=f27e688]
+                      - generic [ref=f27e690]:
+                        - generic [ref=f27e691]:
+                          - generic [ref=f27e692]: $1,500
+                          - generic [ref=f27e693]: "--"
+                        - generic [ref=f27e694]:
+                          - generic [ref=f27e695]: "--"
+                          - generic [ref=f27e698]: No products
+                    - button "button" [ref=f27e702] [cursor=pointer]:
+                      - generic [ref=f27e703]: Add note
+                - button "open summary view $5,600 Closes in Nov account-name CRM - Gold plan monthly (sample) button" [ref=f27e720]:
+                  - generic [ref=f27e721]:
+                    - generic [ref=f27e722]:
+                      - button "open summary view" [ref=f27e726] [cursor=pointer]:
+                        - generic "Widgetz.io (sample)" [ref=f27e727]
+                      - generic [ref=f27e729]:
+                        - generic [ref=f27e730]:
+                          - generic [ref=f27e731]: $5,600
+                          - generic [ref=f27e732]: Closes in Nov
+                        - generic [ref=f27e735]:
+                          - button "account-name" [ref=f27e739] [cursor=pointer]: Widgetz.io (sample)
+                          - button "CRM - Gold plan monthly (sample)" [ref=f27e744] [cursor=pointer]
+                    - button "button" [ref=f27e746] [cursor=pointer]:
+                      - generic [ref=f27e747]:
+                        - generic [ref=f27e753]: "1"
+                        - generic [ref=f27e754]: note
+                - button "open summary view $4,000 Closes in 6 days account-name CRM - Gold plan monthly (sample) +1 button" [ref=f27e767]:
+                  - generic [ref=f27e768]:
+                    - generic [ref=f27e769]:
+                      - button "open summary view" [ref=f27e773] [cursor=pointer]:
+                        - generic "ECorp renewal (sample)" [ref=f27e774]
+                      - generic [ref=f27e776]:
+                        - generic [ref=f27e777]:
+                          - generic [ref=f27e778]: $4,000
+                          - generic [ref=f27e779]: Closes in 6 days
+                        - generic [ref=f27e782]:
+                          - button "account-name" [ref=f27e786] [cursor=pointer]: E Corp (sample)
+                          - generic [ref=f27e789]:
+                            - button "CRM - Gold plan monthly (sample)" [ref=f27e791] [cursor=pointer]
+                            - generic [ref=f27e792] [cursor=pointer]: "+1"
+                    - button "button" [ref=f27e795] [cursor=pointer]:
+                      - generic [ref=f27e796]: Add note
+            - generic [ref=f27e412]:
+              - generic [ref=f27e414]:
+                - generic [ref=f27e415]:
+                  - generic [ref=f27e416]:
+                    - generic "Qualification" [ref=f27e417]
+                    - generic [ref=f27e418]: "2"
+                  - button "Weighted value button" [ref=f27e814] [cursor=pointer]:
+                    - generic [ref=f27e815]:
+                      - generic "Weighted value" [ref=f27e817]
+                      - button "button" [ref=f27e818]:
+                        - generic [ref=f27e819]: $1.26K
+                - button [ref=f27e423] [cursor=pointer]
+              - generic [ref=f27e428]:
+                - button "open summary view $100 Closes in 1 day account-name No products button" [ref=f27e826]:
+                  - generic [ref=f27e827]:
+                    - generic [ref=f27e828]:
+                      - button "open summary view" [ref=f27e832] [cursor=pointer]:
+                        - generic "Acme Inc (sample)" [ref=f27e833]
+                      - generic [ref=f27e835]:
+                        - generic [ref=f27e836]:
+                          - generic [ref=f27e837]: $100
+                          - generic [ref=f27e838]: Closes in 1 day
+                        - generic [ref=f27e841]:
+                          - button "account-name" [ref=f27e845] [cursor=pointer]: Acme Inc (sample)
+                          - generic [ref=f27e846]: No products
+                    - button "button" [ref=f27e850] [cursor=pointer]:
+                      - generic [ref=f27e851]:
+                        - generic [ref=f27e857]: "1"
+                        - generic [ref=f27e858]: note
+                - button "open summary view $4,100 Closes in 1 day account-name CRM - Gold plan monthly (sample) +1 button" [ref=f27e869]:
+                  - generic [ref=f27e870]:
+                    - generic [ref=f27e871]:
+                      - button "open summary view" [ref=f27e875] [cursor=pointer]:
+                        - generic "Synth Corp (sample)" [ref=f27e876]
+                      - generic [ref=f27e878]:
+                        - generic [ref=f27e879]:
+                          - generic [ref=f27e880]: $4,100
+                          - generic [ref=f27e881]: Closes in 1 day
+                        - generic [ref=f27e884]:
+                          - button "account-name" [ref=f27e888] [cursor=pointer]: Synth Corp (sample)
+                          - generic [ref=f27e891]:
+                            - button "CRM - Gold plan monthly (sample)" [ref=f27e893] [cursor=pointer]
+                            - generic [ref=f27e894] [cursor=pointer]: "+1"
+                    - button "button" [ref=f27e897] [cursor=pointer]:
+                      - generic [ref=f27e898]: Add note
+            - generic [ref=f27e429]:
+              - generic [ref=f27e431]:
+                - generic [ref=f27e432]:
+                  - generic [ref=f27e433]:
+                    - generic "Discovery" [ref=f27e434]
+                    - generic [ref=f27e435]: "1"
+                  - button "Weighted value button" [ref=f27e916] [cursor=pointer]:
+                    - generic [ref=f27e917]:
+                      - generic "Weighted value" [ref=f27e919]
+                      - button "button" [ref=f27e920]:
+                        - generic [ref=f27e921]: $1.4K
+                - button [ref=f27e440] [cursor=pointer]
+              - button "open summary view $3,500 Closes in Oct account-name CRM - Platinum plan monthly (sample) +1 button" [ref=f27e928]:
+                - generic [ref=f27e929]:
+                  - generic [ref=f27e930]:
+                    - button "open summary view" [ref=f27e934] [cursor=pointer]:
+                      - generic "Pivotal Tech (sample)" [ref=f27e935]
+                    - generic [ref=f27e937]:
+                      - generic [ref=f27e938]:
+                        - generic [ref=f27e939]: $3,500
+                        - generic [ref=f27e940]: Closes in Oct
+                      - generic [ref=f27e943]:
+                        - button "account-name" [ref=f27e947] [cursor=pointer]: Pivotal Tech (sample)
+                        - generic [ref=f27e950]:
+                          - button "CRM - Platinum plan monthly (sample)" [ref=f27e952] [cursor=pointer]
+                          - generic [ref=f27e953] [cursor=pointer]: "+1"
+                  - button "button" [ref=f27e956] [cursor=pointer]:
+                    - generic [ref=f27e957]: Add note
+            - generic [ref=f27e446]:
+              - generic [ref=f27e448]:
+                - generic [ref=f27e449]:
+                  - generic [ref=f27e450]:
+                    - generic "Demo" [ref=f27e451]
+                    - generic [ref=f27e452]: "0"
+                  - button "Weighted value button" [ref=f27e975] [cursor=pointer]:
+                    - generic [ref=f27e976]:
+                      - generic "Weighted value" [ref=f27e978]
+                      - button "button" [ref=f27e979]:
+                        - generic [ref=f27e980]: $0
+                - button [ref=f27e457] [cursor=pointer]
+              - button "Add deal" [ref=f27e987] [cursor=pointer]
+            - generic [ref=f27e465]:
+              - generic "Negotiation" [ref=f27e468]
+              - button [ref=f27e474] [cursor=pointer]
+            - generic [ref=f27e482]:
+              - generic "Won" [ref=f27e485]
+              - button [ref=f27e491] [cursor=pointer]
+            - generic [ref=f27e499]:
+              - generic "Lost" [ref=f27e502]
+              - button [ref=f27e508] [cursor=pointer]
+    - dialog [ref=f27e993]:
+      - generic [ref=f27e995]:
+        - generic [ref=f27e996]:
+          - generic [ref=f27e997]:
+            - generic [ref=f27e998]: ADD QUOTE
+            - button "Customize fields" [ref=f27e1001] [cursor=pointer]
+            - button "Close" [ref=f27e1009] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f27e1010]: 
+          - generic [ref=f27e1017]:
+            - generic [ref=f27e1018]:
+              - generic [ref=f27e1019]: Deal *
+              - button "Click to select" [ref=f27e1021] [cursor=pointer]
+            - generic [ref=f27e1024]:
+              - generic [ref=f27e1025]: Primary contact *
+              - button "Click to select" [ref=f27e1027] [cursor=pointer]
+            - generic [ref=f27e1030]:
+              - generic [ref=f27e1031]: Account
+              - button "Click to select" [ref=f27e1033] [cursor=pointer]
+            - generic [ref=f27e1036]:
+              - generic [ref=f27e1037]: Quote type *
+              - button "Quote" [ref=f27e1039] [cursor=pointer]
+            - generic [ref=f27e1042]:
+              - generic [ref=f27e1043]: Quote name
+              - textbox "Quote name" [active] [ref=f27e1044]:
+                - /placeholder: Enter a name
+            - generic [ref=f27e1045]:
+              - generic [ref=f27e1046]: Quote template *
+              - button "Click to select" [ref=f27e1048] [cursor=pointer]
+        - generic [ref=f27e1052]:
+          - button "Show all fields" [ref=f27e1053] [cursor=pointer]
+          - button "Cancel" [ref=f27e1058] [cursor=pointer]
+          - button "Save" [ref=f27e1061] [cursor=pointer]
+    - generic [ref=f27e515] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

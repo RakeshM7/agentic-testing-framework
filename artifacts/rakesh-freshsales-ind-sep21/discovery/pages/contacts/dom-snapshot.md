@@ -1,0 +1,225 @@
+- generic [active] [ref=f247e1]:
+  - generic [ref=f247e42]:
+    - generic [ref=f247e45]:
+      - generic [ref=f247e46]:
+        - link "Connect your mailbox" [ref=f247e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f247e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f247e49] [cursor=pointer]
+    - generic [ref=f247e52]:
+      - generic [ref=f247e53]:
+        - list [ref=f247e55]:
+          - listitem [ref=f247e56]: Contacts
+        - generic [ref=f247e58]:
+          - list [ref=f247e59]:
+            - listitem [ref=f247e60]
+            - listitem [ref=f247e64]:
+              - generic "Send email" [ref=f247e65] [cursor=pointer]
+            - listitem [ref=f247e69]:
+              - generic "What's new" [ref=f247e70] [cursor=pointer]: "1"
+            - listitem [ref=f247e75]:
+              - generic [ref=f247e76]: "5"
+            - listitem [ref=f247e82]
+            - listitem [ref=f247e83]:
+              - img "Your User Avatar" [ref=f247e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f247e97]
+          - generic [ref=f247e99]:
+            - emphasis [ref=f247e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f247e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f247e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f247e110]:
+          - link [ref=f247e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f247e118]:
+            - listitem "Dashboards" [ref=f247e119]:
+              - link [ref=f247e122] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f247e125]:
+              - link [ref=f247e128] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f247e131]:
+              - link [ref=f247e134] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f247e137]:
+              - link [ref=f247e140] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f247e143]:
+              - link [ref=f247e146] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f247e149]:
+              - link [ref=f247e152] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f247e155]:
+              - link [ref=f247e158] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f247e161]:
+            - generic "Phone" [ref=f247e162]
+            - generic "Freshworks Switcher" [ref=f247e165]:
+              - button "Freshworks Switcher" [ref=f247e166] [cursor=pointer]
+      - generic [ref=f247e173]:
+        - generic [ref=f247e174]:
+          - generic [ref=f247e175]:
+            - generic [ref=f247e176]: Your Freshsales setup guide
+            - generic [ref=f247e177]:
+              - button "[object Object]" [ref=f247e180] [cursor=pointer]:
+                - button "Take an interactive tour" [ref=f247e181]
+              - button [ref=f247e191] [cursor=pointer]
+          - generic [ref=f247e195]:
+            - generic [ref=f247e199]:
+              - button "Personalize your CRM" [ref=f247e200] [cursor=pointer]
+              - button "Import contacts" [ref=f247e206] [cursor=pointer]
+              - button "Bring in website leads" [ref=f247e214] [cursor=pointer]
+              - button "Invite your team" [ref=f247e224] [cursor=pointer]
+              - button "Route leads to your team" [ref=f247e232] [cursor=pointer]
+              - button "Create sales sequence" [ref=f247e242] [cursor=pointer]
+              - button "Set up your sales pipeline" [ref=f247e250] [cursor=pointer]
+              - button "Add deal" [ref=f247e259] [cursor=pointer]
+            - button [ref=f247e272] [cursor=pointer]
+        - generic [ref=f247e276]:
+          - generic [ref=f247e277]:
+            - button [ref=f247e279]:
+              - button "All contacts 2" [ref=f247e280]:
+                - generic [ref=f247e281]:
+                  - generic [ref=f247e282] [cursor=pointer]: All contacts
+                  - generic [ref=f247e283]: "2"
+            - button "button ⌘ O" [ref=f247e286] [cursor=pointer]:
+              - generic [ref=f247e287]:
+                - button "button" [ref=f247e288]:
+                  - generic [ref=f247e289]: 14 more...
+                - generic [ref=f247e294]: ⌘ O
+          - generic [ref=f247e295]:
+            - button "button" [ref=f247e297] [cursor=pointer]:
+              - generic [ref=f247e298]: Customize table
+            - generic [ref=f247e306]:
+              - button "button" [ref=f247e307] [cursor=pointer]:
+                - generic [ref=f247e308]: Import contacts
+              - button [ref=f247e314] [cursor=pointer]
+            - button "button" [ref=f247e320] [cursor=pointer]:
+              - generic [ref=f247e321]: Add contact
+        - generic [ref=f247e327]:
+          - generic [ref=f247e330]:
+            - button "Table" [ref=f247e332] [cursor=pointer]
+            - button [ref=f247e340] [cursor=pointer]:
+              - button "button" [ref=f247e341]
+            - button "Bulk actions" [ref=f247e347] [cursor=pointer]
+            - button "button" [ref=f247e351] [cursor=pointer]:
+              - generic [ref=f247e352]: Filter by
+          - generic [ref=f247e358]:
+            - treegrid [ref=f247e359]:
+              - rowgroup [ref=f247e360]:
+                - row [ref=f247e361]:
+                  - columnheader [ref=f247e362]:
+                    - text: 
+                    - generic [ref=f247e367] [cursor=pointer]:
+                      - checkbox
+                  - columnheader "Name" [ref=f247e368]:
+                    - text: 
+                    - generic [ref=f247e370]:
+                      - generic [ref=f247e371]: Name
+                      - button [ref=f247e374] [cursor=pointer]
+              - rowgroup [ref=f247e379]:
+                - row [ref=f247e380]:
+                  - columnheader "Account" [ref=f247e381]:
+                    - text: 
+                    - generic [ref=f247e383]:
+                      - generic [ref=f247e384]: Account
+                      - button [ref=f247e387] [cursor=pointer]
+                  - columnheader "Job title" [ref=f247e393]:
+                    - text: 
+                    - generic [ref=f247e395]:
+                      - generic [ref=f247e396]: Job title
+                      - button [ref=f247e399] [cursor=pointer]
+                  - columnheader "Email" [ref=f247e405]:
+                    - text: 
+                    - generic [ref=f247e407]:
+                      - generic [ref=f247e408]: Email
+                      - button [ref=f247e411] [cursor=pointer]
+                  - columnheader "Mobile" [ref=f247e417]:
+                    - text: 
+                    - generic [ref=f247e419]:
+                      - generic [ref=f247e420]: Mobile
+                      - button [ref=f247e423] [cursor=pointer]
+                  - columnheader "Status" [ref=f247e429]:
+                    - text: 
+                    - generic [ref=f247e431]:
+                      - generic [ref=f247e432]: Status
+                      - button [ref=f247e435] [cursor=pointer]
+                  - columnheader "Tags" [ref=f247e441]:
+                    - text: 
+                    - generic [ref=f247e443]:
+                      - generic [ref=f247e444]: Tags
+                      - button [ref=f247e447] [cursor=pointer]
+                  - columnheader "Sales owner" [ref=f247e453]:
+                    - text: 
+                    - generic [ref=f247e455]:
+                      - generic [ref=f247e456]: Sales owner
+                      - button [ref=f247e459] [cursor=pointer]
+                  - columnheader [ref=f247e465]:
+                    - text: 
+                    - button [ref=f247e467] [cursor=pointer]
+              - rowgroup [ref=f247e472]:
+                - row "Press SPACE to select this row." [ref=f247e473]:
+                  - gridcell [ref=f247e474]:
+                    - generic [ref=f247e479] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f247e480]:
+                    - button [ref=f247e481] [cursor=pointer]:
+                      - generic [ref=f247e482]:
+                        - img "AgentTest Lead1791137131568" [ref=f247e483]:
+                          - generic [ref=f247e484]: A
+                        - link "display-name" [ref=f247e486]:
+                          - /url: /crm/sales/contacts/402221016310
+                          - text: AgentTest Lead1791137131568
+                - row "Press SPACE to select this row." [ref=f247e492]:
+                  - gridcell [ref=f247e493]:
+                    - generic [ref=f247e498] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f247e499]:
+                    - button [ref=f247e500] [cursor=pointer]:
+                      - generic [ref=f247e501]:
+                        - img "AgentTest Lead1791137293869" [ref=f247e502]:
+                          - generic [ref=f247e503]: A
+                        - link "display-name" [ref=f247e505]:
+                          - /url: /crm/sales/contacts/402221016422
+                          - text: AgentTest Lead1791137293869
+              - rowgroup [ref=f247e511]:
+                - row "Press SPACE to select this row." [ref=f247e512]:
+                  - gridcell [ref=f247e513]:
+                    - link "AgentTest Co 1791137131568" [ref=f247e515] [cursor=pointer]
+                  - gridcell "+ Click to add" [ref=f247e516]
+                  - gridcell [ref=f247e517]:
+                    - link "agenttest.1791137131568@example.com" [ref=f247e519] [cursor=pointer]
+                  - gridcell "+ Click to add" [ref=f247e520]
+                  - gridcell "Qualified" [ref=f247e521]
+                  - gridcell "+ Click to add" [ref=f247e523]
+                  - gridcell "Rakesh M" [ref=f247e524]
+                  - gridcell [ref=f247e525]
+                - row "Press SPACE to select this row." [ref=f247e526]:
+                  - gridcell [ref=f247e527]:
+                    - link "AgentTest Co 1791137293869" [ref=f247e529] [cursor=pointer]
+                  - gridcell "+ Click to add" [ref=f247e530]
+                  - gridcell [ref=f247e531]:
+                    - link "agenttest.1791137293869@example.com" [ref=f247e533] [cursor=pointer]
+                  - gridcell "+ Click to add" [ref=f247e534]
+                  - gridcell "Qualified" [ref=f247e535]
+                  - gridcell "+ Click to add" [ref=f247e537]
+                  - gridcell "Rakesh M" [ref=f247e538]
+                  - gridcell [ref=f247e539]
+              - rowgroup
+              - rowgroup
+              - rowgroup
+              - rowgroup
+            - text:    
+          - generic [ref=f247e543]:
+            - generic [ref=f247e544]: Showing 1–2 of 2
+            - button "Previous" [disabled] [ref=f247e546]
+            - button "1" [ref=f247e550] [cursor=pointer]
+            - button "Next" [disabled] [ref=f247e551]
+    - generic [ref=f247e556] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

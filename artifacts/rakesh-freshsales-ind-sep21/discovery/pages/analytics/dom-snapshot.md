@@ -1,0 +1,254 @@
+- generic [active] [ref=f52e1]:
+  - generic [ref=f52e42]:
+    - generic [ref=f52e45]:
+      - generic [ref=f52e46]:
+        - link "Connect your mailbox" [ref=f52e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f52e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f52e49] [cursor=pointer]
+    - generic [ref=f52e52]:
+      - generic [ref=f52e56]:
+        - list [ref=f52e57]:
+          - listitem [ref=f52e58]
+          - listitem [ref=f52e62]:
+            - generic "Send email" [ref=f52e63] [cursor=pointer]
+          - listitem [ref=f52e67]:
+            - generic "What's new" [ref=f52e68] [cursor=pointer]: "1"
+          - listitem [ref=f52e73]:
+            - generic [ref=f52e74]: "5"
+          - listitem [ref=f52e80]
+          - listitem [ref=f52e81]:
+            - img "Your User Avatar" [ref=f52e85] [cursor=pointer]
+        - textbox "Search your CRM" [ref=f52e95]
+        - generic [ref=f52e97]:
+          - emphasis [ref=f52e98]: Your trial ends in 8 days
+          - link "Explore plans" [ref=f52e104] [cursor=pointer]:
+            - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+          - button "Request demo" [ref=f52e106] [cursor=pointer]
+      - navigation:
+        - generic [ref=f52e108]:
+          - link [ref=f52e112] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f52e116]:
+            - listitem "Dashboards" [ref=f52e117]:
+              - link [ref=f52e120] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f52e123]:
+              - link [ref=f52e126] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f52e129]:
+              - link [ref=f52e132] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f52e135]:
+              - link [ref=f52e138] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f52e141]:
+              - link [ref=f52e144] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f52e147]:
+              - link [ref=f52e150] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f52e153]:
+              - link [ref=f52e156] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f52e159]:
+            - generic "Phone" [ref=f52e160]
+            - generic "Freshworks Switcher" [ref=f52e163]:
+              - button "Freshworks Switcher" [ref=f52e164] [cursor=pointer]
+      - iframe [ref=f52e168]:
+        - generic [ref=f58e1]:
+          - generic [ref=f58e8]:
+            - generic [ref=f58e9]:
+              - generic [ref=f58e10]: Analytics
+              - generic [ref=f58e14]:
+                - generic [ref=f58e19]:
+                  - generic "search" [ref=f58e21]: 
+                  - combobox "Search" [ref=f58e22]
+                - button "help Help Center" [ref=f58e26] [cursor=pointer]:
+                  - generic "help" [ref=f58e27]: 
+                  - generic [ref=f58e28]: Help Center
+                - button "New Report" [ref=f58e31] [cursor=pointer]
+            - generic [ref=f58e34]:
+              - generic [ref=f58e35]:
+                - generic [ref=f58e36]:
+                  - generic [ref=f58e39] [cursor=pointer]:
+                    - generic "recent" [ref=f58e40]: 
+                    - generic [ref=f58e41]: Recent
+                  - generic [ref=f58e45] [cursor=pointer]:
+                    - generic "star" [ref=f58e46]: 
+                    - generic [ref=f58e47]: Favorites
+                  - generic [ref=f58e52] [cursor=pointer]:
+                    - generic "reports-thumbnail" [ref=f58e53]: 
+                    - generic [ref=f58e54]: All reports
+                  - generic [ref=f58e58] [cursor=pointer]:
+                    - generic "user" [ref=f58e59]: 
+                    - generic [ref=f58e60]: My reports
+                  - generic [ref=f58e64] [cursor=pointer]:
+                    - generic "curated-reports" [ref=f58e65]: 
+                    - generic [ref=f58e66]: Curated reports
+                  - generic [ref=f58e70] [cursor=pointer]:
+                    - generic "lock" [ref=f58e71]: 
+                    - generic [ref=f58e72]: Private reports
+                  - generic [ref=f58e76] [cursor=pointer]:
+                    - generic "shared-users" [ref=f58e77]: 
+                    - generic [ref=f58e78]: Shared reports
+                - generic [ref=f58e80]:
+                  - generic [ref=f58e83] [cursor=pointer]:
+                    - generic "delete" [ref=f58e84]: 
+                    - generic [ref=f58e85]: Trash
+                  - generic [ref=f58e88] [cursor=pointer]:
+                    - generic [ref=f58e90]:
+                      - generic "gear" [ref=f58e91]: 
+                      - generic [ref=f58e92]: Settings
+                    - generic "chevron-right" [ref=f58e94]: 
+              - generic [ref=f58e96]:
+                - generic [ref=f58e99]:
+                  - generic [ref=f58e100]: All reports
+                  - generic [ref=f58e103]:
+                    - generic [ref=f58e104]: "Sort By:"
+                    - button "open menu" [ref=f58e106] [cursor=pointer]:
+                      - generic [ref=f58e107]: Last modified date
+                      - generic [ref=f58e108]: 
+                - generic [ref=f58e112]:
+                  - generic [ref=f58e114]:
+                    - grid [ref=f58e115]:
+                      - row [ref=f58e117]:
+                        - columnheader [ref=f58e118] [cursor=pointer]
+                        - columnheader "Name" [ref=f58e120]:
+                          - generic "Name" [ref=f58e122]
+                        - columnheader "Created by" [ref=f58e125]:
+                          - generic "Created by" [ref=f58e127]
+                        - columnheader "Created date" [ref=f58e130]:
+                          - generic "Created date" [ref=f58e132]
+                        - columnheader "Last Modified by" [ref=f58e135]:
+                          - generic "Last Modified by" [ref=f58e137]
+                        - columnheader "Last Modified date" [ref=f58e140]:
+                          - generic "Last Modified date" [ref=f58e142]
+                        - columnheader [ref=f58e145] [cursor=pointer]
+                      - generic [ref=f58e147]:
+                        - rowgroup [ref=f58e148]:
+                          - row [ref=f58e149]:
+                            - gridcell [ref=f58e150]:
+                              - button "" [ref=f58e153] [cursor=pointer]
+                            - gridcell "Ecommerce Marketing Journey Report Curated" [ref=f58e155]:
+                              - generic "Ecommerce Marketing Journey Report" [ref=f58e157]:
+                                - button "Curated" [ref=f58e160] [cursor=pointer]
+                            - gridcell "System" [ref=f58e163]
+                            - gridcell "14 Aug, 2024" [ref=f58e165]
+                            - gridcell "--" [ref=f58e167]
+                            - gridcell "14 Aug, 2024" [ref=f58e169]
+                            - gridcell "more-vertical" [ref=f58e171]:
+                              - generic "Menu" [ref=f58e174]:
+                                - generic "more-vertical" [ref=f58e176] [cursor=pointer]: 
+                        - rowgroup [ref=f58e177]:
+                          - row [ref=f58e178]:
+                            - gridcell [ref=f58e179]:
+                              - button "" [ref=f58e182] [cursor=pointer]
+                            - gridcell "Sales Essentials Dashboard Curated Report on deals, contacts, and sales activities" [ref=f58e184]:
+                              - generic [ref=f58e185]:
+                                - generic "Sales Essentials Dashboard" [ref=f58e186]:
+                                  - button "Curated" [ref=f58e189] [cursor=pointer]
+                                - generic [ref=f58e192]: Report on deals, contacts, and sales activities
+                            - gridcell "System" [ref=f58e193]
+                            - gridcell "26 Mar, 2024" [ref=f58e195]
+                            - gridcell "--" [ref=f58e197]
+                            - gridcell "03 Apr, 2024" [ref=f58e199]
+                            - gridcell "more-vertical" [ref=f58e201]:
+                              - generic "Menu" [ref=f58e204]:
+                                - generic "more-vertical" [ref=f58e206] [cursor=pointer]: 
+                        - rowgroup [ref=f58e207]:
+                          - row [ref=f58e208]:
+                            - gridcell [ref=f58e209]:
+                              - button "" [ref=f58e212] [cursor=pointer]
+                            - gridcell "Product Dashboard Curated" [ref=f58e214]:
+                              - generic "Product Dashboard" [ref=f58e216]:
+                                - button "Curated" [ref=f58e219] [cursor=pointer]
+                            - gridcell "System" [ref=f58e222]
+                            - gridcell "01 Dec, 2021" [ref=f58e224]
+                            - gridcell "--" [ref=f58e226]
+                            - gridcell "15 Feb, 2022" [ref=f58e228]
+                            - gridcell "more-vertical" [ref=f58e230]:
+                              - generic "Menu" [ref=f58e233]:
+                                - generic "more-vertical" [ref=f58e235] [cursor=pointer]: 
+                        - rowgroup [ref=f58e236]:
+                          - row [ref=f58e237]:
+                            - gridcell [ref=f58e238]:
+                              - button "" [ref=f58e241] [cursor=pointer]
+                            - gridcell "Sales Dashboard Curated" [ref=f58e243]:
+                              - generic "Sales Dashboard" [ref=f58e245]:
+                                - button "Curated" [ref=f58e248] [cursor=pointer]
+                            - gridcell "System" [ref=f58e251]
+                            - gridcell "14 Aug, 2020" [ref=f58e253]
+                            - gridcell "CRM Team" [ref=f58e255]
+                            - gridcell "08 May, 2021" [ref=f58e257]
+                            - gridcell "more-vertical" [ref=f58e259]:
+                              - generic "Menu" [ref=f58e262]:
+                                - generic "more-vertical" [ref=f58e264] [cursor=pointer]: 
+                        - rowgroup [ref=f58e265]:
+                          - row [ref=f58e266]:
+                            - gridcell [ref=f58e267]:
+                              - button "" [ref=f58e270] [cursor=pointer]
+                            - gridcell "Team activity report Curated" [ref=f58e272]:
+                              - generic "Team activity report" [ref=f58e274]:
+                                - button "Curated" [ref=f58e277] [cursor=pointer]
+                            - gridcell "System" [ref=f58e280]
+                            - gridcell "14 Aug, 2020" [ref=f58e282]
+                            - gridcell "CRM Team" [ref=f58e284]
+                            - gridcell "28 Apr, 2021" [ref=f58e286]
+                            - gridcell "more-vertical" [ref=f58e288]:
+                              - generic "Menu" [ref=f58e291]:
+                                - generic "more-vertical" [ref=f58e293] [cursor=pointer]: 
+                        - rowgroup [ref=f58e294]:
+                          - row [ref=f58e295]:
+                            - gridcell [ref=f58e296]:
+                              - button "" [ref=f58e299] [cursor=pointer]
+                            - gridcell "Sales Trends Curated" [ref=f58e301]:
+                              - generic "Sales Trends" [ref=f58e303]:
+                                - button "Curated" [ref=f58e306] [cursor=pointer]
+                            - gridcell "System" [ref=f58e309]
+                            - gridcell "14 Aug, 2020" [ref=f58e311]
+                            - gridcell "CRM Team" [ref=f58e313]
+                            - gridcell "28 Apr, 2021" [ref=f58e315]
+                            - gridcell "more-vertical" [ref=f58e317]:
+                              - generic "Menu" [ref=f58e320]:
+                                - generic "more-vertical" [ref=f58e322] [cursor=pointer]: 
+                        - rowgroup [ref=f58e323]:
+                          - row [ref=f58e324]:
+                            - gridcell [ref=f58e325]:
+                              - button "" [ref=f58e328] [cursor=pointer]
+                            - gridcell "Sales Forecast Curated" [ref=f58e330]:
+                              - generic "Sales Forecast" [ref=f58e332]:
+                                - button "Curated" [ref=f58e335] [cursor=pointer]
+                            - gridcell "System" [ref=f58e338]
+                            - gridcell "14 Aug, 2020" [ref=f58e340]
+                            - gridcell "CRM Team" [ref=f58e342]
+                            - gridcell "28 Apr, 2021" [ref=f58e344]
+                            - gridcell "more-vertical" [ref=f58e346]:
+                              - generic "Menu" [ref=f58e349]:
+                                - generic "more-vertical" [ref=f58e351] [cursor=pointer]: 
+                        - rowgroup [ref=f58e352]:
+                          - row [ref=f58e353]:
+                            - gridcell [ref=f58e354]:
+                              - button "" [ref=f58e357] [cursor=pointer]
+                            - gridcell "Contact generation and trends Curated" [ref=f58e359]:
+                              - generic "Contact generation and trends" [ref=f58e361]:
+                                - button "Curated" [ref=f58e364] [cursor=pointer]
+                            - gridcell "System" [ref=f58e367]
+                            - gridcell "14 Aug, 2020" [ref=f58e369]
+                            - gridcell "CRM Team" [ref=f58e371]
+                            - gridcell "28 Apr, 2021" [ref=f58e373]
+                            - gridcell "more-vertical" [ref=f58e375]:
+                              - generic "Menu" [ref=f58e378]:
+                                - generic "more-vertical" [ref=f58e380] [cursor=pointer]: 
+                    - generic: Loading...
+                  - generic [ref=f58e385]:
+                    - generic [ref=f58e386]: Showing 10 / page
+                    - generic [ref=f58e387]: 
+          - status [ref=f58e388]:
+            - generic [ref=f58e389]: "[object Object]"
+    - generic [ref=f52e170] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

@@ -1,0 +1,154 @@
+- generic [active] [ref=f50e1]:
+  - generic [ref=f50e42]:
+    - generic [ref=f50e45]:
+      - generic [ref=f50e46]:
+        - link "Connect your mailbox" [ref=f50e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+      - generic "Close" [ref=f50e48] [cursor=pointer]
+    - generic [ref=f50e51]:
+      - generic [ref=f50e52]:
+        - list [ref=f50e54]:
+          - listitem [ref=f50e55]:
+            - link "Admin Settings" [ref=f50e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f50e57]:
+            - link "Auto-assignment Rules" [ref=f50e58] [cursor=pointer]:
+              - /url: /crm/sales/settings/auto-assignment-rules
+          - listitem [ref=f50e59]: Edit rule
+        - generic [ref=f50e61]:
+          - list [ref=f50e62]:
+            - listitem [ref=f50e63]
+            - listitem [ref=f50e67]:
+              - generic "Send email" [ref=f50e68] [cursor=pointer]
+            - listitem [ref=f50e72]:
+              - generic "What's new" [ref=f50e73] [cursor=pointer]: "1"
+            - listitem [ref=f50e78]:
+              - generic [ref=f50e79]: "5"
+            - listitem [ref=f50e85]
+            - listitem [ref=f50e86]:
+              - img "Your User Avatar" [ref=f50e90] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f50e100]
+          - generic [ref=f50e102]:
+            - emphasis [ref=f50e103]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f50e109] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f50e111] [cursor=pointer]
+      - navigation:
+        - generic [ref=f50e113]:
+          - link [ref=f50e117] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f50e121]:
+            - listitem "Dashboards" [ref=f50e122]:
+              - link [ref=f50e125] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f50e128]:
+              - link [ref=f50e131] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f50e134]:
+              - link [ref=f50e137] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f50e140]:
+              - link [ref=f50e143] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f50e146]:
+              - link [ref=f50e149] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f50e152]:
+              - link [ref=f50e155] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f50e158]:
+              - link [ref=f50e161] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f50e164]:
+            - generic "Phone" [ref=f50e165]
+            - generic "Freshworks Switcher" [ref=f50e168]:
+              - button "Freshworks Switcher" [ref=f50e169] [cursor=pointer]
+      - generic [ref=f50e173]:
+        - button "Cancel" [ref=f50e174] [cursor=pointer]
+        - button "Save" [ref=f50e176] [cursor=pointer]
+      - generic [ref=f50e181]:
+        - heading "US lead routing" [level=3] [ref=f50e182]:
+          - generic [ref=f50e183]:
+            - generic [ref=f50e184]: US lead routing
+            - generic "Edit" [ref=f50e186] [cursor=pointer]
+        - generic "This rule routes leads from the US region to the right sales reps in your team. It helps with targeted outreach and higher conversions." [ref=f50e204] [cursor=pointer]
+        - heading "Apply rule to" [level=3] [ref=f50e205]
+        - generic [ref=f50e206]: Contacts
+        - heading "What conditions should the contacts satisfy?" [level=3] [ref=f50e216]
+        - generic [ref=f50e220]:
+          - list [ref=f50e221]:
+            - listitem [ref=f50e222]:
+              - generic [ref=f50e223]: Add a name for this group of conditions
+              - generic [ref=f50e234]:
+                - paragraph [ref=f50e235]: Match ALL conditions in this group
+                - generic [ref=f50e236] [cursor=pointer]
+                - paragraph [ref=f50e241]: Match ANY condition in this group
+            - listitem [ref=f50e242]:
+              - generic [ref=f50e243]:
+                - generic [ref=f50e244]:
+                  - button "Lifecycle stage" [ref=f50e246] [cursor=pointer]
+                  - button "is in" [ref=f50e250] [cursor=pointer]
+                  - button [ref=f50e256] [cursor=pointer]:
+                    - list [ref=f50e257]:
+                      - listitem [ref=f50e258]:
+                        - button "remove element" [ref=f50e259]: ×
+                        - text: Lead
+                      - searchbox [ref=f50e260]
+                - generic [ref=f50e262] [cursor=pointer]
+            - listitem [ref=f50e268]:
+              - generic [ref=f50e269]: Add condition
+          - generic [ref=f50e280] [cursor=pointer]:
+            - paragraph [ref=f50e282]: and
+            - paragraph [ref=f50e284]: or
+            - paragraph [ref=f50e286]: and
+          - list [ref=f50e287]:
+            - listitem [ref=f50e288]:
+              - generic [ref=f50e289]: Add a name for this group of conditions
+              - generic [ref=f50e300]:
+                - paragraph [ref=f50e301]: Match ALL conditions in this group
+                - generic [ref=f50e302] [cursor=pointer]
+                - paragraph [ref=f50e307]: Match ANY condition in this group
+            - listitem [ref=f50e308]:
+              - generic [ref=f50e309]:
+                - generic [ref=f50e310]:
+                  - button "Country" [ref=f50e312] [cursor=pointer]
+                  - button "is in" [ref=f50e316] [cursor=pointer]
+                  - button [ref=f50e322] [cursor=pointer]:
+                    - list [ref=f50e323]:
+                      - listitem [ref=f50e324]:
+                        - button "remove element" [ref=f50e325]: ×
+                        - text: US
+                      - listitem [ref=f50e326]:
+                        - button "remove element" [ref=f50e327]: ×
+                        - text: USA
+                      - listitem [ref=f50e328]:
+                        - button "remove element" [ref=f50e329]: ×
+                        - text: United States
+                      - listitem [ref=f50e330]:
+                        - button "remove element" [ref=f50e331]: ×
+                        - text: U.S.
+                      - listitem [ref=f50e332]:
+                        - button "remove element" [ref=f50e333]: ×
+                        - text: America
+                      - listitem [ref=f50e334]:
+                        - button "remove element" [ref=f50e335]: ×
+                        - text: United States of America
+                      - searchbox [ref=f50e336]
+                - generic [ref=f50e338] [cursor=pointer]
+            - listitem [ref=f50e344]:
+              - generic [ref=f50e345]: Add condition
+          - button "Add group" [ref=f50e354] [cursor=pointer]
+        - generic [ref=f50e360]:
+          - heading "Select users for assigning contacts" [level=3] [ref=f50e361]
+          - text: Users added below will be assigned contacts in round-robin. You can add users from teams or territories as well.
+          - generic [ref=f50e362]:
+            - button [ref=f50e367] [cursor=pointer]:
+              - list [ref=f50e368]:
+                - searchbox "Select users, teams or territories" [ref=f50e369]
+            - generic [ref=f50e374]:
+              - generic [ref=f50e376]:
+                - generic [ref=f50e377]: R
+                - text: Rakesh M
+              - generic [ref=f50e382] [cursor=pointer]
+  - iframe

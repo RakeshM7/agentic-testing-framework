@@ -1,0 +1,34 @@
+[
+ {
+  "label": "Export",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "menu: Email Now / Download"
+ },
+ {
+  "label": "Edit",
+  "role": "button",
+  "kind": "toggles",
+  "overlay": "edit mode: only Discard + filter panel on curated dashboard"
+ },
+ {
+  "label": "Summary / Deals / Contacts / Sales activities / Revenue breakdown",
+  "role": "page tabs",
+  "kind": "toggles",
+  "overlay": "in-dashboard pages (each has Rename/Delete in DOM, not exercised)"
+ },
+ {
+  "label": "star (favourite)",
+  "role": "icon",
+  "kind": "toggles",
+  "skipped": true,
+  "reason": "not exercised"
+ },
+ {
+  "label": "Tab X",
+  "role": "icon",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "closes pre-existing tab; only done on tab I created"
+ }
+]

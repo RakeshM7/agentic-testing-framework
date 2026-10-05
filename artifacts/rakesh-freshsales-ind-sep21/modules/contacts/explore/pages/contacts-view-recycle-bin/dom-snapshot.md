@@ -1,0 +1,501 @@
+# https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/view/402015942739?per_page=25
+
+- link "Connect your mailbox":
+  - /url: /crm/sales/personal-settings/connect-your-email
+- text: to improve deliverability and enable 2-way sync of email conversations. Import all your sales data so you don't have to start from scratch.
+- img
+- list:
+  - listitem: Contacts
+- list:
+  - listitem:
+    - img
+  - listitem:
+    - img
+  - listitem:
+    - img
+  - listitem:
+    - img
+    - text: "5"
+  - listitem
+  - listitem:
+    - img "Your User Avatar"
+- img
+- textbox "Search your CRM"
+- emphasis: Your trial ends in 8 days
+- img
+- link "Explore plans":
+  - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+- button "Request demo"
+- navigation:
+  - link:
+    - /url: /crm/sales/contacts
+    - img
+  - list:
+    - listitem "Dashboards":
+      - link:
+        - /url: /crm/sales/my_dashboards
+        - img
+    - listitem "Contacts":
+      - link:
+        - /url: /crm/sales/contacts
+        - img
+    - listitem "Accounts":
+      - link:
+        - /url: /crm/sales/accounts
+        - img
+    - listitem "Deals":
+      - link:
+        - /url: /crm/sales/deals
+        - img
+    - listitem "Conversations":
+      - link:
+        - /url: /crm/sales/conversations/awaiting_response
+        - img
+    - listitem "Analytics":
+      - link:
+        - /url: /crm/sales/analytics
+        - img
+    - listitem "Admin Settings":
+      - link:
+        - /url: /crm/sales/settings
+        - img
+  - img
+  - button "Freshworks Switcher"
+- text: Your Freshsales setup guide
+- button "[object Object]":
+  - button "Take an interactive tour":
+    - img
+    - text: Take an interactive tour
+- button:
+  - img
+- button "Personalize your CRM":
+  - img
+  - text: Personalize your CRM
+- button "Import contacts":
+  - img
+  - text: Import contacts
+- button "Bring in website leads":
+  - img
+  - text: Bring in website leads
+- button "Invite your team":
+  - img
+  - text: Invite your team
+- button "Route leads to your team":
+  - img
+  - text: Route leads to your team
+- button "Create sales sequence":
+  - img
+  - text: Create sales sequence
+- button "Set up your sales pipeline":
+  - img
+  - text: Set up your sales pipeline
+- button "Add deal":
+  - img
+  - text: Add deal
+  - img
+- button:
+  - img
+- button "All contacts":
+  - button "All contacts"
+- button "Recycle Bin 28 Close":
+  - button "Recycle Bin 28 Close":
+    - text: Recycle Bin 28
+    - button "Close":
+      - img
+- button "button ⌘ O":
+  - button "button":
+    - img
+    - text: 13 more...
+  - text: ⌘ O
+- button "button":
+  - img
+  - text: Import contacts
+- button:
+  - img
+- button "button":
+  - img
+  - text: Add contact
+- button "Table":
+  - img
+  - text: Table
+  - img
+- button "button":
+  - button "button":
+    - img
+- button "Bulk actions":
+  - img
+  - text: Bulk actions
+- button "button":
+  - img
+  - text: Filter by
+- img
+- text: The Recycle Bin stores deleted records for 90 days before deleting them forever
+- treegrid:
+  - rowgroup:
+    - row "Name":
+      - columnheader:
+        - checkbox
+      - columnheader "Name":
+        - text: Name
+        - button:
+          - img
+  - rowgroup:
+    - row "Account Job title Email Mobile Status Tags Sales owner":
+      - columnheader "Account":
+        - text: Account
+        - button:
+          - img
+      - columnheader "Job title":
+        - text: Job title
+        - button:
+          - img
+      - columnheader "Email":
+        - text: Email
+        - button:
+          - img
+      - columnheader "Mobile":
+        - text: Mobile
+        - button:
+          - img
+      - columnheader "Status":
+        - text: Status
+        - button:
+          - img
+      - columnheader "Tags":
+        - text: Tags
+        - button:
+          - img
+      - columnheader "Sales owner":
+        - text: Sales owner
+        - button:
+          - img
+      - columnheader:
+        - button:
+          - img
+  - rowgroup:
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791136366917 AgentTest Lead1791136366917":
+        - button "AgentTest Lead1791136366917 AgentTest Lead1791136366917":
+          - img "AgentTest Lead1791136366917": A
+          - text: AgentTest Lead1791136366917
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791136414040 AgentTest Lead1791136414040":
+        - button "AgentTest Lead1791136414040 AgentTest Lead1791136414040":
+          - img "AgentTest Lead1791136414040": A
+          - text: AgentTest Lead1791136414040
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest BadPhone1791136074710 AgentTest BadPhone1791136074710":
+        - button "AgentTest BadPhone1791136074710 AgentTest BadPhone1791136074710":
+          - img "AgentTest BadPhone1791136074710": A
+          - text: AgentTest BadPhone1791136074710
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791136100792 AgentTest Lead1791136100792":
+        - button "AgentTest Lead1791136100792 AgentTest Lead1791136100792":
+          - img "AgentTest Lead1791136100792": A
+          - text: AgentTest Lead1791136100792
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest BadPhone1791136117141 AgentTest BadPhone1791136117141":
+        - button "AgentTest BadPhone1791136117141 AgentTest BadPhone1791136117141":
+          - img "AgentTest BadPhone1791136117141": A
+          - text: AgentTest BadPhone1791136117141
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791136057630 AgentTest Lead1791136057630":
+        - button "AgentTest Lead1791136057630 AgentTest Lead1791136057630":
+          - img "AgentTest Lead1791136057630": A
+          - text: AgentTest Lead1791136057630
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791133958990 AgentTest Lead1791133958990":
+        - button "AgentTest Lead1791133958990 AgentTest Lead1791133958990":
+          - img "AgentTest Lead1791133958990": A
+          - text: AgentTest Lead1791133958990
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest BadPhone1791133977328 AgentTest BadPhone1791133977328":
+        - button "AgentTest BadPhone1791133977328 AgentTest BadPhone1791133977328":
+          - img "AgentTest BadPhone1791133977328": A
+          - text: AgentTest BadPhone1791133977328
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791132451928 AgentTest Lead1791132451928":
+        - button "AgentTest Lead1791132451928 AgentTest Lead1791132451928":
+          - img "AgentTest Lead1791132451928": A
+          - text: AgentTest Lead1791132451928
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest BadPhone1791132633980 AgentTest BadPhone1791132633980":
+        - button "AgentTest BadPhone1791132633980 AgentTest BadPhone1791132633980":
+          - img "AgentTest BadPhone1791132633980": A
+          - text: AgentTest BadPhone1791132633980
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest BadPhone1791132162817 AgentTest BadPhone1791132162817":
+        - button "AgentTest BadPhone1791132162817 AgentTest BadPhone1791132162817":
+          - img "AgentTest BadPhone1791132162817": A
+          - text: AgentTest BadPhone1791132162817
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791132336251 AgentTest Lead1791132336251":
+        - button "AgentTest Lead1791132336251 AgentTest Lead1791132336251":
+          - img "AgentTest Lead1791132336251": A
+          - text: AgentTest Lead1791132336251
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest BadPhone1791132351147 AgentTest BadPhone1791132351147":
+        - button "AgentTest BadPhone1791132351147 AgentTest BadPhone1791132351147":
+          - img "AgentTest BadPhone1791132351147": A
+          - text: AgentTest BadPhone1791132351147
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791132382398 AgentTest Lead1791132382398":
+        - button "AgentTest Lead1791132382398 AgentTest Lead1791132382398":
+          - img "AgentTest Lead1791132382398": A
+          - text: AgentTest Lead1791132382398
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "Heather White (sample) Heather White (sample)":
+        - button "Heather White (sample) Heather White (sample)":
+          - img "Heather White (sample)": H
+          - text: Heather White (sample)
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "Explore AgentTestLead Explore AgentTestLead":
+        - button "Explore AgentTestLead Explore AgentTestLead":
+          - img "Explore AgentTestLead": E
+          - text: Explore AgentTestLead
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest PhoneProbe AgentTest PhoneProbe":
+        - button "AgentTest PhoneProbe AgentTest PhoneProbe":
+          - img "AgentTest PhoneProbe": A
+          - text: AgentTest PhoneProbe
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791130391984 AgentTest Lead1791130391984":
+        - button "AgentTest Lead1791130391984 AgentTest Lead1791130391984":
+          - img "AgentTest Lead1791130391984": A
+          - text: AgentTest Lead1791130391984
+          - img
+  - rowgroup:
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.1791136366917@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.1791136414040@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.phone.1791136074710@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.1791136100792@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.phone.1791136117141@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.1791136057630@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.1791133958990@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.phone.1791133977328@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "AgentTest Co 1791132451928":
+        - link "AgentTest Co 1791132451928"
+      - gridcell "--"
+      - gridcell "agenttest.1791132451928@example.com"
+      - gridcell "--"
+      - gridcell "Qualified"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.phone.1791132633980@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.phone.1791132162817@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.1791132336251@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.phone.1791132351147@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.1791132382398@example.com"
+      - gridcell "--"
+      - gridcell "Qualified"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "Pivotal Tech (sample)":
+        - link "Pivotal Tech (sample)"
+      - gridcell "Head of IT"
+      - gridcell "heatherwhite@gmail.com"
+      - gridcell "+15436946523"
+      - gridcell "Qualified"
+      - gridcell "Champion"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "Explore Test Co":
+        - link "Explore Test Co"
+      - gridcell "Head of Procurement"
+      - gridcell "explore.agent.testlead@example.com"
+      - gridcell "--"
+      - gridcell "Qualified"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "--"
+      - gridcell "--"
+      - gridcell "agenttest.phoneprobe@example.com"
+      - gridcell "--"
+      - gridcell "New"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "AgentTest Co 1791130391984":
+        - link "AgentTest Co 1791130391984"
+      - gridcell "--"
+      - gridcell "agenttest.1791130391984@example.com"
+      - gridcell "--"
+      - gridcell "Qualified"
+      - gridcell "--"
+      - gridcell "Rakesh M"
+      - gridcell
+  - rowgroup
+  - rowgroup
+  - rowgroup
+  - rowgroup
+- text: Showing 1–25 of 28
+- button "Previous" [disabled]:
+  - img
+- button "1"
+- button "2"
+- button "Next":
+  - img
+- button "pagination.per_page.label": Showing 25 per page
+- img
+- iframe
+- iframe

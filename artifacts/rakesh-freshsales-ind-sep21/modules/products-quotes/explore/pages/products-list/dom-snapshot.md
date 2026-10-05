@@ -1,0 +1,216 @@
+- generic [active] [ref=f9e1]:
+  - generic [ref=f9e42]:
+    - generic [ref=f9e45]:
+      - generic [ref=f9e46]:
+        - link "Connect your mailbox" [ref=f9e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+      - generic "Close" [ref=f9e48] [cursor=pointer]
+    - generic [ref=f9e51]:
+      - generic [ref=f9e52]:
+        - list [ref=f9e54]:
+          - listitem [ref=f9e55]: Products
+        - generic [ref=f9e57]:
+          - list [ref=f9e58]:
+            - listitem [ref=f9e59]
+            - listitem [ref=f9e63]:
+              - generic "Send email" [ref=f9e64] [cursor=pointer]
+            - listitem [ref=f9e68]:
+              - generic "What's new" [ref=f9e69] [cursor=pointer]: "1"
+            - listitem [ref=f9e74]:
+              - generic [ref=f9e75]: "5"
+            - listitem [ref=f9e81]
+            - listitem [ref=f9e82]:
+              - img "Your User Avatar" [ref=f9e86] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f9e96]
+          - generic [ref=f9e98]:
+            - emphasis [ref=f9e99]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f9e105] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f9e107] [cursor=pointer]
+      - navigation:
+        - generic [ref=f9e109]:
+          - link [ref=f9e113] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f9e117]:
+            - listitem "Dashboards" [ref=f9e118]:
+              - link [ref=f9e121] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f9e124]:
+              - link [ref=f9e127] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f9e130]:
+              - link [ref=f9e133] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f9e136]:
+              - link [ref=f9e139] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f9e142]:
+              - link [ref=f9e145] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f9e148]:
+              - link [ref=f9e151] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f9e154]:
+              - link [ref=f9e157] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f9e160]:
+            - generic "Phone" [ref=f9e161]
+            - generic "Freshworks Switcher" [ref=f9e164]:
+              - button "Freshworks Switcher" [ref=f9e165] [cursor=pointer]
+      - generic [ref=f9e168]:
+        - generic [ref=f9e169]:
+          - list [ref=f9e170]:
+            - list [ref=f9e172]:
+              - button [ref=f9e175] [cursor=pointer]
+              - listitem [ref=f9e182]:
+                - generic "All Products" [ref=f9e183] [cursor=pointer]: (5)
+                - list
+          - generic [ref=f9e188]:
+            - generic [ref=f9e189]:
+              - button "Add product" [ref=f9e190] [cursor=pointer]
+              - button [ref=f9e193] [cursor=pointer]
+            - button [ref=f9e198] [cursor=pointer]
+            - button "All categories" [ref=f9e205] [cursor=pointer]
+            - generic [ref=f9e208]:
+              - button "Edit columns" [ref=f9e209] [cursor=pointer]
+              - button [ref=f9e218] [cursor=pointer]
+            - button [ref=f9e225] [cursor=pointer]:
+              - button [ref=f9e226]
+            - button "Filters" [ref=f9e238] [cursor=pointer]
+        - generic [ref=f9e246]:
+          - generic [ref=f9e247]:
+            - table [ref=f9e249]:
+              - rowgroup [ref=f9e250]:
+                - row "Name" [ref=f9e251]:
+                  - columnheader [ref=f9e252]:
+                    - checkbox [ref=f9e257]
+                  - columnheader "Name" [ref=f9e259]:
+                    - generic [ref=f9e261]:
+                      - generic [ref=f9e262] [cursor=pointer]: Name
+                      - img [ref=f9e265] [cursor=pointer]
+              - rowgroup [ref=f9e270]:
+                - row "An Annual maintenance contract (sample)" [ref=f9e271]:
+                  - cell [ref=f9e272]:
+                    - checkbox [ref=f9e276]
+                  - cell "An Annual maintenance contract (sample)" [ref=f9e278]:
+                    - generic [ref=f9e280]:
+                      - generic [ref=f9e281]: An
+                      - generic "Annual maintenance contract (sample)" [ref=f9e293] [cursor=pointer]
+                - row "CR CRM - Gold plan monthly (sample)" [ref=f9e294]:
+                  - cell [ref=f9e295]:
+                    - checkbox [ref=f9e299]
+                  - cell "CR CRM - Gold plan monthly (sample)" [ref=f9e301]:
+                    - generic [ref=f9e303]:
+                      - generic [ref=f9e304]: CR
+                      - generic "CRM - Gold plan monthly (sample)" [ref=f9e316] [cursor=pointer]
+                - row "CR CRM - Platinum plan monthly (sample)" [ref=f9e317]:
+                  - cell [ref=f9e318]:
+                    - checkbox [ref=f9e322]
+                  - cell "CR CRM - Platinum plan monthly (sample)" [ref=f9e324]:
+                    - generic [ref=f9e326]:
+                      - generic [ref=f9e327]: CR
+                      - generic "CRM - Platinum plan monthly (sample)" [ref=f9e339] [cursor=pointer]
+                - row "ZZ ZZ Explore Product A" [ref=f9e340]:
+                  - cell [ref=f9e341]:
+                    - checkbox [ref=f9e345]
+                  - cell "ZZ ZZ Explore Product A" [ref=f9e347]:
+                    - generic [ref=f9e349]:
+                      - generic [ref=f9e350]: ZZ
+                      - generic "ZZ Explore Product A" [ref=f9e362] [cursor=pointer]
+                - row "ZZ ZZ Explore Product B (clone)" [ref=f9e363]:
+                  - cell [ref=f9e364]:
+                    - checkbox [ref=f9e368]
+                  - cell "ZZ ZZ Explore Product B (clone)" [ref=f9e370]:
+                    - generic [ref=f9e372]:
+                      - generic [ref=f9e373]: ZZ
+                      - generic "ZZ Explore Product B (clone)" [ref=f9e385] [cursor=pointer]
+            - table [ref=f9e387]:
+              - rowgroup [ref=f9e388]:
+                - row [ref=f9e389]:
+                  - columnheader "Active" [ref=f9e390]:
+                    - generic [ref=f9e392]:
+                      - generic [ref=f9e393] [cursor=pointer]: Active
+                      - img [ref=f9e396] [cursor=pointer]
+                  - columnheader "Base currency amount" [ref=f9e400]:
+                    - generic [ref=f9e402]:
+                      - generic [ref=f9e403] [cursor=pointer]: Base currency amount
+                      - img [ref=f9e406] [cursor=pointer]
+                  - columnheader "Category" [ref=f9e410]:
+                    - generic [ref=f9e412]:
+                      - generic [ref=f9e413] [cursor=pointer]: Category
+                      - img [ref=f9e416] [cursor=pointer]
+                  - columnheader "Created at" [ref=f9e420]:
+                    - generic [ref=f9e422]:
+                      - generic [ref=f9e423] [cursor=pointer]: Created at
+                      - img [ref=f9e426] [cursor=pointer]
+                  - columnheader "Created by" [ref=f9e430]
+                  - columnheader [ref=f9e435]
+              - rowgroup [ref=f9e436]:
+                - row [ref=f9e437]:
+                  - cell "Yes" [ref=f9e438]
+                  - cell "$2,000" [ref=f9e442]:
+                    - generic "$2,000" [ref=f9e446]
+                  - cell "Maintenance" [ref=f9e447]:
+                    - generic "Maintenance" [ref=f9e451]
+                  - cell "5 months ago" [ref=f9e452]
+                  - cell "Rakesh M" [ref=f9e458]
+                  - cell [ref=f9e465]:
+                    - generic [ref=f9e466]:
+                      - list [ref=f9e468]
+                      - button [ref=f9e473] [cursor=pointer]
+                - row [ref=f9e481]:
+                  - cell "Yes" [ref=f9e482]
+                  - cell "$100" [ref=f9e486]:
+                    - generic "$100" [ref=f9e490]
+                  - cell "Software" [ref=f9e491]:
+                    - generic "Software" [ref=f9e495]
+                  - cell "5 months ago" [ref=f9e496]
+                  - cell "Rakesh M" [ref=f9e502]
+                  - cell [ref=f9e509]:
+                    - generic [ref=f9e510]:
+                      - list [ref=f9e512]
+                      - button [ref=f9e517] [cursor=pointer]
+                - row [ref=f9e525]:
+                  - cell "Yes" [ref=f9e526]
+                  - cell "$150" [ref=f9e530]:
+                    - generic "$150" [ref=f9e534]
+                  - cell "Software" [ref=f9e535]:
+                    - generic "Software" [ref=f9e539]
+                  - cell "5 months ago" [ref=f9e540]
+                  - cell "Rakesh M" [ref=f9e546]
+                  - cell [ref=f9e553]:
+                    - generic [ref=f9e554]:
+                      - list [ref=f9e556]
+                      - button [ref=f9e561] [cursor=pointer]
+                - row [ref=f9e569]:
+                  - cell "Yes" [ref=f9e570]
+                  - cell "$50" [ref=f9e574]:
+                    - generic "$50" [ref=f9e578]
+                  - cell "Software" [ref=f9e579]:
+                    - generic "Software" [ref=f9e583]
+                  - cell "an hour ago" [ref=f9e584]
+                  - cell "Rakesh M" [ref=f9e590]
+                  - cell [ref=f9e597]:
+                    - generic [ref=f9e598]:
+                      - list [ref=f9e600]
+                      - button [ref=f9e605] [cursor=pointer]
+                - row [ref=f9e613]:
+                  - cell "Yes" [ref=f9e614]
+                  - cell "$75" [ref=f9e618]:
+                    - generic "$75" [ref=f9e622]
+                  - cell "Software" [ref=f9e623]:
+                    - generic "Software" [ref=f9e627]
+                  - cell "a few seconds ago" [ref=f9e628]
+                  - cell "Rakesh M" [ref=f9e634]
+                  - cell [ref=f9e641]:
+                    - generic [ref=f9e642]:
+                      - list [ref=f9e644]
+                      - button [ref=f9e649] [cursor=pointer]
+          - generic [ref=f9e658]:
+            - generic [ref=f9e659]: Showing 1 - 5 of 5
+            - list
+    - generic [ref=f9e661] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

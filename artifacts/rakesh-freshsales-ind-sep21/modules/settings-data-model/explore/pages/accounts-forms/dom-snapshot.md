@@ -1,0 +1,212 @@
+- generic [ref=f18e1]:
+  - generic [ref=f18e42]:
+    - generic [ref=f18e45]:
+      - generic [ref=f18e46]:
+        - link "Connect your mailbox" [ref=f18e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+      - generic "Close" [ref=f18e48] [cursor=pointer]
+    - generic [ref=f18e51]:
+      - generic [ref=f18e52]:
+        - list [ref=f18e54]:
+          - listitem [ref=f18e55]:
+            - link "Admin Settings" [ref=f18e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f18e57]: Accounts
+        - generic [ref=f18e59]:
+          - list [ref=f18e60]:
+            - listitem [ref=f18e61]
+            - listitem [ref=f18e65]:
+              - generic "Send email" [ref=f18e66] [cursor=pointer]
+            - listitem [ref=f18e70]:
+              - generic "What's new" [ref=f18e71] [cursor=pointer]: "1"
+            - listitem [ref=f18e76]:
+              - generic [ref=f18e77]: "5"
+            - listitem [ref=f18e83]
+            - listitem [ref=f18e84]:
+              - img "Your User Avatar" [ref=f18e88] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f18e98]
+          - generic [ref=f18e100]:
+            - emphasis [ref=f18e101]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f18e107] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f18e109] [cursor=pointer]
+      - navigation:
+        - generic [ref=f18e111]:
+          - link [ref=f18e115] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f18e119]:
+            - listitem "Dashboards" [ref=f18e120]:
+              - link [ref=f18e123] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f18e126]:
+              - link [ref=f18e129] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f18e132]:
+              - link [ref=f18e135] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f18e138]:
+              - link [ref=f18e141] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f18e144]:
+              - link [ref=f18e147] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f18e150]:
+              - link [ref=f18e153] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f18e156]:
+              - link [ref=f18e159] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f18e162]:
+            - generic "Phone" [ref=f18e163]
+            - generic "Freshworks Switcher" [ref=f18e166]:
+              - button "Freshworks Switcher" [ref=f18e167] [cursor=pointer]
+      - generic [ref=f18e173]:
+        - generic [ref=f18e174]:
+          - generic [ref=f18e175]:
+            - heading "Accounts" [level=4] [ref=f18e185]
+            - generic [ref=f18e186]:
+              - button "Rename module" [ref=f18e188] [cursor=pointer]
+              - button "Preview" [ref=f18e197] [cursor=pointer]
+          - generic [ref=f18e205]: Add accounts faster with just the fields you need. Use default fields or add custom fields, and organize them into groups.
+          - link "Manage field dependencies" [ref=f18e209] [cursor=pointer]:
+            - /url: /crm/sales/settings/sales_accounts/field-dependency-configurations
+          - generic [ref=f18e217]:
+            - link "What are Account fields" [ref=f18e219] [cursor=pointer]:
+              - /url: https://crmsupport.freshworks.com/en/support/solutions/articles/50000002381-what-are-the-account-fields-and-how-to-customize-them-
+            - link "How to customize form fields" [ref=f18e226] [cursor=pointer]:
+              - /url: https://crmsupport.freshworks.com/en/support/solutions/articles/50000002372-how-to-customize-form-fields-
+            - button "+3 help articles" [ref=f18e233] [cursor=pointer]
+        - textbox "Search fields" [active] [ref=f18e243]
+        - generic [ref=f18e244]:
+          - generic [ref=f18e246]:
+            - heading "Basic information" [level=4] [ref=f18e252]
+            - generic [ref=f18e267]:
+              - button "Add field" [ref=f18e268] [cursor=pointer]
+              - button "Add group" [ref=f18e274] [cursor=pointer]
+          - list [ref=f18e280]:
+            - listitem [ref=f18e281]:
+              - generic [ref=f18e282]:
+                - generic [ref=f18e283]:
+                  - generic [ref=f18e284]: 
+                  - img [ref=f18e287]: 
+                  - generic [ref=f18e293]:
+                    - generic "Name"
+                  - generic [ref=f18e294]:
+                    - generic [ref=f18e295]: Required
+                    - generic [ref=f18e303]: Quick-add
+                    - generic [ref=f18e311]: Read-only
+                    - generic [ref=f18e317]: Unique
+                  - list [ref=f18e328]:
+                    - listitem [ref=f18e329]:
+                      - generic [ref=f18e340]:
+                        - generic [ref=f18e341]: Tooltip not added
+                        - generic [ref=f18e342]: 
+                        - generic [ref=f18e343] [cursor=pointer]: Add tooltip
+                  - generic [ref=f18e344] [cursor=pointer]
+                - button "Edit field" [ref=f18e348] [cursor=pointer]
+            - listitem [ref=f18e356]:
+              - generic [ref=f18e358]:
+                - generic [ref=f18e359]: 
+                - generic [ref=f18e364]:
+                  - generic "Website"
+                - generic [ref=f18e365]:
+                  - generic [ref=f18e366]: Required
+                  - generic [ref=f18e372]: Quick-add
+                  - generic [ref=f18e380]: Unique
+                - list [ref=f18e389]:
+                  - listitem [ref=f18e390]:
+                    - generic [ref=f18e401]:
+                      - generic [ref=f18e402]: Tooltip not added
+                      - generic [ref=f18e403]: 
+                      - generic [ref=f18e404] [cursor=pointer]: Add tooltip
+                - generic [ref=f18e405] [cursor=pointer]
+            - listitem [ref=f18e408]:
+              - generic [ref=f18e410]:
+                - generic [ref=f18e411]: 
+                - img [ref=f18e414]: 
+                - generic [ref=f18e420]:
+                  - generic "Phone"
+                - generic [ref=f18e421]:
+                  - generic [ref=f18e422]: Required
+                  - generic [ref=f18e428]: Quick-add
+                  - generic [ref=f18e434]: Unique
+                - list [ref=f18e443]:
+                  - listitem [ref=f18e444]:
+                    - generic [ref=f18e455]:
+                      - generic [ref=f18e456]: Tooltip not added
+                      - generic [ref=f18e457]: 
+                      - generic [ref=f18e458] [cursor=pointer]: Add tooltip
+                - generic [ref=f18e459] [cursor=pointer]
+            - listitem [ref=f18e462]:
+              - generic [ref=f18e464]:
+                - generic [ref=f18e465]: 
+                - img [ref=f18e468]: 
+                - generic [ref=f18e474]:
+                  - generic "Sales owner"
+                - generic [ref=f18e475]:
+                  - generic [ref=f18e476]: Required
+                  - generic [ref=f18e482]: Quick-add
+                - list [ref=f18e491]:
+                  - listitem [ref=f18e492]:
+                    - generic [ref=f18e505]:
+                      - generic [ref=f18e506]: 1 choices added
+                      - generic [ref=f18e507]: 
+                      - generic [ref=f18e508] [cursor=pointer]: Add/Edit choices
+                    - generic [ref=f18e509]: +2 more
+                - generic [ref=f18e514] [cursor=pointer]
+            - listitem [ref=f18e517]:
+              - generic [ref=f18e519]:
+                - generic [ref=f18e520]: 
+                - img [ref=f18e523]: 
+                - generic [ref=f18e529]:
+                  - generic "Industry type"
+                - generic [ref=f18e530]:
+                  - generic [ref=f18e531]: Required
+                  - generic [ref=f18e537]: Quick-add
+                - list [ref=f18e548]:
+                  - listitem [ref=f18e549]:
+                    - generic [ref=f18e562]:
+                      - generic [ref=f18e563]: 68 choices added
+                      - generic [ref=f18e564]: 
+                      - generic [ref=f18e565] [cursor=pointer]: Add/Edit choices
+                    - generic [ref=f18e566]: +2 more
+                - generic [ref=f18e571] [cursor=pointer]
+            - listitem [ref=f18e574]:
+              - generic [ref=f18e576]:
+                - generic [ref=f18e577]: 
+                - img [ref=f18e580]: 
+                - generic [ref=f18e586]:
+                  - generic "Business type"
+                - generic [ref=f18e587]:
+                  - generic [ref=f18e588]: Required
+                  - generic [ref=f18e594]: Quick-add
+                - list [ref=f18e603]:
+                  - listitem [ref=f18e604]:
+                    - generic [ref=f18e617]:
+                      - generic [ref=f18e618]: 10 choices added
+                      - generic [ref=f18e619]: 
+                      - generic [ref=f18e620] [cursor=pointer]: Add/Edit choices
+                    - generic [ref=f18e621]: +2 more
+                - generic [ref=f18e626] [cursor=pointer]
+            - listitem [ref=f18e629]:
+              - generic [ref=f18e631]:
+                - generic [ref=f18e632]: 
+                - img [ref=f18e635]: 
+                - generic [ref=f18e641]:
+                  - generic "Number of employees"
+                - generic [ref=f18e642]:
+                  - generic [ref=f18e643]: Required
+                  - generic [ref=f18e649]: Quick-add
+                - list [ref=f18e660]:
+                  - listitem [ref=f18e661]:
+                    - generic [ref=f18e674]:
+                      - generic [ref=f18e675]: 8 choices added
+                      - generic [ref=f18e676]: 
+                      - generic [ref=f18e677] [cursor=pointer]: Add/Edit choices
+                    - generic [ref=f18e678]: +2 more
+                - generic [ref=f18e683] [cursor=pointer]
+    - generic [ref=f18e687] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

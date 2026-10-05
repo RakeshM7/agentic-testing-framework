@@ -1,0 +1,80 @@
+[
+ {
+  "label": "Related contact",
+  "role": "combobox",
+  "kind": "toggles",
+  "detail": "optional"
+ },
+ {
+  "label": "Related account",
+  "role": "combobox",
+  "kind": "toggles",
+  "detail": "optional"
+ },
+ {
+  "label": "Deal type",
+  "role": "combobox",
+  "kind": "toggles",
+  "detail": "optional"
+ },
+ {
+  "label": "Deal name *",
+  "role": "textbox",
+  "kind": "toggles",
+  "detail": "required: Can't be empty"
+ },
+ {
+  "label": "Currency",
+  "role": "combobox",
+  "kind": "toggles",
+  "detail": "disabled USD"
+ },
+ {
+  "label": "Deal value *",
+  "role": "textbox",
+  "kind": "toggles",
+  "detail": "required, default 0; negative accepted"
+ },
+ {
+  "label": "Add products",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": ""
+ },
+ {
+  "label": "Deal stage",
+  "role": "combobox",
+  "kind": "toggles",
+  "detail": "default New"
+ },
+ {
+  "label": "Sales owner",
+  "role": "combobox",
+  "kind": "toggles",
+  "detail": "default Rakesh M (visible after Show all fields)"
+ },
+ {
+  "label": "Customize fields",
+  "role": "button",
+  "kind": "navigates",
+  "detail": "not followed"
+ },
+ {
+  "label": "Show all fields / Show less fields",
+  "role": "button",
+  "kind": "toggles",
+  "detail": ""
+ },
+ {
+  "label": "Cancel",
+  "role": "button",
+  "kind": "toggles",
+  "detail": ""
+ },
+ {
+  "label": "Save",
+  "role": "button",
+  "kind": "mutates",
+  "detail": "creates deal, lands on /deals/<id>"
+ }
+]

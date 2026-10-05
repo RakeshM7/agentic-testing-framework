@@ -1,0 +1,92 @@
+[
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/products/view/402015942778?per_page=25",
+  "slug": "products-list",
+  "title": "Products",
+  "screenshotPath": "modules/products-quotes/explore/pages/products-list/screenshot.png",
+  "domSnapshotPath": "modules/products-quotes/explore/pages/products-list/dom-snapshot.md",
+  "networkRequestsPath": "modules/products-quotes/explore/pages/products-list/network-requests.json",
+  "consoleLogPath": "modules/products-quotes/explore/pages/products-list/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "(drawer over products list)",
+  "slug": "product-detail",
+  "title": "Product drawer",
+  "screenshotPath": "modules/products-quotes/explore/pages/product-detail/screenshot.png",
+  "domSnapshotPath": null,
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "(drawer, Add product)",
+  "slug": "product-add-form",
+  "title": "Add product",
+  "screenshotPath": "modules/products-quotes/explore/pages/product-add-form/screenshot.png",
+  "domSnapshotPath": "modules/products-quotes/explore/pages/product-add-form/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "(drawer, Clone product)",
+  "slug": "product-clone-form",
+  "title": "Clone product",
+  "screenshotPath": null,
+  "domSnapshotPath": "modules/products-quotes/explore/pages/product-clone-form/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/cpq",
+  "slug": "cpq-settings",
+  "title": "CPQ Settings",
+  "screenshotPath": "modules/products-quotes/explore/pages/cpq-settings/screenshot.png",
+  "domSnapshotPath": "modules/products-quotes/explore/pages/cpq-settings/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/cpq-document-templates",
+  "slug": "cpq-document-templates",
+  "title": "Document Templates",
+  "screenshotPath": "modules/products-quotes/explore/pages/cpq-document-templates/screenshot.png",
+  "domSnapshotPath": "modules/products-quotes/explore/pages/cpq-document-templates/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/view/402015942782?per_page=25",
+  "slug": "quotes-list",
+  "title": "Quotes",
+  "screenshotPath": "modules/products-quotes/explore/pages/quotes-list/screenshot.png",
+  "domSnapshotPath": "modules/products-quotes/explore/pages/quotes-list/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "(drawer, + > Add Quote)",
+  "slug": "quote-add-form",
+  "title": "Add quote",
+  "screenshotPath": "modules/products-quotes/explore/pages/quote-add-form/screenshot.png",
+  "domSnapshotPath": "modules/products-quotes/explore/pages/quote-add-form/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/<id>?dealId=<dealId>",
+  "slug": "quote-detail",
+  "title": "Quote detail",
+  "screenshotPath": "modules/products-quotes/explore/pages/quote-detail/screenshot.png",
+  "domSnapshotPath": "modules/products-quotes/explore/pages/quote-detail/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ }
+]

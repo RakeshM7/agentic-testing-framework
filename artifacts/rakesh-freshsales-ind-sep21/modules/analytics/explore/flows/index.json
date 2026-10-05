@@ -1,0 +1,101 @@
+[
+ {
+  "slug": "open-analytics-reports-list",
+  "title": "Open the Analytics reports library",
+  "goal": "Open the Analytics reports library",
+  "kind": "navigation",
+  "entryPage": "analytics-landing",
+  "navPath": "Analytics",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/open-analytics-reports-list.md"
+ },
+ {
+  "slug": "create-report-from-gallery-template",
+  "title": "Create a report with a Gallery template widget",
+  "goal": "Create a report with a Gallery template widget",
+  "kind": "create",
+  "entryPage": "analytics-landing",
+  "navPath": "Analytics > New Report",
+  "stepCount": 6,
+  "mutating": true,
+  "file": "flows/create-report-from-gallery-template.md"
+ },
+ {
+  "slug": "view-report-details",
+  "title": "View report details",
+  "goal": "View report details",
+  "kind": "read",
+  "entryPage": "analytics-landing",
+  "navPath": "Analytics > <report> > chevron > Report Details",
+  "stepCount": 3,
+  "mutating": false,
+  "file": "flows/view-report-details.md"
+ },
+ {
+  "slug": "favorite-report",
+  "title": "Mark a report as favorite",
+  "goal": "Mark a report as favorite",
+  "kind": "update",
+  "entryPage": "analytics-landing",
+  "navPath": "Analytics > <report> > star",
+  "stepCount": 1,
+  "mutating": true,
+  "file": "flows/favorite-report.md"
+ },
+ {
+  "slug": "schedule-report-validation",
+  "title": "Open New Schedule form and trigger validation",
+  "goal": "Open New Schedule form and trigger validation",
+  "kind": "create",
+  "entryPage": "analytics-landing",
+  "navPath": "Analytics > <report> > Export > Schedule report",
+  "stepCount": 5,
+  "mutating": true,
+  "file": "flows/schedule-report-validation.md"
+ },
+ {
+  "slug": "open-curated-report",
+  "title": "Open a curated report",
+  "goal": "Open a curated report",
+  "kind": "read",
+  "entryPage": "analytics-landing",
+  "navPath": "Analytics > Sales Dashboard",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/open-curated-report.md"
+ },
+ {
+  "slug": "browse-analytics-settings",
+  "title": "Browse Analytics settings",
+  "goal": "Browse Analytics settings",
+  "kind": "settings",
+  "entryPage": "analytics-landing",
+  "navPath": "Analytics > Settings",
+  "stepCount": 4,
+  "mutating": false,
+  "file": "flows/browse-analytics-settings.md"
+ },
+ {
+  "slug": "create-custom-attribute-form",
+  "title": "Open New Attribute form (custom attribute)",
+  "goal": "Open New Attribute form (custom attribute)",
+  "kind": "create",
+  "entryPage": "analytics-landing",
+  "navPath": "Analytics > Settings > Custom Attributes > Create Attribute",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/create-custom-attribute-form.md"
+ },
+ {
+  "slug": "trash-report",
+  "title": "Move own report to trash",
+  "goal": "Move own report to trash",
+  "kind": "delete",
+  "entryPage": "analytics-landing",
+  "navPath": "Analytics > <report> > chevron > Move to trash",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/trash-report.md"
+ }
+]

@@ -1,0 +1,115 @@
+- generic [active] [ref=f18e1]:
+  - generic [ref=f18e42]:
+    - generic [ref=f18e45]:
+      - generic [ref=f18e46]:
+        - link "Connect your mailbox" [ref=f18e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+      - generic "Close" [ref=f18e48] [cursor=pointer]
+    - generic [ref=f18e51]:
+      - generic [ref=f18e52]:
+        - list [ref=f18e54]:
+          - listitem [ref=f18e55]:
+            - link "Admin Settings" [ref=f18e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f18e57]: Document Templates
+        - generic [ref=f18e59]:
+          - list [ref=f18e60]:
+            - listitem [ref=f18e61]
+            - listitem [ref=f18e65]:
+              - generic "Send email" [ref=f18e66] [cursor=pointer]
+            - listitem [ref=f18e70]:
+              - generic "What's new" [ref=f18e71] [cursor=pointer]: "1"
+            - listitem [ref=f18e76]:
+              - generic [ref=f18e77]: "5"
+            - listitem [ref=f18e83]
+            - listitem [ref=f18e84]:
+              - img "Your User Avatar" [ref=f18e88] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f18e98]
+          - generic [ref=f18e100]:
+            - emphasis [ref=f18e101]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f18e107] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f18e109] [cursor=pointer]
+      - navigation:
+        - generic [ref=f18e111]:
+          - link [ref=f18e115] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f18e119]:
+            - listitem "Dashboards" [ref=f18e120]:
+              - link [ref=f18e123] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f18e126]:
+              - link [ref=f18e129] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f18e132]:
+              - link [ref=f18e135] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f18e138]:
+              - link [ref=f18e141] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f18e144]:
+              - link [ref=f18e147] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f18e150]:
+              - link [ref=f18e153] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f18e156]:
+              - link [ref=f18e159] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f18e162]:
+            - generic "Phone" [ref=f18e163]
+            - generic "Freshworks Switcher" [ref=f18e166]:
+              - button "Freshworks Switcher" [ref=f18e167] [cursor=pointer]
+      - generic [ref=f18e170]:
+        - generic [ref=f18e171]:
+          - generic [ref=f18e172]:
+            - heading "Document Templates" [level=4] [ref=f18e183]
+            - button "Create template" [ref=f18e186] [cursor=pointer]
+          - generic [ref=f18e188]: Create unique templates for quotes, proposals, NDAs and any other document you frequently use in your business.
+          - link "Learn more" [ref=f18e192] [cursor=pointer]:
+            - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002420-how-to-add-and-use-products-
+        - generic [ref=f18e202]:
+          - table [ref=f18e204]:
+            - rowgroup [ref=f18e205]:
+              - row "Name Quote type Created by Updated by All Quote types" [ref=f18e206]:
+                - columnheader [ref=f18e207]:
+                  - checkbox [ref=f18e210]
+                - columnheader "Name" [ref=f18e212]
+                - columnheader "Quote type" [ref=f18e218]
+                - columnheader "Created by" [ref=f18e224]
+                - columnheader "Updated by" [ref=f18e230]
+                - columnheader [ref=f18e236]:
+                  - button "All Quote types" [ref=f18e239] [cursor=pointer]
+            - rowgroup [ref=f18e242]:
+              - row "Sample Signature Template Quote Rakesh M Thu Jul 30, 2026 06:38 Not available" [ref=f18e243]:
+                - cell [ref=f18e244]:
+                  - checkbox [ref=f18e248]
+                - cell [ref=f18e250]:
+                  - link "Sample Signature Template" [ref=f18e253] [cursor=pointer]:
+                    - /url: /crm/sales/settings/cpq-document-templates/402000136267
+                - cell "Quote" [ref=f18e254]
+                - cell "Rakesh M Thu Jul 30, 2026 06:38" [ref=f18e257]:
+                  - generic [ref=f18e260]:
+                    - generic [ref=f18e261]: Rakesh M
+                    - generic [ref=f18e262]: Thu Jul 30, 2026 06:38
+                - cell "Not available" [ref=f18e263]
+                - cell [ref=f18e267]:
+                  - button [ref=f18e273] [cursor=pointer]
+              - row "Sample Template Quote Rakesh M Thu Jul 30, 2026 06:38 Not available" [ref=f18e281]:
+                - cell [ref=f18e282]:
+                  - checkbox [ref=f18e286]
+                - cell [ref=f18e288]:
+                  - link "Sample Template" [ref=f18e291] [cursor=pointer]:
+                    - /url: /crm/sales/settings/cpq-document-templates/402000136266
+                - cell "Quote" [ref=f18e292]
+                - cell "Rakesh M Thu Jul 30, 2026 06:38" [ref=f18e295]:
+                  - generic [ref=f18e298]:
+                    - generic [ref=f18e299]: Rakesh M
+                    - generic [ref=f18e300]: Thu Jul 30, 2026 06:38
+                - cell "Not available" [ref=f18e301]
+                - cell [ref=f18e305]:
+                  - button [ref=f18e311] [cursor=pointer]
+          - generic [ref=f18e319]:
+            - list
+  - iframe

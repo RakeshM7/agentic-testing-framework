@@ -1,0 +1,9 @@
+[
+ {
+  "label": "Create new activity",
+  "role": "menuitem",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "creates activity type"
+ }
+]

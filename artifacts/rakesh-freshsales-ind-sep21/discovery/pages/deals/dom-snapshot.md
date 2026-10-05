@@ -1,0 +1,179 @@
+- generic [active] [ref=f34e1]:
+  - generic [ref=f34e42]:
+    - generic [ref=f34e45]:
+      - generic [ref=f34e46]:
+        - link "Connect your mailbox" [ref=f34e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f34e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f34e49] [cursor=pointer]
+    - generic [ref=f34e52]:
+      - generic [ref=f34e53]:
+        - list [ref=f34e55]:
+          - listitem [ref=f34e56]: Deals
+        - generic [ref=f34e58]:
+          - list [ref=f34e59]:
+            - listitem [ref=f34e60]
+            - listitem [ref=f34e64]:
+              - generic "Send email" [ref=f34e65] [cursor=pointer]
+            - listitem [ref=f34e69]:
+              - generic "What's new" [ref=f34e70] [cursor=pointer]: "1"
+            - listitem [ref=f34e75]:
+              - generic [ref=f34e76]: "5"
+            - listitem [ref=f34e82]
+            - listitem [ref=f34e83]:
+              - img "Your User Avatar" [ref=f34e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f34e97]
+          - generic [ref=f34e99]:
+            - emphasis [ref=f34e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f34e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f34e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f34e110]:
+          - link [ref=f34e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f34e118]:
+            - listitem "Dashboards" [ref=f34e119]:
+              - link [ref=f34e122] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f34e125]:
+              - link [ref=f34e128] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f34e131]:
+              - link [ref=f34e134] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f34e137]:
+              - link [ref=f34e140] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f34e143]:
+              - link [ref=f34e146] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f34e149]:
+              - link [ref=f34e152] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f34e155]:
+              - link [ref=f34e158] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f34e161]:
+            - generic "Phone" [ref=f34e162]
+            - generic "Freshworks Switcher" [ref=f34e165]:
+              - button "Freshworks Switcher" [ref=f34e166] [cursor=pointer]
+      - generic [ref=f34e172]:
+        - generic [ref=f34e173]:
+          - generic [ref=f34e174]:
+            - generic [ref=f34e175]: Your Freshsales setup guide
+            - generic [ref=f34e176]:
+              - button "[object Object]" [ref=f34e179] [cursor=pointer]:
+                - button "Take an interactive tour" [ref=f34e180]
+              - button [ref=f34e190] [cursor=pointer]
+          - generic [ref=f34e194]:
+            - generic [ref=f34e198]:
+              - button "Personalize your CRM" [ref=f34e199] [cursor=pointer]
+              - button "Import contacts" [ref=f34e205] [cursor=pointer]
+              - button "Bring in website leads" [ref=f34e213] [cursor=pointer]
+              - button "Invite your team" [ref=f34e223] [cursor=pointer]
+              - button "Route leads to your team" [ref=f34e231] [cursor=pointer]
+              - button "Create sales sequence" [ref=f34e241] [cursor=pointer]
+              - button "Set up your sales pipeline" [ref=f34e249] [cursor=pointer]
+              - button "Add deal" [ref=f34e258] [cursor=pointer]
+            - button [ref=f34e271] [cursor=pointer]
+        - generic [ref=f34e275]:
+          - generic [ref=f34e276]:
+            - button [ref=f34e278]:
+              - button "All deals 17 button" [ref=f34e279]:
+                - generic [ref=f34e280]:
+                  - generic [ref=f34e281] [cursor=pointer]: All deals
+                  - generic [ref=f34e282]: "17"
+                  - button [ref=f34e284] [cursor=pointer]:
+                    - button "button" [ref=f34e285]:
+                      - generic [ref=f34e286]: $11.24K
+            - button "button ⌘ O" [ref=f34e295] [cursor=pointer]:
+              - generic [ref=f34e296]:
+                - button "button" [ref=f34e297]:
+                  - generic [ref=f34e298]: 13 more...
+                - generic [ref=f34e303]: ⌘ O
+          - generic [ref=f34e304]:
+            - button "button" [ref=f34e306] [cursor=pointer]:
+              - generic "Settings" [ref=f34e314]
+            - generic [ref=f34e316]:
+              - button "button" [ref=f34e317] [cursor=pointer]:
+                - generic [ref=f34e318]: Import deals
+              - button [ref=f34e324] [cursor=pointer]
+            - button "button" [ref=f34e330] [cursor=pointer]:
+              - generic [ref=f34e331]: Add deal
+        - generic [ref=f34e337]:
+          - generic [ref=f34e339]:
+            - generic [ref=f34e340]:
+              - button "Pipeline" [ref=f34e342] [cursor=pointer]
+              - button [ref=f34e350] [cursor=pointer]:
+                - button "button" [ref=f34e351]:
+                  - generic [ref=f34e358]:
+                    - generic [ref=f34e359]: Sort by
+                    - generic "Deal value" [ref=f34e362]
+              - button "button" [ref=f34e363] [cursor=pointer]:
+                - generic [ref=f34e364]: 1 filter applied
+              - button "button" [ref=f34e370] [cursor=pointer]:
+                - generic [ref=f34e371]: All deal owners
+            - generic [ref=f34e375]:
+              - generic [ref=f34e376] [cursor=pointer]: Quotas and Forecasting
+              - textbox "Search" [ref=f34e389]
+          - generic [ref=f34e391]:
+            - generic [ref=f34e394]:
+              - generic [ref=f34e395]:
+                - generic [ref=f34e396]:
+                  - generic "New" [ref=f34e397]
+                  - generic [ref=f34e398]: "5"
+                - button "Weighted value button" [ref=f34e402] [cursor=pointer]:
+                  - generic [ref=f34e403]:
+                    - generic "Weighted value" [ref=f34e405]
+                    - button "button" [ref=f34e406]:
+                      - generic [ref=f34e407]: $2.82K
+              - button [ref=f34e414] [cursor=pointer]
+            - generic [ref=f34e646]:
+              - generic [ref=f34e647]:
+                - generic [ref=f34e648]:
+                  - generic "Qualification" [ref=f34e649]
+                  - generic [ref=f34e650]: "2"
+                - button "Weighted value button" [ref=f34e654] [cursor=pointer]:
+                  - generic [ref=f34e655]:
+                    - generic "Weighted value" [ref=f34e657]
+                    - button "button" [ref=f34e658]:
+                      - generic [ref=f34e659]: $1.26K
+              - button [ref=f34e666] [cursor=pointer]
+            - generic [ref=f34e898]:
+              - generic [ref=f34e899]:
+                - generic [ref=f34e900]:
+                  - generic "Discovery" [ref=f34e901]
+                  - generic [ref=f34e902]: "1"
+                - button "Weighted value button" [ref=f34e906] [cursor=pointer]:
+                  - generic [ref=f34e907]:
+                    - generic "Weighted value" [ref=f34e909]
+                    - button "button" [ref=f34e910]:
+                      - generic [ref=f34e911]: $1.4K
+              - button [ref=f34e918] [cursor=pointer]
+            - generic [ref=f34e1150]:
+              - generic [ref=f34e1151]:
+                - generic [ref=f34e1152]:
+                  - generic "Demo" [ref=f34e1153]
+                  - generic [ref=f34e1154]: "0"
+                - button "Weighted value button" [ref=f34e1158] [cursor=pointer]:
+                  - generic [ref=f34e1159]:
+                    - generic "Weighted value" [ref=f34e1161]
+                    - button "button" [ref=f34e1162]:
+                      - generic [ref=f34e1163]: $0
+              - button [ref=f34e1170] [cursor=pointer]
+            - generic [ref=f34e1402]:
+              - generic "Negotiation" [ref=f34e1405]
+              - button [ref=f34e1411] [cursor=pointer]
+            - generic [ref=f34e1419]:
+              - generic "Won" [ref=f34e1422]
+              - button [ref=f34e1428] [cursor=pointer]
+            - generic [ref=f34e1436]:
+              - generic "Lost" [ref=f34e1439]
+              - button [ref=f34e1445] [cursor=pointer]
+    - generic [ref=f34e1452] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

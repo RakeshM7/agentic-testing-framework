@@ -1,0 +1,14 @@
+[
+ {
+  "label": "Export",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "same Export menu (observed on Sales Trends)"
+ },
+ {
+  "label": "Edit",
+  "role": "button",
+  "kind": "toggles",
+  "overlay": "edit mode (observed on Sales Trends)"
+ }
+]

@@ -1,0 +1,386 @@
+{
+ "nodes": [
+  {
+   "id": "awaiting-response",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/awaiting_response",
+   "title": "Connect-your-Inbox landing; provider choice Gmail/Microsoft Outlook/Zoho/Others (not clicked, third-party OAuth)"
+  },
+  {
+   "id": "team-inbox",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/team_inbox",
+   "title": "Empty state 'Create a Team Inbox in the CRM.' + button 'Set up Team Inbox'"
+  },
+  {
+   "id": "inbox",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/inbox",
+   "title": "3 sample emails (1 incoming, 2 outgoing) 'Showing 1 - 3 of 3'; Refresh button; row checkboxes"
+  },
+  {
+   "id": "email-thread",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/emails/402041528336",
+   "title": "Thread view with Reply/Forward, inline reply composer"
+  },
+  {
+   "id": "sent",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/sent",
+   "title": "3+ sample sent emails with Opened/Clicked badges"
+  },
+  {
+   "id": "scheduled",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/scheduled",
+   "title": "No conversations found."
+  },
+  {
+   "id": "drafts",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/drafts",
+   "title": "No conversations found."
+  },
+  {
+   "id": "trash",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/trash",
+   "title": "'Showing Other Trash' / No conversations found."
+  },
+  {
+   "id": "email-templates",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/email-templates",
+   "title": "9 system templates (Public) + search + filter (Created by me/Shared with me/Most recent) + Create EMAIL template"
+  },
+  {
+   "id": "email-template-create",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/email-templates (drawer)",
+   "title": "Create template drawer"
+  },
+  {
+   "id": "email-template-edit",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/email-templates (drawer)",
+   "title": "Edit template drawer"
+  },
+  {
+   "id": "bulk-email-metrics",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/email-bulk-metrics",
+   "title": "No conversations found."
+  },
+  {
+   "id": "bulk-emails-scheduled",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/bulk_scheduled",
+   "title": "No conversations found."
+  },
+  {
+   "id": "bulk-email-drafts",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/bulk_drafts",
+   "title": "No conversations found."
+  },
+  {
+   "id": "tracking-opens",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/opened",
+   "title": "Lists sent emails that were opened"
+  },
+  {
+   "id": "tracking-clicks",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/clicked",
+   "title": "Lists sent emails that had link clicks"
+  },
+  {
+   "id": "tracking-bounces",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/bounced",
+   "title": "No conversations found."
+  },
+  {
+   "id": "all-phone-calls",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/all_phone_calls",
+   "title": "2 manual call logs for AgentTest Deal (pre-existing); filters Phone number/Owner"
+  },
+  {
+   "id": "voicemail",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/voicemail",
+   "title": "No conversations found; filter Phone number"
+  },
+  {
+   "id": "all-sms",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/all_sms",
+   "title": "No conversations found. + Set up SMS"
+  },
+  {
+   "id": "sms-templates",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/sms-templates",
+   "title": "No SMS templates found. + Create SMS template"
+  },
+  {
+   "id": "sms-template-create",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/sms-templates (drawer)",
+   "title": "Create sms template drawer"
+  },
+  {
+   "id": "compose-email",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/sent?open_modal=email",
+   "title": "New mail drawer"
+  },
+  {
+   "id": "team-inbox-settings",
+   "url": "/crm/sales/settings/email/team-inbox",
+   "title": "Admin Settings > Team Inbox: Add Team Inbox, auto-forward address (outside module; viewed only)"
+  }
+ ],
+ "edges": [
+  {
+   "from": "awaiting-response",
+   "to": "team-inbox",
+   "via": {
+    "label": "Team Inbox",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "inbox",
+   "via": {
+    "label": "Inbox",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "sent",
+   "via": {
+    "label": "Sent",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "scheduled",
+   "via": {
+    "label": "Scheduled",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "drafts",
+   "via": {
+    "label": "Drafts",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "trash",
+   "via": {
+    "label": "Trash",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "email-templates",
+   "via": {
+    "label": "Email Templates",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "bulk-email-metrics",
+   "via": {
+    "label": "Bulk email metrics",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "bulk-emails-scheduled",
+   "via": {
+    "label": "Bulk emails scheduled",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "bulk-email-drafts",
+   "via": {
+    "label": "Bulk email drafts",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "tracking-opens",
+   "via": {
+    "label": "Opens",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "tracking-clicks",
+   "via": {
+    "label": "Clicks",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "tracking-bounces",
+   "via": {
+    "label": "Bounces",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "all-phone-calls",
+   "via": {
+    "label": "All phone calls",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "voicemail",
+   "via": {
+    "label": "Voicemail",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "all-sms",
+   "via": {
+    "label": "All SMS",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "sms-templates",
+   "via": {
+    "label": "SMS Templates",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "inbox",
+   "to": "email-thread",
+   "via": {
+    "label": "Add-on license for CRM Gold",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "team-inbox",
+   "to": "team-inbox-settings",
+   "via": {
+    "label": "Set up Team Inbox",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "email-templates",
+   "to": "email-template-create",
+   "via": {
+    "label": "Create EMAIL template",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "email-templates",
+   "to": "email-template-edit",
+   "via": {
+    "label": "Edit",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "sms-templates",
+   "to": "sms-template-create",
+   "via": {
+    "label": "Create SMS template",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "sent",
+   "to": "compose-email",
+   "via": {
+    "label": "Send email",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "EXTERNAL:/crm/phone/power-dialer",
+   "via": {
+    "label": "Power Dialer List",
+    "role": "menuitem",
+    "kind": "external-module"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "EXTERNAL:/crm/messaging/inbox",
+   "via": {
+    "label": "Chat Inbox",
+    "role": "menuitem",
+    "kind": "external-module"
+   },
+   "mutating": false
+  },
+  {
+   "from": "awaiting-response",
+   "to": "EXTERNAL:/crm/sales/sales-sequences/filters",
+   "via": {
+    "label": "Sales Sequences",
+    "role": "tab",
+    "kind": "navigates"
+   },
+   "mutating": false
+  }
+ ]
+}

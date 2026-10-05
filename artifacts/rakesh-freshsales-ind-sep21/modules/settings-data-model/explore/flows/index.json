@@ -1,0 +1,123 @@
+[
+ {
+  "slug": "open-settings-data-model-pages",
+  "title": "Reach each data-model settings page",
+  "goal": "Reach each data-model settings page",
+  "kind": "navigation",
+  "entryPage": "Leads, Contacts, & Accounts",
+  "navPath": "Admin Settings > Leads, Contacts, & Accounts",
+  "stepCount": 4,
+  "mutating": false,
+  "file": "flows/open-settings-data-model-pages.md"
+ },
+ {
+  "slug": "view-add-contact-field-options",
+  "title": "View Add field overlay for Contacts",
+  "goal": "View Add field overlay for Contacts",
+  "kind": "read",
+  "entryPage": "Add field",
+  "navPath": "Admin Settings > Contacts > Add field",
+  "stepCount": 5,
+  "mutating": true,
+  "file": "flows/view-add-contact-field-options.md"
+ },
+ {
+  "slug": "view-contact-fields-list",
+  "title": "View contact fields and groups",
+  "goal": "View contact fields and groups",
+  "kind": "read",
+  "entryPage": "Contacts",
+  "navPath": "Admin Settings > Contacts",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-contact-fields-list.md"
+ },
+ {
+  "slug": "view-account-fields-list",
+  "title": "View account fields",
+  "goal": "View account fields",
+  "kind": "read",
+  "entryPage": "Accounts",
+  "navPath": "Admin Settings > Accounts",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-account-fields-list.md"
+ },
+ {
+  "slug": "view-custom-modules-and-add-module-form",
+  "title": "View Custom Modules and Add module form",
+  "goal": "View Custom Modules and Add module form",
+  "kind": "read",
+  "entryPage": "Add module",
+  "navPath": "Admin Settings > Custom Modules > Add module",
+  "stepCount": 3,
+  "mutating": true,
+  "file": "flows/view-custom-modules-and-add-module-form.md"
+ },
+ {
+  "slug": "view-lifecycle-stages",
+  "title": "View lifecycle stages and add-stage form",
+  "goal": "View lifecycle stages and add-stage form",
+  "kind": "read",
+  "entryPage": "Contact Lifecycle Stages",
+  "navPath": "Admin Settings > Contact Lifecycle Stages",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/view-lifecycle-stages.md"
+ },
+ {
+  "slug": "view-contact-scoring",
+  "title": "View contact scoring settings",
+  "goal": "View contact scoring settings",
+  "kind": "read",
+  "entryPage": "Contact Scoring",
+  "navPath": "Admin Settings > Contact Scoring",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-contact-scoring.md"
+ },
+ {
+  "slug": "view-web-forms",
+  "title": "View web forms list",
+  "goal": "View web forms list",
+  "kind": "read",
+  "entryPage": "Web Forms",
+  "navPath": "Admin Settings > Web Forms",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-web-forms.md"
+ },
+ {
+  "slug": "view-crm-code-library",
+  "title": "View CRM code library",
+  "goal": "View CRM code library",
+  "kind": "read",
+  "entryPage": "CRM Code Library",
+  "navPath": "Admin Settings > CRM Code Library",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-crm-code-library.md"
+ },
+ {
+  "slug": "view-linkedin-lead-gen",
+  "title": "View LinkedIn lead gen forms",
+  "goal": "View LinkedIn lead gen forms",
+  "kind": "read",
+  "entryPage": "LinkedIn Lead Gen Forms",
+  "navPath": "Admin Settings > LinkedIn Lead Gen Forms",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-linkedin-lead-gen.md"
+ },
+ {
+  "slug": "view-tags",
+  "title": "View tags",
+  "goal": "View tags",
+  "kind": "read",
+  "entryPage": "Tags",
+  "navPath": "Admin Settings > Account Settings > Tags",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-tags.md"
+ }
+]

@@ -1,0 +1,41 @@
+[
+ {
+  "label": "Name your template",
+  "role": "textbox",
+  "kind": "toggles",
+  "resultingUrl": null,
+  "note": "required: 'Give a name for your email template.'"
+ },
+ {
+  "label": "Write a subject line",
+  "role": "textbox",
+  "kind": "toggles",
+  "resultingUrl": null,
+  "note": "optional"
+ },
+ {
+  "label": "Insert fields",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": "merge-field menu"
+ },
+ {
+  "label": "Attach",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": null,
+  "note": "not exercised"
+ },
+ {
+  "label": "Save",
+  "role": "button",
+  "kind": "mutates",
+  "resultingUrl": "toast 'You created an email template.'"
+ },
+ {
+  "label": "Cancel",
+  "role": "button",
+  "kind": "navigates",
+  "resultingUrl": null
+ }
+]

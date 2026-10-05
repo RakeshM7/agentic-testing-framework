@@ -1,0 +1,62 @@
+[
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744",
+  "slug": "deals-pipeline",
+  "title": "Deals pipeline (kanban) view",
+  "screenshotPath": "pages/deals-pipeline/screenshot.png",
+  "domSnapshotPath": "pages/deals-pipeline/dom-snapshot.md",
+  "networkRequestsPath": "pages/deals-pipeline/network-requests.json",
+  "consoleLogPath": "pages/deals-pipeline/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744?per_page=25&sort=amount",
+  "slug": "deals-table",
+  "title": "Deals table view",
+  "screenshotPath": "pages/deals-table/screenshot.png",
+  "domSnapshotPath": "pages/deals-table/dom-snapshot.md",
+  "networkRequestsPath": "pages/deals-table/network-requests.json",
+  "consoleLogPath": "pages/deals-table/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744#add",
+  "slug": "deals-add-form",
+  "title": "Add deal slide-over",
+  "screenshotPath": "pages/deals-add-form/screenshot.png",
+  "domSnapshotPath": "pages/deals-add-form/dom-snapshot.md",
+  "networkRequestsPath": "pages/deals-add-form/network-requests.json",
+  "consoleLogPath": "pages/deals-add-form/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012471879",
+  "slug": "deal-detail",
+  "title": "Deal detail page",
+  "screenshotPath": "pages/deal-detail/screenshot.png",
+  "domSnapshotPath": "pages/deal-detail/dom-snapshot.md",
+  "networkRequestsPath": "pages/deal-detail/network-requests.json",
+  "consoleLogPath": "pages/deal-detail/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942756?per_page=25",
+  "slug": "deals-recycle-bin",
+  "title": "Recycle Bin view",
+  "screenshotPath": "pages/deals-recycle-bin/screenshot.png",
+  "domSnapshotPath": "pages/deals-recycle-bin/dom-snapshot.md",
+  "networkRequestsPath": "pages/deals-recycle-bin/network-requests.json",
+  "consoleLogPath": "pages/deals-recycle-bin/console-log.txt",
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744 (Forecast)",
+  "slug": "deals-forecast",
+  "title": "Forecast view",
+  "screenshotPath": null,
+  "domSnapshotPath": "pages/deals-forecast/dom-snapshot.md",
+  "networkRequestsPath": "pages/deals-forecast/network-requests.json",
+  "consoleLogPath": "pages/deals-forecast/console-log.txt",
+  "links": []
+ }
+]

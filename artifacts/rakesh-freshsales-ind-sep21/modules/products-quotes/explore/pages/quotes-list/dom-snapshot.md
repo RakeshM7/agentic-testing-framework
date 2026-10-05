@@ -1,0 +1,149 @@
+- generic [active] [ref=f27e1]:
+  - generic [ref=f27e42]:
+    - generic [ref=f27e45]:
+      - generic [ref=f27e46]:
+        - link "Connect your mailbox" [ref=f27e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f27e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f27e49] [cursor=pointer]
+    - generic [ref=f27e1869]:
+      - generic [ref=f27e1876]:
+        - paragraph [ref=f27e1877]: Success
+        - paragraph [ref=f27e1878]: Quote deleted.
+      - generic [ref=f27e1879] [cursor=pointer]: 
+    - generic [ref=f27e52]:
+      - generic [ref=f27e53]:
+        - list [ref=f27e1881]:
+          - listitem [ref=f27e1882]: Quotes
+        - generic [ref=f27e58]:
+          - list [ref=f27e59]:
+            - listitem [ref=f27e60]
+            - listitem [ref=f27e64]:
+              - generic "Send email" [ref=f27e65] [cursor=pointer]
+            - listitem [ref=f27e69]:
+              - generic "What's new" [ref=f27e70] [cursor=pointer]: "1"
+            - listitem [ref=f27e75]:
+              - generic [ref=f27e76]: "5"
+            - listitem [ref=f27e82]
+            - listitem [ref=f27e83]:
+              - img "Your User Avatar" [ref=f27e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f27e97]
+          - generic [ref=f27e99]:
+            - emphasis [ref=f27e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f27e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f27e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f27e110]:
+          - link [ref=f27e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f27e118]:
+            - listitem "Dashboards" [ref=f27e119]:
+              - link [ref=f27e122] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f27e125]:
+              - link [ref=f27e128] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f27e131]:
+              - link [ref=f27e134] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f27e137]:
+              - link [ref=f27e140] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f27e143]:
+              - link [ref=f27e146] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f27e149]:
+              - link [ref=f27e152] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f27e155]:
+              - link [ref=f27e158] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f27e161]:
+            - generic "Phone" [ref=f27e162]
+            - generic "Freshworks Switcher" [ref=f27e165]:
+              - button "Freshworks Switcher" [ref=f27e166] [cursor=pointer]
+      - generic [ref=f27e1884]:
+        - generic [ref=f27e1885]:
+          - list [ref=f27e1886]:
+            - list [ref=f27e1888]:
+              - button [ref=f27e1891] [cursor=pointer]
+              - listitem [ref=f27e1898]:
+                - generic "My Quotes" [ref=f27e1899] [cursor=pointer]: (3)
+                - list
+          - generic [ref=f27e1913]:
+            - button "Add quote" [ref=f27e1915] [cursor=pointer]
+            - button [ref=f27e1918] [cursor=pointer]
+            - generic [ref=f27e1924]:
+              - button "Edit columns" [ref=f27e1925] [cursor=pointer]
+              - button [ref=f27e1934] [cursor=pointer]
+            - button [ref=f27e1941] [cursor=pointer]:
+              - button [ref=f27e1942]
+            - button "Filters 1" [ref=f27e1954] [cursor=pointer]:
+              - generic [ref=f27e1959]: Filters
+              - generic [ref=f27e1960]: "1"
+        - generic [ref=f27e1961]:
+          - generic [ref=f27e1962]:
+            - table [ref=f27e1964]:
+              - rowgroup [ref=f27e1965]:
+                - row "Quote name" [ref=f27e1966]:
+                  - columnheader [ref=f27e1967]:
+                    - checkbox [ref=f27e1972]
+                  - columnheader "Quote name" [ref=f27e1974]:
+                    - generic [ref=f27e1976]:
+                      - generic [ref=f27e1977] [cursor=pointer]: Quote name
+                      - img [ref=f27e1980] [cursor=pointer]
+              - rowgroup [ref=f27e1984]:
+                - row "Quote for Widgetz - 70 users (sample)" [ref=f27e1985]:
+                  - cell [ref=f27e1986]:
+                    - checkbox [ref=f27e1990]
+                  - cell "Quote for Widgetz - 70 users (sample)" [ref=f27e1992]:
+                    - generic "Quote for Widgetz - 70 users (sample)" [ref=f27e2001] [cursor=pointer]
+                - row "Quote for Techcave - 40 users (sample)" [ref=f27e2002]:
+                  - cell [ref=f27e2003]:
+                    - checkbox [ref=f27e2007]
+                  - cell "Quote for Techcave - 40 users (sample)" [ref=f27e2009]:
+                    - generic "Quote for Techcave - 40 users (sample)" [ref=f27e2018] [cursor=pointer]
+            - table [ref=f27e2020]:
+              - rowgroup [ref=f27e2021]:
+                - row [ref=f27e2022]:
+                  - columnheader "Primary contact" [ref=f27e2023]
+                  - columnheader "Quote stage" [ref=f27e2028]:
+                    - generic [ref=f27e2030]:
+                      - generic [ref=f27e2031] [cursor=pointer]: Quote stage
+                      - img [ref=f27e2034] [cursor=pointer]
+                  - columnheader "Created at" [ref=f27e2038]:
+                    - generic [ref=f27e2040]:
+                      - generic [ref=f27e2041] [cursor=pointer]: Created at
+                      - img [ref=f27e2044] [cursor=pointer]
+                  - columnheader [ref=f27e2049]
+              - rowgroup [ref=f27e2050]:
+                - row [ref=f27e2051]:
+                  - cell [ref=f27e2052]:
+                    - button "Click to add" [ref=f27e2058] [cursor=pointer]
+                  - cell "Draft" [ref=f27e2061]:
+                    - generic "Draft" [ref=f27e2065]
+                  - cell "3 months ago" [ref=f27e2066]
+                  - cell [ref=f27e2072]:
+                    - generic [ref=f27e2073]:
+                      - list [ref=f27e2075]
+                      - button [ref=f27e2080] [cursor=pointer]
+                - row [ref=f27e2088]:
+                  - cell [ref=f27e2089]:
+                    - button "Click to add" [ref=f27e2095] [cursor=pointer]
+                  - cell "Draft" [ref=f27e2098]:
+                    - generic "Draft" [ref=f27e2102]
+                  - cell "3 months ago" [ref=f27e2103]
+                  - cell [ref=f27e2109]:
+                    - generic [ref=f27e2110]:
+                      - list [ref=f27e2112]
+                      - button [ref=f27e2117] [cursor=pointer]
+          - generic [ref=f27e2126]:
+            - generic [ref=f27e2127]: Showing 1 - 3 of 3
+            - list
+    - generic [ref=f27e515] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

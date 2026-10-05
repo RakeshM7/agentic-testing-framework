@@ -1,0 +1,72 @@
+[
+ {
+  "question": "[Behavior] [Blocking] What are the rules for sending a quote (Send to customer): required fields ('2 fields to be filled'), stage transitions Draft > Sent > Accepted/Declined, and email behaviour?",
+  "navigation": "Quote detail > Send to customer; flow view-quote-detail",
+  "csvAnswer": "The mandatory fields are highlighted in the page, fill them and retry send"
+ },
+ {
+  "question": "[Behavior] [Blocking] When products are added to a quote (Add or edit products) with 'Add products to deals' on, does it overwrite the linked deal's amount and what does 'Sync quote with deal' change?",
+  "navigation": "Quote detail > Add or edit products; flow view-quote-detail",
+  "csvAnswer": "Yes it overrides"
+ },
+ {
+  "question": "[Behavior] [Nice-to-have] Are duplicate product names or product codes blocked on create/clone?",
+  "navigation": "Products > Clone; flow clone-product",
+  "csvAnswer": "Duplicate product names are blocked on create and clone"
+ },
+ {
+  "question": "[Scope] [Nice-to-have] Why do Quotes have no left-nav entry, and is the Quotes list (/crm/sales/cpq_documents/view/...) intended to be reachable only via URL/+ menu?",
+  "navigation": "Products > Quotes list; flow view-quotes-list",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Scope] [Blocking] Feature-mapping caveat: quotes require an existing Deal and Primary contact (no standalone quote creation, and no left-nav Quotes entry); for quote create/delete tests, may the run create its own throwaway Deal and Contact as prerequisites (deleted at cleanup), or must a specific pre-existing deal be used (read-only, never modified)?",
+  "navigation": "Quick-create (+) > Add Quote (flow add-quote); drawer requires Deal* and Primary contact*",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Scope] [Blocking] Should test cases cover the quote flows explore-agent did not reach (Edit quote overlay, Clone quote, Preview, Save PDF, quote stage transitions, Add or edit products Save), given Save would alter the linked deal amount, and if yes should they use only a run-created deal so no pre-existing deal is touched?",
+  "navigation": "Quote detail > kebab / Add or edit products (flow view-quote-detail)",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Scope] [Blocking] Send to customer and Import products would email real addresses or bulk-write data: should these be generated as test cases but excluded from live execution, or executed live with a designated test email/CSV (please name the address/file)?",
+  "navigation": "Quote detail > Send to customer (flow view-quote-detail); Products > Add product dropdown arrow > Import products (flow product-list-toolbar-menus)",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Behavior] [Blocking] Create template: with valid Template name and Quote type, should test cases create a real document template (run-created, then deleted), and what are the expected validation messages for blank Template name and blank Quote type?",
+  "navigation": "Admin Settings > Document Templates > Create template (flow create-template-validation)",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Behavior] [Blocking] Create product validation: what are the expected rules and messages for required fields (Name, Pricing type, Unit price on clone), negative or non-numeric unit price, maximum Name length, and Product code/SKU uniqueness?",
+  "navigation": "Products > Add product (flow create-product) and Products > Clone (flow clone-product)",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Behavior] [Nice-to-have] Subscription pricing: should test cases cover creating a Subscription-type product (billing cycle/term fields) and multi-currency prices, or only One-time pricing?",
+  "navigation": "Products > Add product > Pricing type: Subscription (flow create-product)",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Behavior] [Nice-to-have] CPQ Settings Pricing radios (One-time/Subscription/Both) appeared disabled for this account: is that expected (plan/permission restriction), and should tests only assert the read-only state rather than changing settings?",
+  "navigation": "Admin Settings > CPQ Settings (flow view-cpq-settings)",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Edge Case] [Nice-to-have] After deleting a product or quote (moved to Recycle Bin for 90 days), should tests verify it appears in the Recycle Bin and can be restored, or is verifying disappearance from the list sufficient?",
+  "navigation": "Products > product kebab > Delete (flow delete-product); Quote detail > kebab > Delete (flow delete-quote)",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Edge Case] [Nice-to-have] Should tests include a product that is already used on a quote being edited, deactivated (Active off) or deleted, and what behaviour is expected for the quote?",
+  "navigation": "Products > product > pencil (flow edit-product) and Quote detail > Add or edit products",
+  "csvAnswer": ""
+ },
+ {
+  "question": "[Scope] [Nice-to-have] Are Quotes list Filters, Edit columns, sorting, Manage Quote types, Customize fields and Products category filter/bulk actions in scope for test cases despite not being explored?",
+  "navigation": "Quotes list gear and toolbar (flow view-quotes-list); Products toolbar (flow product-list-toolbar-menus)",
+  "csvAnswer": ""
+ }
+]

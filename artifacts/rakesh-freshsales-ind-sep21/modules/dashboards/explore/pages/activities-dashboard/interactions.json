@@ -1,0 +1,61 @@
+[
+ {
+  "label": "Configure widgets",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "drawer"
+ },
+ {
+  "label": "+ 7 activities",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "dropdown"
+ },
+ {
+  "label": "More",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "menu: Create new activity"
+ },
+ {
+  "label": "Add task",
+  "role": "button",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "not exercised; would create a task entity"
+ },
+ {
+  "label": "Add meeting",
+  "role": "button",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "not exercised"
+ },
+ {
+  "label": "Today (Oct 04) due-date filter",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "not opened"
+ },
+ {
+  "label": "All / Open / Overdue / Completed",
+  "role": "pills",
+  "kind": "toggles",
+  "skipped": true,
+  "reason": "not exercised"
+ },
+ {
+  "label": "Google Calendar / Office 365 / Zoom / Microsoft Teams",
+  "role": "button",
+  "kind": "external",
+  "skipped": true,
+  "reason": "third-party integration"
+ },
+ {
+  "label": "+ (Add report)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Select a report dropdown"
+ }
+]

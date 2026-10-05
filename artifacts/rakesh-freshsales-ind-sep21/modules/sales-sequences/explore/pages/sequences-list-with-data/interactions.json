@@ -1,0 +1,8 @@
+[{"label":"Search sales sequences","role":"textbox","kind":"toggles"},
+{"label":"All sequences (Showing)","role":"button","kind":"opens-overlay","overlay":"dropdown not exposed in snapshot"},
+{"label":"Create sales sequence","role":"button","kind":"navigates","resultingUrl":"/contact/new"},
+{"label":"Inactive status toggle","role":"toggle","kind":"mutates","skipped":true,"reason":"would activate sequence"},
+{"label":"Row actions > Edit","kind":"navigates","skipped":true},
+{"label":"Row actions > Share","kind":"opens-overlay","overlay":"Share Sequence dialog: Just me / Everyone (can view) / Selected users, teams and territories; Cancel, Save (cancelled)"},
+{"label":"Row actions > Clone","kind":"navigates","resultingUrl":"/contact/new prefilled name 'Explore Test Sequence - Copy' with Step 1 Follow-up task; Cancel asks 'Are you sure want to discard?' No/Yes; Yes returns to list"},
+{"label":"Row actions > Delete","kind":"mutates","skipped":true,"reason":"delete click denied by permission classifier; entity left in place"}]

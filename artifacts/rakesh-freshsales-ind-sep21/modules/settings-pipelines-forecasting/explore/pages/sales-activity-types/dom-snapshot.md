@@ -1,0 +1,125 @@
+- generic [active] [ref=f33e1]:
+  - generic [ref=f33e42]:
+    - generic [ref=f33e45]:
+      - generic [ref=f33e46]:
+        - link "Connect your mailbox" [ref=f33e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f33e271] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f33e48] [cursor=pointer]
+    - generic [ref=f33e51]:
+      - generic [ref=f33e52]:
+        - list [ref=f33e313]:
+          - listitem [ref=f33e314]:
+            - link "Admin Settings" [ref=f33e315] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f33e316]: Sales Activities
+        - generic [ref=f33e57]:
+          - list [ref=f33e58]:
+            - listitem [ref=f33e59]
+            - listitem [ref=f33e63]:
+              - generic "Send email" [ref=f33e64] [cursor=pointer]
+            - listitem [ref=f33e68]:
+              - generic "What's new" [ref=f33e69] [cursor=pointer]: "1"
+            - listitem [ref=f33e74]:
+              - generic [ref=f33e75]: "5"
+            - listitem [ref=f33e81]
+            - listitem [ref=f33e82]:
+              - img "Your User Avatar" [ref=f33e86] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f33e96]
+          - generic [ref=f33e98]:
+            - emphasis [ref=f33e99]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f33e105] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f33e107] [cursor=pointer]
+      - navigation:
+        - generic [ref=f33e109]:
+          - link [ref=f33e113] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f33e117]:
+            - listitem "Dashboards" [ref=f33e118]:
+              - link [ref=f33e121] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f33e124]:
+              - link [ref=f33e127] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f33e130]:
+              - link [ref=f33e133] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f33e136]:
+              - link [ref=f33e139] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f33e142]:
+              - link [ref=f33e145] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f33e148]:
+              - link [ref=f33e151] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f33e154]:
+              - link [ref=f33e157] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f33e160]:
+            - generic "Phone" [ref=f33e161]
+            - generic "Freshworks Switcher" [ref=f33e164]:
+              - button "Freshworks Switcher" [ref=f33e165] [cursor=pointer]
+      - generic [ref=f33e319]:
+        - generic [ref=f33e320]:
+          - generic [ref=f33e321]:
+            - heading "Sales Activities" [level=4] [ref=f33e328]
+            - button "Create sales activity" [ref=f33e331] [cursor=pointer]
+          - generic [ref=f33e333]: Manage common sales activities (like tasks, meetings, emails) from here. You can also create activities that are specific to your business. Once you create activities, your sales reps can start using them via the + button on the top-right of this page.
+          - generic [ref=f33e336]:
+            - link "Understanding sales activities and using them" [ref=f33e338] [cursor=pointer]:
+              - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002991-what-are-sales-activities-how-to-use-them-
+            - link "How to configure sales activities (default and custom)" [ref=f33e345] [cursor=pointer]:
+              - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002994-how-to-configure-different-sales-activities-in-freshworks-crm-
+        - generic [ref=f33e352]:
+          - heading "Default sales activities" [level=4] [ref=f33e353]
+          - generic [ref=f33e354]: We created some activities for you
+        - table [ref=f33e356]:
+          - rowgroup [ref=f33e357]:
+            - row [ref=f33e358]:
+              - columnheader "icon" [ref=f33e359]
+              - columnheader "Sales Activity" [ref=f33e363]
+              - columnheader [ref=f33e367]
+          - rowgroup [ref=f33e368]:
+            - row [ref=f33e369]:
+              - cell [ref=f33e370]
+              - cell "Task" [ref=f33e375]
+              - cell [ref=f33e377]:
+                - button "Edit activity" [ref=f33e379] [cursor=pointer]
+            - row [ref=f33e387]:
+              - cell [ref=f33e388]
+              - cell "Meeting" [ref=f33e393]
+              - cell [ref=f33e395]:
+                - button "Edit activity" [ref=f33e397] [cursor=pointer]
+            - row [ref=f33e405]:
+              - cell [ref=f33e406]
+              - cell "Phone" [ref=f33e410]
+              - cell [ref=f33e412]:
+                - button "Edit activity" [ref=f33e414] [cursor=pointer]
+            - row [ref=f33e422]:
+              - cell [ref=f33e423]
+              - cell "Email" [ref=f33e428]
+              - cell [ref=f33e430]
+            - row [ref=f33e431]:
+              - cell [ref=f33e432]
+              - cell "Reminder" [ref=f33e436]
+              - cell [ref=f33e438]
+            - row [ref=f33e439]:
+              - cell [ref=f33e440]
+              - cell "SMS" [ref=f33e445]
+              - cell [ref=f33e447]
+            - row [ref=f33e448]:
+              - cell [ref=f33e449]
+              - cell "Chat" [ref=f33e454]
+              - cell [ref=f33e456]
+        - generic [ref=f33e458]:
+          - heading "Custom sales activities" [level=4] [ref=f33e459]
+          - generic [ref=f33e460]: Need more sales activities that are unique to your business? Create them here.
+        - generic [ref=f33e461]: Create sales activity
+    - generic [ref=f33e266] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

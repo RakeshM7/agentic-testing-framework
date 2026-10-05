@@ -1,0 +1,416 @@
+- generic [ref=e1]:
+  - generic [ref=e42]:
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - link "Connect your mailbox" [ref=e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=e578] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=e48] [cursor=pointer]
+    - generic [ref=e51]:
+      - generic [ref=e52]:
+        - list [ref=e54]:
+          - listitem [ref=e55]: Products
+        - generic [ref=e57]:
+          - list [ref=e58]:
+            - listitem [ref=e59]
+            - listitem [ref=e63]:
+              - generic "Send email" [ref=e64] [cursor=pointer]
+            - listitem [ref=e68]:
+              - generic "What's new" [ref=e69] [cursor=pointer]: "1"
+            - listitem [ref=e73]:
+              - generic [ref=e74]: "5"
+            - listitem [ref=e80]
+            - listitem [ref=e81]:
+              - img "Your User Avatar" [ref=e582] [cursor=pointer]
+          - textbox "Search your CRM" [ref=e92]
+          - generic [ref=e94]:
+            - emphasis [ref=e95]: Your trial ends in 8 days
+            - link "Explore plans" [ref=e101] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=e103] [cursor=pointer]
+      - navigation:
+        - generic [ref=e105]:
+          - link [ref=e109] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=e112]:
+            - listitem "Dashboards" [ref=e113]:
+              - link [ref=e116] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=e118]:
+              - link [ref=e121] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=e123]:
+              - link [ref=e126] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=e128]:
+              - link [ref=e131] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=e133]:
+              - link [ref=e136] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=e138]:
+              - link [ref=e141] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=e143]:
+              - link [ref=e146] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=e148]:
+            - generic "Phone" [ref=e591]
+            - generic "Freshworks Switcher" [ref=e151]:
+              - button "Freshworks Switcher" [ref=e594] [cursor=pointer]
+      - generic [ref=e153]:
+        - generic [ref=e154]:
+          - list [ref=e155]:
+            - list [ref=e157]:
+              - button [ref=e160] [cursor=pointer]
+              - listitem [ref=e167]:
+                - generic "All Products" [ref=e168] [cursor=pointer]: (4)
+                - list
+          - generic [ref=e173]:
+            - generic [ref=e174]:
+              - button "Add product" [ref=e175] [cursor=pointer]
+              - button [ref=e178] [cursor=pointer]
+            - button [ref=e183] [cursor=pointer]
+            - button "All categories" [ref=e190] [cursor=pointer]
+            - generic [ref=e193]:
+              - button "Edit columns" [ref=e194] [cursor=pointer]
+              - button [ref=e203] [cursor=pointer]
+            - button [ref=e210] [cursor=pointer]:
+              - button [ref=e211]
+            - button "Filters" [ref=e223] [cursor=pointer]
+        - generic [ref=e231]:
+          - generic [ref=e232]:
+            - table [ref=e234]:
+              - rowgroup [ref=e235]:
+                - row "Name" [ref=e236]:
+                  - columnheader [ref=e237]:
+                    - checkbox [ref=e242]
+                  - columnheader "Name" [ref=e244]:
+                    - generic [ref=e246]:
+                      - generic [ref=e247] [cursor=pointer]: Name
+                      - img [ref=e250] [cursor=pointer]
+              - rowgroup [ref=e255]:
+                - row "An Annual maintenance contract (sample)" [ref=e256]:
+                  - cell [ref=e257]:
+                    - checkbox [ref=e261]
+                  - cell "An Annual maintenance contract (sample)" [ref=e263]:
+                    - generic [ref=e265]:
+                      - generic [ref=e266]: An
+                      - generic "Annual maintenance contract (sample)" [ref=e278] [cursor=pointer]
+                - row "CR CRM - Gold plan monthly (sample)" [ref=e279]:
+                  - cell [ref=e280]:
+                    - checkbox [ref=e284]
+                  - cell "CR CRM - Gold plan monthly (sample)" [ref=e286]:
+                    - generic [ref=e288]:
+                      - generic [ref=e289]: CR
+                      - generic "CRM - Gold plan monthly (sample)" [ref=e301] [cursor=pointer]
+                - row "CR CRM - Platinum plan monthly (sample)" [ref=e302]:
+                  - cell [ref=e303]:
+                    - checkbox [ref=e307]
+                  - cell "CR CRM - Platinum plan monthly (sample)" [ref=e309]:
+                    - generic [ref=e311]:
+                      - generic [ref=e312]: CR
+                      - generic "CRM - Platinum plan monthly (sample)" [ref=e324] [cursor=pointer]
+                - row "ZZ ZZ Explore Product A" [ref=e325]:
+                  - cell [ref=e326]:
+                    - checkbox [ref=e330]
+                  - cell "ZZ ZZ Explore Product A" [ref=e332]:
+                    - generic [ref=e334]:
+                      - generic [ref=e335]: ZZ
+                      - generic "ZZ Explore Product A" [ref=e347] [cursor=pointer]
+            - table [ref=e349]:
+              - rowgroup [ref=e350]:
+                - row [ref=e351]:
+                  - columnheader "Active" [ref=e352]:
+                    - generic [ref=e354]:
+                      - generic [ref=e355] [cursor=pointer]: Active
+                      - img [ref=e358] [cursor=pointer]
+                  - columnheader "Base currency amount" [ref=e362]:
+                    - generic [ref=e364]:
+                      - generic [ref=e365] [cursor=pointer]: Base currency amount
+                      - img [ref=e368] [cursor=pointer]
+                  - columnheader "Category" [ref=e372]:
+                    - generic [ref=e374]:
+                      - generic [ref=e375] [cursor=pointer]: Category
+                      - img [ref=e378] [cursor=pointer]
+                  - columnheader "Created at" [ref=e382]:
+                    - generic [ref=e384]:
+                      - generic [ref=e385] [cursor=pointer]: Created at
+                      - img [ref=e388] [cursor=pointer]
+                  - columnheader "Created by" [ref=e392]
+                  - columnheader [ref=e397]
+              - rowgroup [ref=e398]:
+                - row [ref=e596]:
+                  - cell "Yes" [ref=e400]
+                  - cell "$2,000" [ref=e404]:
+                    - generic "$2,000" [ref=e408]
+                  - cell "Maintenance" [ref=e409]:
+                    - generic "Maintenance" [ref=e413]
+                  - cell "5 months ago" [ref=e414]
+                  - cell "Rakesh M" [ref=e597]
+                  - cell [ref=e427]:
+                    - generic [ref=e428]:
+                      - list [ref=e430]
+                      - button [ref=e435] [cursor=pointer]
+                - row [ref=e598]:
+                  - cell "Yes" [ref=e444]
+                  - cell "$100" [ref=e448]:
+                    - generic "$100" [ref=e452]
+                  - cell "Software" [ref=e453]:
+                    - generic "Software" [ref=e457]
+                  - cell "5 months ago" [ref=e458]
+                  - cell "Rakesh M" [ref=e599]
+                  - cell [ref=e471]:
+                    - generic [ref=e472]:
+                      - list [ref=e474]
+                      - button [ref=e479] [cursor=pointer]
+                - row [ref=e600]:
+                  - cell "Yes" [ref=e488]
+                  - cell "$150" [ref=e492]:
+                    - generic "$150" [ref=e496]
+                  - cell "Software" [ref=e497]:
+                    - generic "Software" [ref=e501]
+                  - cell "5 months ago" [ref=e502]
+                  - cell "Rakesh M" [ref=e601]
+                  - cell [ref=e515]:
+                    - generic [ref=e516]:
+                      - list [ref=e518]
+                      - button [ref=e523] [cursor=pointer]
+                - row [ref=e602]:
+                  - cell "Yes" [ref=e532]
+                  - cell "$50" [ref=e536]:
+                    - generic "$50" [ref=e540]
+                  - cell "Software" [ref=e541]:
+                    - generic "Software" [ref=e545]
+                  - cell "an hour ago" [ref=e546]
+                  - cell "Rakesh M" [ref=e603]
+                  - cell [ref=e559]:
+                    - generic [ref=e560]:
+                      - list [ref=e562]
+                      - button [ref=e567] [cursor=pointer]
+          - generic [ref=e576]:
+            - generic [ref=e577]: Showing 1 - 4 of 4
+            - list
+    - dialog [ref=e605]:
+      - generic [ref=e607]:
+        - generic [ref=e608]:
+          - generic [ref=e609]: Product
+          - button [ref=e611] [cursor=pointer]
+        - generic [ref=e614]:
+          - generic [ref=e616]:
+            - generic [ref=e617]:
+              - generic [ref=e622]:
+                - generic [ref=e623]: ZZ
+                - generic [ref=e624] [cursor=pointer]: Add
+              - generic [ref=e625]:
+                - heading "ZZ Explore Product A" [level=4] [ref=e633]
+                - generic [ref=e642]:
+                  - generic [ref=e643]: Rakesh M
+                  - generic [ref=e650]:
+                    - generic [ref=e651]: 
+                    - generic [ref=e652]: $50
+            - generic [ref=e655]:
+              - button [ref=e658] [cursor=pointer]
+              - button [expanded] [ref=e880] [cursor=pointer]:
+                - generic [ref=e883]:
+                  - listitem [ref=e884]: Delete
+                  - listitem [ref=e890]: Clone
+          - generic [ref=e676]:
+            - generic [ref=e677]:
+              - generic [ref=e678]:
+                - heading "Product Fields" [level=5] [ref=e679]
+                - generic [ref=e680]: Manage fields
+              - generic [ref=e689]:
+                - textbox "Search for a field" [ref=e698]
+                - list [ref=e699]:
+                  - listitem:
+                    - generic [ref=e700]:
+                      - generic "Name" [ref=e702]
+                      - generic "ZZ Explore Product A" [ref=e707]
+                  - listitem:
+                    - generic [ref=e708]:
+                      - generic "Category" [ref=e710]
+                      - generic "Software" [ref=e715]
+                  - listitem:
+                    - generic [ref=e716]:
+                      - generic "Active" [ref=e718]
+                      - generic [ref=e719]: "Yes"
+                  - listitem:
+                    - generic [ref=e723]:
+                      - generic "Product code" [ref=e725]
+                      - generic "ZZ-EXP-001" [ref=e730]
+                  - listitem:
+                    - generic [ref=e731]:
+                      - generic "SKU number" [ref=e733]
+                      - generic "SKU-ZZ-1" [ref=e738]
+                  - listitem:
+                    - generic [ref=e739]:
+                      - generic "Owner" [ref=e741]
+                      - generic [ref=e742]: Rakesh M
+                  - listitem:
+                    - generic [ref=e749]:
+                      - generic "Valid till" [ref=e751]
+                      - generic [ref=e752]: Click to add
+                  - listitem:
+                    - generic [ref=e757]:
+                      - generic "Parent product" [ref=e759]
+                      - generic [ref=e760]: Click to add
+                  - listitem:
+                    - generic [ref=e767]:
+                      - generic "Description" [ref=e769]
+                      - generic [ref=e770]: Click to add
+                  - listitem:
+                    - generic [ref=e775]:
+                      - generic "External ID" [ref=e777]
+                      - generic [ref=e778]: Click to add
+                  - listitem:
+                    - generic [ref=e783]:
+                      - generic "Created by" [ref=e785]
+                      - generic [ref=e786]: Rakesh M
+                  - listitem:
+                    - generic [ref=e793]:
+                      - generic "Updated by" [ref=e795]
+                      - generic [ref=e796]: Rakesh M
+                  - listitem:
+                    - generic [ref=e803]:
+                      - generic "Created at" [ref=e805]
+                      - generic [ref=e806]: an hour ago
+                  - listitem:
+                    - generic [ref=e812]:
+                      - generic "Updated at" [ref=e814]
+                      - generic [ref=e815]: an hour ago
+                  - listitem:
+                    - generic [ref=e821]:
+                      - generic "Base currency amount" [ref=e823]
+                      - generic "$50" [ref=e828]
+            - generic [ref=e830]:
+              - generic [ref=e831]:
+                - generic [ref=e832] [cursor=pointer]
+                - generic [ref=e840] [cursor=pointer]
+              - generic [ref=e845]:
+                - generic [ref=e846]:
+                  - heading "Pricing" [level=6] [ref=e847]
+                  - generic [ref=e848]: Add or edit prices
+                - generic [ref=e857]:
+                  - generic [ref=e858]: One-time pricing
+                  - generic [ref=e867]:
+                    - generic [ref=e868]:
+                      - generic [ref=e869]: Currency
+                      - generic [ref=e870]: USD
+                    - generic [ref=e871]:
+                      - generic [ref=e872]: Unit price
+                      - generic [ref=e873]: $50
+    - dialog [ref=e894]:
+      - generic [ref=e896]:
+        - generic [ref=e897]:
+          - generic [ref=e899]:
+            - search [ref=e902]:
+              - generic [ref=e904]:
+                - generic [ref=e905]: 
+                - textbox "Search for a field" [active] [ref=e906]
+            - list [ref=e908]:
+              - listitem [ref=e909]:
+                - link "Basic information" [ref=e910] [cursor=pointer]:
+                  - /url: "#form-b5c01297-526c-43ae-97d4-fed94bfae773"
+              - listitem [ref=e912]:
+                - link "System information" [ref=e913] [cursor=pointer]:
+                  - /url: "#form-4a5d65fd-6a89-4746-b228-9d813e119beb"
+          - generic [ref=e915]:
+            - generic [ref=e917]:
+              - generic [ref=e918]: Clone PRODUCT
+              - button "Customize fields" [ref=e921] [cursor=pointer]
+              - button "Close" [ref=e929] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e930]: 
+            - generic [ref=e937]:
+              - generic [ref=e938]:
+                - heading "Basic information" [level=6] [ref=e939]
+                - generic [ref=e941]:
+                  - generic [ref=e942]:
+                    - generic [ref=e943]: Name *
+                    - textbox "Name *" [ref=e944]:
+                      - /placeholder: Enter value
+                      - text: ZZ Explore Product A
+                  - generic [ref=e945]:
+                    - generic [ref=e946]: Category
+                    - button "Software ×" [ref=e947] [cursor=pointer]:
+                      - generic [ref=e948]: Software
+                      - generic [ref=e949]: ×
+                  - generic [ref=e952] [cursor=pointer]:
+                    - checkbox "Active" [checked] [ref=e954]
+                    - generic [ref=e956]: Active
+                  - generic [ref=e958]:
+                    - generic [ref=e959]: Pricing type *
+                    - generic [ref=e962]:
+                      - generic [ref=e965]:
+                        - generic [ref=e968] [cursor=pointer]:
+                          - radio "One-time pricing" [checked] [ref=e969]
+                          - text: One-time pricing
+                        - generic [ref=e973] [cursor=pointer]:
+                          - radio "Subscription pricing" [ref=e974]
+                          - text: Subscription pricing
+                      - table [ref=e976]:
+                        - rowgroup [ref=e977]:
+                          - cell "Currency" [ref=e978]
+                          - cell "Unit price" [ref=e980]
+                        - rowgroup [ref=e982]:
+                          - row [ref=e983]:
+                            - cell [ref=e984]:
+                              - button "USD" [ref=e987] [cursor=pointer]
+                            - cell [ref=e990]:
+                              - spinbutton "Enter a price" [ref=e992]
+                            - cell [ref=e993]
+                      - generic [ref=e994]: Add price in another currency
+                  - generic [ref=e997]:
+                    - generic [ref=e998]: Product code
+                    - textbox "Product code" [ref=e999]:
+                      - /placeholder: Enter value
+                      - text: ZZ-EXP-001
+                  - generic [ref=e1000]:
+                    - generic [ref=e1001]: SKU number
+                    - textbox "SKU number" [ref=e1002]:
+                      - /placeholder: Enter value
+                      - text: SKU-ZZ-1
+                  - generic [ref=e1003]:
+                    - generic [ref=e1004]: Owner
+                    - button "Rakesh M ×" [ref=e1005] [cursor=pointer]:
+                      - generic [ref=e1006]: Rakesh M
+                      - generic [ref=e1007]: ×
+                  - generic [ref=e1009]:
+                    - generic [ref=e1010]: Valid till
+                    - button [ref=e1015] [cursor=pointer]:
+                      - textbox "Choose date" [ref=e1016]
+                  - generic [ref=e1024]:
+                    - generic [ref=e1025]: Parent product
+                    - button "Choose value" [ref=e1026] [cursor=pointer]
+              - generic [ref=e1029]:
+                - heading "System information" [level=6] [ref=e1030]
+                - generic [ref=e1032]:
+                  - generic [ref=e1033]:
+                    - generic [ref=e1034]: Created by
+                    - button "Rakesh M" [disabled] [ref=e1035]
+                  - generic [ref=e1038]:
+                    - generic [ref=e1039]: Updated by
+                    - button "Rakesh M" [disabled] [ref=e1040]
+                  - generic [ref=e1043]:
+                    - generic [ref=e1044]: Created at
+                    - button [disabled] [ref=e1049] [cursor=pointer]:
+                      - textbox "created_at" [disabled] [ref=e1050]: 10/05/2026
+                  - generic [ref=e1051]:
+                    - generic [ref=e1052]: Updated at
+                    - button [disabled] [ref=e1057] [cursor=pointer]:
+                      - textbox "updated_at" [disabled] [ref=e1058]: 10/05/2026
+                  - generic [ref=e1059]:
+                    - generic [ref=e1060]: Base currency amount
+                    - textbox "Base currency amount" [disabled] [ref=e1062]:
+                      - /placeholder: base_currency_amount
+                      - text: "0"
+        - generic [ref=e1064]:
+          - button "Show less fields" [ref=e1065] [cursor=pointer]
+          - button "Cancel" [ref=e1070] [cursor=pointer]
+          - button "Save" [ref=e1073] [cursor=pointer]
+    - generic [ref=e875] [cursor=pointer]
+  - generic:
+    - iframe
+  - iframe

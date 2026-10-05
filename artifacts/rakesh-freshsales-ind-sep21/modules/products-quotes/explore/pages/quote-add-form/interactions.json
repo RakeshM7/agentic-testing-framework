@@ -1,0 +1,19 @@
+[
+ {
+  "label": "Show all fields",
+  "role": "button",
+  "kind": "toggles"
+ },
+ {
+  "label": "Deal / Primary contact / Account / Quote template",
+  "role": "combobox",
+  "kind": "opens-overlay",
+  "overlay": "type-to-search lookups; template list: Sample Template, Sample Signature Template, Manage templates link"
+ },
+ {
+  "label": "Save",
+  "role": "button",
+  "kind": "mutates",
+  "resultingUrl": "/crm/sales/cpq_documents/<id>?dealId=<dealId>"
+ }
+]

@@ -1,0 +1,254 @@
+# https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/view/402015942732?per_page=25&sort=lead_score
+
+- link "Connect your mailbox":
+  - /url: /crm/sales/personal-settings/connect-your-email
+- text: to improve deliverability and enable 2-way sync of email conversations. Import all your sales data so you don't have to start from scratch.
+- img
+- list:
+  - listitem: Contacts
+- list:
+  - listitem:
+    - img
+  - listitem:
+    - img
+  - listitem:
+    - img
+  - listitem:
+    - img
+    - text: "5"
+  - listitem
+  - listitem:
+    - img "Your User Avatar"
+- img
+- textbox "Search your CRM"
+- emphasis: Your trial ends in 8 days
+- img
+- link "Explore plans":
+  - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+- button "Request demo"
+- navigation:
+  - link:
+    - /url: /crm/sales/contacts
+    - img
+  - list:
+    - listitem "Dashboards":
+      - link:
+        - /url: /crm/sales/my_dashboards
+        - img
+    - listitem "Contacts":
+      - link:
+        - /url: /crm/sales/contacts
+        - img
+    - listitem "Accounts":
+      - link:
+        - /url: /crm/sales/accounts
+        - img
+    - listitem "Deals":
+      - link:
+        - /url: /crm/sales/deals
+        - img
+    - listitem "Conversations":
+      - link:
+        - /url: /crm/sales/conversations/awaiting_response
+        - img
+    - listitem "Analytics":
+      - link:
+        - /url: /crm/sales/analytics
+        - img
+    - listitem "Admin Settings":
+      - link:
+        - /url: /crm/sales/settings
+        - img
+  - img
+  - button "Freshworks Switcher"
+- text: Your Freshsales setup guide
+- button "[object Object]":
+  - button "Take an interactive tour":
+    - img
+    - text: Take an interactive tour
+- button:
+  - img
+- button "Personalize your CRM":
+  - img
+  - text: Personalize your CRM
+- button "Import contacts":
+  - img
+  - text: Import contacts
+- button "Bring in website leads":
+  - img
+  - text: Bring in website leads
+- button "Invite your team":
+  - img
+  - text: Invite your team
+- button "Route leads to your team":
+  - img
+  - text: Route leads to your team
+- button "Create sales sequence":
+  - img
+  - text: Create sales sequence
+- button "Set up your sales pipeline":
+  - img
+  - text: Set up your sales pipeline
+- button "Add deal":
+  - img
+  - text: Add deal
+  - img
+- button:
+  - img
+- button "All contacts 2":
+  - button "All contacts 2"
+- button "button ⌘ O":
+  - button "button":
+    - img
+    - text: 14 more...
+  - text: ⌘ O
+- button "button":
+  - img
+  - text: Customize table
+- button "button":
+  - img
+  - text: Import contacts
+- button:
+  - img
+- button "button":
+  - img
+  - text: Add contact
+- button "Table":
+  - img
+  - text: Table
+  - img
+- button "button":
+  - button "button":
+    - img
+- button "Bulk actions":
+  - img
+  - text: Bulk actions
+- button "button":
+  - img
+  - text: Filter by
+- treegrid:
+  - rowgroup:
+    - row "Name":
+      - columnheader:
+        - checkbox
+      - columnheader "Name":
+        - text: Name
+        - button:
+          - img
+  - rowgroup:
+    - row "Account Job title Email Mobile Status Tags Sales owner":
+      - columnheader "Account":
+        - text: Account
+        - button:
+          - img
+      - columnheader "Job title":
+        - text: Job title
+        - button:
+          - img
+      - columnheader "Email":
+        - text: Email
+        - button:
+          - img
+      - columnheader "Mobile":
+        - text: Mobile
+        - button:
+          - img
+      - columnheader "Status":
+        - text: Status
+        - button:
+          - img
+      - columnheader "Tags":
+        - text: Tags
+        - button:
+          - img
+      - columnheader "Sales owner":
+        - text: Sales owner
+        - button:
+          - img
+      - columnheader:
+        - button:
+          - img
+  - rowgroup:
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791137131568 display-name":
+        - button "AgentTest Lead1791137131568 display-name":
+          - img "AgentTest Lead1791137131568": A
+          - link "display-name":
+            - /url: /crm/sales/contacts/402221016310
+            - text: AgentTest Lead1791137131568
+          - img
+          - img
+          - img
+          - img
+          - img
+          - img
+    - row "Press SPACE to select this row.":
+      - gridcell:
+        - checkbox
+      - gridcell "AgentTest Lead1791137293869 display-name":
+        - button "AgentTest Lead1791137293869 display-name":
+          - img "AgentTest Lead1791137293869": A
+          - link "display-name":
+            - /url: /crm/sales/contacts/402221016422
+            - text: AgentTest Lead1791137293869
+          - img
+  - rowgroup:
+    - row "Press SPACE to select this row.":
+      - gridcell "AgentTest Co 1791137131568":
+        - link "AgentTest Co 1791137131568"
+      - gridcell "+ Click to add"
+      - gridcell "agenttest.1791137131568@example.com":
+        - link "agenttest.1791137131568@example.com"
+      - gridcell "+ Click to add"
+      - gridcell "Qualified"
+      - gridcell "+ Click to add"
+      - gridcell "Rakesh M"
+      - gridcell
+    - row "Press SPACE to select this row.":
+      - gridcell "AgentTest Co 1791137293869":
+        - link "AgentTest Co 1791137293869"
+      - gridcell "+ Click to add"
+      - gridcell "agenttest.1791137293869@example.com":
+        - link "agenttest.1791137293869@example.com"
+      - gridcell "+ Click to add"
+      - gridcell "Qualified"
+      - gridcell "+ Click to add"
+      - gridcell "Rakesh M"
+      - gridcell
+  - rowgroup
+  - rowgroup
+  - rowgroup
+  - rowgroup
+- text: Showing 1–2 of 2
+- button "Previous" [disabled]:
+  - img
+- button "1"
+- button "Next" [disabled]:
+  - img
+- img
+- iframe
+- iframe
+- menu:
+  - menuitem "Edit all fields":
+    - img
+    - text: Edit all fields
+  - menuitem "Add meeting":
+    - img
+    - text: Add meeting
+  - menuitem "Add call log":
+    - img
+    - text: Add call log
+  - menuitem "Clone":
+    - img
+    - text: Clone
+  - menuitem "Delete":
+    - img
+    - text: Delete
+  - menuitem "Unsubscribe":
+    - img
+    - text: Unsubscribe
+  - menuitem "Forget":
+    - img
+    - text: Forget

@@ -1,0 +1,101 @@
+{
+ "nodes": [
+  {
+   "id": "contacts-list",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts",
+   "title": "Contacts"
+  },
+  {
+   "id": "contact-detail",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/<id>",
+   "title": "Contact detail"
+  },
+  {
+   "id": "recycle-bin",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/view/402015942739",
+   "title": "Contacts Recycle Bin view"
+  },
+  {
+   "id": "accounts",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts",
+   "title": "Accounts (outside module)"
+  },
+  {
+   "id": "deals",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals",
+   "title": "Deals (outside module)"
+  }
+ ],
+ "edges": [
+  {
+   "from": "contacts-list",
+   "to": "contact-detail",
+   "via": {
+    "label": "contact name",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "contacts-list",
+   "to": "recycle-bin",
+   "via": {
+    "label": "14 more... > Recycle Bin",
+    "role": "menuitem",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "contacts-list",
+   "to": "contact-detail",
+   "via": {
+    "label": "Add contact > Save",
+    "role": "button",
+    "kind": "create"
+   },
+   "mutating": true
+  },
+  {
+   "from": "contact-detail",
+   "to": "contacts-list",
+   "via": {
+    "label": "Contacts breadcrumb",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "contact-detail",
+   "to": "contacts-list",
+   "via": {
+    "label": "kebab > Delete > Yes",
+    "role": "button",
+    "kind": "delete"
+   },
+   "mutating": true
+  },
+  {
+   "from": "contact-detail",
+   "to": "accounts",
+   "via": {
+    "label": "Accounts tab > account link (not followed)",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "contact-detail",
+   "to": "deals",
+   "via": {
+    "label": "Add deal (not followed)",
+    "role": "button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  }
+ ]
+}

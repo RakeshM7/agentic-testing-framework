@@ -1,0 +1,68 @@
+[
+ {
+  "label": "Add product",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Add product drawer"
+ },
+ {
+  "label": "(Add product dropdown arrow) > Import products",
+  "role": "menuitem",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "imports out of scope"
+ },
+ {
+  "label": "(Add product dropdown arrow) > Import history",
+  "role": "menuitem",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "import area, not opened"
+ },
+ {
+  "label": "(gear) > Pricing settings",
+  "role": "menuitem",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/settings/cpq"
+ },
+ {
+  "label": "(gear) > Customize Product fields",
+  "role": "menuitem",
+  "kind": "navigates",
+  "skipped": true,
+  "reason": "leaves module (field settings), not opened"
+ },
+ {
+  "label": "All categories",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "not opened (category filter)"
+ },
+ {
+  "label": "Filters",
+  "role": "button",
+  "kind": "toggles",
+  "overlay": "right panel: Add filter, Apply (disabled)"
+ },
+ {
+  "label": "Edit columns",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "not opened"
+ },
+ {
+  "label": "row kebab",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "menu: Clone, Delete"
+ },
+ {
+  "label": "column headers Name/Active/Base currency amount/Category/Created at",
+  "role": "columnheader",
+  "kind": "toggles",
+  "skipped": true,
+  "reason": "sort not exercised"
+ }
+]

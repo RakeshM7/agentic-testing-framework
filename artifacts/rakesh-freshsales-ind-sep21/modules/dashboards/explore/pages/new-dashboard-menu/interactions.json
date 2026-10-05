@@ -1,0 +1,13 @@
+[
+ {
+  "label": "Search report",
+  "role": "combobox",
+  "kind": "toggles"
+ },
+ {
+  "label": "Chat Dashboard / Ecommerce Marketing Journey Report / Product Dashboard / Team activity report / Sales Trends / Sales Forecast / Contact generation and trends",
+  "role": "option",
+  "kind": "mutates",
+  "overlay": "adds a new tab; Sales Trends was added and removed in this run"
+ }
+]

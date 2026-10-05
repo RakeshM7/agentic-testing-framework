@@ -1,0 +1,26 @@
+[
+ {
+  "label": "Preview",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl|overlay": "not opened"
+ },
+ {
+  "label": "Manage field dependencies",
+  "role": "link",
+  "kind": "navigates",
+  "resultingUrl|overlay": "/crm/sales/settings/sales_activities/field-dependency-configurations"
+ },
+ {
+  "label": "Search fields",
+  "role": "textbox",
+  "kind": "toggles",
+  "resultingUrl|overlay": ""
+ },
+ {
+  "label": "Add field",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl|overlay": "overlay: Select a custom field (Text field, Text area, Number, Dropdown, Checkbox, Radio button, Date picker, Lookup, Multiselect, Formula); Cancel / Add selected"
+ }
+]

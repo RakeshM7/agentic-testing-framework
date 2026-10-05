@@ -1,0 +1,233 @@
+[
+ {
+  "slug": "open-deals-pipeline-view",
+  "title": "Open the Deals pipeline (kanban) view",
+  "goal": "Open the Deals pipeline (kanban) view",
+  "kind": "navigation",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/open-deals-pipeline-view.md"
+ },
+ {
+  "slug": "switch-deals-view-type",
+  "title": "Switch between Pipeline, Table, Forecast and Group by",
+  "goal": "Switch between Pipeline, Table, Forecast and Group by",
+  "kind": "navigation",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > Pipeline/Table menu",
+  "stepCount": 4,
+  "mutating": false,
+  "file": "flows/switch-deals-view-type.md"
+ },
+ {
+  "slug": "select-saved-deal-view",
+  "title": "Select a saved deal view",
+  "goal": "Select a saved deal view",
+  "kind": "navigation",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > 13 more...",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/select-saved-deal-view.md"
+ },
+ {
+  "slug": "filter-deals",
+  "title": "Filter deals",
+  "goal": "Filter deals",
+  "kind": "search-filter",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > 1 filter applied",
+  "stepCount": 4,
+  "mutating": false,
+  "file": "flows/filter-deals.md"
+ },
+ {
+  "slug": "change-table-density-and-page-size",
+  "title": "Change table density and rows per page",
+  "goal": "Change table density and rows per page",
+  "kind": "settings",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > Table",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/change-table-density-and-page-size.md"
+ },
+ {
+  "slug": "create-deal-from-add-deal-button",
+  "title": "Create a deal with Add deal",
+  "goal": "Create a deal with Add deal",
+  "kind": "create",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > Add deal",
+  "stepCount": 4,
+  "mutating": true,
+  "file": "flows/create-deal-from-add-deal-button.md"
+ },
+ {
+  "slug": "create-deal-in-stage-column",
+  "title": "Create a deal from a pipeline stage column",
+  "goal": "Create a deal from a pipeline stage column",
+  "kind": "create",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > Pipeline > stage +",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/create-deal-in-stage-column.md"
+ },
+ {
+  "slug": "move-deal-between-stages-by-drag",
+  "title": "Move a deal to another stage by dragging its card",
+  "goal": "Move a deal to another stage by dragging its card",
+  "kind": "update",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > Pipeline",
+  "stepCount": 1,
+  "mutating": true,
+  "file": "flows/move-deal-between-stages-by-drag.md"
+ },
+ {
+  "slug": "change-deal-stage-on-detail",
+  "title": "Change deal stage from the detail progress bar",
+  "goal": "Change deal stage from the detail progress bar",
+  "kind": "update",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal>",
+  "stepCount": 1,
+  "mutating": true,
+  "file": "flows/change-deal-stage-on-detail.md"
+ },
+ {
+  "slug": "mark-deal-lost",
+  "title": "Mark a deal Won or Lost",
+  "goal": "Mark a deal Won or Lost",
+  "kind": "update",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal> > Won/Lost",
+  "stepCount": 3,
+  "mutating": true,
+  "file": "flows/mark-deal-lost.md"
+ },
+ {
+  "slug": "commit-deal",
+  "title": "Commit a deal to forecast",
+  "goal": "Commit a deal to forecast",
+  "kind": "update",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal> > Commit deal",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/commit-deal.md"
+ },
+ {
+  "slug": "edit-deal-all-fields",
+  "title": "Edit a deal",
+  "goal": "Edit a deal",
+  "kind": "update",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal> > kebab > Edit",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/edit-deal-all-fields.md"
+ },
+ {
+  "slug": "add-product-to-deal",
+  "title": "Add a product to a deal",
+  "goal": "Add a product to a deal",
+  "kind": "update",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal> > Add product",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/add-product-to-deal.md"
+ },
+ {
+  "slug": "add-task-to-deal",
+  "title": "Add a task to a deal",
+  "goal": "Add a task to a deal",
+  "kind": "create",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal> > Task",
+  "stepCount": 3,
+  "mutating": true,
+  "file": "flows/add-task-to-deal.md"
+ },
+ {
+  "slug": "open-deal-activity-forms",
+  "title": "Open Call log and Meeting forms from a deal",
+  "goal": "Open Call log and Meeting forms from a deal",
+  "kind": "read",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal>",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/open-deal-activity-forms.md"
+ },
+ {
+  "slug": "browse-deal-detail-tabs",
+  "title": "Browse deal detail tabs",
+  "goal": "Browse deal detail tabs",
+  "kind": "read",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal>",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/browse-deal-detail-tabs.md"
+ },
+ {
+  "slug": "clone-deal-form",
+  "title": "Open the Clone deal form",
+  "goal": "Open the Clone deal form",
+  "kind": "create",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal> > kebab > Clone",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/clone-deal-form.md"
+ },
+ {
+  "slug": "delete-deal",
+  "title": "Delete a deal (to Recycle Bin)",
+  "goal": "Delete a deal (to Recycle Bin)",
+  "kind": "delete",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > <deal> > kebab > Delete",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/delete-deal.md"
+ },
+ {
+  "slug": "view-deals-recycle-bin",
+  "title": "View the Recycle Bin",
+  "goal": "View the Recycle Bin",
+  "kind": "read",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > 13 more... > Recycle Bin",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-deals-recycle-bin.md"
+ },
+ {
+  "slug": "deals-settings-menu",
+  "title": "Open the Deals Settings menu",
+  "goal": "Open the Deals Settings menu",
+  "kind": "settings",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > Settings",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/deals-settings-menu.md"
+ },
+ {
+  "slug": "bulk-actions-deals",
+  "title": "Bulk actions on deals",
+  "goal": "Bulk actions on deals",
+  "kind": "bulk",
+  "entryPage": "deals-pipeline",
+  "navPath": "Deals > Table > Bulk actions",
+  "stepCount": 1,
+  "mutating": true,
+  "file": "flows/bulk-actions-deals.md"
+ }
+]

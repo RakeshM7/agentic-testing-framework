@@ -1,0 +1,34 @@
+[
+ {
+  "label": "Connect your mailbox",
+  "role": "link",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/personal-settings/connect-your-email",
+  "skipped": true,
+  "reason": "mailbox OAuth out of scope"
+ },
+ {
+  "label": "Gmail / Microsoft Outlook / Zoho / Others",
+  "role": "button",
+  "kind": "mutates",
+  "resultingUrl": null,
+  "skipped": true,
+  "reason": "third-party OAuth"
+ },
+ {
+  "label": "Request demo",
+  "role": "button",
+  "kind": "external",
+  "resultingUrl": null,
+  "skipped": true,
+  "reason": "forbidden"
+ },
+ {
+  "label": "Explore plans",
+  "role": "link",
+  "kind": "navigates",
+  "resultingUrl": "/subscriptions/.../checkout",
+  "skipped": true,
+  "reason": "billing"
+ }
+]

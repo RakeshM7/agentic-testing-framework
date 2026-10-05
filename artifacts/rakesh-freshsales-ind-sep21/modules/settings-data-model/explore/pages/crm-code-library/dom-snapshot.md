@@ -1,0 +1,112 @@
+- generic [active] [ref=f63e1]:
+  - generic [ref=f63e42]:
+    - generic [ref=f63e45]:
+      - generic [ref=f63e46]:
+        - link "Connect your mailbox" [ref=f63e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+      - generic "Close" [ref=f63e48] [cursor=pointer]
+    - generic [ref=f63e51]:
+      - generic [ref=f63e52]:
+        - list [ref=f63e54]:
+          - listitem [ref=f63e55]:
+            - link "Admin Settings" [ref=f63e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f63e57]: CRM Code Library
+        - generic [ref=f63e59]:
+          - list [ref=f63e60]:
+            - listitem [ref=f63e61]
+            - listitem [ref=f63e65]:
+              - generic "Send email" [ref=f63e66] [cursor=pointer]
+            - listitem [ref=f63e70]:
+              - generic "What's new" [ref=f63e71] [cursor=pointer]: "1"
+            - listitem [ref=f63e76]:
+              - generic [ref=f63e77]: "5"
+            - listitem [ref=f63e83]
+            - listitem [ref=f63e84]:
+              - img "Your User Avatar" [ref=f63e88] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f63e98]
+          - generic [ref=f63e100]:
+            - emphasis [ref=f63e101]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f63e107] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f63e109] [cursor=pointer]
+      - navigation:
+        - generic [ref=f63e111]:
+          - link [ref=f63e115] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f63e119]:
+            - listitem "Dashboards" [ref=f63e120]:
+              - link [ref=f63e123] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f63e126]:
+              - link [ref=f63e129] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f63e132]:
+              - link [ref=f63e135] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f63e138]:
+              - link [ref=f63e141] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f63e144]:
+              - link [ref=f63e147] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f63e150]:
+              - link [ref=f63e153] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f63e156]:
+              - link [ref=f63e159] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f63e162]:
+            - generic "Phone" [ref=f63e163]
+            - generic "Freshworks Switcher" [ref=f63e166]:
+              - button "Freshworks Switcher" [ref=f63e167] [cursor=pointer]
+      - generic [ref=f63e169]:
+        - generic [ref=f63e171]:
+          - heading "Set up the CRM code library to capture contacts and their interactions on your web app" [level=5] [ref=f63e173]
+          - table [ref=f63e174]:
+            - rowgroup [ref=f63e175]:
+              - row [ref=f63e176]:
+                - cell [ref=f63e177]
+                - cell [ref=f63e183]:
+                  - heading "Ruby" [level=5] [ref=f63e184]
+                  - paragraph [ref=f63e185]: Use Ruby to capture contacts, their interactions on your web app and also update contact data in the CRM.
+                - cell [ref=f63e186]:
+                  - link [ref=f63e187] [cursor=pointer]:
+                    - /url: /crm/sales/settings/integrations/freshsales-web/1
+                    - button "Get started" [ref=f63e188]
+              - row [ref=f63e190]:
+                - cell [ref=f63e191]
+                - cell [ref=f63e203]:
+                  - heading "Java" [level=5] [ref=f63e204]
+                  - paragraph [ref=f63e205]: Use Java to capture contacts, their interactions on your web app and also update contact data in the CRM.
+                - cell [ref=f63e206]:
+                  - link [ref=f63e207] [cursor=pointer]:
+                    - /url: /crm/sales/settings/integrations/freshsales-web/2
+                    - button "Get started" [ref=f63e208]
+              - row [ref=f63e210]:
+                - cell [ref=f63e211]
+                - cell [ref=f63e219]:
+                  - heading "PHP" [level=5] [ref=f63e220]
+                  - paragraph [ref=f63e221]: Use PHP to capture contacts, their interactions on your web app and also update contact data in the CRM.
+                - cell [ref=f63e222]:
+                  - link [ref=f63e223] [cursor=pointer]:
+                    - /url: /crm/sales/settings/integrations/freshsales-web/3
+                    - button "Get started" [ref=f63e224]
+              - row [ref=f63e226]:
+                - cell [ref=f63e227]
+                - cell [ref=f63e235]:
+                  - heading "Python" [level=5] [ref=f63e236]
+                  - paragraph [ref=f63e237]: Use Python to capture contacts, their interactions on your web app and also update contact data in the CRM.
+                - cell [ref=f63e238]:
+                  - link [ref=f63e239] [cursor=pointer]:
+                    - /url: /crm/sales/settings/integrations/freshsales-web/4
+                    - button "Get started" [ref=f63e240]
+        - generic [ref=f63e245]:
+          - heading "CRM Code Library" [level=5] [ref=f63e246]
+          - paragraph [ref=f63e247]: Using the code library, you can capture website visitors as contacts and track their interactions on your website and web app, so you can understand them better.
+          - paragraph [ref=f63e248]: To use the library, click Get started and follow the instructions.
+    - generic [ref=f63e250] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

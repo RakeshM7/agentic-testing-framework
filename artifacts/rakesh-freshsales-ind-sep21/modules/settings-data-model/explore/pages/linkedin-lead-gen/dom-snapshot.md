@@ -1,0 +1,85 @@
+- generic [active] [ref=f72e1]:
+  - generic [ref=f72e42]:
+    - generic [ref=f72e45]:
+      - generic [ref=f72e46]:
+        - link "Connect your mailbox" [ref=f72e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f72e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f72e49] [cursor=pointer]
+    - generic [ref=f72e52]:
+      - generic [ref=f72e53]:
+        - list [ref=f72e55]:
+          - listitem [ref=f72e56]:
+            - link "Admin Settings" [ref=f72e57] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f72e58]: LinkedIn Lead Gen Forms
+        - generic [ref=f72e60]:
+          - list [ref=f72e61]:
+            - listitem [ref=f72e62]
+            - listitem [ref=f72e66]:
+              - generic "Send email" [ref=f72e67] [cursor=pointer]
+            - listitem [ref=f72e71]:
+              - generic "What's new" [ref=f72e72] [cursor=pointer]: "1"
+            - listitem [ref=f72e77]:
+              - generic [ref=f72e78]: "5"
+            - listitem [ref=f72e84]
+            - listitem [ref=f72e85]:
+              - img "Your User Avatar" [ref=f72e89] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f72e99]
+          - generic [ref=f72e101]:
+            - emphasis [ref=f72e102]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f72e108] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f72e110] [cursor=pointer]
+      - navigation:
+        - generic [ref=f72e112]:
+          - link [ref=f72e116] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f72e120]:
+            - listitem "Dashboards" [ref=f72e121]:
+              - link [ref=f72e124] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f72e127]:
+              - link [ref=f72e130] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f72e133]:
+              - link [ref=f72e136] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f72e139]:
+              - link [ref=f72e142] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f72e145]:
+              - link [ref=f72e148] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f72e151]:
+              - link [ref=f72e154] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f72e157]:
+              - link [ref=f72e160] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f72e163]:
+            - generic "Phone" [ref=f72e164]
+            - generic "Freshworks Switcher" [ref=f72e167]:
+              - button "Freshworks Switcher" [ref=f72e168] [cursor=pointer]
+      - generic [ref=f72e175]:
+        - generic [ref=f72e177]:
+          - paragraph [ref=f72e179]:
+            - generic "LinkedIn Lead Gen Forms" [ref=f72e183]
+          - generic "Easily bring leads from LinkedIn into Freshsales by connecting your LinkedIn lead gen forms. The next time someone fills out your form, they’ll be directly added as a new contact in Freshsales." [ref=f72e185]
+          - link "How to connect your LinkedIn forms to Freshsales" [ref=f72e191] [cursor=pointer]:
+            - /url: https://crmsupport.freshworks.com/en/support/solutions/articles/50000009967-how-to-integrate-linkedin-forms-with-freshsales-
+        - generic [ref=f72e193]:
+          - generic "Start adding your LinkedIn Forms!" [ref=f72e206]
+          - generic [ref=f72e207]:
+            - generic "Connect your LinkedIn account to add forms to Freshsales" [ref=f72e211]
+            - button "Who has permission to connect?" [ref=f72e212] [cursor=pointer]:
+              - generic "Who has permission to connect?" [ref=f72e218]
+          - generic "Leads who fill out your form will be automatically added to Freshsales" [ref=f72e227]
+          - button "button" [ref=f72e228] [cursor=pointer]:
+            - generic "Add LinkedIn form" [ref=f72e230]
+    - generic [ref=f72e232] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

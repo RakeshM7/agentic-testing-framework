@@ -1,0 +1,328 @@
+- generic [ref=f27e1]:
+  - generic [ref=f27e42]:
+    - generic [ref=f27e45]:
+      - generic [ref=f27e46]:
+        - link "Connect your mailbox" [ref=f27e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f27e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f27e49] [cursor=pointer]
+    - generic [ref=f27e52]:
+      - generic [ref=f27e53]:
+        - list [ref=f27e55]:
+          - listitem [ref=f27e56]: Dashboards
+        - generic [ref=f27e58]:
+          - list [ref=f27e59]:
+            - listitem [ref=f27e60]
+            - listitem [ref=f27e64]:
+              - generic "Send email" [ref=f27e65] [cursor=pointer]
+            - listitem [ref=f27e69]:
+              - generic "What's new" [ref=f27e70] [cursor=pointer]: "1"
+            - listitem [ref=f27e75]:
+              - generic [ref=f27e76]: "5"
+            - listitem [ref=f27e82]
+            - listitem [ref=f27e83]:
+              - img "Your User Avatar" [ref=f27e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f27e97]
+          - generic [ref=f27e99]:
+            - emphasis [ref=f27e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f27e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f27e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f27e110]:
+          - link [ref=f27e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f27e118]:
+            - listitem "Dashboards" [ref=f27e119]:
+              - link [ref=f27e122] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards?tab=activities
+            - listitem "Contacts" [ref=f27e125]:
+              - link [ref=f27e128] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f27e131]:
+              - link [ref=f27e134] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f27e137]:
+              - link [ref=f27e140] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f27e143]:
+              - link [ref=f27e146] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f27e149]:
+              - link [ref=f27e152] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f27e155]:
+              - link [ref=f27e158] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f27e161]:
+            - generic "Phone" [ref=f27e162]
+            - generic "Freshworks Switcher" [ref=f27e165]:
+              - button "Freshworks Switcher" [ref=f27e166] [cursor=pointer]
+      - generic [ref=f27e171]:
+        - generic [ref=f27e172] [cursor=pointer]: Sales Essentials Dashboard
+        - generic [ref=f27e180] [cursor=pointer]: Sales Dashboard
+        - generic [ref=f27e188] [cursor=pointer]: Activities Dashboard
+        - button [ref=f27e198] [cursor=pointer]
+      - generic [ref=f27e207]:
+        - generic [ref=f27e217]:
+          - generic [ref=f27e218]:
+            - generic [ref=f27e219]:
+              - generic [ref=f27e220]:
+                - generic [ref=f27e221]: Show
+                - generic [ref=f27e222] [cursor=pointer]: Tasks
+                - generic [ref=f27e228] [cursor=pointer]: Meetings
+                - button "+ 8 activities" [ref=f27e235] [cursor=pointer]
+              - generic [ref=f27e240]:
+                - generic [ref=f27e241]:
+                  - button "Add task" [ref=f27e242] [cursor=pointer]
+                  - button [ref=f27e249] [cursor=pointer]
+                - button "Add meeting" [ref=f27e253] [cursor=pointer]
+                - button [ref=f27e261] [cursor=pointer]:
+                  - button "More" [ref=f27e262]
+            - generic [ref=f27e267]:
+              - generic [ref=f27e268]:
+                - generic [ref=f27e270] [cursor=pointer]:
+                  - generic [ref=f27e271]: All
+                  - generic [ref=f27e272]: (1)
+                - generic [ref=f27e273] [cursor=pointer]: Open
+                - generic [ref=f27e276] [cursor=pointer]: Overdue
+                - generic [ref=f27e279] [cursor=pointer]: Completed
+              - link "View activity goals" [ref=f27e283] [cursor=pointer]:
+                - /url: /crm/sales/activity-goals
+            - generic [ref=f27e289]:
+              - generic [ref=f27e292] [cursor=pointer]
+              - generic [ref=f27e296]: Select all
+              - generic [ref=f27e299]:
+                - generic [ref=f27e300]: "Due date:"
+                - button "Today (Oct 05)" [ref=f27e305] [cursor=pointer]:
+                  - generic [ref=f27e306]:
+                    - generic [ref=f27e307]: Today
+                    - text: (Oct 05)
+          - generic [ref=f27e309]:
+            - table [ref=f27e310]:
+              - rowgroup [ref=f27e311]:
+                - row "AgentTest Task 1791131815970 Due on Oct 05, 2026 | 16:36  Task Ag AgentTest Deal 1791131105076 +1" [ref=f27e312]:
+                  - cell [ref=f27e313]:
+                    - checkbox [ref=f27e317]
+                  - cell "AgentTest Task 1791131815970 Due on Oct 05, 2026 | 16:36  Task" [ref=f27e319]:
+                    - generic [ref=f27e320]: AgentTest Task 1791131815970
+                    - generic [ref=f27e322]:
+                      - generic [ref=f27e323]:
+                        - text: Due on
+                        - generic [ref=f27e324]: Oct 05, 2026 | 16:36
+                      - generic [ref=f27e326]: 
+                      - generic [ref=f27e327]: Task
+                  - cell "Ag AgentTest Deal 1791131105076 +1" [ref=f27e328]:
+                    - generic [ref=f27e330]:
+                      - generic [ref=f27e333]:
+                        - generic [ref=f27e334]: Ag
+                        - link "AgentTest Deal 1791131105076" [ref=f27e343] [cursor=pointer]:
+                          - /url: /crm/sales/deals/402012470485
+                      - generic [ref=f27e344]: "+1"
+                  - cell [ref=f27e346]:
+                    - button [ref=f27e348] [cursor=pointer]:
+                      - button [ref=f27e349]
+            - generic [ref=f27e357]: Showing 1—1 of 1
+        - generic [ref=f27e360]:
+          - button "Configure widgets" [ref=f27e363] [cursor=pointer]
+          - generic [ref=f27e372]:
+            - generic [ref=f27e373]:
+              - heading "My calendar" [level=5] [ref=f27e375]
+              - generic [ref=f27e377] [cursor=pointer]
+            - generic [ref=f27e388]:
+              - generic [ref=f27e389]:
+                - generic [ref=f27e390]:
+                  - paragraph [ref=f27e391]: Connect your calendar
+                  - generic [ref=f27e392]:
+                    - button "Google Calendar" [ref=f27e393] [cursor=pointer]
+                    - button "Office 365" [ref=f27e404] [cursor=pointer]
+                  - paragraph [ref=f27e408]: Connect your conferencing app
+                  - generic [ref=f27e409]:
+                    - button "Zoom" [ref=f27e410] [cursor=pointer]
+                    - button "Microsoft Teams" [ref=f27e417] [cursor=pointer]
+                - generic [ref=f27e433] [cursor=pointer]
+              - generic [ref=f27e440]:
+                - generic [ref=f27e441]: Today
+                - generic [ref=f27e443]:
+                  - generic [ref=f27e444]:
+                    - generic [ref=f27e445]: 05 Oct
+                    - generic [ref=f27e447] [cursor=pointer]
+                    - generic [ref=f27e452] [cursor=pointer]
+                  - generic [ref=f27e457]: Show today
+              - generic [ref=f27e458]:
+                - generic [ref=f27e459]:
+                  - generic [ref=f27e460]: 00:00
+                  - generic [ref=f27e461] [cursor=pointer]
+                - generic [ref=f27e464]:
+                  - generic [ref=f27e465]: 01:00
+                  - generic [ref=f27e466] [cursor=pointer]
+                - generic [ref=f27e469]:
+                  - generic [ref=f27e470]: 02:00
+                  - generic [ref=f27e471] [cursor=pointer]
+                - generic [ref=f27e474]:
+                  - generic [ref=f27e475]: 03:00
+                  - generic [ref=f27e476] [cursor=pointer]
+                - generic [ref=f27e479]:
+                  - generic [ref=f27e480]: 04:00
+                  - generic [ref=f27e481] [cursor=pointer]
+                - generic [ref=f27e485]:
+                  - generic [ref=f27e486]: 05:00
+                  - generic [ref=f27e487] [cursor=pointer]
+                - generic [ref=f27e490]:
+                  - generic [ref=f27e491]: 06:00
+                  - generic [ref=f27e492] [cursor=pointer]
+                - generic [ref=f27e495]:
+                  - generic [ref=f27e496]: 07:00
+                  - generic [ref=f27e497] [cursor=pointer]
+                - generic [ref=f27e500]:
+                  - generic [ref=f27e501]: 08:00
+                  - generic [ref=f27e502] [cursor=pointer]
+                - generic [ref=f27e505]:
+                  - generic [ref=f27e506]: 09:00
+                  - generic [ref=f27e507] [cursor=pointer]
+                - generic [ref=f27e510]:
+                  - generic [ref=f27e511]: 10:00
+                  - generic [ref=f27e512] [cursor=pointer]
+                - generic [ref=f27e515]:
+                  - generic [ref=f27e516]: 11:00
+                  - generic [ref=f27e517] [cursor=pointer]
+                - generic [ref=f27e520]:
+                  - generic [ref=f27e521]: 12:00
+                  - generic [ref=f27e522] [cursor=pointer]
+                - generic [ref=f27e525]:
+                  - generic [ref=f27e526]: 13:00
+                  - generic [ref=f27e527] [cursor=pointer]
+                - generic [ref=f27e530]:
+                  - generic [ref=f27e531]: 14:00
+                  - generic [ref=f27e532] [cursor=pointer]
+                - generic [ref=f27e535]:
+                  - generic [ref=f27e536]: 15:00
+                  - generic [ref=f27e537] [cursor=pointer]
+                - generic [ref=f27e540]:
+                  - generic [ref=f27e541]: 16:00
+                  - generic [ref=f27e542] [cursor=pointer]
+                - generic [ref=f27e545]:
+                  - generic [ref=f27e546]: 17:00
+                  - generic [ref=f27e547] [cursor=pointer]
+                - generic [ref=f27e550]:
+                  - generic [ref=f27e551]: 18:00
+                  - generic [ref=f27e552] [cursor=pointer]
+                - generic [ref=f27e555]:
+                  - generic [ref=f27e556]: 19:00
+                  - generic [ref=f27e557] [cursor=pointer]
+                - generic [ref=f27e560]:
+                  - generic [ref=f27e561]: 20:00
+                  - generic [ref=f27e562] [cursor=pointer]
+                - generic [ref=f27e565]:
+                  - generic [ref=f27e566]: 21:00
+                  - generic [ref=f27e567] [cursor=pointer]
+                - generic [ref=f27e570]:
+                  - generic [ref=f27e571]: 22:00
+                  - generic [ref=f27e572] [cursor=pointer]
+                - generic [ref=f27e575]:
+                  - generic [ref=f27e576]: 23:00
+                  - generic [ref=f27e577] [cursor=pointer]
+          - generic [ref=f27e580]:
+            - generic [ref=f27e581]:
+              - heading "Quick Links" [level=5] [ref=f27e583]
+              - generic [ref=f27e585] [cursor=pointer]
+            - generic [ref=f27e596]:
+              - generic [ref=f27e597]: You don't have any links.
+              - generic [ref=f27e599] [cursor=pointer]: Add link
+          - generic [ref=f27e601]:
+            - generic [ref=f27e602]:
+              - heading "Today's summary" [level=5] [ref=f27e604]
+              - generic [ref=f27e606] [cursor=pointer]
+            - table [ref=f27e616]:
+              - rowgroup [ref=f27e617]:
+                - row [ref=f27e618]:
+                  - columnheader "Type" [ref=f27e619]
+                  - columnheader "Overdue" [ref=f27e621]
+                  - columnheader "Open" [ref=f27e623]
+                  - columnheader "Completed" [ref=f27e625]
+              - rowgroup [ref=f27e627]:
+                - row [ref=f27e628]:
+                  - cell "Task" [ref=f27e629]
+                  - cell "0" [ref=f27e630]
+                  - cell "1" [ref=f27e631]
+                  - cell "0" [ref=f27e632]
+                - row [ref=f27e633]:
+                  - cell "Follow up" [ref=f27e634]
+                  - cell "0" [ref=f27e635]
+                  - cell "0" [ref=f27e636]
+                  - cell "0" [ref=f27e637]
+                - row [ref=f27e638]:
+                  - cell "Call reminder" [ref=f27e639]
+                  - cell "0" [ref=f27e640]
+                  - cell "0" [ref=f27e641]
+                  - cell "0" [ref=f27e642]
+                - row [ref=f27e643]:
+                  - cell "Email reminder" [ref=f27e644]
+                  - cell "0" [ref=f27e645]
+                  - cell "0" [ref=f27e646]
+                  - cell "0" [ref=f27e647]
+                - row [ref=f27e648]:
+                  - cell "LinkedIn profile view" [ref=f27e649]
+                  - cell "0" [ref=f27e650]
+                  - cell "0" [ref=f27e651]
+                  - cell "0" [ref=f27e652]
+          - heading "Freddy AI insights" [level=5] [ref=f27e662]
+    - dialog [ref=f27e673]:
+      - tabpanel [ref=f27e676]:
+        - generic [ref=f27e677]:
+          - generic [ref=f27e678]: Add task
+          - button [ref=f27e679] [cursor=pointer]:
+            - generic [aria-hidden] [ref=f27e680]: 
+        - generic [ref=f27e681]:
+          - generic [ref=f27e683]:
+            - generic [ref=f27e684]: Mark as completed
+            - generic [ref=f27e695]:
+              - generic [ref=f27e696]: Title*
+              - textbox "Title*" [active] [ref=f27e697]:
+                - /placeholder: Enter title of task
+            - generic [ref=f27e699]:
+              - generic [ref=f27e700]: Description
+              - textbox "Start typing the details about the task…" [ref=f27e701]
+            - generic [ref=f27e702]:
+              - generic [ref=f27e703]:
+                - generic [ref=f27e704]: Task type
+                - button "Follow up ×" [ref=f27e707] [cursor=pointer]:
+                  - generic [ref=f27e708]: Follow up
+                  - generic [ref=f27e709]: ×
+              - generic [ref=f27e711]:
+                - generic [ref=f27e712]: Due date*
+                - generic:
+                  - button [ref=f27e715] [cursor=pointer]:
+                    - textbox [ref=f27e716]: 10/06/2026
+                  - textbox [ref=f27e727]: 04:43
+            - generic [ref=f27e735]:
+              - generic [ref=f27e736]: Outcome
+              - button "Select an outcome" [ref=f27e739] [cursor=pointer]
+          - generic [ref=f27e742]:
+            - generic [ref=f27e743]:
+              - generic [ref=f27e744]: Owner
+              - button "Rakesh M ×" [ref=f27e746] [cursor=pointer]:
+                - generic [ref=f27e747]: Rakesh M
+                - generic [ref=f27e748]: ×
+            - generic [ref=f27e750]:
+              - generic [ref=f27e751]:
+                - text: Related to (
+                - generic [ref=f27e752]: "0"
+                - text: )
+              - button [ref=f27e762] [cursor=pointer]:
+                - list [ref=f27e763]:
+                  - searchbox "Click to select records" [ref=f27e764]
+            - generic [ref=f27e769]:
+              - generic [ref=f27e770]: Collaborators (0)
+              - button [ref=f27e775] [cursor=pointer]:
+                - list [ref=f27e776]:
+                  - searchbox [ref=f27e777]
+        - generic [ref=f27e782]:
+          - button "Cancel" [ref=f27e783] [cursor=pointer]
+          - button "Save" [ref=f27e785] [cursor=pointer]
+    - generic [ref=f27e212] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

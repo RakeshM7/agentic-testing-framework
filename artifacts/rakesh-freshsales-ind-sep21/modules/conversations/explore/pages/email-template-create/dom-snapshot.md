@@ -1,0 +1,509 @@
+- generic [ref=f70e1]:
+  - generic [ref=f70e42]:
+    - generic [ref=f70e45]:
+      - generic [ref=f70e46]:
+        - link "Connect your mailbox" [ref=f70e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f70e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f70e49] [cursor=pointer]
+    - generic [ref=f70e52]:
+      - generic [ref=f70e56]:
+        - list [ref=f70e57]:
+          - listitem [ref=f70e58]
+          - listitem [ref=f70e62]:
+            - generic "Send email" [ref=f70e63] [cursor=pointer]
+          - listitem [ref=f70e67]:
+            - generic "What's new" [ref=f70e68] [cursor=pointer]: "1"
+          - listitem [ref=f70e73]:
+            - generic [ref=f70e74]: "5"
+          - listitem [ref=f70e80]
+          - listitem [ref=f70e81]:
+            - img "Your User Avatar" [ref=f70e85] [cursor=pointer]
+        - textbox "Search your CRM" [ref=f70e95]
+        - generic [ref=f70e97]:
+          - emphasis [ref=f70e98]: Your trial ends in 8 days
+          - link "Explore plans" [ref=f70e104] [cursor=pointer]:
+            - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+          - button "Request demo" [ref=f70e106] [cursor=pointer]
+      - navigation:
+        - generic [ref=f70e108]:
+          - link [ref=f70e112] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f70e116]:
+            - listitem "Dashboards" [ref=f70e117]:
+              - link [ref=f70e120] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f70e123]:
+              - link [ref=f70e126] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f70e129]:
+              - link [ref=f70e132] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f70e135]:
+              - link [ref=f70e138] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f70e141]:
+              - link [ref=f70e144] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f70e147]:
+              - link [ref=f70e150] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f70e153]:
+              - link [ref=f70e156] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f70e159]:
+            - generic "Phone" [ref=f70e160]
+            - generic "Freshworks Switcher" [ref=f70e163]:
+              - button "Freshworks Switcher" [ref=f70e164] [cursor=pointer]
+      - generic [ref=f70e166]:
+        - generic [ref=f70e167]:
+          - tablist [ref=f70e169]:
+            - listitem [ref=f70e170]:
+              - link "Conversations" [ref=f70e171] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem [ref=f70e174]:
+              - link "Sales Sequences" [ref=f70e175] [cursor=pointer]:
+                - /url: /crm/sales/sales-sequences/filters
+          - button "Create EMAIL template" [ref=f70e182] [cursor=pointer]
+        - generic [ref=f70e193]:
+          - generic [ref=f70e194] [cursor=pointer]: Email
+          - generic [ref=f70e203]:
+            - link "Awaiting Response" [ref=f70e206] [cursor=pointer]:
+              - /url: /crm/sales/conversations/awaiting_response
+            - generic [ref=f70e207]:
+              - link "Team Inbox" [ref=f70e209] [cursor=pointer]:
+                - /url: /crm/sales/conversations/team_inbox
+              - link [ref=f70e210] [cursor=pointer]:
+                - /url: /crm/sales/settings/email/team-inbox
+            - generic [ref=f70e218]:
+              - link "Inbox" [ref=f70e220] [cursor=pointer]:
+                - /url: /crm/sales/conversations/inbox
+              - link [ref=f70e221] [cursor=pointer]:
+                - /url: /crm/sales/personal-settings/connect-your-email
+            - link "Sent" [ref=f70e231] [cursor=pointer]:
+              - /url: /crm/sales/conversations/sent
+            - link "Scheduled" [ref=f70e234] [cursor=pointer]:
+              - /url: /crm/sales/conversations/scheduled
+            - link "Drafts" [ref=f70e237] [cursor=pointer]:
+              - /url: /crm/sales/conversations/drafts
+            - link "Trash" [ref=f70e240] [cursor=pointer]:
+              - /url: /crm/sales/conversations/trash
+            - link "Email Templates" [ref=f70e243] [cursor=pointer]:
+              - /url: /crm/sales/conversations/email-templates
+          - generic [ref=f70e244] [cursor=pointer]: Bulk Email
+          - generic [ref=f70e253]:
+            - link "Bulk email metrics" [ref=f70e256] [cursor=pointer]:
+              - /url: /crm/sales/conversations/email-bulk-metrics
+            - link "Bulk emails scheduled" [ref=f70e259] [cursor=pointer]:
+              - /url: /crm/sales/conversations/bulk_scheduled
+            - link "Bulk email drafts" [ref=f70e262] [cursor=pointer]:
+              - /url: /crm/sales/conversations/bulk_drafts
+          - generic [ref=f70e263] [cursor=pointer]: Email Tracking
+          - generic [ref=f70e272]:
+            - link "Opens" [ref=f70e275] [cursor=pointer]:
+              - /url: /crm/sales/conversations/opened
+            - link "Clicks" [ref=f70e278] [cursor=pointer]:
+              - /url: /crm/sales/conversations/clicked
+            - link "Bounces" [ref=f70e281] [cursor=pointer]:
+              - /url: /crm/sales/conversations/bounced
+          - generic [ref=f70e282] [cursor=pointer]: Phone
+          - generic [ref=f70e292]:
+            - generic [ref=f70e293]:
+              - link "All phone calls" [ref=f70e295] [cursor=pointer]:
+                - /url: /crm/sales/conversations/all_phone_calls
+              - link [ref=f70e296] [cursor=pointer]:
+                - /url: /crm/sales/settings/freshcaller
+            - link "Voicemail" [ref=f70e306] [cursor=pointer]:
+              - /url: /crm/sales/conversations/voicemail
+            - menuitem "Power Dialer List" [ref=f70e309] [cursor=pointer]
+          - generic [ref=f70e313] [cursor=pointer]: SMS
+          - generic [ref=f70e322]:
+            - link "All SMS" [ref=f70e325] [cursor=pointer]:
+              - /url: /crm/sales/conversations/all_sms
+            - link "SMS Templates" [ref=f70e328] [cursor=pointer]:
+              - /url: /crm/sales/conversations/sms-templates
+          - generic [ref=f70e329] [cursor=pointer]: Chat
+          - menuitem "Chat Inbox" [ref=f70e339] [cursor=pointer]
+        - generic [ref=f70e344]:
+          - generic [ref=f70e347]:
+            - strong [ref=f70e349]: How do templates make work easier for you?
+            - list [ref=f70e350]:
+              - listitem [ref=f70e351]: You can use placeholders to create templates that are both personalized and ideal for bulk emailing.
+              - listitem [ref=f70e352]: These templates save precious time when you’re planning large-scale automated sequences.
+          - table [ref=f70e353]:
+            - rowgroup [ref=f70e354]:
+              - row [ref=f70e355]:
+                - columnheader [ref=f70e356]:
+                  - generic [ref=f70e360] [cursor=pointer]
+                - columnheader [ref=f70e364]:
+                  - generic [ref=f70e367]:
+                    - textbox "Search by tags and templates" [ref=f70e374]
+                    - button [ref=f70e377] [cursor=pointer]:
+                      - button "Shared with me" [ref=f70e378]
+            - rowgroup [ref=f70e387]:
+              - 'row "Connect with inbound leads Created by: System Admin Sent 0 Opened 0% Clicked 0% Replied 0% Unsubscribed 0% Public" [ref=f70e388]':
+                - cell [ref=f70e389]:
+                  - checkbox [ref=f70e393]
+                - cell [ref=f70e395]:
+                  - 'button "Connect with inbound leads Created by: System Admin" [ref=f70e397] [cursor=pointer]':
+                    - generic [ref=f70e398]: Connect with inbound leads
+                    - generic [ref=f70e399]:
+                      - text: "Created by:"
+                      - strong [ref=f70e400]: System Admin
+                - cell "Sent 0" [ref=f70e401]:
+                  - generic [ref=f70e402]: Sent
+                  - heading "0" [level=5] [ref=f70e403]
+                - cell "Opened 0%" [ref=f70e404]:
+                  - generic [ref=f70e405]: Opened
+                  - heading "0%" [level=5] [ref=f70e406]
+                - cell "Clicked 0%" [ref=f70e407]:
+                  - generic [ref=f70e408]: Clicked
+                  - heading "0%" [level=5] [ref=f70e409]
+                - cell "Replied 0%" [ref=f70e410]:
+                  - generic [ref=f70e411]: Replied
+                  - heading "0%" [level=5] [ref=f70e412]
+                - cell "Unsubscribed 0%" [ref=f70e413]:
+                  - generic [ref=f70e414]: Unsubscribed
+                  - heading "0%" [level=5] [ref=f70e415]
+                - cell "Public" [ref=f70e416]
+                - cell [ref=f70e422]:
+                  - button [ref=f70e426] [cursor=pointer]
+              - 'row "Follow up after a meeting Created by: System Admin Sent 0 Opened 0% Clicked 0% Replied 0% Unsubscribed 0% Public" [ref=f70e434]':
+                - cell [ref=f70e435]:
+                  - checkbox [ref=f70e439]
+                - cell [ref=f70e441]:
+                  - 'button "Follow up after a meeting Created by: System Admin" [ref=f70e443] [cursor=pointer]':
+                    - generic [ref=f70e444]: Follow up after a meeting
+                    - generic [ref=f70e445]:
+                      - text: "Created by:"
+                      - strong [ref=f70e446]: System Admin
+                - cell "Sent 0" [ref=f70e447]:
+                  - generic [ref=f70e448]: Sent
+                  - heading "0" [level=5] [ref=f70e449]
+                - cell "Opened 0%" [ref=f70e450]:
+                  - generic [ref=f70e451]: Opened
+                  - heading "0%" [level=5] [ref=f70e452]
+                - cell "Clicked 0%" [ref=f70e453]:
+                  - generic [ref=f70e454]: Clicked
+                  - heading "0%" [level=5] [ref=f70e455]
+                - cell "Replied 0%" [ref=f70e456]:
+                  - generic [ref=f70e457]: Replied
+                  - heading "0%" [level=5] [ref=f70e458]
+                - cell "Unsubscribed 0%" [ref=f70e459]:
+                  - generic [ref=f70e460]: Unsubscribed
+                  - heading "0%" [level=5] [ref=f70e461]
+                - cell "Public" [ref=f70e462]
+                - cell [ref=f70e468]:
+                  - button [ref=f70e472] [cursor=pointer]
+              - 'row "Follow up with active leads Created by: System Admin Sent 0 Opened 0% Clicked 0% Replied 0% Unsubscribed 0% Public" [ref=f70e480]':
+                - cell [ref=f70e481]:
+                  - checkbox [ref=f70e485]
+                - cell [ref=f70e487]:
+                  - 'button "Follow up with active leads Created by: System Admin" [ref=f70e489] [cursor=pointer]':
+                    - generic [ref=f70e490]: Follow up with active leads
+                    - generic [ref=f70e491]:
+                      - text: "Created by:"
+                      - strong [ref=f70e492]: System Admin
+                - cell "Sent 0" [ref=f70e493]:
+                  - generic [ref=f70e494]: Sent
+                  - heading "0" [level=5] [ref=f70e495]
+                - cell "Opened 0%" [ref=f70e496]:
+                  - generic [ref=f70e497]: Opened
+                  - heading "0%" [level=5] [ref=f70e498]
+                - cell "Clicked 0%" [ref=f70e499]:
+                  - generic [ref=f70e500]: Clicked
+                  - heading "0%" [level=5] [ref=f70e501]
+                - cell "Replied 0%" [ref=f70e502]:
+                  - generic [ref=f70e503]: Replied
+                  - heading "0%" [level=5] [ref=f70e504]
+                - cell "Unsubscribed 0%" [ref=f70e505]:
+                  - generic [ref=f70e506]: Unsubscribed
+                  - heading "0%" [level=5] [ref=f70e507]
+                - cell "Public" [ref=f70e508]
+                - cell [ref=f70e514]:
+                  - button [ref=f70e518] [cursor=pointer]
+              - 'row "Follow up with unresponsive leads Created by: System Admin Sent 0 Opened 0% Clicked 0% Replied 0% Unsubscribed 0% Public" [ref=f70e526]':
+                - cell [ref=f70e527]:
+                  - checkbox [ref=f70e531]
+                - cell [ref=f70e533]:
+                  - 'button "Follow up with unresponsive leads Created by: System Admin" [ref=f70e535] [cursor=pointer]':
+                    - generic [ref=f70e536]: Follow up with unresponsive leads
+                    - generic [ref=f70e537]:
+                      - text: "Created by:"
+                      - strong [ref=f70e538]: System Admin
+                - cell "Sent 0" [ref=f70e539]:
+                  - generic [ref=f70e540]: Sent
+                  - heading "0" [level=5] [ref=f70e541]
+                - cell "Opened 0%" [ref=f70e542]:
+                  - generic [ref=f70e543]: Opened
+                  - heading "0%" [level=5] [ref=f70e544]
+                - cell "Clicked 0%" [ref=f70e545]:
+                  - generic [ref=f70e546]: Clicked
+                  - heading "0%" [level=5] [ref=f70e547]
+                - cell "Replied 0%" [ref=f70e548]:
+                  - generic [ref=f70e549]: Replied
+                  - heading "0%" [level=5] [ref=f70e550]
+                - cell "Unsubscribed 0%" [ref=f70e551]:
+                  - generic [ref=f70e552]: Unsubscribed
+                  - heading "0%" [level=5] [ref=f70e553]
+                - cell "Public" [ref=f70e554]
+                - cell [ref=f70e560]:
+                  - button [ref=f70e564] [cursor=pointer]
+              - 'row "Follow-up on deal marked as Won Created by: System Admin Sent 0 Opened 0% Clicked 0% Replied 0% Unsubscribed 0% Public" [ref=f70e572]':
+                - cell [ref=f70e573]:
+                  - checkbox [ref=f70e577]
+                - cell [ref=f70e579]:
+                  - 'button "Follow-up on deal marked as Won Created by: System Admin" [ref=f70e581] [cursor=pointer]':
+                    - generic [ref=f70e582]: Follow-up on deal marked as Won
+                    - generic [ref=f70e583]:
+                      - text: "Created by:"
+                      - strong [ref=f70e584]: System Admin
+                - cell "Sent 0" [ref=f70e585]:
+                  - generic [ref=f70e586]: Sent
+                  - heading "0" [level=5] [ref=f70e587]
+                - cell "Opened 0%" [ref=f70e588]:
+                  - generic [ref=f70e589]: Opened
+                  - heading "0%" [level=5] [ref=f70e590]
+                - cell "Clicked 0%" [ref=f70e591]:
+                  - generic [ref=f70e592]: Clicked
+                  - heading "0%" [level=5] [ref=f70e593]
+                - cell "Replied 0%" [ref=f70e594]:
+                  - generic [ref=f70e595]: Replied
+                  - heading "0%" [level=5] [ref=f70e596]
+                - cell "Unsubscribed 0%" [ref=f70e597]:
+                  - generic [ref=f70e598]: Unsubscribed
+                  - heading "0%" [level=5] [ref=f70e599]
+                - cell "Public" [ref=f70e600]
+                - cell [ref=f70e606]:
+                  - button [ref=f70e610] [cursor=pointer]
+              - 'row "Follow-up on record assignment Created by: System Admin Sent 0 Opened 0% Clicked 0% Replied 0% Unsubscribed 0% Public" [ref=f70e618]':
+                - cell [ref=f70e619]:
+                  - checkbox [ref=f70e623]
+                - cell [ref=f70e625]:
+                  - 'button "Follow-up on record assignment Created by: System Admin" [ref=f70e627] [cursor=pointer]':
+                    - generic [ref=f70e628]: Follow-up on record assignment
+                    - generic [ref=f70e629]:
+                      - text: "Created by:"
+                      - strong [ref=f70e630]: System Admin
+                - cell "Sent 0" [ref=f70e631]:
+                  - generic [ref=f70e632]: Sent
+                  - heading "0" [level=5] [ref=f70e633]
+                - cell "Opened 0%" [ref=f70e634]:
+                  - generic [ref=f70e635]: Opened
+                  - heading "0%" [level=5] [ref=f70e636]
+                - cell "Clicked 0%" [ref=f70e637]:
+                  - generic [ref=f70e638]: Clicked
+                  - heading "0%" [level=5] [ref=f70e639]
+                - cell "Replied 0%" [ref=f70e640]:
+                  - generic [ref=f70e641]: Replied
+                  - heading "0%" [level=5] [ref=f70e642]
+                - cell "Unsubscribed 0%" [ref=f70e643]:
+                  - generic [ref=f70e644]: Unsubscribed
+                  - heading "0%" [level=5] [ref=f70e645]
+                - cell "Public" [ref=f70e646]
+                - cell [ref=f70e652]:
+                  - button [ref=f70e656] [cursor=pointer]
+              - 'row "Follow-up on stage update Created by: System Admin Sent 0 Opened 0% Clicked 0% Replied 0% Unsubscribed 0% Public" [ref=f70e664]':
+                - cell [ref=f70e665]:
+                  - checkbox [ref=f70e669]
+                - cell [ref=f70e671]:
+                  - 'button "Follow-up on stage update Created by: System Admin" [ref=f70e673] [cursor=pointer]':
+                    - generic [ref=f70e674]: Follow-up on stage update
+                    - generic [ref=f70e675]:
+                      - text: "Created by:"
+                      - strong [ref=f70e676]: System Admin
+                - cell "Sent 0" [ref=f70e677]:
+                  - generic [ref=f70e678]: Sent
+                  - heading "0" [level=5] [ref=f70e679]
+                - cell "Opened 0%" [ref=f70e680]:
+                  - generic [ref=f70e681]: Opened
+                  - heading "0%" [level=5] [ref=f70e682]
+                - cell "Clicked 0%" [ref=f70e683]:
+                  - generic [ref=f70e684]: Clicked
+                  - heading "0%" [level=5] [ref=f70e685]
+                - cell "Replied 0%" [ref=f70e686]:
+                  - generic [ref=f70e687]: Replied
+                  - heading "0%" [level=5] [ref=f70e688]
+                - cell "Unsubscribed 0%" [ref=f70e689]:
+                  - generic [ref=f70e690]: Unsubscribed
+                  - heading "0%" [level=5] [ref=f70e691]
+                - cell "Public" [ref=f70e692]
+                - cell [ref=f70e698]:
+                  - button [ref=f70e702] [cursor=pointer]
+              - 'row "Re-engage with cold leads Created by: System Admin Sent 0 Opened 0% Clicked 0% Replied 0% Unsubscribed 0% Public" [ref=f70e710]':
+                - cell [ref=f70e711]:
+                  - checkbox [ref=f70e715]
+                - cell [ref=f70e717]:
+                  - 'button "Re-engage with cold leads Created by: System Admin" [ref=f70e719] [cursor=pointer]':
+                    - generic [ref=f70e720]: Re-engage with cold leads
+                    - generic [ref=f70e721]:
+                      - text: "Created by:"
+                      - strong [ref=f70e722]: System Admin
+                - cell "Sent 0" [ref=f70e723]:
+                  - generic [ref=f70e724]: Sent
+                  - heading "0" [level=5] [ref=f70e725]
+                - cell "Opened 0%" [ref=f70e726]:
+                  - generic [ref=f70e727]: Opened
+                  - heading "0%" [level=5] [ref=f70e728]
+                - cell "Clicked 0%" [ref=f70e729]:
+                  - generic [ref=f70e730]: Clicked
+                  - heading "0%" [level=5] [ref=f70e731]
+                - cell "Replied 0%" [ref=f70e732]:
+                  - generic [ref=f70e733]: Replied
+                  - heading "0%" [level=5] [ref=f70e734]
+                - cell "Unsubscribed 0%" [ref=f70e735]:
+                  - generic [ref=f70e736]: Unsubscribed
+                  - heading "0%" [level=5] [ref=f70e737]
+                - cell "Public" [ref=f70e738]
+                - cell [ref=f70e744]:
+                  - button [ref=f70e748] [cursor=pointer]
+              - 'row "Reach out to new leads Created by: System Admin Sent 0 Opened 0% Clicked 0% Replied 0% Unsubscribed 0% Public" [ref=f70e756]':
+                - cell [ref=f70e757]:
+                  - checkbox [ref=f70e761]
+                - cell [ref=f70e763]:
+                  - 'button "Reach out to new leads Created by: System Admin" [ref=f70e765] [cursor=pointer]':
+                    - generic [ref=f70e766]: Reach out to new leads
+                    - generic [ref=f70e767]:
+                      - text: "Created by:"
+                      - strong [ref=f70e768]: System Admin
+                - cell "Sent 0" [ref=f70e769]:
+                  - generic [ref=f70e770]: Sent
+                  - heading "0" [level=5] [ref=f70e771]
+                - cell "Opened 0%" [ref=f70e772]:
+                  - generic [ref=f70e773]: Opened
+                  - heading "0%" [level=5] [ref=f70e774]
+                - cell "Clicked 0%" [ref=f70e775]:
+                  - generic [ref=f70e776]: Clicked
+                  - heading "0%" [level=5] [ref=f70e777]
+                - cell "Replied 0%" [ref=f70e778]:
+                  - generic [ref=f70e779]: Replied
+                  - heading "0%" [level=5] [ref=f70e780]
+                - cell "Unsubscribed 0%" [ref=f70e781]:
+                  - generic [ref=f70e782]: Unsubscribed
+                  - heading "0%" [level=5] [ref=f70e783]
+                - cell "Public" [ref=f70e784]
+                - cell [ref=f70e790]:
+                  - button [ref=f70e794] [cursor=pointer]
+            - rowgroup [ref=f70e802]:
+              - row [ref=f70e803]:
+                - cell "Showing 1 - 9 of 9" [ref=f70e804]:
+                  - generic [ref=f70e805]:
+                    - generic [ref=f70e806]: Showing 1 - 9 of 9
+                    - list
+    - dialog [ref=f70e814]:
+      - tabpanel [ref=f70e817]:
+        - generic [ref=f70e818]:
+          - generic [ref=f70e819]: Create Template
+          - button "Close" [ref=f70e820] [cursor=pointer]:
+            - generic [aria-hidden] [ref=f70e821]: 
+        - generic [ref=f70e822]:
+          - generic [ref=f70e823]:
+            - textbox "Name your template" [active] [ref=f70e826]
+            - button [ref=f70e833] [cursor=pointer]:
+              - list [ref=f70e834]:
+                - searchbox "Click to add" [ref=f70e835]
+          - generic [ref=f70e837]:
+            - textbox "Write a subject line" [ref=f70e839]
+            - generic [ref=f70e843]:
+              - button "Insert fields" [ref=f70e845] [cursor=pointer]
+              - generic [ref=f70e855]:
+                - button [ref=f70e858] [cursor=pointer]
+                - button [ref=f70e867] [cursor=pointer]
+          - application [ref=f70e871]:
+            - iframe [ref=f70e873]
+            - generic [ref=f70e876]:
+              - generic:
+                - button "Background Color" [ref=f70e877] [cursor=pointer]
+                - button "Strikethrough" [ref=f70e881] [cursor=pointer]
+                - button "Decrease Indent" [ref=f70e885] [cursor=pointer]
+                - button "Increase Indent" [ref=f70e889] [cursor=pointer]
+                - button "Quote" [ref=f70e893] [cursor=pointer]
+                - option [ref=f70e897] [cursor=pointer]:
+                  - text: Increase
+                  - generic [ref=f70e898]: ⌘'
+                - option [ref=f70e899] [cursor=pointer]:
+                  - text: Decrease
+                  - generic [ref=f70e900]: ⌘⇧'
+                - button "Insert Horizontal Line" [ref=f70e901] [cursor=pointer]
+                - button "Select All" [ref=f70e905] [cursor=pointer]
+                - button "Undo" [disabled] [ref=f70e909]
+                - button "Redo" [disabled] [ref=f70e913]
+                - button "Code View" [ref=f70e917] [cursor=pointer]
+              - generic [ref=f70e922]:
+                - button "Arial" [ref=f70e923] [cursor=pointer]
+                - option [ref=f70e925] [cursor=pointer]: Arial
+                - option [ref=f70e926] [cursor=pointer]: Century Gothic
+                - option [ref=f70e927] [cursor=pointer]: Courier New
+                - option [ref=f70e928] [cursor=pointer]: Futura
+                - option [ref=f70e929] [cursor=pointer]: Georgia
+                - option [ref=f70e930] [cursor=pointer]: Helvetica
+                - option [ref=f70e931] [cursor=pointer]: Impact
+                - option [ref=f70e932] [cursor=pointer]: Palatino
+                - option [ref=f70e933] [cursor=pointer]: Tahoma
+                - option [ref=f70e934] [cursor=pointer]: Times New Roman
+                - option [ref=f70e935] [cursor=pointer]: Verdana
+                - button "14" [ref=f70e936] [cursor=pointer]
+                - option [ref=f70e938] [cursor=pointer]: "8"
+                - option [ref=f70e939] [cursor=pointer]: "9"
+                - option [ref=f70e940] [cursor=pointer]: "10"
+                - option [ref=f70e941] [cursor=pointer]: "11"
+                - option [ref=f70e942] [cursor=pointer]: "12"
+                - option [ref=f70e943] [cursor=pointer]: "14"
+                - option [ref=f70e944] [cursor=pointer]: "18"
+                - option [ref=f70e945] [cursor=pointer]: "24"
+                - option [ref=f70e946] [cursor=pointer]: "30"
+                - option [ref=f70e947] [cursor=pointer]: "36"
+                - option [ref=f70e948] [cursor=pointer]: "48"
+                - option [ref=f70e949] [cursor=pointer]: "60"
+                - option [ref=f70e950] [cursor=pointer]: "72"
+                - option [ref=f70e951] [cursor=pointer]: "96"
+                - button "Bold" [ref=f70e952] [cursor=pointer]
+                - button "Italic" [ref=f70e956] [cursor=pointer]
+                - button "Underline" [ref=f70e960] [cursor=pointer]
+                - button "Clear Formatting" [ref=f70e964] [cursor=pointer]
+                - button "Text Color" [ref=f70e968] [cursor=pointer]
+                - button "Insert Image" [ref=f70e972] [cursor=pointer]
+                - button "Insert Link" [ref=f70e976] [cursor=pointer]
+                - button "Align" [ref=f70e980] [cursor=pointer]
+                - option [ref=f70e984] [cursor=pointer]:
+                  - generic [ref=f70e987]: Align Left
+                - option [ref=f70e988] [cursor=pointer]:
+                  - generic [ref=f70e991]: Align Center
+                - option [ref=f70e992] [cursor=pointer]:
+                  - generic [ref=f70e995]: Align Right
+                - option [ref=f70e996] [cursor=pointer]:
+                  - generic [ref=f70e999]: Align Justify
+                - generic [ref=f70e1000]:
+                  - button "Ordered List" [ref=f70e1001] [cursor=pointer]
+                  - button "Ordered List" [ref=f70e1005] [cursor=pointer]
+                  - option [ref=f70e1006] [cursor=pointer]: Default
+                  - option [ref=f70e1007] [cursor=pointer]: Lower Alpha
+                  - option [ref=f70e1008] [cursor=pointer]: Lower Greek
+                  - option [ref=f70e1009] [cursor=pointer]: Lower Roman
+                  - option [ref=f70e1010] [cursor=pointer]: Upper Alpha
+                  - option [ref=f70e1011] [cursor=pointer]: Upper Roman
+                - generic [ref=f70e1012]:
+                  - button "Unordered List" [ref=f70e1013] [cursor=pointer]
+                  - button "Unordered List" [ref=f70e1017] [cursor=pointer]
+                  - option [ref=f70e1018] [cursor=pointer]: Default
+                  - option [ref=f70e1019] [cursor=pointer]: Circle
+                  - option [ref=f70e1020] [cursor=pointer]: Disc
+                  - option [ref=f70e1021] [cursor=pointer]: Square
+                - button "Paragraph Format" [ref=f70e1022] [cursor=pointer]
+                - option [ref=f70e1026] [cursor=pointer]: Normal
+                - option [ref=f70e1027] [cursor=pointer]: Heading 1
+                - option [ref=f70e1028] [cursor=pointer]: Heading 2
+                - option [ref=f70e1029] [cursor=pointer]: Heading 3
+                - option [ref=f70e1030] [cursor=pointer]: Heading 4
+              - button "More Misc" [ref=f70e1032] [cursor=pointer]
+        - generic [ref=f70e1036]:
+          - button "Attach" [ref=f70e1037] [cursor=pointer]
+          - generic [ref=f70e1042]:
+            - button "Cancel" [ref=f70e1043] [cursor=pointer]
+            - button "Save" [ref=f70e1045] [cursor=pointer]
+    - generic [ref=f70e808] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

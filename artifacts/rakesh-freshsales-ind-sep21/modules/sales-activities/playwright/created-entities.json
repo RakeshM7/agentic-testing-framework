@@ -1,0 +1,130 @@
+[
+  {
+    "createdAt": "2026-10-05T06:00:51.960Z",
+    "type": "contact",
+    "identifier": "402221040633",
+    "url": "/crm/sales/contacts/402221040633",
+    "note": "deleted",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:01:44.827Z",
+    "type": "activity-goal",
+    "identifier": "Weekly user goal (Rakesh M) for Task, target 100",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/activity-goals/view/402015942771?per_page=25",
+    "note": "deleted",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:02:03.753Z",
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Type 1791180092811",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-activity-type",
+    "note": "renamed",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:02:08.093Z",
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Type R 1791180092811",
+    "url": "/crm/sales/settings/sales-activity-type",
+    "note": "deleted",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:03:01.412Z",
+    "type": "contact",
+    "identifier": "402221040799",
+    "url": "/crm/sales/contacts/402221040799",
+    "note": "deleted",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:03:05.499Z",
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Custom 1791180176934",
+    "url": "/crm/sales/settings/sales-activity-type",
+    "note": "deleted",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:04:04.177Z",
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Type 1791180222509",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-activity-type",
+    "note": "renamed",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:04:11.634Z",
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Type R 1791180222509",
+    "url": "/crm/sales/settings/sales-activity-type",
+    "note": "deleted",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:04:52.442Z",
+    "type": "contact",
+    "identifier": "402221040971",
+    "url": "/crm/sales/contacts/402221040971",
+    "note": "deleted",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:04:56.048Z",
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Custom 1791180288524",
+    "url": "/crm/sales/settings/sales-activity-type",
+    "note": "deleted",
+    "deleted": true
+  },
+  {
+    "createdAt": "2026-10-05T06:07:17.885Z",
+    "deleted": true,
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Type 1791180392535",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-activity-type",
+    "note": "renamed"
+  },
+  {
+    "createdAt": "2026-10-05T06:07:22.583Z",
+    "deleted": true,
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Type R 1791180392535",
+    "url": "/crm/sales/settings/sales-activity-type",
+    "note": "deleted"
+  },
+  {
+    "createdAt": "2026-10-05T06:09:58.535Z",
+    "deleted": true,
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Type 1791180558487",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-activity-type",
+    "note": "renamed"
+  },
+  {
+    "createdAt": "2026-10-05T06:10:08.266Z",
+    "deleted": true,
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Type R 1791180558487",
+    "url": "/crm/sales/settings/sales-activity-type",
+    "note": "deleted"
+  },
+  {
+    "createdAt": "2026-10-05T06:11:04.248Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221041654",
+    "url": "/crm/sales/contacts/402221041654",
+    "note": "deleted"
+  },
+  {
+    "createdAt": "2026-10-05T06:11:09.688Z",
+    "deleted": true,
+    "type": "sales-activity-type",
+    "identifier": "ZZ SA Custom 1791180657634",
+    "url": "/crm/sales/settings/sales-activity-type",
+    "note": "deleted"
+  }
+]

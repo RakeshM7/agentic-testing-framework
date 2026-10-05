@@ -1,0 +1,80 @@
+[
+ {
+  "label": "Tasks",
+  "role": "toggle",
+  "kind": "toggles",
+  "resultingUrl|overlay": ""
+ },
+ {
+  "label": "Meetings",
+  "role": "toggle",
+  "kind": "toggles",
+  "resultingUrl|overlay": ""
+ },
+ {
+  "label": "+ 8 activities",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl|overlay": "activity-type picker with search, Select all, Clear, Create new activity, Cancel, Apply"
+ },
+ {
+  "label": "Add task",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl|overlay": "Add task dialog"
+ },
+ {
+  "label": "Add meeting",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl|overlay": "Add meeting dialog"
+ },
+ {
+  "label": "All / Open / Overdue / Completed",
+  "role": "tabs",
+  "kind": "toggles",
+  "resultingUrl|overlay": ""
+ },
+ {
+  "label": "Due date filter",
+  "role": "dropdown",
+  "kind": "toggles",
+  "resultingUrl|overlay": "Today, Tomorrow, Next 7 days, Next 30 days, Yesterday, Last 7 days, Last 30 days, Custom period"
+ },
+ {
+  "label": "View activity goals",
+  "role": "link",
+  "kind": "navigates",
+  "resultingUrl|overlay": "/crm/sales/activity-goals"
+ },
+ {
+  "label": "Mark complete (row)",
+  "role": "button",
+  "kind": "mutates",
+  "resultingUrl|overlay": "dialog: You marked the task complete (Add outcome, Description, Cancel, Save)"
+ },
+ {
+  "label": "row menu",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl|overlay": "Add outcome / Snooze / Delete (open task); Snooze / Delete (completed)"
+ },
+ {
+  "label": "Configure widgets",
+  "role": "button",
+  "kind": "not opened",
+  "resultingUrl|overlay": ""
+ },
+ {
+  "label": "Google Calendar / Office 365 / Zoom / Microsoft Teams",
+  "role": "button",
+  "kind": "skipped",
+  "resultingUrl|overlay": "external integration connect"
+ },
+ {
+  "label": "Add link (Quick Links)",
+  "role": "link",
+  "kind": "not opened",
+  "resultingUrl|overlay": ""
+ }
+]

@@ -1,0 +1,580 @@
+- generic [ref=f9e1]:
+  - generic [ref=f9e42]:
+    - generic [ref=f9e45]:
+      - generic [ref=f9e46]:
+        - link "Connect your mailbox" [ref=f9e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f9e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f9e49] [cursor=pointer]
+    - generic [ref=f9e52]:
+      - generic [ref=f9e53]:
+        - list [ref=f9e55]:
+          - listitem [ref=f9e56]: Accounts
+        - generic [ref=f9e58]:
+          - list [ref=f9e59]:
+            - listitem [ref=f9e60]
+            - listitem [ref=f9e64]:
+              - generic "Send email" [ref=f9e65] [cursor=pointer]
+            - listitem [ref=f9e69]:
+              - generic "What's new" [ref=f9e70] [cursor=pointer]: "1"
+            - listitem [ref=f9e75]:
+              - generic [ref=f9e76]: "5"
+            - listitem [ref=f9e82]
+            - listitem [ref=f9e83]:
+              - img "Your User Avatar" [ref=f9e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f9e97]
+          - generic [ref=f9e99]:
+            - emphasis [ref=f9e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f9e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f9e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f9e110]:
+          - link [ref=f9e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f9e118]:
+            - listitem "Dashboards" [ref=f9e119]:
+              - link [ref=f9e122] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f9e125]:
+              - link [ref=f9e128] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f9e131]:
+              - link [ref=f9e134] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f9e137]:
+              - link [ref=f9e140] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f9e143]:
+              - link [ref=f9e146] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f9e149]:
+              - link [ref=f9e152] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f9e155]:
+              - link [ref=f9e158] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f9e161]:
+            - generic "Phone" [ref=f9e162]
+            - generic "Freshworks Switcher" [ref=f9e165]:
+              - button "Freshworks Switcher" [ref=f9e166] [cursor=pointer]
+      - generic [ref=f9e172]:
+        - generic [ref=f9e173]:
+          - generic [ref=f9e174]:
+            - generic [ref=f9e175]:
+              - button [ref=f9e176]:
+                - button "My accounts" [ref=f9e177]
+              - button [ref=f9e178]:
+                - button "All accounts 15 Close" [ref=f9e179]:
+                  - generic [ref=f9e180]:
+                    - generic [ref=f9e181] [cursor=pointer]: All accounts
+                    - generic [ref=f9e182]: "15"
+                    - button "Close" [ref=f9e184] [cursor=pointer]
+            - button "button ⌘ O" [ref=f9e190] [cursor=pointer]:
+              - generic [ref=f9e191]:
+                - button "button" [ref=f9e192]:
+                  - generic [ref=f9e193]: 4 more...
+                - generic [ref=f9e198]: ⌘ O
+          - generic [ref=f9e199]:
+            - button "button" [ref=f9e201] [cursor=pointer]:
+              - generic [ref=f9e202]: Customize table
+            - generic [ref=f9e210]:
+              - button "button" [ref=f9e211] [cursor=pointer]:
+                - generic [ref=f9e212]: Import accounts
+              - button [ref=f9e218] [cursor=pointer]
+            - button "button" [ref=f9e224] [cursor=pointer]:
+              - generic [ref=f9e225]: Add account
+        - generic [ref=f9e231]:
+          - generic [ref=f9e234]:
+            - button "Table" [ref=f9e236] [cursor=pointer]
+            - button [ref=f9e244] [cursor=pointer]:
+              - button "button" [ref=f9e245]
+            - button "Bulk actions" [ref=f9e251] [cursor=pointer]
+            - button "button" [ref=f9e255] [cursor=pointer]:
+              - generic [ref=f9e256]: Filter by
+          - generic [ref=f9e262]:
+            - treegrid [ref=f9e263]:
+              - rowgroup [ref=f9e264]:
+                - row [ref=f9e265]:
+                  - columnheader [ref=f9e266]:
+                    - text: 
+                    - generic [ref=f9e271] [cursor=pointer]:
+                      - checkbox
+                  - columnheader "Name" [ref=f9e272]:
+                    - text: 
+                    - generic [ref=f9e274]:
+                      - generic [ref=f9e275]: Name
+                      - button [ref=f9e278] [cursor=pointer]
+              - rowgroup [ref=f9e283]:
+                - row [ref=f9e284]:
+                  - columnheader "Related contacts" [ref=f9e285]:
+                    - text: 
+                    - generic [ref=f9e287]:
+                      - generic [ref=f9e288]: Related contacts
+                      - button [ref=f9e291] [cursor=pointer]
+                  - columnheader "Website" [ref=f9e297]:
+                    - text: 
+                    - generic [ref=f9e299]:
+                      - generic [ref=f9e300]: Website
+                      - button [ref=f9e303] [cursor=pointer]
+                  - columnheader "Phone" [ref=f9e309]:
+                    - text: 
+                    - generic [ref=f9e311]:
+                      - generic [ref=f9e312]: Phone
+                      - button [ref=f9e315] [cursor=pointer]
+                  - columnheader "Number of employees" [ref=f9e321]:
+                    - text: 
+                    - generic [ref=f9e323]:
+                      - generic [ref=f9e324]: Number of employees
+                      - button [ref=f9e327] [cursor=pointer]
+                  - columnheader "Open deals amount" [ref=f9e333]:
+                    - text: 
+                    - generic [ref=f9e335]:
+                      - generic [ref=f9e336]: Open deals amount
+                      - button [ref=f9e339] [cursor=pointer]
+                  - columnheader "Tags" [ref=f9e345]:
+                    - text: 
+                    - generic [ref=f9e347]:
+                      - generic [ref=f9e348]: Tags
+                      - button [ref=f9e351] [cursor=pointer]
+                  - columnheader "Industry type" [ref=f9e357]:
+                    - text: 
+                    - generic [ref=f9e359]:
+                      - generic [ref=f9e360]: Industry type
+                      - button [ref=f9e363] [cursor=pointer]
+                  - columnheader "Sales owner" [ref=f9e369]:
+                    - text: 
+                    - generic [ref=f9e371]:
+                      - generic [ref=f9e372]: Sales owner
+                      - button [ref=f9e375] [cursor=pointer]
+                  - columnheader [ref=f9e381]:
+                    - text: 
+                    - button [ref=f9e383] [cursor=pointer]
+              - rowgroup [ref=f9e388]:
+                - row "Press SPACE to select this row." [ref=f9e389]:
+                  - gridcell [ref=f9e390]:
+                    - generic [ref=f9e395] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e396]:
+                    - button [ref=f9e397] [cursor=pointer]:
+                      - generic [ref=f9e398]:
+                        - img "AgentTest Co 1791137293869" [ref=f9e399]:
+                          - generic [ref=f9e400]: Ag
+                        - link "display-name" [ref=f9e402]:
+                          - /url: /crm/sales/accounts/402012712454
+                          - text: AgentTest Co 1791137293869
+                - row "Press SPACE to select this row." [ref=f9e408]:
+                  - gridcell [ref=f9e409]:
+                    - generic [ref=f9e414] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e415]:
+                    - button [ref=f9e416] [cursor=pointer]:
+                      - generic [ref=f9e417]:
+                        - img "AgentTest Co 1791137131568" [ref=f9e418]:
+                          - generic [ref=f9e419]: Ag
+                        - link "display-name" [ref=f9e421]:
+                          - /url: /crm/sales/accounts/402012712452
+                          - text: AgentTest Co 1791137131568
+                - row "Press SPACE to select this row." [ref=f9e427]:
+                  - gridcell [ref=f9e428]:
+                    - generic [ref=f9e433] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e434]:
+                    - button [ref=f9e435] [cursor=pointer]:
+                      - generic [ref=f9e436]:
+                        - img "AgentTest Co 1791132451928" [ref=f9e437]:
+                          - generic [ref=f9e438]: Ag
+                        - link "display-name" [ref=f9e440]:
+                          - /url: /crm/sales/accounts/402012712419
+                          - text: AgentTest Co 1791132451928
+                - row "Press SPACE to select this row." [ref=f9e446]:
+                  - gridcell [ref=f9e447]:
+                    - generic [ref=f9e452] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e453]:
+                    - button [ref=f9e454] [cursor=pointer]:
+                      - generic [ref=f9e455]:
+                        - img "AgentTest Co 1791132382398" [ref=f9e456]:
+                          - generic [ref=f9e457]: Ag
+                        - link "display-name" [ref=f9e459]:
+                          - /url: /crm/sales/accounts/402012712418
+                          - text: AgentTest Co 1791132382398
+                - row "Press SPACE to select this row." [ref=f9e465]:
+                  - gridcell [ref=f9e466]:
+                    - generic [ref=f9e471] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e472]:
+                    - button [ref=f9e473] [cursor=pointer]:
+                      - generic [ref=f9e474]:
+                        - img "AgentTest Co 1791130391984" [ref=f9e475]:
+                          - generic [ref=f9e476]: Ag
+                        - link "display-name" [ref=f9e478]:
+                          - /url: /crm/sales/accounts/402012712388
+                          - text: AgentTest Co 1791130391984
+                - row "Press SPACE to select this row." [ref=f9e484]:
+                  - gridcell [ref=f9e485]:
+                    - generic [ref=f9e490] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e491]:
+                    - button [ref=f9e492] [cursor=pointer]:
+                      - generic [ref=f9e493]:
+                        - img "Explore Test Co" [ref=f9e494]:
+                          - generic [ref=f9e495]: Ex
+                        - link "display-name" [ref=f9e497]:
+                          - /url: /crm/sales/accounts/402012650925
+                          - text: Explore Test Co
+                - row "Press SPACE to select this row." [ref=f9e503]:
+                  - gridcell [ref=f9e504]:
+                    - generic [ref=f9e509] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e510]:
+                    - button [ref=f9e511] [cursor=pointer]:
+                      - generic [ref=f9e512]:
+                        - img "E Corp (sample)" [ref=f9e513]:
+                          - generic [ref=f9e514]: E
+                        - link "display-name" [ref=f9e516]:
+                          - /url: /crm/sales/accounts/402012383130
+                          - text: E Corp (sample)
+                - row "Press SPACE to select this row." [ref=f9e522]:
+                  - gridcell [ref=f9e523]:
+                    - generic [ref=f9e528] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e529]:
+                    - button [ref=f9e530] [cursor=pointer]:
+                      - generic [ref=f9e531]:
+                        - img "Acme Inc (sample)" [ref=f9e532]:
+                          - generic [ref=f9e533]: Ac
+                        - link "display-name" [ref=f9e535]:
+                          - /url: /crm/sales/accounts/402012383131
+                          - text: Acme Inc (sample)
+                - row "Press SPACE to select this row." [ref=f9e541]:
+                  - gridcell [ref=f9e542]:
+                    - generic [ref=f9e547] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e548]:
+                    - button [ref=f9e549] [cursor=pointer]:
+                      - generic [ref=f9e550]:
+                        - img "Widgetz.io (sample)" [ref=f9e551]:
+                          - generic [ref=f9e552]: Wi
+                        - link "display-name" [ref=f9e554]:
+                          - /url: /crm/sales/accounts/402012383128
+                          - text: Widgetz.io (sample)
+                - row "Press SPACE to select this row." [ref=f9e560]:
+                  - gridcell [ref=f9e561]:
+                    - generic [ref=f9e566] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e567]:
+                    - button [ref=f9e568] [cursor=pointer]:
+                      - generic [ref=f9e569]:
+                        - img "Techcave (sample)" [ref=f9e570]:
+                          - generic [ref=f9e571]: Te
+                        - link "display-name" [ref=f9e573]:
+                          - /url: /crm/sales/accounts/402012383132
+                          - text: Techcave (sample)
+                - row "Press SPACE to select this row." [ref=f9e579]:
+                  - gridcell [ref=f9e580]:
+                    - generic [ref=f9e585] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e586]:
+                    - button [ref=f9e587] [cursor=pointer]:
+                      - generic [ref=f9e588]:
+                        - img "Apex IQ (sample)" [ref=f9e589]:
+                          - generic [ref=f9e590]: Ap
+                        - link "display-name" [ref=f9e592]:
+                          - /url: /crm/sales/accounts/402012383135
+                          - text: Apex IQ (sample)
+                - row "Press SPACE to select this row." [ref=f9e598]:
+                  - gridcell [ref=f9e599]:
+                    - generic [ref=f9e604] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e605]:
+                    - button [ref=f9e606] [cursor=pointer]:
+                      - generic [ref=f9e607]:
+                        - img "Optiscape Inc (sample)" [ref=f9e608]:
+                          - generic [ref=f9e609]: Op
+                        - link "display-name" [ref=f9e611]:
+                          - /url: /crm/sales/accounts/402012383129
+                          - text: Optiscape Inc (sample)
+                - row "Press SPACE to select this row." [ref=f9e617]:
+                  - gridcell [ref=f9e618]:
+                    - generic [ref=f9e623] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e624]:
+                    - button [ref=f9e625] [cursor=pointer]:
+                      - generic [ref=f9e626]:
+                        - img "Nexus Hub (sample)" [ref=f9e627]:
+                          - generic [ref=f9e628]: Ne
+                        - link "display-name" [ref=f9e630]:
+                          - /url: /crm/sales/accounts/402012383134
+                          - text: Nexus Hub (sample)
+                - row "Press SPACE to select this row." [ref=f9e636]:
+                  - gridcell [ref=f9e637]:
+                    - generic [ref=f9e642] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e643]:
+                    - button [ref=f9e644] [cursor=pointer]:
+                      - generic [ref=f9e645]:
+                        - img "Pivotal Tech (sample)" [ref=f9e646]:
+                          - generic [ref=f9e647]: Pi
+                        - link "display-name" [ref=f9e649]:
+                          - /url: /crm/sales/accounts/402012383136
+                          - text: Pivotal Tech (sample)
+                - row "Press SPACE to select this row." [ref=f9e655]:
+                  - gridcell [ref=f9e656]:
+                    - generic [ref=f9e661] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f9e662]:
+                    - button [ref=f9e663] [cursor=pointer]:
+                      - generic [ref=f9e664]:
+                        - img "Synth Corp (sample)" [ref=f9e665]:
+                          - generic [ref=f9e666]: Sy
+                        - link "display-name" [ref=f9e668]:
+                          - /url: /crm/sales/accounts/402012383133
+                          - text: Synth Corp (sample)
+              - rowgroup [ref=f9e674]:
+                - row "Press SPACE to select this row." [ref=f9e675]:
+                  - gridcell [ref=f9e676]:
+                    - button [ref=f9e679] [cursor=pointer]:
+                      - img "AgentTest Lead1791137293869" [ref=f9e680]:
+                        - generic [ref=f9e681]: A
+                  - gridcell "+ Click to add" [ref=f9e682]
+                  - gridcell "+ Click to add" [ref=f9e685]
+                  - gridcell "+ Click to add" [ref=f9e690]
+                  - gridcell "--" [ref=f9e693]
+                  - gridcell "+ Click to add" [ref=f9e696]
+                  - gridcell "+ Click to add" [ref=f9e699]
+                  - gridcell "Rakesh M" [ref=f9e702]
+                  - gridcell [ref=f9e710]
+                - row "Press SPACE to select this row." [ref=f9e711]:
+                  - gridcell [ref=f9e712]:
+                    - button [ref=f9e715] [cursor=pointer]:
+                      - img "AgentTest Lead1791137131568" [ref=f9e716]:
+                        - generic [ref=f9e717]: A
+                  - gridcell "+ Click to add" [ref=f9e718]
+                  - gridcell "+ Click to add" [ref=f9e721]
+                  - gridcell "+ Click to add" [ref=f9e726]
+                  - gridcell "--" [ref=f9e729]
+                  - gridcell "+ Click to add" [ref=f9e732]
+                  - gridcell "+ Click to add" [ref=f9e735]
+                  - gridcell "Rakesh M" [ref=f9e738]
+                  - gridcell [ref=f9e746]
+                - row "Press SPACE to select this row." [ref=f9e747]:
+                  - gridcell "--" [ref=f9e748]
+                  - gridcell "+ Click to add" [ref=f9e751]
+                  - gridcell "+ Click to add" [ref=f9e754]
+                  - gridcell "+ Click to add" [ref=f9e759]
+                  - gridcell "--" [ref=f9e762]
+                  - gridcell "+ Click to add" [ref=f9e765]
+                  - gridcell "+ Click to add" [ref=f9e768]
+                  - gridcell "Rakesh M" [ref=f9e771]
+                  - gridcell [ref=f9e779]
+                - row "Press SPACE to select this row." [ref=f9e780]:
+                  - gridcell "--" [ref=f9e781]
+                  - gridcell "+ Click to add" [ref=f9e784]
+                  - gridcell "+ Click to add" [ref=f9e787]
+                  - gridcell "+ Click to add" [ref=f9e792]
+                  - gridcell "--" [ref=f9e795]
+                  - gridcell "+ Click to add" [ref=f9e798]
+                  - gridcell "+ Click to add" [ref=f9e801]
+                  - gridcell "Rakesh M" [ref=f9e804]
+                  - gridcell [ref=f9e812]
+                - row "Press SPACE to select this row." [ref=f9e813]:
+                  - gridcell "--" [ref=f9e814]
+                  - gridcell "+ Click to add" [ref=f9e817]
+                  - gridcell "+ Click to add" [ref=f9e820]
+                  - gridcell "+ Click to add" [ref=f9e825]
+                  - gridcell "--" [ref=f9e828]
+                  - gridcell "+ Click to add" [ref=f9e831]
+                  - gridcell "+ Click to add" [ref=f9e834]
+                  - gridcell "Rakesh M" [ref=f9e837]
+                  - gridcell [ref=f9e845]
+                - row "Press SPACE to select this row." [ref=f9e846]:
+                  - gridcell "--" [ref=f9e847]
+                  - gridcell "+ Click to add" [ref=f9e850]
+                  - gridcell "+ Click to add" [ref=f9e853]
+                  - gridcell "+ Click to add" [ref=f9e858]
+                  - gridcell "$2,500" [ref=f9e861]
+                  - gridcell "+ Click to add" [ref=f9e864]
+                  - gridcell "+ Click to add" [ref=f9e867]
+                  - gridcell "Rakesh M" [ref=f9e870]
+                  - gridcell [ref=f9e878]
+                - row "Press SPACE to select this row." [ref=f9e879]:
+                  - gridcell "--" [ref=f9e880]
+                  - gridcell [ref=f9e883]:
+                    - generic "ecorpsolutions.com" [ref=f9e884] [cursor=pointer]:
+                      - link "ecorpsolutions.com" [ref=f9e886]:
+                        - /url: http://ecorpsolutions.com
+                  - gridcell "+ Click to add" [ref=f9e887]
+                  - gridcell "51-200" [ref=f9e892]
+                  - gridcell "$4,000" [ref=f9e895]
+                  - gridcell "High-Value" [ref=f9e898]:
+                    - generic "High-Value" [ref=f9e902] [cursor=pointer]
+                  - gridcell "Technology" [ref=f9e903]
+                  - gridcell "Rakesh M" [ref=f9e906]
+                  - gridcell [ref=f9e914]
+                - row "Press SPACE to select this row." [ref=f9e915]:
+                  - gridcell "--" [ref=f9e916]
+                  - gridcell [ref=f9e919]:
+                    - generic "sampleacme.com" [ref=f9e920] [cursor=pointer]:
+                      - link "sampleacme.com" [ref=f9e922]:
+                        - /url: http://sampleacme.com
+                  - gridcell [ref=f9e923]:
+                    - link "19266343001" [ref=f9e927] [cursor=pointer]
+                  - gridcell "1-10" [ref=f9e929]
+                  - gridcell "$100" [ref=f9e932]
+                  - gridcell "Low-Value" [ref=f9e935]:
+                    - generic "Low-Value" [ref=f9e939] [cursor=pointer]
+                  - gridcell "Apparel & Accessories" [ref=f9e940]
+                  - gridcell "Rakesh M" [ref=f9e943]
+                  - gridcell [ref=f9e951]
+                - row "Press SPACE to select this row." [ref=f9e952]:
+                  - gridcell "--" [ref=f9e953]
+                  - gridcell [ref=f9e956]:
+                    - generic "widgetz.io" [ref=f9e957] [cursor=pointer]:
+                      - link "widgetz.io" [ref=f9e959]:
+                        - /url: http://widgetz.io
+                  - gridcell [ref=f9e960]:
+                    - link "5036153947" [ref=f9e964] [cursor=pointer]
+                  - gridcell "1001-5000" [ref=f9e966]
+                  - gridcell "$5,600" [ref=f9e969]
+                  - gridcell "High-Value" [ref=f9e972]:
+                    - generic "High-Value" [ref=f9e976] [cursor=pointer]
+                  - gridcell "Insurance" [ref=f9e977]
+                  - gridcell "Rakesh M" [ref=f9e980]
+                  - gridcell [ref=f9e988]
+                - row "Press SPACE to select this row." [ref=f9e989]:
+                  - gridcell "--" [ref=f9e990]
+                  - gridcell [ref=f9e993]:
+                    - generic "sampletechcave.com" [ref=f9e994] [cursor=pointer]:
+                      - link "sampletechcave.com" [ref=f9e996]:
+                        - /url: http://sampletechcave.com
+                  - gridcell [ref=f9e997]:
+                    - link "19266520001" [ref=f9e1001] [cursor=pointer]
+                  - gridcell "201-500" [ref=f9e1003]
+                  - gridcell "$3,200" [ref=f9e1006]
+                  - gridcell "+ Click to add" [ref=f9e1009]
+                  - gridcell "Technology" [ref=f9e1012]
+                  - gridcell "Rakesh M" [ref=f9e1015]
+                  - gridcell [ref=f9e1023]
+                - row "Press SPACE to select this row." [ref=f9e1024]:
+                  - gridcell "--" [ref=f9e1025]
+                  - gridcell [ref=f9e1028]:
+                    - generic "apexiqsolutions.com" [ref=f9e1029] [cursor=pointer]:
+                      - link "apexiqsolutions.com" [ref=f9e1031]:
+                        - /url: http://apexiqsolutions.com
+                  - gridcell [ref=f9e1032]:
+                    - link "19265554444" [ref=f9e1036] [cursor=pointer]
+                  - gridcell "11-50" [ref=f9e1038]
+                  - gridcell "$0" [ref=f9e1041]
+                  - gridcell "Small Business" [ref=f9e1044]:
+                    - generic "Small Business" [ref=f9e1048] [cursor=pointer]
+                  - gridcell "+ Click to add" [ref=f9e1049]
+                  - gridcell "Rakesh M" [ref=f9e1052]
+                  - gridcell [ref=f9e1060]
+                - row "Press SPACE to select this row." [ref=f9e1061]:
+                  - gridcell "--" [ref=f9e1062]
+                  - gridcell [ref=f9e1065]:
+                    - generic "optiscapeinc.com" [ref=f9e1066] [cursor=pointer]:
+                      - link "optiscapeinc.com" [ref=f9e1068]:
+                        - /url: http://optiscapeinc.com
+                  - gridcell [ref=f9e1069]:
+                    - link "19265556789" [ref=f9e1073] [cursor=pointer]
+                  - gridcell "501-1000" [ref=f9e1075]
+                  - gridcell "$0" [ref=f9e1078]
+                  - gridcell "Enterprise" [ref=f9e1081]:
+                    - generic "Enterprise" [ref=f9e1085] [cursor=pointer]
+                  - gridcell "Technology" [ref=f9e1086]
+                  - gridcell "Rakesh M" [ref=f9e1089]
+                  - gridcell [ref=f9e1097]
+                - row "Press SPACE to select this row." [ref=f9e1098]:
+                  - gridcell "--" [ref=f9e1099]
+                  - gridcell [ref=f9e1102]:
+                    - generic "nexus-hub.net" [ref=f9e1103] [cursor=pointer]:
+                      - link "nexus-hub.net" [ref=f9e1105]:
+                        - /url: http://nexus-hub.net
+                  - gridcell [ref=f9e1106]:
+                    - link "19265552345" [ref=f9e1110] [cursor=pointer]
+                  - gridcell "1001-5000" [ref=f9e1112]
+                  - gridcell "--" [ref=f9e1115]
+                  - gridcell "Enterprise" [ref=f9e1118]:
+                    - generic "Enterprise" [ref=f9e1122] [cursor=pointer]
+                  - gridcell "Technology" [ref=f9e1123]
+                  - gridcell "Rakesh M" [ref=f9e1126]
+                  - gridcell [ref=f9e1134]
+                - row "Press SPACE to select this row." [ref=f9e1135]:
+                  - gridcell "--" [ref=f9e1136]
+                  - gridcell [ref=f9e1139]:
+                    - generic "pivotaltechsolutions.com" [ref=f9e1140] [cursor=pointer]:
+                      - link "pivotaltechsolutions.com" [ref=f9e1142]:
+                        - /url: http://pivotaltechsolutions.com
+                  - gridcell [ref=f9e1143]:
+                    - link "19265556666" [ref=f9e1147] [cursor=pointer]
+                  - gridcell "51-200" [ref=f9e1149]
+                  - gridcell "$3,500" [ref=f9e1152]
+                  - gridcell "Small Business" [ref=f9e1155]:
+                    - generic "Small Business" [ref=f9e1159] [cursor=pointer]
+                  - gridcell "Hospitality" [ref=f9e1160]
+                  - gridcell "Rakesh M" [ref=f9e1163]
+                  - gridcell [ref=f9e1171]
+                - row "Press SPACE to select this row." [ref=f9e1172]:
+                  - gridcell "--" [ref=f9e1173]
+                  - gridcell [ref=f9e1176]:
+                    - generic "synthcorp.org" [ref=f9e1177] [cursor=pointer]:
+                      - link "synthcorp.org" [ref=f9e1179]:
+                        - /url: http://synthcorp.org
+                  - gridcell [ref=f9e1180]:
+                    - link "19265557654" [ref=f9e1184] [cursor=pointer]
+                  - gridcell "201-500" [ref=f9e1186]
+                  - gridcell "$4,100" [ref=f9e1189]
+                  - gridcell "Mid-Market" [ref=f9e1192]:
+                    - generic "Mid-Market" [ref=f9e1196] [cursor=pointer]
+                  - gridcell "Retail & Wholesale" [ref=f9e1197]
+                  - gridcell "Rakesh M" [ref=f9e1200]
+                  - gridcell [ref=f9e1208]
+              - rowgroup
+              - rowgroup
+              - rowgroup
+              - rowgroup
+            - text:    
+          - generic [ref=f9e1214]:
+            - generic [ref=f9e1216]:
+              - generic [ref=f9e1217]: Showing 1–15 of 15
+              - button "Previous" [disabled] [ref=f9e1219]
+              - button "1" [ref=f9e1223] [cursor=pointer]
+              - button "Next" [disabled] [ref=f9e1224]
+            - button "pagination.per_page.label" [ref=f9e1230] [cursor=pointer]:
+              - generic [ref=f9e1231]: Showing 25 per page
+    - dialog [ref=f9e1235]:
+      - generic [ref=f9e1237]:
+        - generic [ref=f9e1238]:
+          - generic [ref=f9e1239]:
+            - generic [ref=f9e1240]: ADD ACCOUNT
+            - button "Customize fields" [ref=f9e1243] [cursor=pointer]
+            - button "Close" [ref=f9e1251] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f9e1252]: 
+          - generic [ref=f9e1259]:
+            - generic [ref=f9e1260]:
+              - generic [ref=f9e1261]: Name *
+              - textbox "Name *" [active] [ref=f9e1262]:
+                - /placeholder: E.g. Acme Inc.
+            - generic [ref=f9e1263]:
+              - generic [ref=f9e1264]: Website
+              - textbox "Website" [ref=f9e1265]:
+                - /placeholder: E.g. www.acmecorp.com
+            - generic [ref=f9e1266]:
+              - generic [ref=f9e1267]: Industry type
+              - button "Click to select" [ref=f9e1269] [cursor=pointer]
+            - generic [ref=f9e1272]:
+              - generic [ref=f9e1273]: Number of employees
+              - button "Click to select" [ref=f9e1275] [cursor=pointer]
+        - generic [ref=f9e1279]:
+          - button "Show all fields" [ref=f9e1280] [cursor=pointer]
+          - button "Check for duplicates" [ref=f9e1284] [cursor=pointer]
+          - button "Cancel" [ref=f9e1287] [cursor=pointer]
+          - button "Save" [ref=f9e1290] [cursor=pointer]
+    - generic [ref=f9e1292] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

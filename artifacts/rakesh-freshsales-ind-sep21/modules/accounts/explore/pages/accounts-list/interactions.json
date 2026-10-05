@@ -1,0 +1,140 @@
+[
+ {
+  "label": "My accounts",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/accounts/view/402015942758"
+ },
+ {
+  "label": "All accounts",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/accounts/view/402015942759"
+ },
+ {
+  "label": "Recycle Bin",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/accounts/view/402015942762"
+ },
+ {
+  "label": "My territory accounts",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/accounts/view/402015942760",
+  "note": "0 rows"
+ },
+ {
+  "label": "Recently imported",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/accounts/view/402015942761",
+  "note": "0 rows"
+ },
+ {
+  "label": "Accounts with me in account team",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/accounts/view/402015942763",
+  "note": "0 rows"
+ },
+ {
+  "label": "N more... (Select a view)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "view picker with search, filters All/Default/My/Other views, Add new view"
+ },
+ {
+  "label": "Add new view",
+  "role": "button",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "not exercised; creates a saved view"
+ },
+ {
+  "label": "Customize table",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "field picker, 9/50 visible, Cancel/Apply (Cancelled)"
+ },
+ {
+  "label": "Import accounts",
+  "role": "button",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "imports forbidden"
+ },
+ {
+  "label": "Import accounts dropdown chevron",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "menu: View import history (not opened)"
+ },
+ {
+  "label": "Add account",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Add account drawer"
+ },
+ {
+  "label": "Table (view type)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "view-type dropdown (screenshot view-type.png)"
+ },
+ {
+  "label": "Sort icon",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "sort control (not opened)"
+ },
+ {
+  "label": "Bulk actions",
+  "role": "button",
+  "kind": "toggles",
+  "overlay": "selects ALL rows on page and shows toolbar Update field, Add tags, Add to sequence, Assign to, Merge, Delete, Cancel; none clicked; page reloaded to clear selection"
+ },
+ {
+  "label": "Filter by",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Filters drawer: Add a field to filter, Apply, Reset, Save view as"
+ },
+ {
+  "label": "Column header dropdowns",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "sort/column menu (not opened)"
+ },
+ {
+  "label": "Row kebab",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Edit all fields, Add meeting, Add call log, View all related contacts, Clone, Delete, Forget (none clicked on existing data)"
+ },
+ {
+  "label": "Account name link",
+  "role": "link",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/accounts/<id>"
+ },
+ {
+  "label": "Showing 25 per page",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "per-page selector (not opened)"
+ },
+ {
+  "label": "Pagination Previous/Next",
+  "role": "button",
+  "kind": "navigates",
+  "note": "disabled, 15 rows single page"
+ },
+ {
+  "label": "Request demo",
+  "role": "button",
+  "kind": "external",
+  "skipped": true,
+  "reason": "forbidden demo button"
+ }
+]

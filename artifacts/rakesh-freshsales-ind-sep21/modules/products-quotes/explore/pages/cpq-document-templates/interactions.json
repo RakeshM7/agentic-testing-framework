@@ -1,0 +1,22 @@
+[
+ {
+  "label": "Create template",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Create template drawer: Template name*, Specify Quote type*; empty Create shows Can't be empty / can't be empty"
+ },
+ {
+  "label": "All Quote types",
+  "role": "combobox",
+  "kind": "toggles",
+  "skipped": true,
+  "reason": "filter not exercised"
+ },
+ {
+  "label": "row kebab",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "pre-existing sample templates"
+ }
+]

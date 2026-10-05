@@ -1,0 +1,95 @@
+- generic [active] [ref=f54e1]:
+  - generic [ref=f54e42]:
+    - generic [ref=f54e45]:
+      - generic [ref=f54e46]:
+        - link "Connect your mailbox" [ref=f54e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+      - generic "Close" [ref=f54e48] [cursor=pointer]
+    - generic [ref=f54e51]:
+      - generic [ref=f54e52]:
+        - list [ref=f54e54]:
+          - listitem [ref=f54e55]:
+            - link "Admin Settings" [ref=f54e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f54e57]: Web Forms
+        - generic [ref=f54e59]:
+          - list [ref=f54e60]:
+            - listitem [ref=f54e61]
+            - listitem [ref=f54e65]:
+              - generic "Send email" [ref=f54e66] [cursor=pointer]
+            - listitem [ref=f54e70]:
+              - generic "What's new" [ref=f54e71] [cursor=pointer]: "1"
+            - listitem [ref=f54e76]:
+              - generic [ref=f54e77]: "5"
+            - listitem [ref=f54e83]
+            - listitem [ref=f54e84]:
+              - img "Your User Avatar" [ref=f54e88] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f54e98]
+          - generic [ref=f54e100]:
+            - emphasis [ref=f54e101]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f54e107] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f54e109] [cursor=pointer]
+      - navigation:
+        - generic [ref=f54e111]:
+          - link [ref=f54e115] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f54e119]:
+            - listitem "Dashboards" [ref=f54e120]:
+              - link [ref=f54e123] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f54e126]:
+              - link [ref=f54e129] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f54e132]:
+              - link [ref=f54e135] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f54e138]:
+              - link [ref=f54e141] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f54e144]:
+              - link [ref=f54e147] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f54e150]:
+              - link [ref=f54e153] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f54e156]:
+              - link [ref=f54e159] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f54e162]:
+            - generic "Phone" [ref=f54e163]
+            - generic "Freshworks Switcher" [ref=f54e166]:
+              - button "Freshworks Switcher" [ref=f54e167] [cursor=pointer]
+      - generic [ref=f54e170]:
+        - generic [ref=f54e171]:
+          - generic [ref=f54e172]:
+            - heading "Web Forms" [level=4] [ref=f54e179]
+            - button "Add web form" [ref=f54e182] [cursor=pointer]
+          - generic [ref=f54e184]: Website visitors who fill out your form can be automatically added as contacts in the CRM; accounts and deals can also be created for them. You can embed these forms on your website, or share them as a link.
+          - generic [ref=f54e187]:
+            - link "Learn how to use web forms" [ref=f54e189] [cursor=pointer]:
+              - /url: //crmsupport.freshworks.com/en/support/solutions/articles/50000002631-how-to-configure-web-forms-in-freshworks-crm-
+            - link "Learn how to use file attachments" [ref=f54e196] [cursor=pointer]:
+              - /url: //crmsupport.freshworks.com/en/support/solutions/articles/50000002631-how-to-configure-web-forms-#Adding-files-to-Web-Forms
+        - table [ref=f54e204]:
+          - row [ref=f54e205]:
+            - cell "No web forms found. Add web form" [ref=f54e206]:
+              - generic [ref=f54e208]:
+                - generic [ref=f54e211]: No web forms found.
+                - button "Add web form" [ref=f54e213] [cursor=pointer]
+        - generic [ref=f54e215]:
+          - generic [ref=f54e216]:
+            - generic [ref=f54e217]: Automations you'll like
+            - generic [ref=f54e218] [cursor=pointer]
+          - generic [ref=f54e221]: "Save time with ready-to-use workflows for web forms:"
+          - generic [ref=f54e223]:
+            - generic [ref=f54e224] [cursor=pointer]: Set reminder to call new website leads
+            - generic [ref=f54e234] [cursor=pointer]: Set reminder to engage with new website leads
+            - generic [ref=f54e244] [cursor=pointer]: Notify your team about new website leads
+          - link "View all workflow templates" [ref=f54e254] [cursor=pointer]:
+            - /url: /crm/sales/workflow-automations/templates
+    - generic [ref=f54e262] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

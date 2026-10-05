@@ -1,0 +1,81 @@
+- generic [active] [ref=f27e1]:
+  - generic [ref=f27e42]:
+    - generic [ref=f27e45]:
+      - generic [ref=f27e46]:
+        - link "Connect your mailbox" [ref=f27e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+      - generic "Close" [ref=f27e48] [cursor=pointer]
+    - generic [ref=f27e51]:
+      - generic [ref=f27e52]:
+        - list [ref=f27e54]:
+          - listitem [ref=f27e55]:
+            - link "Admin Settings" [ref=f27e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f27e57]: Custom Modules
+        - generic [ref=f27e59]:
+          - list [ref=f27e60]:
+            - listitem [ref=f27e61]
+            - listitem [ref=f27e65]:
+              - generic "Send email" [ref=f27e66] [cursor=pointer]
+            - listitem [ref=f27e70]:
+              - generic "What's new" [ref=f27e71] [cursor=pointer]: "1"
+            - listitem [ref=f27e76]:
+              - generic [ref=f27e77]: "5"
+            - listitem [ref=f27e83]
+            - listitem [ref=f27e84]:
+              - img "Your User Avatar" [ref=f27e88] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f27e98]
+          - generic [ref=f27e100]:
+            - emphasis [ref=f27e101]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f27e107] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f27e109] [cursor=pointer]
+      - navigation:
+        - generic [ref=f27e111]:
+          - link [ref=f27e115] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f27e119]:
+            - listitem "Dashboards" [ref=f27e120]:
+              - link [ref=f27e123] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f27e126]:
+              - link [ref=f27e129] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f27e132]:
+              - link [ref=f27e135] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f27e138]:
+              - link [ref=f27e141] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f27e144]:
+              - link [ref=f27e147] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f27e150]:
+              - link [ref=f27e153] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f27e156]:
+              - link [ref=f27e159] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f27e162]:
+            - generic "Phone" [ref=f27e163]
+            - generic "Freshworks Switcher" [ref=f27e166]:
+              - button "Freshworks Switcher" [ref=f27e167] [cursor=pointer]
+      - generic [ref=f27e170]:
+        - generic [ref=f27e171]:
+          - generic [ref=f27e172]:
+            - heading "Custom Modules" [level=4] [ref=f27e177]
+            - button "Add module" [ref=f27e180] [cursor=pointer]
+          - generic [ref=f27e182]: Add custom modules that reflect your sales model. These could be real estate properties, invoices, or just about anything else. You can use lookup fields to share data between your custom modules and the default Contacts, Accounts and Deals modules.
+          - generic [ref=f27e185]:
+            - link "What are custom modules?" [ref=f27e187] [cursor=pointer]:
+              - /url: https://crmsupport.freshworks.com/en/support/solutions/articles/50000002401-what-are-custom-modules-how-to-add-a-new-module-in-freshworks-crm-
+            - link "How to add fields to custom modules" [ref=f27e194] [cursor=pointer]:
+              - /url: https://crmsupport.freshworks.com/en/support/solutions/articles/50000002402-how-to-add-fields-to-custom-modules-and-personalize-them-
+        - generic [ref=f27e202]:
+          - generic [ref=f27e205]: No custom modules found.
+          - button "Add module" [ref=f27e207] [cursor=pointer]
+    - generic [ref=f27e210] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

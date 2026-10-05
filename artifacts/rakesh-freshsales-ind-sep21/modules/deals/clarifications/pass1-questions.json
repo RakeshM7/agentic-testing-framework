@@ -1,0 +1,57 @@
+[
+  {
+    "question": "[Edge Case][Nice-to-have] Should a negative Deal value (e.g. -5) be accepted when creating a deal?",
+    "navigation": "Deals > Add deal > Deal value (flow create-deal-from-add-deal-button)",
+    "csvAnswer": "no"
+  },
+  {
+    "question": "[Behavior][Nice-to-have] Is Lost reason intentionally optional when marking a deal Lost, and is it mandatory in any config?",
+    "navigation": "Deals > <deal> > Won/Lost > Lost (flow mark-deal-lost)",
+    "csvAnswer": "It is mandatory, as defined by the field dependencies in Admin / Settings > Deal forms. It can be made optional through the admin setting"
+  },
+  {
+    "question": "[Behavior][Nice-to-have] What do Bulk actions on deals offer and which are permitted for this role?",
+    "navigation": "Deals > Table > Bulk actions (flow bulk-actions-deals)",
+    "csvAnswer": "Permitted roles are defined by the Roles and Permissions settings in the admin. Bulk actions that are offered are the same set of actions that are displayed in the top bar when the bulk deals are selected"
+  },
+  {
+    "question": "[Behavior][Nice-to-have] Should deal value stay editable manually once products are added (value was overridden to product total $100)?",
+    "navigation": "Deals > <deal> > Add product (flow add-product-to-deal)",
+    "csvAnswer": "No, once products are added, deal value cannot be edited"
+  },
+  {
+    "question": "[Behavior][Blocking] How does the Forecast view compute its totals (open vs committed vs weighted by probability, grouped by Forecast category, month vs quarter), and what should tests assert on it?",
+    "navigation": "Deals > Pipeline/Table menu > Forecast; toggle Month/Quarter (flow switch-deals-view-type)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Blocking] What exactly happens on Mark Won (required fields, Closed date, stage/probability/forecast category changes) and on dragging a card directly into the Won or Lost column on the kanban - same modal as the detail page Won/Lost button?",
+    "navigation": "Deals > <deal> > Won (flow mark-deal-lost); Pipeline view, scroll right to Won/Lost columns (flow move-deal-between-stages-by-drag)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Nice-to-have] Commit deal requires an Expected close date: what is the exact validation when it is empty, and is there a Remove commit action that reverts Forecast category (and to which value)?",
+    "navigation": "Deals > <deal> > Commit deal (flow commit-deal)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Edge Case][Nice-to-have] Are duplicate deal names allowed on create and on Clone save, or are they blocked/warned like accounts and contacts?",
+    "navigation": "Deals > <deal> > kebab > Clone (flow clone-deal-form); Deals > Add deal (flow create-deal-from-add-deal-button)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior][Nice-to-have] For the Recycle Bin: is Restore expected to return the deal to its original pipeline stage and fields, and are tests permitted to use Forget (permanent delete) on deals the run itself created?",
+    "navigation": "Deals > 13 more... > Recycle Bin (flow view-deals-recycle-bin); Deals > <deal> > kebab > Delete (flow delete-deal)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Scope][Nice-to-have] Which of these are in scope for test cases: Group by view, Add new saved view form, Import deals, the 13 other saved views, Add note/quote/file and Discussions tabs on a deal (all unexercised by explore)?",
+    "navigation": "Deals > Pipeline/Table menu > Group by; Deals > 13 more...; Deals > <deal> tabs (flows switch-deals-view-type, select-saved-deal-view, browse-deal-detail-tabs)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Edge Case][Nice-to-have] Deal name and field limits: max Deal name length, max Deal value, and Probability range (0-100?) - what validation messages should negative tests expect?",
+    "navigation": "Deals > Add deal > Deal name / Deal value / Probability (flow create-deal-from-add-deal-button)",
+    "csvAnswer": ""
+  }
+]

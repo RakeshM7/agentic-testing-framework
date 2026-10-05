@@ -1,0 +1,145 @@
+[
+ {
+  "slug": "open-deals-pipelines-settings",
+  "title": "Open Deals & Pipelines admin settings",
+  "goal": "Open Deals & Pipelines admin settings",
+  "kind": "navigation",
+  "entryPage": "Deals & Pipelines",
+  "navPath": "Admin Settings > Deals & Pipelines",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/open-deals-pipelines-settings.md"
+ },
+ {
+  "slug": "view-pipelines",
+  "title": "View pipelines and stages",
+  "goal": "View pipelines and stages",
+  "kind": "read",
+  "entryPage": "Pipelines",
+  "navPath": "Admin Settings > Deals & Pipelines > Pipelines",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-pipelines.md"
+ },
+ {
+  "slug": "create-pipeline-form",
+  "title": "Open the Create pipeline form (not saved)",
+  "goal": "Open the Create pipeline form (not saved)",
+  "kind": "create",
+  "entryPage": "Create pipeline",
+  "navPath": "Admin Settings > Deals & Pipelines > Pipelines > Create pipeline",
+  "stepCount": 1,
+  "mutating": true,
+  "file": "flows/create-pipeline-form.md"
+ },
+ {
+  "slug": "view-deal-fields",
+  "title": "View deal fields",
+  "goal": "View deal fields",
+  "kind": "read",
+  "entryPage": "Deals",
+  "navPath": "Admin Settings > Deals & Pipelines > Deals",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-deal-fields.md"
+ },
+ {
+  "slug": "preview-deal-form",
+  "title": "Preview the deal form",
+  "goal": "Preview the deal form",
+  "kind": "read",
+  "entryPage": "Preview",
+  "navPath": "Admin Settings > Deals & Pipelines > Deals > Preview",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/preview-deal-form.md"
+ },
+ {
+  "slug": "add-deal-field-picker",
+  "title": "Open the Add field picker (not saved)",
+  "goal": "Open the Add field picker (not saved)",
+  "kind": "create",
+  "entryPage": "Add field",
+  "navPath": "Admin Settings > Deals & Pipelines > Deals > Add field",
+  "stepCount": 1,
+  "mutating": true,
+  "file": "flows/add-deal-field-picker.md"
+ },
+ {
+  "slug": "view-field-dependencies",
+  "title": "View deal field dependencies",
+  "goal": "View deal field dependencies",
+  "kind": "read",
+  "entryPage": "Manage field dependencies",
+  "navPath": "Admin Settings > Deals & Pipelines > Deals > Manage field dependencies",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-field-dependencies.md"
+ },
+ {
+  "slug": "create-field-dependency-form",
+  "title": "Open Create dependency form (not saved)",
+  "goal": "Open Create dependency form (not saved)",
+  "kind": "create",
+  "entryPage": "Create dependency",
+  "navPath": "Admin Settings > Deals & Pipelines > Deals > Manage field dependencies > Create dependency",
+  "stepCount": 1,
+  "mutating": true,
+  "file": "flows/create-field-dependency-form.md"
+ },
+ {
+  "slug": "view-quotas-forecasting",
+  "title": "View Quotas and Forecasting settings",
+  "goal": "View Quotas and Forecasting settings",
+  "kind": "read",
+  "entryPage": "Quotas and Forecasting",
+  "navPath": "Admin Settings > Deals & Pipelines > Quotas and Forecasting",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-quotas-forecasting.md"
+ },
+ {
+  "slug": "add-forecast-category-form",
+  "title": "Open Add forecast category form (not saved)",
+  "goal": "Open Add forecast category form (not saved)",
+  "kind": "create",
+  "entryPage": "Add forecast category",
+  "navPath": "Admin Settings > Deals & Pipelines > Quotas and Forecasting > Add forecast category",
+  "stepCount": 1,
+  "mutating": true,
+  "file": "flows/add-forecast-category-form.md"
+ },
+ {
+  "slug": "view-sales-activity-types",
+  "title": "View sales activity types",
+  "goal": "View sales activity types",
+  "kind": "read",
+  "entryPage": "Sales Activities",
+  "navPath": "Admin Settings > Deals & Pipelines > Sales Activities",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-sales-activity-types.md"
+ },
+ {
+  "slug": "create-sales-activity-form",
+  "title": "Open Create sales activity form (not saved)",
+  "goal": "Open Create sales activity form (not saved)",
+  "kind": "create",
+  "entryPage": "Create sales activity",
+  "navPath": "Admin Settings > Deals & Pipelines > Sales Activities > Create sales activity",
+  "stepCount": 1,
+  "mutating": true,
+  "file": "flows/create-sales-activity-form.md"
+ },
+ {
+  "slug": "view-activity-goals",
+  "title": "View Activity Goals",
+  "goal": "View Activity Goals",
+  "kind": "read",
+  "entryPage": "Activity Goals",
+  "navPath": "Admin Settings > Deals & Pipelines > Activity Goals",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/view-activity-goals.md"
+ }
+]

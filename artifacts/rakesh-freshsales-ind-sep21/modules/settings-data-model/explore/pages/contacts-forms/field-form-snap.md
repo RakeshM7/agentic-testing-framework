@@ -1,0 +1,322 @@
+- generic [ref=f9e1]:
+  - generic [ref=f9e42]:
+    - generic [ref=f9e45]:
+      - generic [ref=f9e46]:
+        - link "Connect your mailbox" [ref=f9e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f9e786] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f9e48] [cursor=pointer]
+    - generic [ref=f9e51]:
+      - generic [ref=f9e52]:
+        - list [ref=f9e54]:
+          - listitem [ref=f9e55]:
+            - link "Admin Settings" [ref=f9e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f9e57]: Contacts
+        - generic [ref=f9e59]:
+          - list [ref=f9e60]:
+            - listitem [ref=f9e61]
+            - listitem [ref=f9e65]:
+              - generic "Send email" [ref=f9e66] [cursor=pointer]
+            - listitem [ref=f9e70]:
+              - generic "What's new" [ref=f9e71] [cursor=pointer]: "1"
+            - listitem [ref=f9e76]:
+              - generic [ref=f9e77]: "5"
+            - listitem [ref=f9e83]
+            - listitem [ref=f9e84]:
+              - img "Your User Avatar" [ref=f9e88] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f9e98]
+          - generic [ref=f9e100]:
+            - emphasis [ref=f9e101]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f9e107] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f9e109] [cursor=pointer]
+      - navigation:
+        - generic [ref=f9e111]:
+          - link [ref=f9e115] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f9e119]:
+            - listitem "Dashboards" [ref=f9e120]:
+              - link [ref=f9e123] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f9e126]:
+              - link [ref=f9e129] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f9e132]:
+              - link [ref=f9e135] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f9e138]:
+              - link [ref=f9e141] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f9e144]:
+              - link [ref=f9e147] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f9e150]:
+              - link [ref=f9e153] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f9e156]:
+              - link [ref=f9e159] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f9e162]:
+            - generic "Phone" [ref=f9e163]
+            - generic "Freshworks Switcher" [ref=f9e166]:
+              - button "Freshworks Switcher" [ref=f9e167] [cursor=pointer]
+      - generic [ref=f9e173]:
+        - generic [ref=f9e174]:
+          - generic [ref=f9e175]:
+            - heading "Contacts" [level=4] [ref=f9e181]
+            - generic [ref=f9e182]:
+              - button "Rename module" [ref=f9e184] [cursor=pointer]
+              - button "Preview" [ref=f9e193] [cursor=pointer]
+          - generic [ref=f9e201]: Add contacts faster with just the fields you need. Use default fields or add custom fields, and organize them into groups.
+          - link "Manage field dependencies" [ref=f9e205] [cursor=pointer]:
+            - /url: /crm/sales/settings/contacts/field-dependency-configurations
+          - generic [ref=f9e213]:
+            - link "What are Contact fields" [ref=f9e215] [cursor=pointer]:
+              - /url: https://crmsupport.freshworks.com/en/support/solutions/articles/50000002371-what-are-contact-fields-and-how-to-customize-them-
+            - link "How to customize form fields" [ref=f9e222] [cursor=pointer]:
+              - /url: https://crmsupport.freshworks.com/en/support/solutions/articles/50000002372-how-to-customize-form-fields-
+            - button "+3 help articles" [ref=f9e229] [cursor=pointer]
+        - textbox "Search fields" [ref=f9e239]
+        - generic [ref=f9e240]:
+          - generic [ref=f9e242]:
+            - heading "Basic information" [level=4] [ref=f9e248]
+            - generic [ref=f9e263]:
+              - button "Add field" [ref=f9e264] [cursor=pointer]
+              - button "Add group" [ref=f9e270] [cursor=pointer]
+          - list [ref=f9e276]:
+            - listitem [ref=f9e277]:
+              - generic [ref=f9e278]:
+                - generic [ref=f9e279]:
+                  - generic [ref=f9e280]: 
+                  - img [ref=f9e283]: 
+                  - generic [ref=f9e289]:
+                    - generic "Email"
+                  - generic [ref=f9e290]:
+                    - generic [ref=f9e291]: Required
+                    - generic [ref=f9e297]: Quick-add
+                    - generic [ref=f9e305]: Read-only
+                    - generic [ref=f9e311]: Unique
+                  - list [ref=f9e322]:
+                    - listitem [ref=f9e323]:
+                      - generic [ref=f9e336]:
+                        - generic [ref=f9e337]: 3 choices added
+                        - generic [ref=f9e338]: 
+                        - generic [ref=f9e339] [cursor=pointer]: Add/Edit choices
+                    - listitem [ref=f9e340]:
+                      - generic [ref=f9e351]:
+                        - generic [ref=f9e352]: Tooltip not added
+                        - generic [ref=f9e353]: 
+                        - generic [ref=f9e354] [cursor=pointer]: Add tooltip
+                  - generic [ref=f9e355] [cursor=pointer]
+                - button "Edit field" [ref=f9e359] [cursor=pointer]
+            - listitem [ref=f9e367]:
+              - generic [ref=f9e369]:
+                - generic [ref=f9e370]: 
+                - img [ref=f9e373]: 
+                - generic [ref=f9e379]:
+                  - generic "First name"
+                - generic [ref=f9e380]:
+                  - generic [ref=f9e381]: Required
+                  - generic [ref=f9e387]: Quick-add
+                  - generic [ref=f9e395]: Unique
+                - list [ref=f9e404]:
+                  - listitem [ref=f9e405]:
+                    - generic [ref=f9e416]:
+                      - generic [ref=f9e417]: Tooltip not added
+                      - generic [ref=f9e418]: 
+                      - generic [ref=f9e419] [cursor=pointer]: Add tooltip
+                - generic [ref=f9e420] [cursor=pointer]
+            - listitem [ref=f9e423]:
+              - generic [ref=f9e425]:
+                - generic [ref=f9e426]: 
+                - img [ref=f9e429]: 
+                - generic [ref=f9e435]:
+                  - generic "Last name"
+                - generic [ref=f9e436]:
+                  - generic [ref=f9e437]: Required
+                  - generic [ref=f9e443]: Quick-add
+                  - generic [ref=f9e451]: Unique
+                - list [ref=f9e460]:
+                  - listitem [ref=f9e461]:
+                    - generic [ref=f9e472]:
+                      - generic [ref=f9e473]: Tooltip not added
+                      - generic [ref=f9e474]: 
+                      - generic [ref=f9e475] [cursor=pointer]: Add tooltip
+                - generic [ref=f9e476] [cursor=pointer]
+            - listitem [ref=f9e479]:
+              - generic [ref=f9e481]:
+                - generic [ref=f9e482]: 
+                - generic [ref=f9e494]:
+                  - generic "Account"
+                - generic [ref=f9e495]:
+                  - generic [ref=f9e496]: Required
+                  - generic [ref=f9e502]: Quick-add
+                - list [ref=f9e513]:
+                  - listitem [ref=f9e514]:
+                    - generic [ref=f9e525]:
+                      - generic [ref=f9e526]: Tooltip not added
+                      - generic [ref=f9e527]: 
+                      - generic [ref=f9e528] [cursor=pointer]: Add tooltip
+                - generic [ref=f9e529] [cursor=pointer]
+            - listitem [ref=f9e532]:
+              - generic [ref=f9e534]:
+                - generic [ref=f9e535]: 
+                - img [ref=f9e538]: 
+                - generic [ref=f9e544]:
+                  - generic "Job title"
+                - generic [ref=f9e545]:
+                  - generic [ref=f9e546]: Required
+                  - generic [ref=f9e552]: Quick-add
+                  - generic [ref=f9e560]: Unique
+                - list [ref=f9e569]:
+                  - listitem [ref=f9e570]:
+                    - generic [ref=f9e581]:
+                      - generic [ref=f9e582]: Tooltip not added
+                      - generic [ref=f9e583]: 
+                      - generic [ref=f9e584] [cursor=pointer]: Add tooltip
+                - generic [ref=f9e585] [cursor=pointer]
+            - listitem [ref=f9e588]:
+              - generic [ref=f9e589]:
+                - generic [ref=f9e590]: 
+                - generic "Telephone numbers" [ref=f9e597]
+                - button "Add field" [ref=f9e614] [cursor=pointer]
+              - list [ref=f9e620]:
+                - listitem [ref=f9e621]:
+                  - generic [ref=f9e623]:
+                    - generic [ref=f9e624]: 
+                    - img [ref=f9e627]: 
+                    - generic [ref=f9e633]:
+                      - generic "Mobile"
+                    - generic [ref=f9e634]:
+                      - generic [ref=f9e635]: Required
+                      - generic [ref=f9e641]: Quick-add
+                      - generic [ref=f9e649]: Unique
+                    - list [ref=f9e658]:
+                      - listitem [ref=f9e659]:
+                        - generic [ref=f9e670]:
+                          - generic [ref=f9e671]: Tooltip not added
+                          - generic [ref=f9e672]: 
+                          - generic [ref=f9e673] [cursor=pointer]: Add tooltip
+                    - generic [ref=f9e674] [cursor=pointer]
+                - listitem [ref=f9e677]:
+                  - generic [ref=f9e679]:
+                    - generic [ref=f9e680]: 
+                    - img [ref=f9e683]: 
+                    - generic [ref=f9e689]:
+                      - generic "Work phone"
+                    - generic [ref=f9e690]:
+                      - generic [ref=f9e691]: Required
+                      - generic [ref=f9e697]: Quick-add
+                      - generic [ref=f9e703]: Unique
+                    - list [ref=f9e712]:
+                      - listitem [ref=f9e713]:
+                        - generic [ref=f9e724]:
+                          - generic [ref=f9e725]: Tooltip not added
+                          - generic [ref=f9e726]: 
+                          - generic [ref=f9e727] [cursor=pointer]: Add tooltip
+                    - generic [ref=f9e728] [cursor=pointer]
+            - listitem [ref=f9e731]:
+              - generic [ref=f9e733]:
+                - generic [ref=f9e734]: 
+                - img [ref=f9e737]: 
+                - generic [ref=f9e743]:
+                  - generic "Sales owner"
+                - generic [ref=f9e744]:
+                  - generic [ref=f9e745]: Required
+                  - generic [ref=f9e751]: Quick-add
+                - list [ref=f9e760]:
+                  - listitem [ref=f9e761]:
+                    - generic [ref=f9e774]:
+                      - generic [ref=f9e775]: 1 choices added
+                      - generic [ref=f9e776]: 
+                      - generic [ref=f9e777] [cursor=pointer]: Add/Edit choices
+                    - generic [ref=f9e778]: +2 more
+                - generic [ref=f9e783] [cursor=pointer]
+            - listitem [ref=f9e2892]:
+              - generic [ref=f9e2894]:
+                - generic [ref=f9e2895]: 
+                - img [ref=f9e2898]: 
+                - generic [ref=f9e2905]:
+                  - generic [ref=f9e2906]: Required
+                  - generic [ref=f9e2912]: Quick-add
+                  - generic [ref=f9e2918]: Unique
+                - list [ref=f9e2927]:
+                  - listitem [ref=f9e2928]:
+                    - generic [ref=f9e2939]:
+                      - generic [ref=f9e2940]: Tooltip not added
+                      - generic [ref=f9e2941]: 
+                      - generic [ref=f9e2942] [cursor=pointer]: Add tooltip
+                - generic [ref=f9e2943] [cursor=pointer]
+    - dialog [ref=f9e788]:
+      - generic [ref=f9e2947]:
+        - generic [ref=f9e2948]:
+          - generic [ref=f9e2949]: Add field
+          - button [ref=f9e2950] [cursor=pointer]:
+            - generic [aria-hidden] [ref=f9e2951]: 
+        - generic [ref=f9e2952]:
+          - generic [ref=f9e2954]:
+            - generic [ref=f9e2955]: Field label*
+            - textbox "Field label*" [active] [ref=f9e2956]:
+              - /placeholder: Give a name for your field
+          - generic [ref=f9e2957]:
+            - generic [ref=f9e2958]:
+              - generic [ref=f9e2959]: Internal name*
+              - generic "Used in APIs" [ref=f9e2960]: 
+            - generic [ref=f9e2961]:
+              - generic [ref=f9e2962]: cf_
+              - textbox [ref=f9e2965]
+          - generic [ref=f9e2966]:
+            - generic [ref=f9e2967]: Field type*
+            - button "Text field" [ref=f9e2968] [cursor=pointer]
+          - generic [ref=f9e2971]:
+            - generic [ref=f9e2972]: Tooltip
+            - textbox "Your tooltip could describe the purpose of this field" [ref=f9e2973]
+          - generic [ref=f9e2974]:
+            - generic [ref=f9e2975]: Placeholder text 
+            - textbox "E.g. Enter value" [ref=f9e2976]: Start typing...
+          - generic [ref=f9e2977]:
+            - generic [ref=f9e2978]:
+              - text: Group or sub-group
+              - generic "Select the group or sub-group under which the field is placed." [ref=f9e2979]: 
+            - button "Basic information" [ref=f9e2980] [cursor=pointer]
+          - generic [ref=f9e2983]:
+            - generic [ref=f9e2984]:
+              - generic [ref=f9e2986] [cursor=pointer]:
+                - checkbox "Make this a required field" [ref=f9e2988]
+                - generic [ref=f9e2990]: Make this a required field
+              - link "" [ref=f9e2991] [cursor=pointer]:
+                - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002404-what-is-a-required-field-how-to-make-a-field-required-
+            - generic [ref=f9e2993]:
+              - generic [ref=f9e2995] [cursor=pointer]:
+                - checkbox "Show field in quick-add view" [ref=f9e2997]
+                - generic [ref=f9e2999]: Show field in quick-add view
+              - link "" [ref=f9e3000] [cursor=pointer]:
+                - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002406-how-to-list-a-field-in-the-quick-add-view
+            - generic [ref=f9e3002]:
+              - generic [ref=f9e3004] [cursor=pointer]:
+                - checkbox "Make this a read-only field" [ref=f9e3006]
+                - generic [ref=f9e3008]: Make this a read-only field
+              - link "" [ref=f9e3009] [cursor=pointer]:
+                - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002405-what-is-a-read-only-field-how-to-make-a-lead-contact-account-deal-field-as-read-only-
+            - generic [ref=f9e3011]:
+              - generic [ref=f9e3013] [cursor=pointer]:
+                - checkbox "Make this a unique field" [ref=f9e3015]
+                - generic [ref=f9e3017]: Make this a unique field
+              - link "" [ref=f9e3018] [cursor=pointer]:
+                - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002578-what-are-unique-fields-why-are-few-fields-marked-as-unique-by-default-
+            - generic [ref=f9e3020]:
+              - generic [ref=f9e3022] [cursor=pointer]:
+                - checkbox "Track this field's edit history" [ref=f9e3024]
+                - generic [ref=f9e3026]: Track this field's edit history
+              - link "" [ref=f9e3027] [cursor=pointer]:
+                - /url: //crmsupport.freshworks.com/support/solutions/articles/50000006313-how-to-track-field-history-of-contacts-and-accounts-
+        - generic [ref=f9e3029]:
+          - button "Cancel" [ref=f9e3030] [cursor=pointer]
+          - button "Save" [ref=f9e3032] [cursor=pointer]
+    - generic [ref=f9e1903] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

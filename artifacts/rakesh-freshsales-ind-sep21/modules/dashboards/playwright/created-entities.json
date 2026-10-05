@@ -1,0 +1,16 @@
+[
+  {
+    "type": "dashboard-tab",
+    "identifier": "Sales Trends",
+    "createdAt": "2026-10-05T05:49:12.242Z",
+    "note": "removed in afterAll safety net",
+    "deleted": true
+  },
+  {
+    "type": "dashboard-tab",
+    "identifier": "Sales Trends",
+    "createdAt": "2026-10-05T05:55:20.584Z",
+    "note": "removed in afterAll safety net",
+    "deleted": true
+  }
+]

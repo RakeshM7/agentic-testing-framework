@@ -1,0 +1,111 @@
+- generic [active] [ref=f37e1]:
+  - generic [ref=f37e42]:
+    - generic [ref=f37e45]:
+      - generic [ref=f37e46]:
+        - link "Connect your mailbox" [ref=f37e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f37e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f37e49] [cursor=pointer]
+    - generic [ref=f37e52]:
+      - generic [ref=f37e56]:
+        - list [ref=f37e57]:
+          - listitem [ref=f37e58]:
+            - generic [ref=f37e59] [cursor=pointer]
+            - menu [ref=f37e553]:
+              - generic [ref=f37e554]: Records
+              - list:
+                - menuitem "Add contact" [ref=f37e555] [cursor=pointer]
+                - menuitem "Add account" [ref=f37e560] [cursor=pointer]
+                - menuitem "Add deal" [ref=f37e569] [cursor=pointer]
+                - menuitem "Add product" [ref=f37e573] [cursor=pointer]
+                - menuitem "Add Quote" [ref=f37e579] [cursor=pointer]
+              - generic [ref=f37e585]: Sales activities
+              - list:
+                - menuitem "Add task" [ref=f37e586] [cursor=pointer]
+                - menuitem "Add meeting" [ref=f37e591] [cursor=pointer]
+                - menuitem "Add call log" [ref=f37e596] [cursor=pointer]
+                - menuitem "Send SMS" [ref=f37e600] [cursor=pointer]
+                - menuitem "Add ZZ Explore Activity" [ref=f37e605] [cursor=pointer]
+              - generic [ref=f37e610]: Emails
+              - list:
+                - generic "Send email" [ref=f37e611] [cursor=pointer]
+                - generic "Create template" [ref=f37e615] [cursor=pointer]
+                - link "Create sales sequence" [ref=f37e620] [cursor=pointer]:
+                  - /url: /crm/sales/sales-sequences/contact/new
+          - listitem [ref=f37e62]:
+            - generic "Send email" [ref=f37e63] [cursor=pointer]
+          - listitem [ref=f37e67]:
+            - generic "What's new" [ref=f37e68] [cursor=pointer]: "1"
+          - listitem [ref=f37e73]:
+            - generic [ref=f37e74]: "5"
+          - listitem [ref=f37e80]
+          - listitem [ref=f37e81]:
+            - img "Your User Avatar" [ref=f37e85] [cursor=pointer]
+        - textbox "Search your CRM" [ref=f37e95]
+        - generic [ref=f37e97]:
+          - emphasis [ref=f37e98]: Your trial ends in 8 days
+          - link "Explore plans" [ref=f37e104] [cursor=pointer]:
+            - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+          - button "Request demo" [ref=f37e106] [cursor=pointer]
+      - navigation:
+        - generic [ref=f37e108]:
+          - link [ref=f37e112] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f37e116]:
+            - listitem "Dashboards" [ref=f37e117]:
+              - link [ref=f37e120] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f37e123]:
+              - link [ref=f37e126] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f37e129]:
+              - link [ref=f37e132] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f37e135]:
+              - link [ref=f37e138] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f37e141]:
+              - link [ref=f37e144] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f37e147]:
+              - link [ref=f37e150] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f37e153]:
+              - link [ref=f37e156] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f37e159]:
+            - generic "Phone" [ref=f37e160]
+            - generic "Freshworks Switcher" [ref=f37e163]:
+              - button "Freshworks Switcher" [ref=f37e164] [cursor=pointer]
+      - generic [ref=f37e166]:
+        - list [ref=f37e168]:
+          - listitem [ref=f37e531]:
+            - generic "My goals" [ref=f37e539] [cursor=pointer]: (0)
+            - list
+        - list [ref=f37e182]:
+          - listitem [ref=f37e183]:
+            - generic [ref=f37e184]:
+              - button "Add goal" [ref=f37e185] [cursor=pointer]
+              - button [ref=f37e187] [cursor=pointer]
+          - listitem [ref=f37e191]:
+            - button "Filters" [ref=f37e193] [cursor=pointer]
+      - generic [ref=f37e199]:
+        - generic [ref=f37e200]:
+          - generic [ref=f37e201]:
+            - text: Showing for
+            - generic [ref=f37e542] [cursor=pointer]: user goal type, all goal periods and 4 more filters
+          - generic [ref=f37e545]:
+            - generic [ref=f37e548]: No activity goals found.
+            - button "Add goal" [ref=f37e551] [cursor=pointer]
+        - generic [ref=f37e215]:
+          - heading "Need help configuring your settings? Try these resources:" [level=5] [ref=f37e216]
+          - list [ref=f37e218]:
+            - listitem [ref=f37e219]:
+              - link "What are activity goals?" [ref=f37e220] [cursor=pointer]:
+                - /url: //crmsupport.freshworks.com/en/support/solutions/articles/50000003604-what-are-activity-goals-
+    - generic [ref=f37e222] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

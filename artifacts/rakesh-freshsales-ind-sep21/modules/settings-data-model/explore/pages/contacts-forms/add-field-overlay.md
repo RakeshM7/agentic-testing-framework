@@ -1,0 +1,519 @@
+- generic [ref=f9e1]:
+  - generic [ref=f9e42]:
+    - generic [ref=f9e45]:
+      - generic [ref=f9e46]:
+        - link "Connect your mailbox" [ref=f9e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f9e786] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f9e48] [cursor=pointer]
+    - generic [ref=f9e51]:
+      - generic [ref=f9e52]:
+        - list [ref=f9e54]:
+          - listitem [ref=f9e55]:
+            - link "Admin Settings" [ref=f9e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f9e57]: Contacts
+        - generic [ref=f9e59]:
+          - list [ref=f9e60]:
+            - listitem [ref=f9e61]
+            - listitem [ref=f9e65]:
+              - generic "Send email" [ref=f9e66] [cursor=pointer]
+            - listitem [ref=f9e70]:
+              - generic "What's new" [ref=f9e71] [cursor=pointer]: "1"
+            - listitem [ref=f9e76]:
+              - generic [ref=f9e77]: "5"
+            - listitem [ref=f9e83]
+            - listitem [ref=f9e84]:
+              - img "Your User Avatar" [ref=f9e88] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f9e98]
+          - generic [ref=f9e100]:
+            - emphasis [ref=f9e101]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f9e107] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f9e109] [cursor=pointer]
+      - navigation:
+        - generic [ref=f9e111]:
+          - link [ref=f9e115] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f9e119]:
+            - listitem "Dashboards" [ref=f9e120]:
+              - link [ref=f9e123] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f9e126]:
+              - link [ref=f9e129] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f9e132]:
+              - link [ref=f9e135] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f9e138]:
+              - link [ref=f9e141] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f9e144]:
+              - link [ref=f9e147] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f9e150]:
+              - link [ref=f9e153] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f9e156]:
+              - link [ref=f9e159] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f9e162]:
+            - generic "Phone" [ref=f9e163]
+            - generic "Freshworks Switcher" [ref=f9e166]:
+              - button "Freshworks Switcher" [ref=f9e167] [cursor=pointer]
+      - generic [ref=f9e173]:
+        - generic [ref=f9e174]:
+          - generic [ref=f9e175]:
+            - heading "Contacts" [level=4] [ref=f9e181]
+            - generic [ref=f9e182]:
+              - button "Rename module" [ref=f9e184] [cursor=pointer]
+              - button "Preview" [ref=f9e193] [cursor=pointer]
+          - generic [ref=f9e201]: Add contacts faster with just the fields you need. Use default fields or add custom fields, and organize them into groups.
+          - link "Manage field dependencies" [ref=f9e205] [cursor=pointer]:
+            - /url: /crm/sales/settings/contacts/field-dependency-configurations
+          - generic [ref=f9e213]:
+            - link "What are Contact fields" [ref=f9e215] [cursor=pointer]:
+              - /url: https://crmsupport.freshworks.com/en/support/solutions/articles/50000002371-what-are-contact-fields-and-how-to-customize-them-
+            - link "How to customize form fields" [ref=f9e222] [cursor=pointer]:
+              - /url: https://crmsupport.freshworks.com/en/support/solutions/articles/50000002372-how-to-customize-form-fields-
+            - button "+3 help articles" [ref=f9e229] [cursor=pointer]
+        - textbox "Search fields" [ref=f9e239]
+        - generic [ref=f9e240]:
+          - generic [ref=f9e242]:
+            - heading "Basic information" [level=4] [ref=f9e248]
+            - generic [ref=f9e263]:
+              - button "Add field" [ref=f9e264] [cursor=pointer]
+              - button "Add group" [ref=f9e270] [cursor=pointer]
+          - list [ref=f9e276]:
+            - listitem [ref=f9e277]:
+              - generic [ref=f9e278]:
+                - generic [ref=f9e279]:
+                  - generic [ref=f9e280]: 
+                  - img [ref=f9e283]: 
+                  - generic [ref=f9e289]:
+                    - generic "Email"
+                  - generic [ref=f9e290]:
+                    - generic [ref=f9e291]: Required
+                    - generic [ref=f9e297]: Quick-add
+                    - generic [ref=f9e305]: Read-only
+                    - generic [ref=f9e311]: Unique
+                  - list [ref=f9e322]:
+                    - listitem [ref=f9e323]:
+                      - generic [ref=f9e336]:
+                        - generic [ref=f9e337]: 3 choices added
+                        - generic [ref=f9e338]: 
+                        - generic [ref=f9e339] [cursor=pointer]: Add/Edit choices
+                    - listitem [ref=f9e340]:
+                      - generic [ref=f9e351]:
+                        - generic [ref=f9e352]: Tooltip not added
+                        - generic [ref=f9e353]: 
+                        - generic [ref=f9e354] [cursor=pointer]: Add tooltip
+                  - generic [ref=f9e355] [cursor=pointer]
+                - button "Edit field" [ref=f9e359] [cursor=pointer]
+            - listitem [ref=f9e367]:
+              - generic [ref=f9e369]:
+                - generic [ref=f9e370]: 
+                - img [ref=f9e373]: 
+                - generic [ref=f9e379]:
+                  - generic "First name"
+                - generic [ref=f9e380]:
+                  - generic [ref=f9e381]: Required
+                  - generic [ref=f9e387]: Quick-add
+                  - generic [ref=f9e395]: Unique
+                - list [ref=f9e404]:
+                  - listitem [ref=f9e405]:
+                    - generic [ref=f9e416]:
+                      - generic [ref=f9e417]: Tooltip not added
+                      - generic [ref=f9e418]: 
+                      - generic [ref=f9e419] [cursor=pointer]: Add tooltip
+                - generic [ref=f9e420] [cursor=pointer]
+            - listitem [ref=f9e423]:
+              - generic [ref=f9e425]:
+                - generic [ref=f9e426]: 
+                - img [ref=f9e429]: 
+                - generic [ref=f9e435]:
+                  - generic "Last name"
+                - generic [ref=f9e436]:
+                  - generic [ref=f9e437]: Required
+                  - generic [ref=f9e443]: Quick-add
+                  - generic [ref=f9e451]: Unique
+                - list [ref=f9e460]:
+                  - listitem [ref=f9e461]:
+                    - generic [ref=f9e472]:
+                      - generic [ref=f9e473]: Tooltip not added
+                      - generic [ref=f9e474]: 
+                      - generic [ref=f9e475] [cursor=pointer]: Add tooltip
+                - generic [ref=f9e476] [cursor=pointer]
+            - listitem [ref=f9e479]:
+              - generic [ref=f9e481]:
+                - generic [ref=f9e482]: 
+                - generic [ref=f9e494]:
+                  - generic "Account"
+                - generic [ref=f9e495]:
+                  - generic [ref=f9e496]: Required
+                  - generic [ref=f9e502]: Quick-add
+                - list [ref=f9e513]:
+                  - listitem [ref=f9e514]:
+                    - generic [ref=f9e525]:
+                      - generic [ref=f9e526]: Tooltip not added
+                      - generic [ref=f9e527]: 
+                      - generic [ref=f9e528] [cursor=pointer]: Add tooltip
+                - generic [ref=f9e529] [cursor=pointer]
+            - listitem [ref=f9e532]:
+              - generic [ref=f9e534]:
+                - generic [ref=f9e535]: 
+                - img [ref=f9e538]: 
+                - generic [ref=f9e544]:
+                  - generic "Job title"
+                - generic [ref=f9e545]:
+                  - generic [ref=f9e546]: Required
+                  - generic [ref=f9e552]: Quick-add
+                  - generic [ref=f9e560]: Unique
+                - list [ref=f9e569]:
+                  - listitem [ref=f9e570]:
+                    - generic [ref=f9e581]:
+                      - generic [ref=f9e582]: Tooltip not added
+                      - generic [ref=f9e583]: 
+                      - generic [ref=f9e584] [cursor=pointer]: Add tooltip
+                - generic [ref=f9e585] [cursor=pointer]
+            - listitem [ref=f9e588]:
+              - generic [ref=f9e589]:
+                - generic [ref=f9e590]: 
+                - generic "Telephone numbers" [ref=f9e597]
+                - button "Add field" [ref=f9e614] [cursor=pointer]
+              - list [ref=f9e620]:
+                - listitem [ref=f9e621]:
+                  - generic [ref=f9e623]:
+                    - generic [ref=f9e624]: 
+                    - img [ref=f9e627]: 
+                    - generic [ref=f9e633]:
+                      - generic "Mobile"
+                    - generic [ref=f9e634]:
+                      - generic [ref=f9e635]: Required
+                      - generic [ref=f9e641]: Quick-add
+                      - generic [ref=f9e649]: Unique
+                    - list [ref=f9e658]:
+                      - listitem [ref=f9e659]:
+                        - generic [ref=f9e670]:
+                          - generic [ref=f9e671]: Tooltip not added
+                          - generic [ref=f9e672]: 
+                          - generic [ref=f9e673] [cursor=pointer]: Add tooltip
+                    - generic [ref=f9e674] [cursor=pointer]
+                - listitem [ref=f9e677]:
+                  - generic [ref=f9e679]:
+                    - generic [ref=f9e680]: 
+                    - img [ref=f9e683]: 
+                    - generic [ref=f9e689]:
+                      - generic "Work phone"
+                    - generic [ref=f9e690]:
+                      - generic [ref=f9e691]: Required
+                      - generic [ref=f9e697]: Quick-add
+                      - generic [ref=f9e703]: Unique
+                    - list [ref=f9e712]:
+                      - listitem [ref=f9e713]:
+                        - generic [ref=f9e724]:
+                          - generic [ref=f9e725]: Tooltip not added
+                          - generic [ref=f9e726]: 
+                          - generic [ref=f9e727] [cursor=pointer]: Add tooltip
+                    - generic [ref=f9e728] [cursor=pointer]
+            - listitem [ref=f9e731]:
+              - generic [ref=f9e733]:
+                - generic [ref=f9e734]: 
+                - img [ref=f9e737]: 
+                - generic [ref=f9e743]:
+                  - generic "Sales owner"
+                - generic [ref=f9e744]:
+                  - generic [ref=f9e745]: Required
+                  - generic [ref=f9e751]: Quick-add
+                - list [ref=f9e760]:
+                  - listitem [ref=f9e761]:
+                    - generic [ref=f9e774]:
+                      - generic [ref=f9e775]: 1 choices added
+                      - generic [ref=f9e776]: 
+                      - generic [ref=f9e777] [cursor=pointer]: Add/Edit choices
+                    - generic [ref=f9e778]: +2 more
+                - generic [ref=f9e783] [cursor=pointer]
+    - dialog [active] [ref=f9e788]:
+      - generic [ref=f9e791]:
+        - generic [ref=f9e792]:
+          - generic [ref=f9e793]: Add field
+          - button [ref=f9e795] [cursor=pointer]
+        - generic [ref=f9e799]:
+          - generic [ref=f9e800]:
+            - heading "Select from 52 available fields" [level=5] [ref=f9e801]
+            - generic [ref=f9e802]:
+              - textbox "Search by fields" [ref=f9e808]
+              - list [ref=f9e809]:
+                - listitem [ref=f9e810] [cursor=pointer]:
+                  - generic [ref=f9e811]:
+                    - generic [ref=f9e812]: Tags
+                    - generic [ref=f9e819]: Lookup
+                - listitem [ref=f9e830] [cursor=pointer]:
+                  - generic [ref=f9e831]:
+                    - generic [ref=f9e832]: Source
+                    - generic [ref=f9e839]: Dropdown
+                - listitem [ref=f9e847] [cursor=pointer]:
+                  - generic [ref=f9e848]:
+                    - generic [ref=f9e849]: Address
+                    - generic [ref=f9e856]: Text
+                - listitem [ref=f9e864] [cursor=pointer]:
+                  - generic [ref=f9e865]:
+                    - generic [ref=f9e866]: City
+                    - generic [ref=f9e873]: Text
+                - listitem [ref=f9e881] [cursor=pointer]:
+                  - generic [ref=f9e882]:
+                    - generic [ref=f9e883]: State
+                    - generic [ref=f9e890]: Text
+                - listitem [ref=f9e898] [cursor=pointer]:
+                  - generic [ref=f9e899]:
+                    - generic [ref=f9e900]: Country
+                    - generic [ref=f9e907]: Text
+                - listitem [ref=f9e915] [cursor=pointer]:
+                  - generic [ref=f9e916]:
+                    - generic [ref=f9e917]: Zipcode
+                    - generic [ref=f9e924]: Text
+                - listitem [ref=f9e932] [cursor=pointer]:
+                  - generic [ref=f9e933]:
+                    - generic [ref=f9e934]: Lifecycle stage
+                    - generic [ref=f9e941]: Dropdown
+                  - list [ref=f9e949]:
+                    - listitem [ref=f9e950]:
+                      - generic [ref=f9e951]:
+                        - generic [ref=f9e952]: Status
+                        - generic [ref=f9e959]: Dropdown
+                    - listitem [ref=f9e967]:
+                      - generic [ref=f9e968]:
+                        - generic [ref=f9e969]: Lost reason
+                        - generic [ref=f9e976]: Dropdown
+                - listitem [ref=f9e984] [cursor=pointer]:
+                  - generic [ref=f9e985]:
+                    - generic [ref=f9e986]: Subscription status
+                    - generic [ref=f9e993]: Dropdown
+                  - list [ref=f9e1001]:
+                    - listitem [ref=f9e1002]:
+                      - generic [ref=f9e1003]:
+                        - generic [ref=f9e1004]: Subscription types
+                        - generic [ref=f9e1011]: Multiselect
+                    - listitem [ref=f9e1020]:
+                      - generic [ref=f9e1021]:
+                        - generic [ref=f9e1022]: Unsubscribe reason
+                        - generic [ref=f9e1029]: Dropdown
+                    - listitem [ref=f9e1037]:
+                      - generic [ref=f9e1038]:
+                        - generic [ref=f9e1039]: Other unsubscribe reasons
+                        - generic [ref=f9e1046]: Text
+                - listitem [ref=f9e1054] [cursor=pointer]:
+                  - generic [ref=f9e1055]:
+                    - generic [ref=f9e1056]: Customer fit
+                    - generic [ref=f9e1063]: Dropdown
+                - listitem [ref=f9e1071] [cursor=pointer]:
+                  - generic [ref=f9e1072]:
+                    - generic [ref=f9e1073]: Score
+                    - generic [ref=f9e1080]: Number
+                - listitem [ref=f9e1087] [cursor=pointer]:
+                  - generic [ref=f9e1088]:
+                    - generic [ref=f9e1089]: Territory
+                    - generic [ref=f9e1096]: Dropdown
+                - listitem [ref=f9e1104] [cursor=pointer]:
+                  - generic [ref=f9e1105]:
+                    - generic [ref=f9e1106]: LinkedIn
+                    - generic [ref=f9e1113]: Text
+                - listitem [ref=f9e1121] [cursor=pointer]:
+                  - generic [ref=f9e1122]:
+                    - generic [ref=f9e1123]: Twitter
+                    - generic [ref=f9e1130]: Text
+                - listitem [ref=f9e1138] [cursor=pointer]:
+                  - generic [ref=f9e1139]:
+                    - generic [ref=f9e1140]: Facebook
+                    - generic [ref=f9e1147]: Text
+                - listitem [ref=f9e1155] [cursor=pointer]:
+                  - generic [ref=f9e1156]:
+                    - generic [ref=f9e1157]: Campaign
+                    - generic [ref=f9e1164]: Dropdown
+                - listitem [ref=f9e1172] [cursor=pointer]:
+                  - generic [ref=f9e1173]:
+                    - generic [ref=f9e1174]: Medium
+                    - generic [ref=f9e1181]: Text
+                - listitem [ref=f9e1189] [cursor=pointer]:
+                  - generic [ref=f9e1190]:
+                    - generic [ref=f9e1191]: Keyword
+                    - generic [ref=f9e1198]: Text
+                - listitem [ref=f9e1206] [cursor=pointer]:
+                  - generic [ref=f9e1207]:
+                    - generic [ref=f9e1208]: Web forms
+                    - generic [ref=f9e1215]: Multiselect
+                - listitem [ref=f9e1224] [cursor=pointer]:
+                  - generic [ref=f9e1225]:
+                    - generic [ref=f9e1226]: SMS subscription status
+                    - generic [ref=f9e1233]: Dropdown
+                - listitem [ref=f9e1241] [cursor=pointer]:
+                  - generic [ref=f9e1242]:
+                    - generic [ref=f9e1243]: WhatsApp subscription status
+                    - generic [ref=f9e1250]: Dropdown
+                - listitem [ref=f9e1258] [cursor=pointer]:
+                  - generic [ref=f9e1259]:
+                    - generic [ref=f9e1260]: Other phone numbers
+                    - generic [ref=f9e1267]: Group
+                - listitem [ref=f9e1275] [cursor=pointer]:
+                  - generic [ref=f9e1276]:
+                    - generic [ref=f9e1277]: Last assigned at
+                    - generic [ref=f9e1284]: Date
+                - listitem [ref=f9e1293] [cursor=pointer]:
+                  - generic [ref=f9e1294]:
+                    - generic [ref=f9e1295]: Last contacted time
+                    - generic [ref=f9e1302]: Date
+                - listitem [ref=f9e1311] [cursor=pointer]:
+                  - generic [ref=f9e1312]:
+                    - generic [ref=f9e1313]: Last contacted mode
+                    - generic [ref=f9e1320]: Dropdown
+                - listitem [ref=f9e1328] [cursor=pointer]:
+                  - generic [ref=f9e1329]:
+                    - generic [ref=f9e1330]: Active sales sequences
+                    - generic [ref=f9e1337]: Multiselect
+                - listitem [ref=f9e1346] [cursor=pointer]:
+                  - generic [ref=f9e1347]:
+                    - generic [ref=f9e1348]: Completed sales sequences
+                    - generic [ref=f9e1355]: Multiselect
+                - listitem [ref=f9e1364] [cursor=pointer]:
+                  - generic [ref=f9e1365]:
+                    - generic [ref=f9e1366]: Original campaign
+                    - generic [ref=f9e1373]: Text
+                - listitem [ref=f9e1381] [cursor=pointer]:
+                  - generic [ref=f9e1382]:
+                    - generic [ref=f9e1383]: Original medium
+                    - generic [ref=f9e1390]: Text
+                - listitem [ref=f9e1398] [cursor=pointer]:
+                  - generic [ref=f9e1399]:
+                    - generic [ref=f9e1400]: Original source
+                    - generic [ref=f9e1407]: Text
+                - listitem [ref=f9e1415] [cursor=pointer]:
+                  - generic [ref=f9e1416]:
+                    - generic [ref=f9e1417]: Created through campaign
+                    - generic [ref=f9e1424]: Text
+                - listitem [ref=f9e1432] [cursor=pointer]:
+                  - generic [ref=f9e1433]:
+                    - generic [ref=f9e1434]: Created from medium
+                    - generic [ref=f9e1441]: Text
+                - listitem [ref=f9e1449] [cursor=pointer]:
+                  - generic [ref=f9e1450]:
+                    - generic [ref=f9e1451]: Created from source
+                    - generic [ref=f9e1458]: Text
+                - listitem [ref=f9e1466] [cursor=pointer]:
+                  - generic [ref=f9e1467]:
+                    - generic [ref=f9e1468]: Most recent campaign
+                    - generic [ref=f9e1475]: Text
+                - listitem [ref=f9e1483] [cursor=pointer]:
+                  - generic [ref=f9e1484]:
+                    - generic [ref=f9e1485]: Most recent medium
+                    - generic [ref=f9e1492]: Text
+                - listitem [ref=f9e1500] [cursor=pointer]:
+                  - generic [ref=f9e1501]:
+                    - generic [ref=f9e1502]: Most recent source
+                    - generic [ref=f9e1509]: Text
+                - listitem [ref=f9e1517] [cursor=pointer]:
+                  - generic [ref=f9e1518]:
+                    - generic [ref=f9e1519]: Last activity type
+                    - generic [ref=f9e1526]: Dropdown
+                - listitem [ref=f9e1534] [cursor=pointer]:
+                  - generic [ref=f9e1535]:
+                    - generic [ref=f9e1536]: Last activity date
+                    - generic [ref=f9e1543]: Date
+                - listitem [ref=f9e1552] [cursor=pointer]:
+                  - generic [ref=f9e1553]:
+                    - generic [ref=f9e1554]: Created by
+                    - generic [ref=f9e1561]: Dropdown
+                - listitem [ref=f9e1569] [cursor=pointer]:
+                  - generic [ref=f9e1570]:
+                    - generic [ref=f9e1571]: Created at
+                    - generic [ref=f9e1578]: Date
+                - listitem [ref=f9e1587] [cursor=pointer]:
+                  - generic [ref=f9e1588]:
+                    - generic [ref=f9e1589]: Updated by
+                    - generic [ref=f9e1596]: Dropdown
+                - listitem [ref=f9e1604] [cursor=pointer]:
+                  - generic [ref=f9e1605]:
+                    - generic [ref=f9e1606]: Updated at
+                    - generic [ref=f9e1613]: Date
+                - listitem [ref=f9e1622] [cursor=pointer]:
+                  - generic [ref=f9e1623]:
+                    - generic [ref=f9e1624]: Last seen on web
+                    - generic [ref=f9e1631]: Date
+                - listitem [ref=f9e1640] [cursor=pointer]:
+                  - generic [ref=f9e1641]:
+                    - generic [ref=f9e1642]: Recent note
+                    - generic [ref=f9e1649]: Text area
+                - listitem [ref=f9e1656] [cursor=pointer]:
+                  - generic [ref=f9e1657]:
+                    - generic [ref=f9e1658]: External ID
+                    - generic [ref=f9e1665]: Text
+                - listitem [ref=f9e1673] [cursor=pointer]:
+                  - generic [ref=f9e1674]:
+                    - generic [ref=f9e1675]: Time zone
+                    - generic [ref=f9e1682]: Dropdown
+                - listitem [ref=f9e1690] [cursor=pointer]:
+                  - generic [ref=f9e1691]:
+                    - generic [ref=f9e1692]: Work email
+                    - generic [ref=f9e1699]: Text
+                - listitem [ref=f9e1707] [cursor=pointer]:
+                  - generic [ref=f9e1708]:
+                    - generic [ref=f9e1709]: Total chat sessions
+                    - generic [ref=f9e1716]: Number
+                - listitem [ref=f9e1723] [cursor=pointer]:
+                  - generic [ref=f9e1724]:
+                    - generic [ref=f9e1725]: First seen on chat
+                    - generic [ref=f9e1732]: Date
+                - listitem [ref=f9e1741] [cursor=pointer]:
+                  - generic [ref=f9e1742]:
+                    - generic [ref=f9e1743]: Last seen on chat
+                    - generic [ref=f9e1750]: Date
+                - listitem [ref=f9e1759] [cursor=pointer]:
+                  - generic [ref=f9e1760]:
+                    - generic [ref=f9e1761]: Locale
+                    - generic [ref=f9e1768]: Text
+                - listitem [ref=f9e1776] [cursor=pointer]:
+                  - generic [ref=f9e1777]:
+                    - generic [ref=f9e1778]: AMB Subscription Status
+                    - generic [ref=f9e1785]: Dropdown
+              - generic [ref=f9e1793]:
+                - generic [ref=f9e1794]: 0 fields selected
+                - generic [ref=f9e1795]:
+                  - text: Select all
+                  - generic [ref=f9e1796]: 
+                  - text: Select none
+          - heading "(or)" [level=4] [ref=f9e1798]
+          - generic [ref=f9e1799]:
+            - heading "Select a custom field" [level=5] [ref=f9e1800]
+            - list [ref=f9e1801]:
+              - listitem [ref=f9e1802] [cursor=pointer]:
+                - generic [ref=f9e1809]: Text field
+              - listitem [ref=f9e1810] [cursor=pointer]:
+                - generic [ref=f9e1816]: Text area
+              - listitem [ref=f9e1817] [cursor=pointer]:
+                - generic [ref=f9e1823]: Number
+              - listitem [ref=f9e1824] [cursor=pointer]:
+                - generic [ref=f9e1831]: Dropdown
+              - listitem [ref=f9e1832] [cursor=pointer]:
+                - generic [ref=f9e1841]: Checkbox
+              - listitem [ref=f9e1842] [cursor=pointer]:
+                - generic [ref=f9e1851]: Radio button
+              - listitem [ref=f9e1852] [cursor=pointer]:
+                - generic [ref=f9e1860]: Date picker
+              - listitem [ref=f9e1861] [cursor=pointer]:
+                - generic [ref=f9e1871]: Lookup
+              - listitem [ref=f9e1872] [cursor=pointer]:
+                - generic [ref=f9e1880]: Multiselect
+              - listitem [ref=f9e1881] [cursor=pointer]:
+                - generic [ref=f9e1884]: URL
+              - listitem [ref=f9e1885] [cursor=pointer]:
+                - generic [ref=f9e1891]: Formula
+              - listitem [ref=f9e1892] [cursor=pointer]:
+                - generic [ref=f9e1898]: Auto-number
+        - generic [ref=f9e1899]:
+          - button "Cancel" [ref=f9e1900] [cursor=pointer]
+          - button "Add selected" [disabled]
+    - generic [ref=f9e1903] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

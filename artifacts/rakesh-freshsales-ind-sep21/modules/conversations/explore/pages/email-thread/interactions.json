@@ -1,0 +1,31 @@
+[
+ {
+  "label": "Reply",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": "inline composer"
+ },
+ {
+  "label": "Forward",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": "inline composer",
+  "note": "not opened"
+ },
+ {
+  "label": "Send",
+  "role": "button",
+  "kind": "mutates",
+  "resultingUrl": null,
+  "skipped": true,
+  "reason": "no real email"
+ },
+ {
+  "label": "Connect Gmail",
+  "role": "button",
+  "kind": "mutates",
+  "resultingUrl": null,
+  "skipped": true,
+  "reason": "OAuth"
+ }
+]

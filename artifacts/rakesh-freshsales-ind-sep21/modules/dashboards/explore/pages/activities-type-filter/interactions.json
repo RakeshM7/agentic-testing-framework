@@ -1,0 +1,28 @@
+[
+ {
+  "label": "Select all / Clear / activity checkboxes (Follow up, Call reminder, Email reminder, LinkedIn profile view, LinkedIn engagement with post, LinkedIn connection request, ...)",
+  "role": "checkbox",
+  "kind": "toggles",
+  "skipped": true,
+  "reason": "not changed"
+ },
+ {
+  "label": "Create new activity",
+  "role": "link",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "creates activity type (admin config)"
+ },
+ {
+  "label": "Cancel",
+  "role": "button",
+  "kind": "toggles"
+ },
+ {
+  "label": "Apply",
+  "role": "button",
+  "kind": "toggles",
+  "skipped": true,
+  "reason": "not used"
+ }
+]

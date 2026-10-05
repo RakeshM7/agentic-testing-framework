@@ -1,0 +1,56 @@
+[
+ {
+  "label": "Search (reports)",
+  "role": "combobox",
+  "kind": "toggles"
+ },
+ {
+  "label": "Help Center",
+  "role": "button",
+  "kind": "external",
+  "skipped": true,
+  "reason": "support/docs; not followed"
+ },
+ {
+  "label": "New Report",
+  "role": "button",
+  "kind": "navigates",
+  "resultingUrl": "/analytics/reports/new/page/1"
+ },
+ {
+  "label": "Recent / Favorites / All reports / My reports / Curated reports / Private reports / Shared reports",
+  "role": "nav item",
+  "kind": "toggles",
+  "note": "list filters; only All reports observed in detail"
+ },
+ {
+  "label": "Trash",
+  "role": "nav item",
+  "kind": "navigates",
+  "note": "not opened"
+ },
+ {
+  "label": "Settings",
+  "role": "nav item",
+  "kind": "navigates",
+  "resultingUrl": "/analytics/settings/schedules"
+ },
+ {
+  "label": "Sort By: Last modified date",
+  "role": "button",
+  "kind": "opens-overlay",
+  "note": "not opened"
+ },
+ {
+  "label": "row Menu (more-vertical)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "note": "not opened"
+ },
+ {
+  "label": "report name",
+  "role": "gridcell",
+  "kind": "navigates",
+  "resultingUrl": "/analytics/reports/<base64 id>/page/1"
+ }
+]

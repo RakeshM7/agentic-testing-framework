@@ -1,0 +1,159 @@
+[
+  {
+    "type": "account",
+    "identifier": "ZZ Probe Acct 1791179197016",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712764",
+    "createdAt": "2026-10-05",
+    "note": "Created by an authoring-time selector probe; NOT deleted (ad-hoc delete was blocked by the permission classifier). Needs manual cleanup by the user."
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T05:48:15.488Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Filter Acct 79288186",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712767",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T05:49:17.705Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Create Acct 79351165",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712768",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T05:49:37.231Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Full Acct 79351165",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712769",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T05:50:37.287Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Edit Acct 79432939",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712772",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T05:50:38.015Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Edit Acct 79432939 Edited",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712772",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T05:51:09.857Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Dup Acct 79464718",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712773",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T05:51:34.522Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ EditEmpty Acct 79464718",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712775",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T05:51:51.294Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Tld Acct 79464718",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712776",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T05:54:03.817Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Create Acct 79636776",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712784",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:09:16.056Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Filter Acct 80547035",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712812"
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:10:20.553Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Create Acct 80612669",
+    "url": "/crm/sales/accounts/402012712815",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:10:40.726Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Full Acct 80612669",
+    "url": "/crm/sales/accounts/402012712816",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:10:52.883Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Edit Acct 80612669",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012712817"
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:10:53.691Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Edit Acct 80612669 Edited",
+    "url": "/crm/sales/accounts/402012712817",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:11:04.390Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Delete Acct 80612669",
+    "url": "/crm/sales/accounts/402012712819",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:11:25.541Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Dup Acct 80612669",
+    "url": "/crm/sales/accounts/402012712820",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:11:47.909Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ EditEmpty Acct 80612669",
+    "url": "/crm/sales/accounts/402012712822",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:11:57.465Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ Tld Acct 80612669",
+    "url": "/crm/sales/accounts/402012712824",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T06:12:12.746Z",
+    "note": "created by accounts track",
+    "identifier": "ZZ BadPhone Acct 80612669",
+    "url": "/crm/sales/accounts/402012712826",
+    "deleted": true
+  }
+]

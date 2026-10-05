@@ -1,0 +1,86 @@
+- generic [active] [ref=f18e1]:
+  - generic [ref=f18e42]:
+    - generic [ref=f18e45]:
+      - generic [ref=f18e46]:
+        - link "Connect your mailbox" [ref=f18e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f18e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f18e49] [cursor=pointer]
+    - generic [ref=f18e52]:
+      - generic [ref=f18e53]:
+        - list [ref=f18e55]:
+          - listitem [ref=f18e56]:
+            - link "Admin Settings" [ref=f18e57] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f18e58]:
+            - link "Sales Activities" [ref=f18e59] [cursor=pointer]:
+              - /url: /crm/sales/settings/sales-activity-type
+          - listitem [ref=f18e60]:
+            - link "Custom sales activities" [ref=f18e61] [cursor=pointer]:
+              - /url: /crm/sales/settings/sales_activities/forms
+          - listitem [ref=f18e62]: Manage field dependencies
+        - generic [ref=f18e64]:
+          - list [ref=f18e65]:
+            - listitem [ref=f18e66]
+            - listitem [ref=f18e70]:
+              - generic "Send email" [ref=f18e71] [cursor=pointer]
+            - listitem [ref=f18e75]:
+              - generic "What's new" [ref=f18e76] [cursor=pointer]: "1"
+            - listitem [ref=f18e81]:
+              - generic [ref=f18e82]: "5"
+            - listitem [ref=f18e88]
+            - listitem [ref=f18e89]:
+              - img "Your User Avatar" [ref=f18e93] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f18e103]
+          - generic [ref=f18e105]:
+            - emphasis [ref=f18e106]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f18e112] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f18e114] [cursor=pointer]
+      - navigation:
+        - generic [ref=f18e116]:
+          - link [ref=f18e120] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f18e124]:
+            - listitem "Dashboards" [ref=f18e125]:
+              - link [ref=f18e128] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f18e131]:
+              - link [ref=f18e134] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f18e137]:
+              - link [ref=f18e140] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f18e143]:
+              - link [ref=f18e146] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f18e149]:
+              - link [ref=f18e152] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f18e155]:
+              - link [ref=f18e158] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f18e161]:
+              - link [ref=f18e164] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f18e167]:
+            - generic "Phone" [ref=f18e168]
+            - generic "Freshworks Switcher" [ref=f18e171]:
+              - button "Freshworks Switcher" [ref=f18e172] [cursor=pointer]
+      - button "Create dependency" [ref=f18e177] [cursor=pointer]
+      - generic [ref=f18e183]:
+        - generic [ref=f18e187]:
+          - text: You haven’t set any dependencies... yet.
+          - generic [ref=f18e188] [cursor=pointer]: Create a dependency now?
+        - generic [ref=f18e192]:
+          - heading "Field dependency" [level=5] [ref=f18e193]
+          - paragraph [ref=f18e194]:
+            - text: "Let’s say you have two dropdown fields: Country and State. After you pick a country, you want to choose from the states in that country, not any other. Field dependency is how you help the CRM recognize this relationship between the two fields. By setting Country as a “controlling field”, and State as its “dependent field”, you can get the states to change depending on the choice of your country. You can create up to 100 dependencies in Freshsales."
+            - link "Know more" [ref=f18e195] [cursor=pointer]:
+              - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002573-how-to-configure-field-dependency-in-freshworks-crm-
+    - generic [ref=f18e197] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

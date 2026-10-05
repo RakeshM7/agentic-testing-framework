@@ -1,0 +1,68 @@
+[
+ {
+  "label": "Table",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "view-type menu"
+ },
+ {
+  "label": "density icon",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Compact / Comfortable"
+ },
+ {
+  "label": "Bulk actions",
+  "role": "button",
+  "kind": "skipped",
+  "detail": "NOT clicked (selects all rows per safety rule)"
+ },
+ {
+  "label": "1 filter applied",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Filters panel; Add filter lists ~33 fields; Apply -> /deals/view/custom?q[]=...; Reset; Save view as"
+ },
+ {
+  "label": "All deal owners",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Sales owner filter"
+ },
+ {
+  "label": "column headers (Deal name, Products, Deal value, Deal stage, Expected close date, Sales owner, Pipeline, Related account, Next activity)",
+  "role": "columnheader",
+  "kind": "opens-overlay",
+  "detail": "per-column menus/sort"
+ },
+ {
+  "label": "row checkbox / select-all",
+  "role": "checkbox",
+  "kind": "toggles",
+  "detail": "not used"
+ },
+ {
+  "label": "row hover icons",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "open, call, task, note, comment"
+ },
+ {
+  "label": "row kebab",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Edit all fields, Add meeting, Add call log, Start a discussion, View all discussions, View all related contacts, Clone, Delete, Forget, Remove commit, Show only stale deals, Add deal image"
+ },
+ {
+  "label": "Showing 25 per page",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "10/25/50/100"
+ },
+ {
+  "label": "pagination Previous/Next",
+  "role": "button",
+  "kind": "navigates",
+  "detail": ""
+ }
+]

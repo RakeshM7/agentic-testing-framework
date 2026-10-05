@@ -1,0 +1,24 @@
+[
+ {
+  "label": "Create rule",
+  "role": "button",
+  "kind": "navigates",
+  "resultingUrl": "/auto-assignment-rules/new"
+ },
+ {
+  "label": "rule name links",
+  "role": "link",
+  "kind": "navigates",
+  "resultingUrl": "/auto-assignment-rules/<id>/edit"
+ },
+ {
+  "label": "row kebab",
+  "role": "button",
+  "kind": "not opened"
+ },
+ {
+  "label": "drag handle/order number",
+  "role": "img",
+  "kind": "not tested (reorder mutates)"
+ }
+]

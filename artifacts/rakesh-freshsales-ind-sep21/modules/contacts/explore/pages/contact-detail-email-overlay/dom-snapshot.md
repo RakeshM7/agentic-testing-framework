@@ -1,0 +1,316 @@
+# https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?open_modal=email
+
+- link "Connect your mailbox":
+  - /url: /crm/sales/personal-settings/connect-your-email
+- text: to improve deliverability and enable 2-way sync of email conversations. Import all your sales data so you don't have to start from scratch.
+- img
+- list:
+  - listitem:
+    - link "Contacts":
+      - /url: /crm/sales/contacts
+  - listitem: Explore ExploreContact1791143638407
+- list:
+  - listitem:
+    - img
+  - listitem:
+    - img
+  - listitem:
+    - img
+  - listitem:
+    - img
+    - text: "5"
+  - listitem
+  - listitem:
+    - img "Your User Avatar"
+- img
+- textbox "Search your CRM"
+- emphasis: Your trial ends in 8 days
+- img
+- link "Explore plans":
+  - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+- button "Request demo"
+- navigation:
+  - link:
+    - /url: /crm/sales/contacts
+    - img
+  - list:
+    - listitem "Dashboards":
+      - link:
+        - /url: /crm/sales/my_dashboards
+        - img
+    - listitem "Contacts":
+      - link:
+        - /url: /crm/sales/contacts
+        - img
+    - listitem "Accounts":
+      - link:
+        - /url: /crm/sales/accounts
+        - img
+    - listitem "Deals":
+      - link:
+        - /url: /crm/sales/deals
+        - img
+    - listitem "Conversations":
+      - link:
+        - /url: /crm/sales/conversations/awaiting_response
+        - img
+    - listitem "Analytics":
+      - link:
+        - /url: /crm/sales/analytics
+        - img
+    - listitem "Admin Settings":
+      - link:
+        - /url: /crm/sales/settings
+        - img
+  - img
+  - button "Freshworks Switcher"
+- button "Email":
+  - img
+  - text: Email
+- button "Call log":
+  - img
+  - text: Call log
+- button "Task":
+  - img
+  - text: Task
+- button "Meeting":
+  - img
+  - text: Meeting
+- button "Sales activities":
+  - button "Sales activities":
+    - img
+    - text: Sales activities
+    - img
+- button "Add deal":
+  - img
+  - text: Add deal
+- button:
+  - button:
+    - img
+- button:
+  - img
+- text: E Add Explore ExploreContact1791143638407 E Add
+- heading "Explore ExploreContact1791143638407 QA Explorer" [level=3]:
+  - text: Explore ExploreContact1791143638407 QA Explorer
+  - img
+  - img
+  - img
+- text: Score
+- button "32"
+- text:  Customer fit
+- button:
+  - img
+- img
+- img
+- img
+- img
+- img
+- img
+- text: Contact information
+- button:
+  - img
+- img
+- text: Overview
+- img
+- text: Contact details
+- img
+- text: Conversations
+- img
+- text: Activities
+- img
+- text: Accounts
+- img
+- text: Deals
+- img
+- text: Freddy AI insights
+- img
+- text: Files
+- img
+- text: Apps in marketplace
+- heading "Overview" [level=2]
+- button "Customize overview":
+  - img
+  - text: Customize overview
+- text: Lifecycle stage
+- heading "Lead" [level=3]
+- img
+- text: Status New Contacted
+- button "Interested / Unqualified":
+  - text: Interested / Unqualified
+  - img
+- button "Qualified / Lost":
+  - text: Qualified / Lost
+  - img
+- button "Won / Churned":
+  - text: Won / Churned
+  - img
+- img
+- text: Found 2 possible connections for Explore. View now
+- img
+- img
+- text: Summary
+- img
+- img
+- text: Click to add tags Location
+- paragraph: Click to add
+- text: Account Click to add Email explorecontact.1791143638407@example.com Mobile Click to add Sales owner Rakesh M Created at 2 minutes ago Show all
+- img
+- img
+- text: No open deals associated with Explore.
+- button "Add deal":
+  - img
+  - text: Add deal
+- img
+- text: No upcoming meetings with Explore.
+- button "Add meeting":
+  - img
+  - text: Add meeting
+- img
+- text: Explore hasn’t been contacted yet.
+- button "Send email":
+  - img
+  - text: Send email
+- button "Add call log":
+  - img
+  - text: Add call log
+- img
+- text: Explore is not part of any sales sequence.
+- button "Add to a sequence":
+  - img
+  - text: Add to a sequence
+- button "Add a note..."
+- dialog:
+  - text: New mail
+  - 'button "Email usage : 0 / 100"':
+    - text: "Email usage : 0 / 100"
+    - img
+  - button "Close"
+  - text: To E Explore ExploreContact1791143638407
+  - link "×":
+    - /url: javascript:void(0)
+  - textbox
+  - text: From Cc Bcc
+  - textbox "Write a subject line"
+  - button "Use template":
+    - img
+    - text: Use template
+    - img
+  - button "Insert fields":
+    - img
+    - text: Insert fields
+    - img
+  - button "Add follow-up task":
+    - img
+    - text: Add follow-up task
+    - img
+  - button "Email linked to contacts, deals":
+    - img
+    - text: Email linked to contacts, deals
+    - img
+  - button:
+    - img
+  - button
+  - img
+  - text: You haven't connected
+  - strong: rakesh16083@cse.ssn.edu.in
+  - text: to the CRM. Connect it now to keep your conversations synced.
+  - button "Connect Gmail":
+    - img
+    - text: Connect Gmail
+  - button "Connect a different email":
+    - img
+    - text: Connect a different email
+  - img
+  - application:
+    - iframe
+    - text: Start typing your email, or use Freddy AI to generate it for you…
+    - button "Background Color":
+      - img
+      - text: Background Color
+    - button "Strikethrough":
+      - img
+      - text: Strikethrough
+    - button "Decrease Indent":
+      - img
+      - text: Decrease Indent
+    - button "Increase Indent":
+      - img
+      - text: Increase Indent
+    - button "Quote":
+      - img
+      - text: Quote
+    - button "Insert Horizontal Line":
+      - img
+      - text: Insert Horizontal Line
+    - button "Select All":
+      - img
+      - text: Select All
+    - button "Undo":
+      - img
+      - text: Undo
+    - button "Redo" [disabled]:
+      - img
+      - text: Redo
+    - button "Code View":
+      - img
+      - text: Code View
+    - button "Arial"
+    - button "14"
+    - button "Bold":
+      - img
+      - text: Bold
+    - button "Italic":
+      - img
+      - text: Italic
+    - button "Underline":
+      - img
+      - text: Underline
+    - button "Clear Formatting":
+      - img
+      - text: Clear Formatting
+    - button "Text Color":
+      - img
+      - text: Text Color
+    - button "Insert Image":
+      - img
+      - text: Insert Image
+    - button "Insert Link":
+      - img
+      - text: Insert Link
+    - button "Align":
+      - img
+      - text: Align
+    - button "Ordered List":
+      - img
+      - text: Ordered List
+    - button "Ordered List"
+    - button "Unordered List":
+      - img
+      - text: Unordered List
+    - button "Unordered List"
+    - button "Paragraph Format":
+      - img
+      - text: Paragraph Format
+    - button "More Misc":
+      - img
+      - text: More Misc
+  - button "Attach":
+    - img
+    - text: Attach
+  - button:
+    - img
+  - img
+  - text: Track this email
+  - link:
+    - /url: //crmsupport.freshworks.com/en/support/solutions/articles/50000002428-how-to-track-the-status-of-sales-emails-that-were-sent-
+    - img
+  - img
+  - text: Add unsubscribe link
+  - button:
+    - img
+  - button "Send"
+  - button:
+    - img
+- img
+- iframe
+- iframe

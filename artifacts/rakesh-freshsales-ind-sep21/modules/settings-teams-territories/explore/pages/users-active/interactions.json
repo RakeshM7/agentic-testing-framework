@@ -1,0 +1,42 @@
+[
+ {
+  "label": "Add user",
+  "role": "button",
+  "kind": "navigates",
+  "resultingUrl": "/settings/users/new"
+ },
+ {
+  "label": "Import users",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": null,
+  "reason": "skipped (imports forbidden)"
+ },
+ {
+  "label": "View my org chart",
+  "role": "button",
+  "kind": "not opened"
+ },
+ {
+  "label": "Bulk actions",
+  "role": "button",
+  "kind": "not opened"
+ },
+ {
+  "label": "Filter by",
+  "role": "button",
+  "kind": "not opened"
+ },
+ {
+  "label": "All users / Active users / Deactivated users",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "/users/view/{all|active|inactive}"
+ },
+ {
+  "label": "Rakesh M",
+  "role": "link",
+  "kind": "navigates",
+  "resultingUrl": "/users/402000463933/edit"
+ }
+]

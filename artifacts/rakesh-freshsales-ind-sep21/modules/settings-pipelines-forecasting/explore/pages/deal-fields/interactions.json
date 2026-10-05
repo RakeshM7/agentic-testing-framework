@@ -1,0 +1,60 @@
+[
+ {
+  "label": "Rename module",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "not opened"
+ },
+ {
+  "label": "Preview",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Preview for Deal form drawer (Customize fields, Show less fields, Close)"
+ },
+ {
+  "label": "Manage field dependencies",
+  "role": "link",
+  "kind": "navigates",
+  "resultingUrl": "/crm/sales/settings/deals/field-dependency-configurations"
+ },
+ {
+  "label": "Enable deal images",
+  "role": "toggle",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "tenant setting"
+ },
+ {
+  "label": "Make adding products to deals mandatory",
+  "role": "toggle",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "tenant setting"
+ },
+ {
+  "label": "Add field",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Add field drawer: 23 available fields + 9 custom types; Add selected denied by permission system"
+ },
+ {
+  "label": "Add group",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "not opened"
+ },
+ {
+  "label": "Edit field / Hide field / Required / Quick-add / Read-only / Add tooltip / Add-Edit choices",
+  "role": "button/checkbox",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "existing deal fields"
+ },
+ {
+  "label": "Search fields",
+  "role": "textbox",
+  "kind": "toggles"
+ }
+]

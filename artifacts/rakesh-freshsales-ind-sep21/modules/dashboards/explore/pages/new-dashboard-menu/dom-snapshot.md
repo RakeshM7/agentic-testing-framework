@@ -1,0 +1,339 @@
+- generic [ref=f29e1]:
+  - generic [ref=f29e42]:
+    - generic [ref=f29e45]:
+      - generic [ref=f29e46]:
+        - link "Connect your mailbox" [ref=f29e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f29e210] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f29e48] [cursor=pointer]
+    - generic [ref=f29e51]:
+      - generic [ref=f29e52]:
+        - list [ref=f29e54]:
+          - listitem [ref=f29e55]: Dashboards
+        - generic [ref=f29e57]:
+          - list [ref=f29e58]:
+            - listitem [ref=f29e59]
+            - listitem [ref=f29e63]:
+              - generic "Send email" [ref=f29e64] [cursor=pointer]
+            - listitem [ref=f29e68]:
+              - generic "What's new" [ref=f29e69] [cursor=pointer]: "1"
+            - listitem [ref=f29e73]:
+              - generic [ref=f29e74]: "5"
+            - listitem [ref=f29e80]
+            - listitem [ref=f29e81]:
+              - img "Your User Avatar" [ref=f29e212] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f29e94]
+          - generic [ref=f29e96]:
+            - emphasis [ref=f29e97]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f29e103] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f29e105] [cursor=pointer]
+      - navigation:
+        - generic [ref=f29e107]:
+          - link [ref=f29e111] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f29e115]:
+            - listitem "Dashboards" [ref=f29e116]:
+              - link [ref=f29e119] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards?tab=activities
+            - listitem "Contacts" [ref=f29e122]:
+              - link [ref=f29e125] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f29e128]:
+              - link [ref=f29e131] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f29e134]:
+              - link [ref=f29e137] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f29e140]:
+              - link [ref=f29e143] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f29e146]:
+              - link [ref=f29e149] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f29e152]:
+              - link [ref=f29e155] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f29e158]:
+            - generic "Phone" [ref=f29e213]
+            - generic "Freshworks Switcher" [ref=f29e162]:
+              - button "Freshworks Switcher" [ref=f29e216] [cursor=pointer]
+      - generic [ref=f29e166]:
+        - generic [ref=f29e167] [cursor=pointer]: Sales Essentials Dashboard
+        - generic [ref=f29e175] [cursor=pointer]: Sales Dashboard
+        - generic [ref=f29e183] [cursor=pointer]: Activities Dashboard
+        - button [expanded] [ref=f29e828] [cursor=pointer]:
+          - tooltip "Add report" [ref=f29e829]
+          - button [expanded] [ref=f29e833]:
+            - text: 
+            - generic [ref=f29e834]:
+              - heading "Select a report" [level=6] [ref=f29e835]
+              - combobox "Search report" [active] [ref=f29e837]
+              - heading "Popular reports" [level=6] [ref=f29e838]
+              - listbox [ref=f29e839]:
+                - option "Chat Dashboard" [ref=f29e840]
+                - option "Ecommerce Marketing Journey Report" [ref=f29e842]
+                - option "Product Dashboard" [ref=f29e844]
+                - option "Team activity report" [ref=f29e846]
+                - option "Sales Trends" [ref=f29e848]
+                - option "Sales Forecast" [ref=f29e850]
+                - option "Contact generation and trends" [ref=f29e852]
+      - generic [ref=f29e200]:
+        - generic [ref=f29e225]:
+          - generic [ref=f29e226]:
+            - generic [ref=f29e227]:
+              - generic [ref=f29e228]:
+                - generic [ref=f29e229]: Show
+                - generic [ref=f29e230] [cursor=pointer]: Tasks
+                - generic [ref=f29e236] [cursor=pointer]: Meetings
+                - button "+ 7 activities" [ref=f29e815] [cursor=pointer]
+              - generic [ref=f29e248]:
+                - generic [ref=f29e249]:
+                  - button "Add task" [ref=f29e250] [cursor=pointer]
+                  - button [ref=f29e257] [cursor=pointer]
+                - button "Add meeting" [ref=f29e261] [cursor=pointer]
+                - button [ref=f29e825] [cursor=pointer]:
+                  - button "More" [ref=f29e270]
+            - generic [ref=f29e275]:
+              - generic [ref=f29e276]:
+                - generic [ref=f29e278] [cursor=pointer]:
+                  - generic [ref=f29e279]: All
+                  - generic [ref=f29e280]: (0)
+                - generic [ref=f29e281] [cursor=pointer]: Open
+                - generic [ref=f29e284] [cursor=pointer]: Overdue
+                - generic [ref=f29e287] [cursor=pointer]: Completed
+              - link "View activity goals" [ref=f29e291] [cursor=pointer]:
+                - /url: /crm/sales/activity-goals
+            - generic [ref=f29e297]:
+              - generic [ref=f29e304]: Select all
+              - generic [ref=f29e307]:
+                - generic [ref=f29e308]: "Due date:"
+                - button "Today (Oct 04)" [ref=f29e313] [cursor=pointer]:
+                  - generic [ref=f29e314]:
+                    - generic [ref=f29e315]: Today
+                    - text: (Oct 04)
+          - generic [ref=f29e318]:
+            - heading "Find your upcoming tasks, meetings and reminders here." [level=3] [ref=f29e320]
+            - generic [ref=f29e321]:
+              - generic [ref=f29e322]:
+                - heading "Bring your meetings into Freshsales Suite" [level=5] [ref=f29e323]
+                - generic [ref=f29e324]:
+                  - button "Google Calendar" [ref=f29e325] [cursor=pointer]
+                  - button "Office 365" [ref=f29e336] [cursor=pointer]
+              - generic [ref=f29e340]:
+                - heading "Join video calls from Freshsales Suite" [level=5] [ref=f29e341]
+                - generic [ref=f29e342]:
+                  - button "Zoom" [ref=f29e343] [cursor=pointer]
+                  - button "Microsoft Teams" [ref=f29e350] [cursor=pointer]
+        - generic [ref=f29e366]:
+          - button "Configure widgets" [ref=f29e369] [cursor=pointer]
+          - generic [ref=f29e378]:
+            - generic [ref=f29e379]:
+              - heading "My calendar" [level=5] [ref=f29e381]
+              - generic [ref=f29e383] [cursor=pointer]
+            - generic [ref=f29e394]:
+              - generic [ref=f29e395]:
+                - generic [ref=f29e396]:
+                  - paragraph [ref=f29e397]: Connect your calendar
+                  - generic [ref=f29e398]:
+                    - button "Google Calendar" [ref=f29e399] [cursor=pointer]
+                    - button "Office 365" [ref=f29e410] [cursor=pointer]
+                  - paragraph [ref=f29e414]: Connect your conferencing app
+                  - generic [ref=f29e415]:
+                    - button "Zoom" [ref=f29e416] [cursor=pointer]
+                    - button "Microsoft Teams" [ref=f29e423] [cursor=pointer]
+                - generic [ref=f29e439] [cursor=pointer]
+              - generic [ref=f29e446]:
+                - generic [ref=f29e447]: Today
+                - generic [ref=f29e449]:
+                  - generic [ref=f29e450]:
+                    - generic [ref=f29e451]: 04 Oct
+                    - generic [ref=f29e453] [cursor=pointer]
+                    - generic [ref=f29e458] [cursor=pointer]
+                  - generic [ref=f29e463]: Show today
+              - generic [ref=f29e464]:
+                - generic [ref=f29e465]:
+                  - generic [ref=f29e466]: 00:00
+                  - generic [ref=f29e467] [cursor=pointer]
+                - generic [ref=f29e470]:
+                  - generic [ref=f29e471]: 01:00
+                  - generic [ref=f29e472] [cursor=pointer]
+                - generic [ref=f29e475]:
+                  - generic [ref=f29e476]: 02:00
+                  - generic [ref=f29e477] [cursor=pointer]
+                - generic [ref=f29e480]:
+                  - generic [ref=f29e481]: 03:00
+                  - generic [ref=f29e482] [cursor=pointer]
+                - generic [ref=f29e485]:
+                  - generic [ref=f29e486]: 04:00
+                  - generic [ref=f29e487] [cursor=pointer]
+                - generic [ref=f29e490]:
+                  - generic [ref=f29e491]: 05:00
+                  - generic [ref=f29e492] [cursor=pointer]
+                - generic [ref=f29e495]:
+                  - generic [ref=f29e496]: 06:00
+                  - generic [ref=f29e497] [cursor=pointer]
+                - generic [ref=f29e500]:
+                  - generic [ref=f29e501]: 07:00
+                  - generic [ref=f29e502] [cursor=pointer]
+                - generic [ref=f29e505]:
+                  - generic [ref=f29e506]: 08:00
+                  - generic [ref=f29e507] [cursor=pointer]
+                - generic [ref=f29e510]:
+                  - generic [ref=f29e511]: 09:00
+                  - generic [ref=f29e512] [cursor=pointer]
+                - generic [ref=f29e515]:
+                  - generic [ref=f29e516]: 10:00
+                  - generic [ref=f29e517] [cursor=pointer]
+                - generic [ref=f29e520]:
+                  - generic [ref=f29e521]: 11:00
+                  - generic [ref=f29e522] [cursor=pointer]
+                - generic [ref=f29e525]:
+                  - generic [ref=f29e526]: 12:00
+                  - generic [ref=f29e527] [cursor=pointer]
+                - generic [ref=f29e530]:
+                  - generic [ref=f29e531]: 13:00
+                  - generic [ref=f29e532] [cursor=pointer]
+                - generic [ref=f29e535]:
+                  - generic [ref=f29e536]: 14:00
+                  - generic [ref=f29e537] [cursor=pointer]
+                - generic [ref=f29e540]:
+                  - generic [ref=f29e541]: 15:00
+                  - generic [ref=f29e542] [cursor=pointer]
+                - generic [ref=f29e545]:
+                  - generic [ref=f29e546]: 16:00
+                  - generic [ref=f29e547] [cursor=pointer]
+                - generic [ref=f29e550]:
+                  - generic [ref=f29e551]: 17:00
+                  - generic [ref=f29e552] [cursor=pointer]
+                - generic [ref=f29e555]:
+                  - generic [ref=f29e556]: 18:00
+                  - generic [ref=f29e557] [cursor=pointer]
+                - generic [ref=f29e560]:
+                  - generic [ref=f29e561]: 19:00
+                  - generic [ref=f29e562] [cursor=pointer]
+                - generic [ref=f29e566]:
+                  - generic [ref=f29e567]: 20:00
+                  - generic [ref=f29e568] [cursor=pointer]
+                - generic [ref=f29e571]:
+                  - generic [ref=f29e572]: 21:00
+                  - generic [ref=f29e573] [cursor=pointer]
+                - generic [ref=f29e576]:
+                  - generic [ref=f29e577]: 22:00
+                  - generic [ref=f29e578] [cursor=pointer]
+                - generic [ref=f29e581]:
+                  - generic [ref=f29e582]: 23:00
+                  - generic [ref=f29e583] [cursor=pointer]
+          - generic [ref=f29e586]:
+            - generic [ref=f29e587]:
+              - heading "Quick Links" [level=5] [ref=f29e589]
+              - generic [ref=f29e591] [cursor=pointer]
+            - generic [ref=f29e602]:
+              - generic [ref=f29e603]: You don't have any links.
+              - generic [ref=f29e605] [cursor=pointer]: Add link
+          - generic [ref=f29e607]:
+            - generic [ref=f29e608]:
+              - heading "Today's summary" [level=5] [ref=f29e610]
+              - generic [ref=f29e612] [cursor=pointer]
+            - table [ref=f29e622]:
+              - rowgroup [ref=f29e623]:
+                - row [ref=f29e624]:
+                  - columnheader "Type" [ref=f29e625]
+                  - columnheader "Overdue" [ref=f29e627]
+                  - columnheader "Open" [ref=f29e629]
+                  - columnheader "Completed" [ref=f29e631]
+              - rowgroup [ref=f29e633]:
+                - row [ref=f29e634]:
+                  - cell "Task" [ref=f29e635]
+                  - cell "0" [ref=f29e636]
+                  - cell "0" [ref=f29e637]
+                  - cell "0" [ref=f29e638]
+                - row [ref=f29e639]:
+                  - cell "Follow up" [ref=f29e640]
+                  - cell "0" [ref=f29e641]
+                  - cell "0" [ref=f29e642]
+                  - cell "0" [ref=f29e643]
+                - row [ref=f29e644]:
+                  - cell "Call reminder" [ref=f29e645]
+                  - cell "0" [ref=f29e646]
+                  - cell "0" [ref=f29e647]
+                  - cell "0" [ref=f29e648]
+                - row [ref=f29e649]:
+                  - cell "Email reminder" [ref=f29e650]
+                  - cell "0" [ref=f29e651]
+                  - cell "0" [ref=f29e652]
+                  - cell "0" [ref=f29e653]
+                - row [ref=f29e654]:
+                  - cell "LinkedIn profile view" [ref=f29e655]
+                  - cell "0" [ref=f29e656]
+                  - cell "0" [ref=f29e657]
+                  - cell "0" [ref=f29e658]
+          - heading "Freddy AI insights" [level=5] [ref=f29e668]
+    - generic [ref=f29e220] [cursor=pointer]
+  - iframe
+  - iframe [ref=f29e827]:
+    - dialog "Freshchat" [ref=f38e1]:
+      - button "Close widget" [ref=f38e2] [cursor=pointer]:
+        - generic [ref=f38e3]: 
+      - generic [ref=f38e6]:
+        - generic [ref=f38e8]:
+          - button "Back" [ref=f38e9] [cursor=pointer]:
+            - generic [ref=f38e10]: 
+          - generic [ref=f38e11]:
+            - heading "Request demo" [level=2] [ref=f38e12]
+            - paragraph [ref=f38e73]: We’re currently away. Please leave us a message!
+        - generic [ref=f38e14]:
+          - generic [ref=f38e15]:
+            - text: 
+            - generic [ref=f38e77]:
+              - img "Agent profile picture" [ref=f38e80]
+              - heading "Freshworks" [level=3] [ref=f38e82]
+            - status [ref=f38e16]:
+              - list [ref=f38e17]:
+                - listitem [ref=f38e18]:
+                  - generic [ref=f38e19]:
+                    - generic [ref=f38e21]: F
+                    - group [ref=f38e24]:
+                      - generic [ref=f38e25]: "Freshworks said:"
+                      - generic [aria-hidden] [ref=f38e26]: Freshworks
+                      - generic [ref=f38e27]: New around here? Need help with a feature? Drop us a line and our product expert will set up a time with you 🙌
+                - listitem [ref=f38e31]:
+                  - generic [ref=f38e32]:
+                    - group:
+                      - generic [ref=f38e33]: "You said:"
+                      - generic: Yes, I want to get a product walkthrough.
+                      - generic [ref=f38e37]:
+                        - generic [ref=f38e38]: Sent
+                        - text: now
+                - listitem [ref=f38e39]:
+                  - generic [ref=f38e40]: New Messages
+                  - generic [ref=f38e48]:
+                    - generic [ref=f38e50]: F
+                    - group [ref=f38e53]:
+                      - generic [ref=f38e54]: "Freshworks said:"
+                      - generic [aria-hidden] [ref=f38e55]: Freshworks
+                      - generic [ref=f38e56]: Hello!Thank you for contacting Freshworks! Our team is currently unavailable, but we will create a ticket for you and will get back to you as soon as possible. Please feel free to leave your query below so that we can assist you more effectively.Have a great day!Team Freshworks
+                - listitem [ref=f38e83]:
+                  - group [ref=f38e87]:
+                    - generic [ref=f38e88]: "Freshworks CRM said:"
+                    - generic [aria-hidden] [ref=f38e89]: Freshworks CRM
+                    - generic [ref=f38e93]:
+                      - text: Sorry, I am unable to connect you to a specialist right now as all our agents are away on chat. So, I’ve created a ticket for you. You can access it here
+                      - link "https://support.freshdesk.com/a/tickets/21095814" [ref=f38e94] [cursor=pointer]:
+                        - /url: https://support.freshdesk.com/a/tickets/21095814
+                      - text: . Our specialist will contact you in the next 8 hours.
+                - listitem
+          - generic [ref=f38e61]:
+            - textbox "Reply here" [ref=f38e62]:
+              - /placeholder: Reply here...
+              - text: Reply here...
+              - paragraph [ref=f38e95]
+            - generic [ref=f38e63]:
+              - button "File attachment" [ref=f38e64] [cursor=pointer]:
+                - generic [ref=f38e65]: 
+              - button [ref=f38e66]:
+                - generic "Emoji picker" [ref=f38e67]: 
+              - button "Send" [ref=f38e69] [cursor=pointer]
+        - generic [ref=f38e72]: "Freshworks CRM said: Sorry, I am unable to connect you to a specialist right now as all our agents are away on chat. So, I’ve created a ticket for you. You can access it here https://support.freshdesk.com/a/tickets/21095814. Our specialist will contact you in the next 8 hours."

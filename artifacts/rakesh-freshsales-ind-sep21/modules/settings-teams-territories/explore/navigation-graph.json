@@ -1,0 +1,231 @@
+{
+ "nodes": [
+  {
+   "id": "users-active",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/users/view/active",
+   "title": "Users"
+  },
+  {
+   "id": "users-new",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/users/new",
+   "title": "Add User"
+  },
+  {
+   "id": "user-edit",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/users/402000463933/edit",
+   "title": "Edit user"
+  },
+  {
+   "id": "roles",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/roles",
+   "title": "Roles and permissions"
+  },
+  {
+   "id": "roles-create-dialog",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/roles#create-dialog",
+   "title": "Create role dialog"
+  },
+  {
+   "id": "role-edit-sales-user",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/roles/402001712828/edit",
+   "title": "Role: Sales User"
+  },
+  {
+   "id": "territories",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/territories",
+   "title": "Territories"
+  },
+  {
+   "id": "territories-create-dialog",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/territories#create",
+   "title": "Create territory dialog"
+  },
+  {
+   "id": "territories-advanced-settings",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/territories#advanced",
+   "title": "Territory advanced settings dialog"
+  },
+  {
+   "id": "auto-assignment-rules",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/auto-assignment-rules",
+   "title": "Auto-assignment Rules"
+  },
+  {
+   "id": "auto-assignment-rules-new",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/auto-assignment-rules/new",
+   "title": "New rule"
+  },
+  {
+   "id": "auto-assignment-rule-edit-us",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/auto-assignment-rules/402000823672/edit",
+   "title": "Rule: US lead routing"
+  },
+  {
+   "id": "settings-landing",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings",
+   "title": "Admin Settings"
+  },
+  {
+   "id": "sales-teams",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/team-settings/teams",
+   "title": "Teams"
+  },
+  {
+   "id": "sales-teams-create-dialog",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/team-settings/teams#create",
+   "title": "Create team dialog"
+  }
+ ],
+ "edges": [
+  {
+   "from": "settings-landing",
+   "to": "users-active",
+   "via": {
+    "label": "Users",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "settings-landing",
+   "to": "roles",
+   "via": {
+    "label": "Roles",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "settings-landing",
+   "to": "territories",
+   "via": {
+    "label": "Territories",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "settings-landing",
+   "to": "auto-assignment-rules",
+   "via": {
+    "label": "Auto-assignment Rules",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "settings-landing",
+   "to": "sales-teams",
+   "via": {
+    "label": "Sales Teams",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "users-active",
+   "to": "users-new",
+   "via": {
+    "label": "Add user",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "roles",
+   "to": "roles-create-dialog",
+   "via": {
+    "label": "Create role",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "role-edit-sales-user",
+   "to": "roles",
+   "via": {
+    "label": "back",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "territories",
+   "to": "territories-create-dialog",
+   "via": {
+    "label": "Create territory",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "territories",
+   "to": "territories-advanced-settings",
+   "via": {
+    "label": "Advanced settings",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "auto-assignment-rules",
+   "to": "auto-assignment-rules-new",
+   "via": {
+    "label": "Create rule",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "auto-assignment-rules",
+   "to": "auto-assignment-rule-edit-us",
+   "via": {
+    "label": "US lead routing",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "sales-teams",
+   "to": "sales-teams-create-dialog",
+   "via": {
+    "label": "Create team",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "roles",
+   "to": "role-edit-sales-user",
+   "via": {
+    "label": "Sales User",
+    "role": "link/button",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "settings-landing",
+   "to": "workflow-automations(out of module)",
+   "via": {
+    "label": "Workflows",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  }
+ ]
+}

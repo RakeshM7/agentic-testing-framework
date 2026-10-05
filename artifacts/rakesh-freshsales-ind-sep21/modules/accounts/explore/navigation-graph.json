@@ -1,0 +1,208 @@
+{
+ "nodes": [
+  {
+   "id": "accounts-list",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/view/402015942758",
+   "title": "Accounts : Freshsales (My accounts, 15)"
+  },
+  {
+   "id": "accounts-view-all",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/view/402015942759",
+   "title": "Accounts : Freshsales (All accounts, 15)"
+  },
+  {
+   "id": "accounts-filter-name",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/view/custom?q[]=name contains",
+   "title": "Accounts filtered by Name"
+  },
+  {
+   "id": "accounts-add-form",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/view/402015942759 (Add account drawer)",
+   "title": "Add account"
+  },
+  {
+   "id": "account-detail",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/<id>",
+   "title": "Account : <name> : Freshsales (Overview)"
+  },
+  {
+   "id": "account-details",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/<id>?tab=entity-card-detail",
+   "title": "Account details tab"
+  },
+  {
+   "id": "account-conversations",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/<id>?tab=conversations",
+   "title": "Conversations tab"
+  },
+  {
+   "id": "account-activities",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/<id>?tab=recent-activities",
+   "title": "Activities tab"
+  },
+  {
+   "id": "account-contacts",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/<id>?tab=contacts",
+   "title": "Contacts tab"
+  },
+  {
+   "id": "account-deals",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/<id>?tab=deals",
+   "title": "Deals tab"
+  },
+  {
+   "id": "account-files",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/<id>?tab=files",
+   "title": "Files tab"
+  },
+  {
+   "id": "account-freddy",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/<id>?tab=freddy",
+   "title": "Freddy AI insights tab"
+  }
+ ],
+ "edges": [
+  {
+   "from": "accounts-list",
+   "to": "accounts-view-all",
+   "via": {
+    "label": "All accounts tab",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "accounts-view-all",
+   "to": "accounts-filter-name",
+   "via": {
+    "label": "Filter by",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "accounts-view-all",
+   "to": "accounts-add-form",
+   "via": {
+    "label": "Add account",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "accounts-add-form",
+   "to": "account-detail",
+   "via": {
+    "label": "Save",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": true
+  },
+  {
+   "from": "accounts-view-all",
+   "to": "account-detail",
+   "via": {
+    "label": "account name link",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "account-detail",
+   "to": "account-details",
+   "via": {
+    "label": "Account details",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "account-detail",
+   "to": "account-conversations",
+   "via": {
+    "label": "Conversations",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "account-detail",
+   "to": "account-activities",
+   "via": {
+    "label": "Activities",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "account-detail",
+   "to": "account-contacts",
+   "via": {
+    "label": "Contacts",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "account-detail",
+   "to": "account-deals",
+   "via": {
+    "label": "Deals",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "account-detail",
+   "to": "account-files",
+   "via": {
+    "label": "Files",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "account-detail",
+   "to": "account-freddy",
+   "via": {
+    "label": "Freddy AI insights",
+    "role": "button/tab/link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "account-contacts",
+   "to": "contacts-module",
+   "via": {
+    "label": "Add contact",
+    "role": "button",
+    "kind": "links-out"
+   },
+   "mutating": false,
+   "observedOnly": "not followed"
+  },
+  {
+   "from": "account-deals",
+   "to": "deals-module",
+   "via": {
+    "label": "Add deal",
+    "role": "button",
+    "kind": "links-out"
+   },
+   "mutating": false,
+   "observedOnly": "not followed"
+  }
+ ]
+}

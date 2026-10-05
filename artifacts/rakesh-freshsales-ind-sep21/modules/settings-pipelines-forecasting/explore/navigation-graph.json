@@ -1,0 +1,112 @@
+{
+ "nodes": [
+  {
+   "id": "admin-settings-home",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings",
+   "title": "Admin Settings : Freshsales"
+  },
+  {
+   "id": "pipelines",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/deal_pipeline",
+   "title": "Pipelines : Admin Settings : Freshsales"
+  },
+  {
+   "id": "deal-fields",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/deals/forms",
+   "title": "Custom field : Deals fields : Admin Settings : Freshsales"
+  },
+  {
+   "id": "field-dependencies",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/deals/field-dependency-configurations",
+   "title": "Manage field dependencies : Admin Settings : Freshsales"
+  },
+  {
+   "id": "sales-forecast",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-forecast",
+   "title": "Admin Settings : Freshsales (Quotas and Forecasting)"
+  },
+  {
+   "id": "sales-activity-types",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-activity-type",
+   "title": "Sales Activities : Admin Settings : Freshsales"
+  },
+  {
+   "id": "activity-goals",
+   "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/activity-goals/view/402015942771?per_page=25",
+   "title": "Activity goals : Freshsales"
+  }
+ ],
+ "edges": [
+  {
+   "from": "admin-settings-home",
+   "to": "pipelines",
+   "via": {
+    "label": "Pipelines",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "admin-settings-home",
+   "to": "deal-fields",
+   "via": {
+    "label": "Deals",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "admin-settings-home",
+   "to": "sales-forecast",
+   "via": {
+    "label": "Quotas and Forecasting",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "admin-settings-home",
+   "to": "sales-activity-types",
+   "via": {
+    "label": "Sales Activities",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "admin-settings-home",
+   "to": "activity-goals",
+   "via": {
+    "label": "Activity Goals",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "deal-fields",
+   "to": "field-dependencies",
+   "via": {
+    "label": "Manage field dependencies",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false
+  },
+  {
+   "from": "admin-settings-home",
+   "to": "product-catalog (other module)",
+   "via": {
+    "label": "Product Catalog",
+    "role": "link",
+    "kind": "navigates"
+   },
+   "mutating": false,
+   "note": "not followed"
+  }
+ ]
+}

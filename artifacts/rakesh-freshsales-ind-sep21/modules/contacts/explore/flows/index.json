@@ -1,0 +1,178 @@
+[
+ {
+  "slug": "open-contacts-list",
+  "title": "Open the Contacts list",
+  "goal": "navigation",
+  "kind": "navigation",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/open-contacts-list.md"
+ },
+ {
+  "slug": "switch-contact-view",
+  "title": "Switch to another saved view (e.g. Recycle Bin)",
+  "goal": "search-filter",
+  "kind": "search-filter",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > 14 more...",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/switch-contact-view.md"
+ },
+ {
+  "slug": "filter-contacts",
+  "title": "Open the Filter by panel",
+  "goal": "search-filter",
+  "kind": "search-filter",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > Filter by",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/filter-contacts.md"
+ },
+ {
+  "slug": "sort-contacts-column",
+  "title": "Open a column sort menu",
+  "goal": "search-filter",
+  "kind": "search-filter",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > Name column dropdown",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/sort-contacts-column.md"
+ },
+ {
+  "slug": "customize-contacts-table",
+  "title": "Open Customize table",
+  "goal": "settings",
+  "kind": "settings",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > Customize table",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/customize-contacts-table.md"
+ },
+ {
+  "slug": "contact-bulk-actions",
+  "title": "Open bulk actions for selected contacts",
+  "goal": "bulk",
+  "kind": "bulk",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > select row > Bulk actions",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/contact-bulk-actions.md"
+ },
+ {
+  "slug": "contact-row-actions",
+  "title": "Open row actions menu",
+  "goal": "read",
+  "kind": "read",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > row kebab",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/contact-row-actions.md"
+ },
+ {
+  "slug": "import-contacts-entry",
+  "title": "Inspect Import contacts entry",
+  "goal": "import-export",
+  "kind": "import-export",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > Import contacts caret",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/import-contacts-entry.md"
+ },
+ {
+  "slug": "create-contact",
+  "title": "Create a contact from the Contacts list",
+  "goal": "create",
+  "kind": "create",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > Add contact",
+  "stepCount": 6,
+  "mutating": true,
+  "file": "flows/create-contact.md"
+ },
+ {
+  "slug": "view-contact-detail",
+  "title": "View a contact detail page and its tabs",
+  "goal": "read",
+  "kind": "read",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > <contact name>",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/view-contact-detail.md"
+ },
+ {
+  "slug": "update-contact",
+  "title": "Edit a contact",
+  "goal": "update",
+  "kind": "update",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > <contact> > kebab > Edit",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/update-contact.md"
+ },
+ {
+  "slug": "clone-contact",
+  "title": "Open Clone contact form",
+  "goal": "create",
+  "kind": "create",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > <contact> > kebab > Clone",
+  "stepCount": 2,
+  "mutating": false,
+  "file": "flows/clone-contact.md"
+ },
+ {
+  "slug": "change-lifecycle-stage",
+  "title": "Open Lifecycle stage/Status editor",
+  "goal": "update",
+  "kind": "update",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > <contact> > Overview > Lifecycle stage",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/change-lifecycle-stage.md"
+ },
+ {
+  "slug": "contact-activity-actions",
+  "title": "Open activity forms from a contact",
+  "goal": "workflow",
+  "kind": "workflow",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > <contact> > Email / Call log / Task / Meeting",
+  "stepCount": 4,
+  "mutating": false,
+  "file": "flows/contact-activity-actions.md"
+ },
+ {
+  "slug": "add-contact-note",
+  "title": "Start a note on a contact",
+  "goal": "create",
+  "kind": "create",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > <contact> > Overview > Add a note...",
+  "stepCount": 1,
+  "mutating": false,
+  "file": "flows/add-contact-note.md"
+ },
+ {
+  "slug": "delete-contact",
+  "title": "Delete a contact",
+  "goal": "delete",
+  "kind": "delete",
+  "entryPage": "/crm/sales/contacts",
+  "navPath": "Contacts > <contact> > kebab > Delete",
+  "stepCount": 2,
+  "mutating": true,
+  "file": "flows/delete-contact.md"
+ }
+]

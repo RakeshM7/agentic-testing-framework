@@ -1,0 +1,66 @@
+[
+ {
+  "label": "Create EMAIL template",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": "Create template drawer"
+ },
+ {
+  "label": "Shared with me (filter)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": "menu: Created by me / Shared with me / Most recent"
+ },
+ {
+  "label": "Created by me",
+  "role": "menuitem",
+  "kind": "navigates",
+  "resultingUrl": "?filterParam=-301"
+ },
+ {
+  "label": "Search by tags and templates",
+  "role": "textbox",
+  "kind": "toggles",
+  "resultingUrl": null,
+  "note": "not exercised"
+ },
+ {
+  "label": "row kebab",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": "menu Edit/Share/Clone/Delete"
+ },
+ {
+  "label": "Edit",
+  "role": "menuitem",
+  "kind": "opens-overlay",
+  "resultingUrl": "Edit template drawer"
+ },
+ {
+  "label": "Share",
+  "role": "menuitem",
+  "kind": "opens-overlay",
+  "resultingUrl": null,
+  "skipped": true,
+  "reason": "sharing grants access; blocked"
+ },
+ {
+  "label": "Clone",
+  "role": "menuitem",
+  "kind": "mutates",
+  "resultingUrl": null,
+  "note": "not exercised"
+ },
+ {
+  "label": "Delete",
+  "role": "menuitem",
+  "kind": "mutates",
+  "resultingUrl": "Confirm dialog: Are you sure you want to delete this template? No/Yes"
+ },
+ {
+  "label": "row checkbox -> bulk Delete",
+  "role": "button",
+  "kind": "mutates",
+  "resultingUrl": "Confirm: Are you sure you want to delete 1 template?"
+ }
+]

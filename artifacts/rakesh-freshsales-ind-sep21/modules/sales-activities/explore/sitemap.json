@@ -1,0 +1,132 @@
+[
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-activity-type",
+  "slug": "activity-types",
+  "title": "Sales Activities : Admin Settings : Freshsales",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-types/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-types/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales-activity-type#create",
+  "slug": "activity-type-create-dialog",
+  "title": "create sales activity (overlay)",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-type-create-dialog/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-type-create-dialog/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales_activities/forms",
+  "slug": "activity-custom-fields",
+  "title": "Custom field : Custom sales activities fields",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-custom-fields/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-custom-fields/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings/sales_activities/field-dependency-configurations",
+  "slug": "activity-field-dependencies",
+  "title": "Manage field dependencies",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-field-dependencies/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-field-dependencies/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=activities",
+  "slug": "activities-dashboard",
+  "title": "Activities Dashboard",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activities-dashboard/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activities-dashboard/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=activities#due=tomorrow",
+  "slug": "activities-dashboard-tomorrow",
+  "title": "Activities Dashboard (Tomorrow filter)",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activities-dashboard-tomorrow/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activities-dashboard-tomorrow/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "overlay",
+  "slug": "add-task-dialog",
+  "title": "Add task",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/add-task-dialog/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/add-task-dialog/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "overlay",
+  "slug": "add-meeting-dialog",
+  "title": "Add meeting",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/add-meeting-dialog/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/add-meeting-dialog/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "overlay",
+  "slug": "add-call-log-dialog",
+  "title": "Call Log",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/add-call-log-dialog/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/add-call-log-dialog/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "overlay",
+  "slug": "send-sms-dialog",
+  "title": "Send SMS",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/send-sms-dialog/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/send-sms-dialog/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/activity-goals/view/402015942771",
+  "slug": "activity-goals",
+  "title": "Activity goals",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-goals/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/activity-goals/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "overlay",
+  "slug": "add-goal-dialog",
+  "title": "Add goal",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/add-goal-dialog/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/add-goal-dialog/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ },
+ {
+  "url": "overlay",
+  "slug": "quick-create-menu",
+  "title": "Quick-create (+) menu",
+  "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/quick-create-menu/screenshot.png",
+  "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/modules/sales-activities/explore/pages/quick-create-menu/dom-snapshot.md",
+  "networkRequestsPath": null,
+  "consoleLogPath": null,
+  "links": []
+ }
+]

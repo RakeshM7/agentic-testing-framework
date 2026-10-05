@@ -1,0 +1,72 @@
+[
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=353503",
+    "slug": "dashboards",
+    "title": "Activities Dashboard : Freshsales",
+    "screenshotPath": "pages/dashboards/screenshot.png",
+    "domSnapshotPath": "pages/dashboards/dom-snapshot.md",
+    "networkRequestsPath": null,
+    "consoleLogPath": null,
+    "links": []
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/view/402015942732",
+    "slug": "contacts",
+    "title": "Contacts : Freshsales",
+    "screenshotPath": "pages/contacts/screenshot.png",
+    "domSnapshotPath": "pages/contacts/dom-snapshot.md",
+    "networkRequestsPath": null,
+    "consoleLogPath": null,
+    "links": []
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/view/402015942758",
+    "slug": "accounts",
+    "title": "Accounts : Freshsales",
+    "screenshotPath": "pages/accounts/screenshot.png",
+    "domSnapshotPath": "pages/accounts/dom-snapshot.md",
+    "networkRequestsPath": null,
+    "consoleLogPath": null,
+    "links": []
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744",
+    "slug": "deals",
+    "title": "Deals : Freshsales",
+    "screenshotPath": "pages/deals/screenshot.png",
+    "domSnapshotPath": "pages/deals/dom-snapshot.md",
+    "networkRequestsPath": null,
+    "consoleLogPath": null,
+    "links": []
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/awaiting_response",
+    "slug": "conversations",
+    "title": "Conversations : Freshsales",
+    "screenshotPath": "pages/conversations/screenshot.png",
+    "domSnapshotPath": "pages/conversations/dom-snapshot.md",
+    "networkRequestsPath": null,
+    "consoleLogPath": null,
+    "links": []
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics",
+    "slug": "analytics",
+    "title": "Analytics : Freshsales",
+    "screenshotPath": "pages/analytics/screenshot.png",
+    "domSnapshotPath": "pages/analytics/dom-snapshot.md",
+    "networkRequestsPath": null,
+    "consoleLogPath": null,
+    "links": []
+  },
+  {
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/settings",
+    "slug": "admin-settings",
+    "title": "Admin Settings : Freshsales",
+    "screenshotPath": "pages/admin-settings/screenshot.png",
+    "domSnapshotPath": "pages/admin-settings/dom-snapshot.md",
+    "networkRequestsPath": null,
+    "consoleLogPath": null,
+    "links": []
+  }
+]

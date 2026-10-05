@@ -1,0 +1,104 @@
+[
+ {
+  "label": "All deals (view selector)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "view list"
+ },
+ {
+  "label": "13 more... (cmd+O)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Select a view: 13 views + search + Add new view"
+ },
+ {
+  "label": "Pipeline",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "menu: Table, Pipeline, Forecast, Group by (Forecast category, Territory, Deal type, Sales owner, Payment status)"
+ },
+ {
+  "label": "Sort by Deal value / Updated at",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "sort menu"
+ },
+ {
+  "label": "1 filter applied",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Filters side panel"
+ },
+ {
+  "label": "All deal owners",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "adds Sales owner filter (Me, Unassigned, Rakesh M)"
+ },
+ {
+  "label": "Quotas and Forecasting",
+  "role": "link",
+  "kind": "navigates",
+  "detail": "forecasting settings (not followed)"
+ },
+ {
+  "label": "Search",
+  "role": "textbox",
+  "kind": "toggles",
+  "detail": "search deals"
+ },
+ {
+  "label": "Settings",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "menu: Set your default pipeline, Edit pipeline, Create pipeline"
+ },
+ {
+  "label": "Import deals",
+  "role": "button",
+  "kind": "navigates",
+  "detail": "import (NOT clicked, out of scope)"
+ },
+ {
+  "label": "Import deals chevron",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "menu: View import history"
+ },
+ {
+  "label": "Add deal",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Add deal slide-over"
+ },
+ {
+  "label": "Stage + (per column)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Add deal slide-over with stage preselected"
+ },
+ {
+  "label": "Deal card title",
+  "role": "link",
+  "kind": "navigates",
+  "detail": "/crm/sales/deals/<id>"
+ },
+ {
+  "label": "Card kebab",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Edit all fields, Add meeting, Add call log, Start a discussion, View all discussions, View all related contacts, Clone, Delete, Forget, Commit deal, Show only stale deals, Add deal image"
+ },
+ {
+  "label": "Card drag between columns",
+  "role": "drag",
+  "kind": "mutates",
+  "detail": "changes deal stage (verified on own deal)"
+ },
+ {
+  "label": "Add note (card)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "not executed"
+ }
+]

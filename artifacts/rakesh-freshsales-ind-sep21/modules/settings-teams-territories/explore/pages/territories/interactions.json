@@ -1,0 +1,24 @@
+[
+ {
+  "label": "Create territory",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": "dialog"
+ },
+ {
+  "label": "Advanced settings",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": "dialog"
+ },
+ {
+  "label": "Filter by",
+  "role": "button",
+  "kind": "not opened"
+ },
+ {
+  "label": "Search territories",
+  "role": "textbox",
+  "kind": "not used"
+ }
+]

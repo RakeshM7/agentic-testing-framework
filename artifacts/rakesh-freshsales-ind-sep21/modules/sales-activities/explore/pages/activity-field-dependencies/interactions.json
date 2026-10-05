@@ -1,0 +1,14 @@
+[
+ {
+  "label": "Create dependency",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl|overlay": "not opened (not exercised)"
+ },
+ {
+  "label": "Know more",
+  "role": "link",
+  "kind": "external",
+  "resultingUrl|overlay": "not followed"
+ }
+]

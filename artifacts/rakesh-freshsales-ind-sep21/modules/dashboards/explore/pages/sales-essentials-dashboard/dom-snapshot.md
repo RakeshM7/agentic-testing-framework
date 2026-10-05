@@ -1,0 +1,332 @@
+- generic [active] [ref=f39e1]:
+  - generic [ref=f39e42]:
+    - generic [ref=f39e45]:
+      - generic [ref=f39e46]:
+        - link "Connect your mailbox" [ref=f39e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f39e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f39e49] [cursor=pointer]
+    - generic [ref=f39e52]:
+      - generic [ref=f39e53]:
+        - list [ref=f39e55]:
+          - listitem [ref=f39e56]: Dashboards
+        - generic [ref=f39e58]:
+          - list [ref=f39e59]:
+            - listitem [ref=f39e60]
+            - listitem [ref=f39e64]:
+              - generic "Send email" [ref=f39e65] [cursor=pointer]
+            - listitem [ref=f39e69]:
+              - generic "What's new" [ref=f39e70] [cursor=pointer]: "1"
+            - listitem [ref=f39e75]:
+              - generic [ref=f39e76]: "5"
+            - listitem [ref=f39e82]
+            - listitem [ref=f39e83]:
+              - img "Your User Avatar" [ref=f39e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f39e97]
+          - generic [ref=f39e99]:
+            - emphasis [ref=f39e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f39e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f39e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f39e110]:
+          - link [ref=f39e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f39e118]:
+            - listitem "Dashboards" [ref=f39e119]:
+              - link [ref=f39e122] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards?tab=353503
+            - listitem "Contacts" [ref=f39e125]:
+              - link [ref=f39e128] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f39e131]:
+              - link [ref=f39e134] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f39e137]:
+              - link [ref=f39e140] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f39e143]:
+              - link [ref=f39e146] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f39e149]:
+              - link [ref=f39e152] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f39e155]:
+              - link [ref=f39e158] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f39e161]:
+            - generic "Phone" [ref=f39e162]
+            - generic "Freshworks Switcher" [ref=f39e165]:
+              - button "Freshworks Switcher" [ref=f39e166] [cursor=pointer]
+      - generic [ref=f39e711]:
+        - generic [ref=f39e712] [cursor=pointer]: Sales Essentials Dashboard
+        - generic [ref=f39e720] [cursor=pointer]: Sales Dashboard
+        - generic [ref=f39e728] [cursor=pointer]: Activities Dashboard
+        - button [ref=f39e738] [cursor=pointer]
+      - iframe [ref=f39e752]:
+        - generic [ref=f50e1]:
+          - generic [ref=f50e10]:
+            - generic [ref=f50e12]:
+              - heading "Sales Essentials Dashboard Curated " [level=2] [ref=f50e14]:
+                - generic [ref=f50e15]: Sales Essentials Dashboard
+                - button "Curated" [ref=f50e18] [cursor=pointer]
+                - button "" [ref=f50e23] [cursor=pointer]
+              - generic [ref=f50e26]:
+                - generic [ref=f50e27]: "Data Updated:"
+                - text: 04 Oct 2026 19:14:42
+                - button "help" [ref=f50e32] [cursor=pointer]:
+                  - generic "help" [ref=f50e33]: 
+                - button " Export" [ref=f50e36] [cursor=pointer]:
+                  - generic [ref=f50e37]:
+                    - generic [ref=f50e38]: 
+                    - generic [ref=f50e39]: Export
+                - button " Edit" [ref=f50e41] [cursor=pointer]:
+                  - generic [ref=f50e42]:
+                    - generic [ref=f50e43]: 
+                    - generic [ref=f50e45]: Edit
+            - generic [ref=f50e49]:
+              - generic [ref=f50e54]:
+                - generic [ref=f50e56]:
+                  - generic [ref=f50e60] [cursor=pointer]
+                  - generic [ref=f50e61]:
+                    - generic "Deal win/loss percentage" [ref=f50e63]:
+                      - heading "Deal win/loss percentage" [level=1] [ref=f50e65]
+                    - region "Chart. Highcharts interactive chart." [ref=f50e76]:
+                      - generic [ref=f50e77]:
+                        - paragraph [ref=f50e78]: Chart
+                        - generic [ref=f50e79]: Bar chart with 2 bars.
+                        - generic [ref=f50e80]: The chart has 1 X axis displaying Deal Stage.
+                        - generic [ref=f50e81]: The chart has 1 Y axis displaying Percentage. Data ranges from 33.33 to 66.67.
+                      - img "Interactive chart" [ref=f50e87]:
+                        - generic [ref=f50e94]: Percentage
+                        - generic [ref=f50e96]:
+                          - img "Lost, 33.33." [ref=f50e97]
+                          - img "Won, 66.67." [ref=f50e98]
+                        - generic [aria-hidden] [ref=f50e99]:
+                          - generic [ref=f50e100]: 33.33%
+                          - generic [ref=f50e102]: 66.67%
+                        - generic [aria-hidden] [ref=f50e104]:
+                          - generic [ref=f50e105]: 25%
+                          - generic [ref=f50e106]: 50%
+                        - generic [aria-hidden] [ref=f50e107]:
+                          - generic [ref=f50e108]: Lost
+                          - generic [ref=f50e109]: Won
+                      - generic: End of interactive chart.
+                - generic [ref=f50e113]:
+                  - generic [ref=f50e117] [cursor=pointer]
+                  - generic [ref=f50e118]:
+                    - generic "Revenue won" [ref=f50e120]:
+                      - heading "Revenue won" [level=1] [ref=f50e122]
+                    - generic [ref=f50e123]: $ 12.3K
+                - generic [ref=f50e141]:
+                  - generic [ref=f50e145] [cursor=pointer]
+                  - generic [ref=f50e146]:
+                    - generic "Revenue lost" [ref=f50e148]:
+                      - heading "Revenue lost" [level=1] [ref=f50e150]
+                    - generic [ref=f50e151]: $ 6.2K
+                - generic [ref=f50e169]:
+                  - generic [ref=f50e173] [cursor=pointer]
+                  - generic [ref=f50e174]:
+                    - generic "Open deal value by stage" [ref=f50e176]:
+                      - heading "Open deal value by stage" [level=1] [ref=f50e178]
+                    - region "Chart. Highcharts interactive chart." [ref=f50e189]:
+                      - generic [ref=f50e190]:
+                        - paragraph [ref=f50e191]: Chart
+                        - generic [ref=f50e192]: Chart with 4 data points. Funnel charts are used to display reduction of data in stages.
+                      - generic [ref=f50e197]:
+                        - img "Interactive chart" [ref=f50e198]:
+                          - generic [ref=f50e203]:
+                            - img "New, 14,100." [ref=f50e204]
+                            - img "Qualification, 4,200." [ref=f50e205]
+                            - img "Discovery, 3,500." [ref=f50e206]
+                            - img "Negotiation, 7,200." [ref=f50e207]
+                        - generic:
+                          - region "Toggle series visibility, Chart":
+                            - list:
+                              - listitem:
+                                - button "Show New" [pressed] [ref=f50e220] [cursor=pointer]
+                              - listitem:
+                                - button "Show Qualification" [pressed] [ref=f50e221] [cursor=pointer]
+                              - listitem:
+                                - button "Show Discovery" [pressed] [ref=f50e222] [cursor=pointer]
+                              - listitem:
+                                - button "Show Negotiation" [pressed] [ref=f50e223] [cursor=pointer]
+                        - generic [ref=f50e225] [cursor=pointer]:
+                          - generic [ref=f50e226]: New
+                          - generic [ref=f50e227]: ": $ 14.1K (48.62%)"
+                        - generic [ref=f50e229] [cursor=pointer]:
+                          - generic [ref=f50e230]: Qualification
+                          - generic [ref=f50e231]: ": $ 4.2K (14.48%)"
+                        - generic [ref=f50e233] [cursor=pointer]:
+                          - generic [ref=f50e234]: Discovery
+                          - generic [ref=f50e235]: ": $ 3.5K (12.07%)"
+                        - generic [ref=f50e237] [cursor=pointer]:
+                          - generic [ref=f50e238]: Negotiation
+                          - generic [ref=f50e239]: ": $ 7.2K (24.83%)"
+                      - generic: End of interactive chart.
+                - generic [ref=f50e243]:
+                  - generic [ref=f50e247] [cursor=pointer]
+                  - generic [ref=f50e248]:
+                    - generic "Contacts by sales owner" [ref=f50e250]:
+                      - heading "Contacts by sales owner" [level=1] [ref=f50e252]
+                    - region "Chart. Highcharts interactive chart." [ref=f50e263]:
+                      - generic [ref=f50e264]:
+                        - paragraph [ref=f50e265]: Chart
+                        - generic [ref=f50e266]: Bar chart with 1 bar.
+                        - generic [ref=f50e267]: The chart has 1 X axis displaying Sales owner.
+                        - generic [ref=f50e268]: The chart has 1 Y axis displaying Total Contacts. Data ranges from 2 to 2.
+                      - img "Interactive chart" [ref=f50e274]:
+                        - generic [ref=f50e281]: Sales owner
+                        - generic [ref=f50e283]: TotalContacts
+                        - img "Rakesh M, 2." [ref=f50e286]
+                        - generic [ref=f50e288]: "2"
+                        - generic [ref=f50e291]: Rakesh M
+                        - generic [ref=f50e293]: "2"
+                      - generic: End of interactive chart.
+                - generic [ref=f50e297]:
+                  - generic [ref=f50e301] [cursor=pointer]
+                  - generic [ref=f50e302]:
+                    - generic "Forecasted revenue by deal stage" [ref=f50e304]:
+                      - heading "Forecasted revenue by deal stage" [level=1] [ref=f50e306]
+                    - region "Chart. Highcharts interactive chart." [ref=f50e317]:
+                      - generic [ref=f50e318]:
+                        - paragraph [ref=f50e319]: Chart
+                        - generic [ref=f50e320]: Bar chart with 5 data series.
+                        - generic [ref=f50e321]: The chart has 1 X axis displaying Expected close date - Quarter of the Year .
+                        - generic [ref=f50e322]: The chart has 1 Y axis displaying Forecasted revenue. Data ranges from 0 to 10340.
+                      - generic [ref=f50e327]:
+                        - img "Interactive chart" [ref=f50e328]:
+                          - generic [ref=f50e335]: Expected close date -Quarter of the Year
+                          - generic [ref=f50e337]: Forecastedrevenue
+                          - generic [ref=f50e338]:
+                            - region "Won, bar series 1 of 5 with 5 bars." [ref=f50e339]:
+                              - img "1, 0. Won."
+                              - img "2, 0. Won."
+                              - img "3, 9,100. Won." [ref=f50e340]
+                              - img "4, 3,200. Won." [ref=f50e341]
+                              - img "---, 0. Won."
+                            - region "Discovery, bar series 2 of 5 with 5 bars." [ref=f50e342]:
+                              - img "1, 0. Discovery."
+                              - img "2, 0. Discovery."
+                              - img "3, 0. Discovery."
+                              - img "4, 1,400. Discovery." [ref=f50e343]
+                              - img "---, 0. Discovery."
+                            - region "Negotiation, bar series 3 of 5 with 5 bars." [ref=f50e344]:
+                              - img "1, 0. Negotiation."
+                              - img "2, 0. Negotiation."
+                              - img "3, 0. Negotiation."
+                              - img "4, 2,560. Negotiation." [ref=f50e345]
+                              - img "---, 3,200. Negotiation." [ref=f50e346]
+                            - region "New, bar series 4 of 5 with 5 bars." [ref=f50e347]:
+                              - img "1, 0. New."
+                              - img "2, 0. New."
+                              - img "3, 0. New."
+                              - img "4, 1,920. New." [ref=f50e348]
+                              - img "---, 900. New." [ref=f50e349]
+                            - region "Qualification, bar series 5 of 5 with 5 bars." [ref=f50e350]:
+                              - img "1, 0. Qualification."
+                              - img "2, 0. Qualification."
+                              - img "3, 0. Qualification."
+                              - img "4, 1,260. Qualification." [ref=f50e351]
+                              - img "---, 0. Qualification."
+                          - generic [aria-hidden] [ref=f50e366]:
+                            - generic [ref=f50e367]: "1"
+                            - generic [ref=f50e368]: "2"
+                            - generic [ref=f50e369]: "3"
+                            - generic [ref=f50e370]: "4"
+                            - generic [ref=f50e371]: "---"
+                          - generic [ref=f50e373]: $ 10K
+                        - generic:
+                          - region "Toggle series visibility, Chart":
+                            - list:
+                              - listitem:
+                                - button "Show Won" [pressed] [ref=f50e374] [cursor=pointer]
+                              - listitem:
+                                - button "Show Discovery" [pressed] [ref=f50e375] [cursor=pointer]
+                              - listitem:
+                                - button "Show Negotiation" [pressed] [ref=f50e376] [cursor=pointer]
+                              - listitem:
+                                - button "Show New" [pressed] [ref=f50e377] [cursor=pointer]
+                              - listitem:
+                                - button "Show Qualification" [pressed] [ref=f50e378] [cursor=pointer]
+                        - generic [ref=f50e379] [cursor=pointer]: Won
+                        - generic [ref=f50e382] [cursor=pointer]: Discovery
+                        - generic [ref=f50e385] [cursor=pointer]: Negotiation
+                        - generic [ref=f50e388] [cursor=pointer]: New
+                        - generic [ref=f50e391] [cursor=pointer]: Qualification
+                      - generic: End of interactive chart.
+                - generic [ref=f50e397]:
+                  - generic [ref=f50e401] [cursor=pointer]
+                  - generic [ref=f50e402]:
+                    - generic "Revenue won by source" [ref=f50e404]:
+                      - heading "Revenue won by source" [level=1] [ref=f50e406]
+                    - region "Chart. Highcharts interactive chart." [ref=f50e417]:
+                      - generic [ref=f50e418]:
+                        - paragraph [ref=f50e419]: Chart
+                        - generic [ref=f50e420]: Pie chart with 1 slice.
+                      - generic [ref=f50e425]:
+                        - img "Interactive chart" [ref=f50e426]:
+                          - img "---, 12,300. Source." [ref=f50e432] [cursor=pointer]
+                        - generic:
+                          - region "Toggle series visibility, Chart":
+                            - list:
+                              - listitem:
+                                - button "Show ---" [pressed] [ref=f50e439] [cursor=pointer]
+                        - generic [ref=f50e441] [cursor=pointer]:
+                          - generic [ref=f50e442]: "---"
+                          - generic [ref=f50e443]: ": $ 12.3K (100.00%)"
+                      - generic: End of interactive chart.
+                - generic [ref=f50e447]:
+                  - generic [ref=f50e451] [cursor=pointer]
+                  - generic [ref=f50e452]:
+                    - generic "Tasks by owner" [ref=f50e454]:
+                      - heading "Tasks by owner" [level=1] [ref=f50e456]
+                    - region "Chart. Highcharts interactive chart." [ref=f50e467]:
+                      - generic [ref=f50e468]:
+                        - paragraph [ref=f50e469]: Chart
+                        - generic [ref=f50e470]: Bar chart with 2 data series.
+                        - generic [ref=f50e471]: The chart has 1 X axis displaying Task Owner.
+                        - generic [ref=f50e472]: The chart has 1 Y axis displaying values. Data ranges from 0 to 4.
+                      - generic [ref=f50e477]:
+                        - img "Interactive chart" [ref=f50e478]:
+                          - generic [ref=f50e484]: Task Owner
+                          - generic [ref=f50e485]:
+                            - region "Open tasks, bar series 1 of 2 with 1 bar." [ref=f50e486]:
+                              - img "Rakesh M, 4. Open tasks." [ref=f50e487]
+                            - region "Completed tasks, bar series 2 of 2 with 1 bar.":
+                              - img "Rakesh M, 0. Completed tasks."
+                          - generic [ref=f50e497]: Rakesh M
+                        - generic:
+                          - region "Toggle series visibility, Chart":
+                            - list:
+                              - listitem:
+                                - button "Show Open tasks" [pressed] [ref=f50e498] [cursor=pointer]
+                              - listitem:
+                                - button "Show Completed tasks" [pressed] [ref=f50e499] [cursor=pointer]
+                        - generic [ref=f50e500] [cursor=pointer]: Open tasks
+                        - generic [ref=f50e503] [cursor=pointer]: Completed tasks
+                      - generic: End of interactive chart.
+              - button [ref=f50e511] [cursor=pointer]
+            - generic [ref=f50e517]:
+              - generic [ref=f50e519] [cursor=pointer]:
+                - generic "Summary" [ref=f50e521]
+                - text:  
+              - generic [ref=f50e524] [cursor=pointer]:
+                - generic "Deals" [ref=f50e526]
+                - text:  
+              - generic [ref=f50e529] [cursor=pointer]:
+                - generic "Contacts" [ref=f50e531]
+                - text:  
+              - generic [ref=f50e534] [cursor=pointer]:
+                - generic "Sales activities" [ref=f50e536]
+                - text:  
+              - generic [ref=f50e539] [cursor=pointer]:
+                - generic "Revenue breakdown" [ref=f50e541]
+                - text:  
+          - status [ref=f50e543]
+    - generic [ref=f39e661] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

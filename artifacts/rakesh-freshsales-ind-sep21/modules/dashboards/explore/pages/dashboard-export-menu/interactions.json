@@ -1,0 +1,16 @@
+[
+ {
+  "label": "Email Now",
+  "role": "menuitem",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "sends email; not exercised"
+ },
+ {
+  "label": "Download",
+  "role": "menuitem",
+  "kind": "download",
+  "skipped": true,
+  "reason": "not exercised"
+ }
+]

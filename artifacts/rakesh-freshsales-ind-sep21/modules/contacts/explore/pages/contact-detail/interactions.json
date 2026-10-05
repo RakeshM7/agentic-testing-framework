@@ -1,0 +1,110 @@
+[
+ {
+  "label": "Overview",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "?tab="
+ },
+ {
+  "label": "Contact details",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "?tab=entity-card-detail"
+ },
+ {
+  "label": "Conversations",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "?tab=conversations"
+ },
+ {
+  "label": "Activities",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "?tab=recent-activities"
+ },
+ {
+  "label": "Accounts",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "?tab=sales_accounts"
+ },
+ {
+  "label": "Deals",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "?tab=deals"
+ },
+ {
+  "label": "Freddy AI insights",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "?tab=freddy"
+ },
+ {
+  "label": "Files",
+  "role": "tab",
+  "kind": "navigates",
+  "resultingUrl": "?tab=files"
+ },
+ {
+  "label": "Email",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "New mail composer (?open_modal=email)"
+ },
+ {
+  "label": "Call log",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Call log form"
+ },
+ {
+  "label": "Task",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Add task form"
+ },
+ {
+  "label": "Meeting",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Add meeting form"
+ },
+ {
+  "label": "Sales activities",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Create custom sales activity"
+ },
+ {
+  "label": "Add deal caret",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Add account, Add deal, Add file"
+ },
+ {
+  "label": "Kebab",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Edit, Clone, Delete, Add to sequence, Export, Unsubscribe, Forget"
+ },
+ {
+  "label": "Customize overview",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "show/hide Lifecycle stage, Summary, Tags"
+ },
+ {
+  "label": "Lifecycle stage (Lead)",
+  "role": "dropdown",
+  "kind": "opens-overlay",
+  "overlay": "Lifecycle stage + Status with Cancel/Save"
+ },
+ {
+  "label": "Add a note...",
+  "role": "textbox",
+  "kind": "opens-overlay",
+  "overlay": "note editor"
+ }
+]

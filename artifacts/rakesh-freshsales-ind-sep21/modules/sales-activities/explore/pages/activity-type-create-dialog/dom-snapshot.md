@@ -1,0 +1,211 @@
+- generic [ref=e1]:
+  - generic [ref=e42]:
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - link "Connect your mailbox" [ref=e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=e49] [cursor=pointer]
+    - generic [ref=e52]:
+      - generic [ref=e53]:
+        - list [ref=e55]:
+          - listitem [ref=e56]:
+            - link "Admin Settings" [ref=e57] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=e58]: Sales Activities
+        - generic [ref=e60]:
+          - list [ref=e61]:
+            - listitem [ref=e62]
+            - listitem [ref=e66]:
+              - generic "Send email" [ref=e67] [cursor=pointer]
+            - listitem [ref=e71]:
+              - generic "What's new" [ref=e72] [cursor=pointer]: "1"
+            - listitem [ref=e77]:
+              - generic [ref=e78]: "5"
+            - listitem [ref=e84]
+            - listitem [ref=e85]:
+              - img "Your User Avatar" [ref=e89] [cursor=pointer]
+          - textbox "Search your CRM" [ref=e99]
+          - generic [ref=e101]:
+            - emphasis [ref=e102]: Your trial ends in 8 days
+            - link "Explore plans" [ref=e108] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=e110] [cursor=pointer]
+      - navigation:
+        - generic [ref=e112]:
+          - link [ref=e116] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=e120]:
+            - listitem "Dashboards" [ref=e121]:
+              - link [ref=e124] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=e127]:
+              - link [ref=e130] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=e133]:
+              - link [ref=e136] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=e139]:
+              - link [ref=e142] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=e145]:
+              - link [ref=e148] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=e151]:
+              - link [ref=e154] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=e157]:
+              - link [ref=e160] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=e163]:
+            - generic "Phone" [ref=e164]
+            - generic "Freshworks Switcher" [ref=e167]:
+              - button "Freshworks Switcher" [ref=e168] [cursor=pointer]
+      - generic [ref=e172]:
+        - generic [ref=e173]:
+          - generic [ref=e174]:
+            - heading "Sales Activities" [level=4] [ref=e181]
+            - button "Create sales activity" [ref=e184] [cursor=pointer]
+          - generic [ref=e186]: Manage common sales activities (like tasks, meetings, emails) from here. You can also create activities that are specific to your business. Once you create activities, your sales reps can start using them via the + button on the top-right of this page.
+          - generic [ref=e189]:
+            - link "Understanding sales activities and using them" [ref=e191] [cursor=pointer]:
+              - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002991-what-are-sales-activities-how-to-use-them-
+            - link "How to configure sales activities (default and custom)" [ref=e198] [cursor=pointer]:
+              - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002994-how-to-configure-different-sales-activities-in-freshworks-crm-
+        - generic [ref=e205]:
+          - heading "Default sales activities" [level=4] [ref=e206]
+          - generic [ref=e207]: We created some activities for you
+        - table [ref=e209]:
+          - rowgroup [ref=e210]:
+            - row [ref=e211]:
+              - columnheader "icon" [ref=e212]
+              - columnheader "Sales Activity" [ref=e216]
+              - columnheader [ref=e220]
+          - rowgroup [ref=e221]:
+            - row [ref=e222]:
+              - cell [ref=e223]
+              - cell "Task" [ref=e228]
+              - cell [ref=e230]:
+                - button "Edit activity" [ref=e232] [cursor=pointer]
+            - row [ref=e240]:
+              - cell [ref=e241]
+              - cell "Meeting" [ref=e246]
+              - cell [ref=e248]:
+                - button "Edit activity" [ref=e250] [cursor=pointer]
+            - row [ref=e258]:
+              - cell [ref=e259]
+              - cell "Phone" [ref=e263]
+              - cell [ref=e265]:
+                - button "Edit activity" [ref=e267] [cursor=pointer]
+            - row [ref=e275]:
+              - cell [ref=e276]
+              - cell "Email" [ref=e281]
+              - cell [ref=e283]
+            - row [ref=e284]:
+              - cell [ref=e285]
+              - cell "Reminder" [ref=e289]
+              - cell [ref=e291]
+            - row [ref=e292]:
+              - cell [ref=e293]
+              - cell "SMS" [ref=e298]
+              - cell [ref=e300]
+            - row [ref=e301]:
+              - cell [ref=e302]
+              - cell "Chat" [ref=e307]
+              - cell [ref=e309]
+        - generic [ref=e311]:
+          - heading "Custom sales activities" [level=4] [ref=e312]
+          - generic [ref=e313]: Need more sales activities that are unique to your business? Create them here.
+        - generic [ref=e314]: Create sales activity
+    - dialog [ref=e329]:
+      - tabpanel [ref=e332]:
+        - generic [ref=e333]:
+          - generic [ref=e334]: create sales activity
+          - button [ref=e336] [cursor=pointer]
+        - generic [ref=e340]:
+          - generic [ref=e341]:
+            - generic [ref=e342]:
+              - generic [ref=e343]: Give your sales activity a name*
+              - textbox "Give your sales activity a name*" [ref=e344]:
+                - /placeholder: Like 'Facebook chat'
+            - generic [ref=e576]: can't be empty
+          - generic [ref=e345]:
+            - generic [ref=e346]: Pick an icon to signify your activity
+            - list [ref=e347]:
+              - listitem [ref=e348] [cursor=pointer]
+              - listitem [ref=e354] [cursor=pointer]
+              - listitem [ref=e361] [cursor=pointer]
+              - listitem [ref=e367] [cursor=pointer]
+              - listitem [ref=e374] [cursor=pointer]
+              - listitem [ref=e381] [cursor=pointer]
+              - listitem [ref=e387] [cursor=pointer]
+              - listitem [ref=e392] [cursor=pointer]
+              - listitem [ref=e401] [cursor=pointer]
+              - listitem [ref=e407] [cursor=pointer]
+              - listitem [ref=e413] [cursor=pointer]
+              - listitem [ref=e419] [cursor=pointer]
+              - listitem [ref=e424] [cursor=pointer]
+              - listitem [ref=e430] [cursor=pointer]
+              - listitem [ref=e436] [cursor=pointer]
+              - listitem [ref=e442] [cursor=pointer]
+              - listitem [ref=e447] [cursor=pointer]
+              - listitem [ref=e454] [cursor=pointer]
+              - listitem [ref=e463] [cursor=pointer]
+              - listitem [ref=e470] [cursor=pointer]
+              - listitem [ref=e475] [cursor=pointer]
+              - listitem [ref=e481] [cursor=pointer]
+              - listitem [ref=e487] [cursor=pointer]
+              - listitem [ref=e493] [cursor=pointer]
+              - listitem [ref=e500] [cursor=pointer]
+          - generic [ref=e505]:
+            - generic [ref=e511] [cursor=pointer]:
+              - text: Allow users to check in and check out from the Freshsales mobile app (
+              - link "Android" [ref=e512]:
+                - /url: https://play.google.com/store/apps/details?id=com.freshdesk.freshsales.mobile
+              - text: and
+              - link "iOS" [ref=e513]:
+                - /url: https://itunes.apple.com/us/app/freshsales/id1073125057
+              - text: )
+            - generic [ref=e514]: Show this activity in "My calendar" on Activities Dashboard
+            - generic [ref=e520]: Allow users to mark this activity as completed
+            - generic [ref=e526]: Allow users to edit the completed date and time of this activity
+          - generic [ref=e532]:
+            - generic [ref=e533]: "Predict outcomes for this activity :"
+            - list [ref=e534]:
+              - listitem [ref=e535]:
+                - generic [ref=e536]:
+                  - generic [ref=e537]: 
+                  - generic [ref=e538] [cursor=pointer]: 
+                - textbox [ref=e541]: Interested
+              - listitem [ref=e542]:
+                - generic [ref=e543]:
+                  - generic [ref=e544]: 
+                  - generic [ref=e545] [cursor=pointer]: 
+                - textbox [ref=e548]: Left message
+              - listitem [ref=e549]:
+                - generic [ref=e550]:
+                  - generic [ref=e551]: 
+                  - generic [ref=e552] [cursor=pointer]: 
+                - textbox [ref=e555]: No response
+              - listitem [ref=e556]:
+                - generic [ref=e557]:
+                  - generic [ref=e558]: 
+                  - generic [ref=e559] [cursor=pointer]: 
+                - textbox [ref=e562]: Not able to reach
+              - listitem [ref=e563]:
+                - generic [ref=e564]:
+                  - generic [ref=e565]: 
+                  - generic [ref=e566] [cursor=pointer]: 
+                - textbox [ref=e569]: Not interested
+              - generic [ref=e570] [cursor=pointer]:
+                - generic [ref=e571]: 
+                - text: Add outcome
+        - generic [ref=e572]:
+          - button "Cancel" [ref=e573] [cursor=pointer]
+          - button "Save" [active] [ref=e575] [cursor=pointer]
+    - generic [ref=e323] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

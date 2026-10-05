@@ -1,0 +1,15 @@
+[
+ {
+  "label": "Create sales activity",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "drawer: name*, icon picker, 4 checkboxes, outcomes list + Add outcome; Cancel/Save"
+ },
+ {
+  "label": "Edit activity (Task, Meeting, Phone)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "skipped": true,
+  "reason": "existing"
+ }
+]

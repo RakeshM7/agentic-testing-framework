@@ -1,0 +1,97 @@
+- generic [active] [ref=f33e1]:
+  - generic [ref=f33e42]:
+    - generic [ref=f33e45]:
+      - generic [ref=f33e46]:
+        - link "Connect your mailbox" [ref=f33e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+      - generic "Close" [ref=f33e48] [cursor=pointer]
+    - generic [ref=f33e51]:
+      - generic [ref=f33e52]:
+        - list [ref=f33e54]:
+          - listitem [ref=f33e55]:
+            - link "Admin Settings" [ref=f33e56] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f33e57]: Territories
+        - generic [ref=f33e59]:
+          - list [ref=f33e60]:
+            - listitem [ref=f33e61]
+            - listitem [ref=f33e65]:
+              - generic "Send email" [ref=f33e66] [cursor=pointer]
+            - listitem [ref=f33e70]:
+              - generic "What's new" [ref=f33e71] [cursor=pointer]: "1"
+            - listitem [ref=f33e76]:
+              - generic [ref=f33e77]: "5"
+            - listitem [ref=f33e83]
+            - listitem [ref=f33e84]:
+              - img "Your User Avatar" [ref=f33e88] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f33e98]
+          - generic [ref=f33e100]:
+            - emphasis [ref=f33e101]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f33e107] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f33e109] [cursor=pointer]
+      - navigation:
+        - generic [ref=f33e111]:
+          - link [ref=f33e115] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f33e119]:
+            - listitem "Dashboards" [ref=f33e120]:
+              - link [ref=f33e123] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f33e126]:
+              - link [ref=f33e129] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f33e132]:
+              - link [ref=f33e135] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f33e138]:
+              - link [ref=f33e141] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f33e144]:
+              - link [ref=f33e147] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f33e150]:
+              - link [ref=f33e153] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f33e156]:
+              - link [ref=f33e159] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f33e162]:
+            - generic "Phone" [ref=f33e163]
+            - generic "Freshworks Switcher" [ref=f33e166]:
+              - button "Freshworks Switcher" [ref=f33e167] [cursor=pointer]
+      - generic [ref=f33e174]:
+        - generic [ref=f33e175]:
+          - generic [ref=f33e176]:
+            - heading "Territories" [level=4] [ref=f33e182]
+            - button "button" [ref=f33e185] [cursor=pointer]:
+              - generic [ref=f33e186]: Advanced settings
+          - generic "Territories are well-defined regions that set clear boundaries for your sales team to go and hit their targets. By creating territories, you can route leads to the right reps, eliminate duplicate sales efforts, and increase your team's efficiency. With territory hierarchy, you can also establish a relationship between your territories." [ref=f33e195]
+          - generic [ref=f33e198]:
+            - link "help-link" [ref=f33e200] [cursor=pointer]:
+              - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002702-how-to-create-and-use-territories-in-freshworks-crm-
+              - generic "How to create territories and use them to organize your team" [ref=f33e205]
+            - link "help-link" [ref=f33e207] [cursor=pointer]:
+              - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002704-how-to-delete-territories-in-freshworks-crm-
+              - generic "How to delete territories" [ref=f33e212]
+        - generic [ref=f33e213]:
+          - generic [ref=f33e214]:
+            - generic [ref=f33e216]:
+              - button "button" [ref=f33e217] [cursor=pointer]:
+                - generic [ref=f33e218]: Create territory
+              - generic [ref=f33e224]:
+                - button "button" [disabled]:
+                  - button "button" [disabled]:
+                    - generic:
+                      - generic "Bulk actions"
+              - button "button" [ref=f33e225] [cursor=pointer]:
+                - generic [ref=f33e226]: Filter by
+            - textbox "Search territories" [ref=f33e238]
+          - generic [ref=f33e239]:
+            - generic [ref=f33e249]: No territories found.
+            - generic [ref=f33e251]: Try modifying your filters, or add a new territory
+            - generic [ref=f33e255]:
+              - button "Create territory" [ref=f33e257] [cursor=pointer]
+              - button "Edit filters" [ref=f33e260] [cursor=pointer]
+  - iframe

@@ -1,0 +1,92 @@
+{
+ "tab:Contact details": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?tab=entity-card-detail",
+  "overlay": []
+ },
+ "tab:Conversations": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?tab=conversations",
+  "overlay": []
+ },
+ "tab:Activities": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?tab=recent-activities",
+  "overlay": []
+ },
+ "tab:Accounts": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?tab=sales_accounts",
+  "overlay": []
+ },
+ "tab:Deals": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?tab=deals",
+  "overlay": []
+ },
+ "tab:Freddy AI insights": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?tab=freddy",
+  "overlay": []
+ },
+ "tab:Files": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?tab=files",
+  "overlay": []
+ },
+ "tab:Apps in marketplace": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096",
+  "overlay": []
+ },
+ "kebab": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096",
+  "overlay": []
+ },
+ "lifecycle": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096",
+  "overlay": []
+ },
+ "sales-activities": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096",
+  "overlay": [
+   "Create custom sales activity"
+  ]
+ },
+ "email-btn": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?open_modal=email",
+  "overlay": [
+   "New mail | Email usage : 0 / 100 | To | E | Explore ExploreContact1791143638407 | × | From | Cc | Bcc | Use template | Insert fields | Add follow-up task | Email linked to contacts, deals | You haven't connected rakesh16083@cse.ssn.edu.in to the CRM. Connect it now to keep your conversations synced. | Connect Gmail |   | Connect a different email | Start typing your email, or use Freddy AI to generate it for you… | Background Color | Strikethrough | Decrease Indent | Increase Indent | Quote | Increase | ⌘' | Decrease | ⌘⇧' | Insert Horizontal Line | Select All | Undo | Redo | Code View | Arial | Arial | Century Gothic | Courier New | Futura | Georgia | Helvetica | Impact | Palatino | Tahoma | Times New Roman | Verdana | 14 | 8 | 9 | 10 | 11 | 12 | 14 | 18 | 24 | 30 | 36 | 48 | 60 | 72 | 96 | Bold | Italic | Underline | Clear Formatting | Text Color | Insert Image | Insert Link | Align | Align Left | Align Center | Align Right | Align Justify | Ordered List | Default | Lower Alpha | Lower Greek | Lower Roman | Upper Alpha | Upper Roman | Unordered List | Default | Circle | Disc | Square | Paragraph Format | Normal | Heading 1 | Heading 2 | Heading 3 | Heading 4 | More Misc | Attach | Track this email | Add unsubscribe link | Send",
+   "Increase | ⌘' | Decrease | ⌘⇧'",
+   "Arial | Century Gothic | Courier New | Futura | Georgia | Helvetica | Impact | Palatino | Tahoma | Times New Roman | Verdana",
+   "8 | 9 | 10 | 11 | 12 | 14 | 18 | 24 | 30 | 36 | 48 | 60 | 72 | 96",
+   "Align Left | Align Center | Align Right | Align Justify",
+   "Default | Lower Alpha | Lower Greek | Lower Roman | Upper Alpha | Upper Roman",
+   "Default | Circle | Disc | Square",
+   "Normal | Heading 1 | Heading 2 | Heading 3 | Heading 4"
+  ]
+ },
+ "task-btn": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096",
+  "overlay": [
+   "Add task | Mark as completed | Title | Description | Task type | Select a type | Due date | Outcome | Select an outcome | Owner | Rakesh M | × | Related to (1)  | E | Explore ExploreContact1791143638407 | Collaborators (0) | Cancel |  Save"
+  ]
+ },
+ "meeting-btn": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096",
+  "overlay": [
+   "Add meeting | Title | From | To  | All day  | Time zone | (GMT+00:00) UTC | Add video conferencing | Connect Zoom | Connect Teams | Location | Description |  Add outcome |  Add meeting notes | Related to (1)  | E | Explore ExploreContact1791143638407 | Attendees (1) | Attendees will get an email invitation | Rakesh M | Connect Google Calendar | Connect Office 365 | Cancel |  Save"
+  ]
+ },
+ "calllog-btn": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096",
+  "overlay": [
+   "Call log | Call type | Outgoing | Outcome | Select an outcome | Associate this phone call with ? | Existing Contact | Name | Explore ExploreContact1791143638407 | explorecontact.1791143638407@example.com | Notes | Start typing oruse a template.@mention people to notify them. | 14 | 8 | 9 | 10 | 11 | 12 | 14 | 18 | 24 | 30 | 36 | 48 | 60 | 72 | 96 | Bold | Italic | Underline | Ordered List | Default | Lower Alpha | Lower Greek | Lower Roman | Upper Alpha | Upper Roman | Unordered List | Default | Circle | Disc | Square | Insert Link | Cancel | Save",
+   "8 | 9 | 10 | 11 | 12 | 14 | 18 | 24 | 30 | 36 | 48 | 60 | 72 | 96",
+   "Default | Lower Alpha | Lower Greek | Lower Roman | Upper Alpha | Upper Roman",
+   "Default | Circle | Disc | Square"
+  ]
+ },
+ "add-deal-caret": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096",
+  "overlay": [
+   "Add account | Add deal | Add file"
+  ]
+ },
+ "customize-overview": {
+  "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096",
+  "overlay": []
+ }
+}

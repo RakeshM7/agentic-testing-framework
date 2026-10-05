@@ -1,0 +1,47 @@
+[
+  {
+    "question": "[Scope] [Blocking] Explore-agent found Inbox, Sent, Opens and Clicks hold Freshsales-seeded sample emails (Scheduled, Drafts, Trash, Bulk, Bounces empty), contradicting discovery's 'no mailbox connected, lists empty' - should test cases target these seeded emails as read-only navigation data, with assertions limited to 'list renders and a thread opens' rather than exact counts?",
+    "navigation": "Conversations > Email > Inbox (flows browse-email-folders, open-email-thread)",
+    "csvAnswer": "no (Inbox/Sent sample emails are not stable test data; do not assert counts of 3 inbox / 3+ sent)"
+  },
+  {
+    "question": "[Behavior] [Nice-to-have] Why does SMS template creation fail with 'Template creation failed' for a valid name and body - is SMS setup required first?",
+    "navigation": "Conversations > SMS Templates > Create SMS template (flow create-sms-template)",
+    "csvAnswer": "SMS template creation might fail because of no SMS provider being setup. We can skip this case, but flag it for later"
+  },
+  {
+    "question": "[Behavior] [Nice-to-have] Is a duplicate email-template name meant to be auto-suffixed with a timestamp, and should the template list refresh without reload after create?",
+    "navigation": "Conversations > Email Templates > Create EMAIL template (flow create-email-template)",
+    "csvAnswer": "yes"
+  },
+  {
+    "question": "[Scope] [Nice-to-have] Is Conversation Groups part of this module or the Conversations module?",
+    "navigation": "Admin Settings > Teams & Territories (not reached in this track's flows; no Conversation Groups flow exists in explore/flows/index.json)",
+    "csvAnswer": "Part of conversations module"
+  },
+  {
+    "question": "[Scope] [Blocking] The Email Templates list contains 9 system-seeded Public templates; under full-run may edit-save and delete tests touch only templates the run itself created (ZZ-prefixed), never the seeded ones?",
+    "navigation": "Conversations > Email Templates > row menu > Edit / Delete (flows edit-email-template-view, delete-email-template)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior] [Nice-to-have] Saving a new email template with a typed name showed no success toast yet the template persisted - is a success toast expected, or is the silent save acceptable for assertions (assert on list row instead)?",
+    "navigation": "Conversations > Email Templates > Create EMAIL template > Save (flow create-email-template)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Edge Case] [Nice-to-have] What are the validation rules for email template Name and Body beyond the empty-save message (max name length, special characters/HTML, required Subject, leading/trailing spaces)?",
+    "navigation": "Conversations > Email Templates > Create EMAIL template (flow create-email-template, see screenshot-empty-validation)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Scope] [Nice-to-have] Confirm out of scope for live execution and test generation: sending/replying/forwarding emails, template Share, Connect Gmail/Outlook, Add Team Inbox, Set up SMS, Power Dialer and Chat Inbox (composer and reply are open-only, never sent).",
+    "navigation": "Conversations > Email > Inbox > <subject> > Reply; Top bar > Send email (flows reply-to-email-draft-only, compose-new-email-draft-only)",
+    "csvAnswer": ""
+  },
+  {
+    "question": "[Behavior] [Nice-to-have] Not exercised by explore: template Clone, Edit-save, list search box, Use template, Insert fields and Attach in the editor - should test cases cover them as expected-behavior cases (and what is expected, e.g. Clone creates a copy with a name suffix), or leave them out?",
+    "navigation": "Conversations > Email Templates > row menu > Clone / Edit (flows edit-email-template-view, search-filter-email-templates)",
+    "csvAnswer": ""
+  }
+]

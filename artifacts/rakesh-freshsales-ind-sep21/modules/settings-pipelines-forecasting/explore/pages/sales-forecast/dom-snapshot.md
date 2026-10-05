@@ -1,0 +1,118 @@
+- generic [active] [ref=f24e1]:
+  - generic [ref=f24e42]:
+    - generic [ref=f24e45]:
+      - generic [ref=f24e46]:
+        - link "Connect your mailbox" [ref=f24e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f24e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f24e49] [cursor=pointer]
+    - generic [ref=f24e52]:
+      - generic [ref=f24e53]:
+        - list [ref=f24e55]:
+          - listitem [ref=f24e56]:
+            - link "Admin Settings" [ref=f24e57] [cursor=pointer]:
+              - /url: /crm/sales/settings
+          - listitem [ref=f24e58]: Quotas and Forecasting
+        - generic [ref=f24e60]:
+          - list [ref=f24e61]:
+            - listitem [ref=f24e62]
+            - listitem [ref=f24e66]:
+              - generic "Send email" [ref=f24e67] [cursor=pointer]
+            - listitem [ref=f24e71]:
+              - generic "What's new" [ref=f24e72] [cursor=pointer]: "1"
+            - listitem [ref=f24e77]:
+              - generic [ref=f24e78]: "5"
+            - listitem [ref=f24e84]
+            - listitem [ref=f24e85]:
+              - img "Your User Avatar" [ref=f24e89] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f24e99]
+          - generic [ref=f24e101]:
+            - emphasis [ref=f24e102]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f24e108] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f24e110] [cursor=pointer]
+      - navigation:
+        - generic [ref=f24e112]:
+          - link [ref=f24e116] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f24e120]:
+            - listitem "Dashboards" [ref=f24e121]:
+              - link [ref=f24e124] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f24e127]:
+              - link [ref=f24e130] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f24e133]:
+              - link [ref=f24e136] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f24e139]:
+              - link [ref=f24e142] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f24e145]:
+              - link [ref=f24e148] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f24e151]:
+              - link [ref=f24e154] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f24e157]:
+              - link [ref=f24e160] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f24e163]:
+            - generic "Phone" [ref=f24e164]
+            - generic "Freshworks Switcher" [ref=f24e167]:
+              - button "Freshworks Switcher" [ref=f24e168] [cursor=pointer]
+      - generic [ref=f24e171]:
+        - generic [ref=f24e172]:
+          - heading "Quotas and Forecasting" [level=4] [ref=f24e180]
+          - generic [ref=f24e181]: "To identify deals that sales reps are confident of closing, there are two forecast categories you can start with: Committed and Best-case. Sales managers can create more categories in this page to align with their sales process."
+          - generic [ref=f24e183]:
+            - generic [ref=f24e184]: Enable Quotas and Forecasting
+            - generic [ref=f24e186] [cursor=pointer]
+          - link "Learn more" [ref=f24e193] [cursor=pointer]:
+            - /url: //crmsupport.freshworks.com/support/solutions/articles/50000002881-how-to-predict-revenue-from-your-team-on-freshworks-crm-
+        - generic [ref=f24e203]:
+          - table [ref=f24e204]:
+            - rowgroup [ref=f24e205]:
+              - row [ref=f24e206]:
+                - columnheader "Forecast category" [ref=f24e207]
+                - columnheader "what it means" [ref=f24e208]
+                - columnheader [ref=f24e209]:
+                  - button "Add forecast category" [ref=f24e211] [cursor=pointer]
+            - rowgroup [ref=f24e213]:
+              - row [ref=f24e214]:
+                - cell [ref=f24e215]:
+                  - strong [ref=f24e216]: Committed
+                - cell [ref=f24e217]:
+                  - text: These are deals that reps are confident of closing this month or quarter, on or before the expected close date. To commit deals, look for the
+                  - strong [ref=f24e218]: Commit deal
+                  - text: option in the overflow menu of each deal card.
+                - cell [ref=f24e219]
+              - row [ref=f24e220]:
+                - cell [ref=f24e221]:
+                  - strong [ref=f24e222]: Best-case
+                - cell "These are deals that reps are optimistic about, but are not willing to commit just yet." [ref=f24e223]
+                - cell [ref=f24e224]:
+                  - button [ref=f24e226] [cursor=pointer]
+          - generic [ref=f24e234]:
+            - generic [ref=f24e235]:
+              - text: Select your default forecast category
+              - generic [ref=f24e236]: "*"
+            - button "Best-case" [ref=f24e237] [cursor=pointer]
+            - generic [ref=f24e240]: When you set an expected close date for your deal, its forecast category will default to Best-case
+        - generic [ref=f24e248]:
+          - generic [ref=f24e254]:
+            - generic [ref=f24e255]: 
+            - text: Freddy AI deal insights
+          - generic [ref=f24e257]: Predicts if a deal will close or if it's at risk, based on win/loss data from your previous deals. These predictions help managers alert their reps to promising deals that are not committed yet.
+          - separator [ref=f24e258]
+          - generic [ref=f24e259] [cursor=pointer]
+          - generic [ref=f24e264]:
+            - generic [ref=f24e265]: 
+            - text: Freddy AI commit suggestions
+          - generic [ref=f24e267]: Identifies deals that reps can commit for the next 4 weeks. Freddy makes these suggestions based on past deals and recent activities in current deals.
+    - generic [ref=f24e269] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

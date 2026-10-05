@@ -1,0 +1,160 @@
+# https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221019096?tab=freddy
+
+- link "Connect your mailbox":
+  - /url: /crm/sales/personal-settings/connect-your-email
+- text: to improve deliverability and enable 2-way sync of email conversations. Import all your sales data so you don't have to start from scratch.
+- img
+- list:
+  - listitem:
+    - link "Contacts":
+      - /url: /crm/sales/contacts
+  - listitem: Explore ExploreContact1791143638407
+- list:
+  - listitem:
+    - img
+  - listitem:
+    - img
+  - listitem:
+    - img
+  - listitem:
+    - img
+    - text: "5"
+  - listitem
+  - listitem:
+    - img "Your User Avatar"
+- img
+- textbox "Search your CRM"
+- emphasis: Your trial ends in 8 days
+- img
+- link "Explore plans":
+  - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+- button "Request demo"
+- navigation:
+  - link:
+    - /url: /crm/sales/contacts
+    - img
+  - list:
+    - listitem "Dashboards":
+      - link:
+        - /url: /crm/sales/my_dashboards
+        - img
+    - listitem "Contacts":
+      - link:
+        - /url: /crm/sales/contacts
+        - img
+    - listitem "Accounts":
+      - link:
+        - /url: /crm/sales/accounts
+        - img
+    - listitem "Deals":
+      - link:
+        - /url: /crm/sales/deals
+        - img
+    - listitem "Conversations":
+      - link:
+        - /url: /crm/sales/conversations/awaiting_response
+        - img
+    - listitem "Analytics":
+      - link:
+        - /url: /crm/sales/analytics
+        - img
+    - listitem "Admin Settings":
+      - link:
+        - /url: /crm/sales/settings
+        - img
+  - img
+  - button "Freshworks Switcher"
+- button "Email":
+  - img
+  - text: Email
+- button "Call log":
+  - img
+  - text: Call log
+- button "Task":
+  - img
+  - text: Task
+- button "Meeting":
+  - img
+  - text: Meeting
+- button "Sales activities":
+  - button "Sales activities":
+    - img
+    - text: Sales activities
+    - img
+- button "Add deal":
+  - img
+  - text: Add deal
+- button:
+  - button:
+    - img
+- button:
+  - img
+- text: E Add Explore ExploreContact1791143638407 E Add
+- heading "Explore ExploreContact1791143638407 QA Explorer" [level=3]:
+  - text: Explore ExploreContact1791143638407 QA Explorer
+  - img
+  - img
+  - img
+- text: Score
+- button "32"
+- text:  Customer fit
+- button:
+  - img
+- img
+- img
+- img
+- img
+- img
+- img
+- text: Contact information
+- button:
+  - img
+- img
+- text: Overview
+- img
+- text: Contact details
+- img
+- text: Conversations
+- img
+- text: Activities
+- img
+- text: Accounts
+- img
+- text: Deals
+- img
+- text: Freddy AI insights
+- img
+- text: Files
+- img
+- text: Apps in marketplace
+- heading "Freddy AI insights" [level=3]
+- list:
+  - listitem: Key scoring factors
+  - listitem: Possible duplicates (0)
+  - listitem: Possible connections (0)
+- text: Score 32  Customer fit
+- button:
+  - img
+- img
+- img
+- img
+- img
+- img
+- img
+- text: Last week Today 0 100 Key factors behind this score
+- img
+- text: Very little is known about this contact to give them a score
+- img
+- text: Freddy AI insights Explore ExploreContact1791143638407 needs nurturing. Continue to engage with them.
+- button "Add to sales sequence":
+  - img
+  - text: Add to sales sequence
+- button "Send email":
+  - img
+  - text: Send email
+- text: Freddy got this right?
+- img
+- img
+- img
+- iframe
+- iframe

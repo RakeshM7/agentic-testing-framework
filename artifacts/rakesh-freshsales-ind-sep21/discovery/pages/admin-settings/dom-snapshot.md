@@ -1,0 +1,161 @@
+- generic [ref=f64e1]:
+  - generic [ref=f64e42]:
+    - generic [ref=f64e45]:
+      - generic [ref=f64e46]:
+        - link "Connect your mailbox" [ref=f64e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f64e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f64e49] [cursor=pointer]
+    - generic [ref=f64e52]:
+      - generic [ref=f64e53]:
+        - list [ref=f64e55]:
+          - listitem [ref=f64e56]: Admin Settings
+        - generic [ref=f64e58]:
+          - list [ref=f64e59]:
+            - listitem [ref=f64e60]
+            - listitem [ref=f64e64]:
+              - generic "Send email" [ref=f64e65] [cursor=pointer]
+            - listitem [ref=f64e69]:
+              - generic "What's new" [ref=f64e70] [cursor=pointer]: "1"
+            - listitem [ref=f64e75]:
+              - generic [ref=f64e76]: "5"
+            - listitem [ref=f64e82]
+            - listitem [ref=f64e83]:
+              - img "Your User Avatar" [ref=f64e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f64e97]
+          - generic [ref=f64e99]:
+            - emphasis [ref=f64e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f64e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f64e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f64e110]:
+          - link [ref=f64e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f64e118]:
+            - listitem "Dashboards" [ref=f64e119]:
+              - link [ref=f64e122] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f64e125]:
+              - link [ref=f64e128] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f64e131]:
+              - link [ref=f64e134] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f64e137]:
+              - link [ref=f64e140] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f64e143]:
+              - link [ref=f64e146] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f64e149]:
+              - link [ref=f64e152] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f64e155]:
+              - link [ref=f64e158] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f64e161]:
+            - generic "Phone" [ref=f64e162]
+            - generic "Freshworks Switcher" [ref=f64e165]:
+              - button "Freshworks Switcher" [ref=f64e166] [cursor=pointer]
+      - generic [ref=f64e170]:
+        - generic [ref=f64e172]:
+          - generic [ref=f64e174] [cursor=pointer]:
+            - generic [ref=f64e175]: Leads, Contacts, & Accounts
+            - generic [ref=f64e176]: Manage the people & companies you sell to
+          - generic [ref=f64e178]:
+            - generic [ref=f64e179]: Deals & Pipelines
+            - generic [ref=f64e180]: Manage your products, services, & sales processes
+          - generic [ref=f64e182]:
+            - generic [ref=f64e183]: Teams & Territories
+            - generic [ref=f64e184]: Create sales teams and how they are organized
+          - generic [ref=f64e186]:
+            - generic [ref=f64e187]: Data & Import
+            - generic [ref=f64e188]: Bring data into Freshsales from files and other CRMs
+          - generic [ref=f64e190]:
+            - generic [ref=f64e191]: Channels
+            - generic [ref=f64e192]: Manage how you communicate with prospects and customers
+          - generic [ref=f64e194]:
+            - generic [ref=f64e195]: Apps & Integrations
+            - generic [ref=f64e196]: Extend Freshsales with other systems and applications
+          - generic [ref=f64e198]:
+            - generic [ref=f64e199]: Account Settings
+            - generic [ref=f64e200]: Manage global settings, billing, and subscriptions
+        - generic [ref=f64e201]:
+          - generic [ref=f64e202]:
+            - textbox "Search settings" [active] [ref=f64e206]
+            - separator [ref=f64e207]
+          - generic [ref=f64e208]:
+            - generic [ref=f64e209]:
+              - generic [ref=f64e210]: Leads, Contacts, & Accounts
+              - generic [ref=f64e211]: Manage the people & companies you sell to
+            - generic [ref=f64e212]:
+              - link [ref=f64e213] [cursor=pointer]:
+                - /url: https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/marketer/mas/#/settings/crm-tracking-code
+                - generic [ref=f64e214]:
+                  - img "Integrate your website with the CRM to capture leads" [ref=f64e216]
+                  - generic [ref=f64e217]:
+                    - text: Website Embed Code
+                    - paragraph: Integrate your website with the CRM to capture leads
+              - link "Manage &amp; customize fields associated with contacts Contacts Manage & customize fields associated with contacts" [ref=f64e218] [cursor=pointer]:
+                - /url: /crm/sales/settings/contacts/forms
+                - generic [ref=f64e219]:
+                  - img "Manage &amp; customize fields associated with contacts" [ref=f64e221]
+                  - generic [ref=f64e222]:
+                    - generic [ref=f64e223]: Contacts
+                    - paragraph: Manage & customize fields associated with contacts
+              - link "Manage &amp; customize fields associated with accounts Accounts Manage & customize fields associated with accounts" [ref=f64e224] [cursor=pointer]:
+                - /url: /crm/sales/settings/sales_accounts/forms
+                - generic [ref=f64e225]:
+                  - img "Manage &amp; customize fields associated with accounts" [ref=f64e227]
+                  - generic [ref=f64e228]:
+                    - generic [ref=f64e229]: Accounts
+                    - paragraph: Manage & customize fields associated with accounts
+              - link "Build unique modules tailored to your business operations Custom Modules Build unique modules tailored to your business operations" [ref=f64e230] [cursor=pointer]:
+                - /url: /crm/sales/settings/module-customization
+                - generic [ref=f64e231]:
+                  - img "Build unique modules tailored to your business operations" [ref=f64e233]
+                  - generic [ref=f64e234]:
+                    - generic [ref=f64e235]: Custom Modules
+                    - paragraph: Build unique modules tailored to your business operations
+              - link "Set up stages and milestones to track your contact's journey Contact Lifecycle Stages Set up stages and milestones to track your contact's journey" [ref=f64e236] [cursor=pointer]:
+                - /url: /crm/sales/settings/lifecycle_stages
+                - generic [ref=f64e237]:
+                  - img "Set up stages and milestones to track your contact's journey" [ref=f64e239]
+                  - generic [ref=f64e240]:
+                    - generic [ref=f64e241]: Contact Lifecycle Stages
+                    - paragraph: Set up stages and milestones to track your contact's journey
+              - link "Use Freddy's AI/ML capabilities to give your contacts a score out of 100 Contact Scoring Use Freddy's AI/ML capabilities to give your contacts a score out of 100" [ref=f64e242] [cursor=pointer]:
+                - /url: /crm/sales/settings/predictive_scoring
+                - generic [ref=f64e243]:
+                  - img "Use Freddy's AI/ML capabilities to give your contacts a score out of 100" [ref=f64e245]
+                  - generic [ref=f64e246]:
+                    - generic [ref=f64e247]: Contact Scoring
+                    - paragraph: Use Freddy's AI/ML capabilities to give your contacts a score out of 100
+              - link "Automatically create contacts when website visitors sign up Web Forms Automatically create contacts when website visitors sign up" [ref=f64e248] [cursor=pointer]:
+                - /url: /crm/sales/settings/integrations/webform/classic
+                - generic [ref=f64e249]:
+                  - img "Automatically create contacts when website visitors sign up" [ref=f64e251]
+                  - generic [ref=f64e252]:
+                    - generic [ref=f64e253]: Web Forms
+                    - paragraph: Automatically create contacts when website visitors sign up
+              - link "A set of code libraries to add, track and update contacts CRM Code Library A set of code libraries to add, track and update contacts" [ref=f64e254] [cursor=pointer]:
+                - /url: /crm/sales/settings/integrations/freshsales-web
+                - generic [ref=f64e255]:
+                  - img "A set of code libraries to add, track and update contacts" [ref=f64e257]
+                  - generic [ref=f64e258]:
+                    - generic [ref=f64e259]: CRM Code Library
+                    - paragraph: A set of code libraries to add, track and update contacts
+              - link "Auto-create contacts from LinkedIn lead gen forms LinkedIn Lead Gen Forms Auto-create contacts from LinkedIn lead gen forms" [ref=f64e260] [cursor=pointer]:
+                - /url: /crm/sales/settings/linkedin-lead-capture
+                - generic [ref=f64e261]:
+                  - img "Auto-create contacts from LinkedIn lead gen forms" [ref=f64e263]
+                  - generic [ref=f64e264]:
+                    - generic [ref=f64e265]: LinkedIn Lead Gen Forms
+                    - paragraph: Auto-create contacts from LinkedIn lead gen forms
+    - generic [ref=f64e267] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

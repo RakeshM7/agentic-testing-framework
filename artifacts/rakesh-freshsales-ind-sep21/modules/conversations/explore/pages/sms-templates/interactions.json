@@ -1,0 +1,8 @@
+[
+ {
+  "label": "Create SMS template",
+  "role": "button",
+  "kind": "opens-overlay",
+  "resultingUrl": "Create sms template drawer"
+ }
+]

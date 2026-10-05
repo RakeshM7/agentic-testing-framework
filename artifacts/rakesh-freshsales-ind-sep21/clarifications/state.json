@@ -1,0 +1,150 @@
+{
+ "accounts": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Behavior][Nice-to-have] Does deleting an account with the checkbox 'Delete all the related contacts and deals' also soft-delete those into their Recycle Bins, and can they be restored together?",
+   "[Scope][Blocking] In full-run mode, may tests execute the Import accounts flow live (e.g. a small CSV of uniquely named ZZ test accounts, later deleted), or should import be generated but not executed, or excluded entirely?",
+   "[Scope][Blocking] Should bulk-action tests (Update field, Add tags, Assign to, Add to sequence, Merge, Delete) be executed live only against accounts the run itself created (never the 15 pre-existing tenant accounts), given Bulk actions select-alls on open?",
+   "[Edge Case][Nice-to-have] What are the Name field rules beyond non-empty: max length, leading/trailing whitespace trimming, special characters, and case-insensitivity of the duplicate check?",
+   "[Edge Case][Nice-to-have] Which Website formats must be accepted vs rejected (with/without http(s)://, www., bare domain, spaces), given only an invalid value produced the toast 'The value for website is not in required format'?",
+   "[Behavior][Nice-to-have] Should tests cover Recycle Bin restore and permanent delete, and the row-menu Forget action, on run-created accounts, and what are the expected outcomes (restore location, confirmation text, retention of 90 days)?",
+   "[Scope][Nice-to-have] Should detail-page sub-actions not yet explored (Add parent account, Add note, Add contact/deal from account, Files upload, inline edit in Account details) be in scope for test cases beyond view-account-detail?",
+   "[Behavior][Nice-to-have] What are the expected sort, per-page, and filter-operator behaviors for the Accounts list (e.g. default sort, page sizes, operators available for Name), since these were not explored?",
+   "[Behavior][Nice-to-have] For validation-only negative cases (empty Name, invalid Website, non-numeric Phone, duplicate Name) that are blocked before any mutation, confirm they may run live in all modes, and that for the Phone case a failing assertion marks a known bug rather than a test defect?"
+  ]
+ },
+ "analytics": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Scope][Blocking] The feature goal covers data export and custom metrics, but the crawl only saw their list pages (Create Export / Create Metric forms were never opened); should test cases for creating these be written from assumed fields, limited to list/navigation checks, or deferred until the forms are explored?",
+   "[Behavior][Blocking] Under full-run, may a valid schedule be saved live for the logged-in user only (it creates recurring emails), and must the test delete or disable the schedule it created afterwards?",
+   "[Edge Case][Blocking] What are the validation rules for report names and Save (empty name, duplicate name, maximum length, default 'Untitled Report'), and may a report with empty or duplicate name be attempted live?",
+   "[Behavior][Nice-to-have] Are curated (System) reports protected from Edit, Clone, Move to trash and favorite, or only some of them?",
+   "[Behavior][Nice-to-have] Which behaviors should tests verify for sidebar filters (Recent, Favorites, My, Curated, Private, Shared), Sort By and the 10-per-page paging, and how does Private versus Shared visibility work for a report created by the test?",
+   "[Behavior][Nice-to-have] Are Email Now and Download (export) on a report safe to run live in tests, as answered for dashboards (email goes only to the logged-in user, download saves a file locally)?",
+   "[Behavior][Nice-to-have] Should tests assert that opening /analytics redirects to the last viewed report, or treat the landing destination as non-deterministic?"
+  ]
+ },
+ "contacts": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Behavior][Blocking] The Add contact form showed 'You need to fill this field' only on Email while Mobile was left empty, but the data-model answer says Email OR Mobile OR External ID is mandatory: should a contact with only Mobile (no Email) save successfully, and what is the exact error when all three are empty?",
+   "[Edge Case][Blocking] When a duplicate-email contact is blocked on Save, what exact message and UI behaviour is expected (inline error on Email, banner, or a duplicates panel), and does the same block apply to Clone and Edit (changing email to an existing one)?",
+   "[Scope][Blocking] Explore found Lead is not a separate module: 'Lead' is a Contact with Lifecycle stage Lead (new contacts default to Lifecycle stage Lead, Status New), and the list column 'Status' (e.g. Qualified) differs from 'Lifecycle stage'. Confirm test cases should treat Lead = Contact with Lifecycle stage Lead and verify via the Lifecycle stage field, not Status.",
+   "[Scope][Blocking] Under full-run, may tests create, edit and delete contacts live, restricted to contacts the run itself creates (the 2 pre-existing AgentTest contacts are never touched), and may bulk actions, clone-save and lifecycle-stage save be executed live on run-created contacts only?",
+   "[Edge Case][Nice-to-have] Should validation-only negative cases (empty Email, 'not-an-email', over-length fields, invalid mobile format) be run live as non-mutating checks, and what are the expected field length limits and mobile format rules?",
+   "[Behavior][Nice-to-have] Delete shows 'You can retrieve it from the Recycle Bin. It remains there for 90 days.': should tests also verify the deleted contact appears in the Recycle Bin view and can be restored (and is restore permitted on run-created contacts)?",
+   "[Behavior][Nice-to-have] What should search, Filter by, and column sort be expected to do (search fields matched, filter operators, sort asc/desc persistence), given application of these was not exercised during exploration?",
+   "[Behavior][Nice-to-have] What should happen on Save for the note, task, meeting, call log and email forms opened from a contact (given earlier answers: call log Outcome mandatory, meeting save sends no invitations), and may they be submitted live on run-created contacts?",
+   "[Edge Case][Nice-to-have] Does the contact edit/clone flow allow clearing Job title or other optional fields, and does Clone pre-fill and then require a unique Email before Save?"
+  ]
+ },
+ "conversations": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Scope] [Blocking] The Email Templates list contains 9 system-seeded Public templates; under full-run may edit-save and delete tests touch only templates the run itself created (ZZ-prefixed), never the seeded ones?",
+   "[Behavior] [Nice-to-have] Saving a new email template with a typed name showed no success toast yet the template persisted - is a success toast expected, or is the silent save acceptable for assertions (assert on list row instead)?",
+   "[Edge Case] [Nice-to-have] What are the validation rules for email template Name and Body beyond the empty-save message (max name length, special characters/HTML, required Subject, leading/trailing spaces)?",
+   "[Scope] [Nice-to-have] Confirm out of scope for live execution and test generation: sending/replying/forwarding emails, template Share, Connect Gmail/Outlook, Add Team Inbox, Set up SMS, Power Dialer and Chat Inbox (composer and reply are open-only, never sent).",
+   "[Behavior] [Nice-to-have] Not exercised by explore: template Clone, Edit-save, list search box, Use template, Insert fields and Attach in the editor - should test cases cover them as expected-behavior cases (and what is expected, e.g. Clone creates a copy with a name suffix), or leave them out?"
+  ]
+ },
+ "dashboards": {
+  "round": 1,
+  "status": "done",
+  "open": []
+ },
+ "deals": {
+  "round": 2,
+  "status": "awaiting-user",
+  "open": [
+   "[Behavior][Blocking] The Forecast, Mark Won/kanban Won-Lost drop, Commit, and field-limit answers were a bare \"Yes\" ..."
+  ]
+ },
+ "sales-activities": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Scope] [Blocking] Explore found no standalone Tasks/Meetings/Calls list page and substituted the Activities Dashboard plus Admin Settings > Sales Activities pages and /crm/sales/activity-goals (not in discovery); should test cases target exactly these pages as the module scope?",
+   "[Behavior] [Blocking] In full-run, may tests save Meetings, Call logs and custom activities live by first creating a throwaway ZZ-prefixed contact or deal as the Related to record (deleted afterwards, never touching pre-existing AgentTest records)?",
+   "[Behavior] [Blocking] Send SMS shows 'No provider connected'; should the SMS case assert only that blocked state (and be flagged for later when a provider exists), with no live send test?",
+   "[Edge Case] [Nice-to-have] Are duplicate custom activity type names rejected, and what are the name length limits and the maximum number of custom activity types?",
+   "[Edge Case] [Nice-to-have] For tasks, should a past due date be accepted, and what are the title length limits (empty title shows \"can't be empty\")?",
+   "[Edge Case] [Nice-to-have] For activity goals, what validation applies to target (zero, negative, non-numeric), and are duplicate goals for the same user, activity and period blocked?",
+   "[Scope] [Nice-to-have] Should Edit goal/Clone goal, Add outcome/Snooze for tasks, custom field Add and field dependency create be in scope for test cases even though explore did not exercise them?"
+  ]
+ },
+ "sales-sequences": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Scope][Blocking] Explore-agent reached Sales Sequences via the Conversations tab > Sales Sequences (/crm/sales/sales-sequences/filters) rather than the Quick-create (+) path listed in discovery; should test cases use the Conversations > Sales Sequences path as the canonical entry point?",
+   "[Edge Case][Nice-to-have] What validation applies to the sequence name (empty, duplicate name, maximum length) on Save: is a duplicate name blocked, auto-suffixed, or allowed?",
+   "[Behavior][Nice-to-have] Under full-run, may tests use 'Save and start' or the status toggle to activate a task-only sequence that has no enrolled contacts, or must every created sequence remain Inactive?",
+   "[Behavior][Nice-to-have] When a cloned sequence is saved, is the expected result an Inactive sequence named '<original> - Copy' with the same steps, and may clone-save be executed live on a sequence the run created itself (with the copy deleted afterwards)?",
+   "[Behavior][Nice-to-have] Should Share be tested by saving each option (Just me, Everyone, Selected users/teams/territories) on a run-created sequence, and what is the expected visibility result for another user; is a second user available?",
+   "[Behavior][Nice-to-have] Is Edit (rename, change steps, change exit rules) and Delete in scope for run-created sequences, and what confirmation and post-delete behavior (removed from list, Trash/recoverable or permanent) is expected?",
+   "[Scope][Nice-to-have] Are the other step types (email, email reminder, LinkedIn task, call reminder, SMS), Accounts-type sequences, and Classic/Smart configuration in scope for test cases, given SMS/email may depend on unconfigured providers or mailboxes?"
+  ]
+ },
+ "settings-data-model": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Scope][Blocking] Feature-mapping caveat: Tags was found under Admin Settings > Account Settings > Tags (not under the Leads, Contacts & Accounts group), and Contacts/Accounts 'forms' pages are field/layout editors -- should test cases treat Account Settings > Tags and these field/layout editors as the intended 'tags' and 'contact/account fields' flows?",
+   "[Scope][Blocking] Under full-run, may tests create and then delete a custom module (ZZ-Explore, internal name cm_ prefix), and does Freshsales allow deleting a custom module afterwards (or is it permanent, which would leave tenant clutter)?",
+   "[Scope][Blocking] Under full-run, may tests build and save a Web Form (and a LinkedIn Lead Gen form, which needs a LinkedIn connection) and delete them afterwards, given web forms are public-facing and none exist yet?",
+   "[Edge Case][Nice-to-have] For the Add field form (required: Field label, Internal name, Field type), what should happen on empty label, duplicate label, duplicate or invalid-character internal name, and a name clashing with a system field -- expected message text if known?",
+   "[Edge Case][Nice-to-have] Are negative/validation-only submissions (e.g. empty required fields in the Add field, Add module, Add lifecycle stage or Add tag forms, expected to be blocked before any save) permitted to run live in every mode?",
+   "[Behavior][Nice-to-have] For lifecycle stages, may tests toggle, reorder, add or delete stages and the two auto-rules (deal added -> Sales Qualified Lead; deal won -> Customer), or must the seeded stages and rules stay untouched, with only run-created ZZ-Explore stages modified?",
+   "[Behavior][Nice-to-have] For Contact Scoring, may tests add positive/negative signals and change the automation threshold (currently 70 -> tag 'Likely to buy' and/or stage change), or is this view-only?"
+  ]
+ },
+ "settings-pipelines-forecasting": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Scope] [Blocking] Under full-run, may tests live-create ZZ-prefixed pipelines, deal fields, field dependencies, forecast categories, sales activity types and activity goals and delete only those they created, including negative/validation-only submissions (e.g. empty name, duplicate name) run live?",
+   "[Behavior] [Blocking] Can the 4 system-defined field dependencies (Pipeline->Deal stage, Deal stage->Lost reason, Deal stage->Closed date, Forecast category->Expected close date) be edited, disabled or deleted, and what validation applies when creating a custom dependency (same parent and child field, duplicate, choice mapping required)?",
+   "[Behavior] [Nice-to-have] What validation applies when adding a forecast category (duplicate name, max count, required fields), and can the default category (Best-case) or built-in Committed be edited or deleted?",
+   "[Edge Case] [Nice-to-have] Can the Default Pipeline or its stages be renamed, reordered or deleted, and what happens to deals in a stage that is deleted?",
+   "[Behavior] [Nice-to-have] What validation applies on Create sales activity (duplicate name, required icon or outcomes, max custom types) and are built-in types (Email, Reminder, SMS, Chat) non-editable?",
+   "[Behavior] [Blocking] How are Activity Goals created (Add goal inputs such as activity type, target, period, owner or team) and what validation applies, given none exist (My goals (0)) and the page lives outside the settings shell?",
+   "[Scope] [Nice-to-have] Is the Product Catalog tile in the Deals & Pipelines group in scope here or owned by the products module?"
+  ]
+ },
+ "settings-teams-territories": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Scope][Blocking] Under full-run, may tests create and then delete run-created ZZ-Explore-prefixed roles, territories, teams and auto-assignment rules in this tenant (deletes limited to entities the run created)?",
+   "[Behavior][Blocking] For Add user (invites are out of scope), should tests only open the form and verify validation-blocked submits (empty or invalid email) and then cancel, never saving a valid user?",
+   "[Behavior][Blocking] May a created auto-assignment rule be set to Enable (which would route live new contacts), or must tests only use Save as draft?",
+   "[Behavior][Nice-to-have] Create role requires a name and a role to clone: should tests verify the cloned permission matrix matches the source, and is a duplicate role name rejected?",
+   "[Edge Case][Nice-to-have] A team needs at least one member and the tenant has only one active user (Rakesh M): is adding the admin as sole member the expected test path, and are duplicate team or territory names rejected?",
+   "[Behavior][Nice-to-have] Territory hierarchy and Auto-assign territory to records in Advanced settings are tenant-wide toggles: may tests toggle them (and restore the original state), and does parent/child territory creation depend on the hierarchy setting being on?",
+   "[Scope][Nice-to-have] Should tests cover the Deactivated/All users tabs, org chart, filters and the Sales Manager/Administrator/Restricted User permission matrices (not explored), or only the 10 flows in flows/index.json?"
+  ]
+ },
+ "products-quotes": {
+  "round": 1,
+  "status": "awaiting-user",
+  "open": [
+   "[Scope] [Nice-to-have] Why do Quotes have no left-nav entry, and is the Quotes list (/crm/sales/cpq_documents/view/...) intended to be reachable only via URL/+ menu?",
+   "[Scope] [Blocking] Feature-mapping caveat: quotes require an existing Deal and Primary contact (no standalone quote creation, and no left-nav Quotes entry); for quote create/delete tests, may the run create its own throwaway Deal and Contact as prerequisites (deleted at cleanup), or must a specific pre-existing deal be used (read-only, never modified)?",
+   "[Scope] [Blocking] Should test cases cover the quote flows explore-agent did not reach (Edit quote overlay, Clone quote, Preview, Save PDF, quote stage transitions, Add or edit products Save), given Save would alter the linked deal amount, and if yes should they use only a run-created deal so no pre-existing deal is touched?",
+   "[Scope] [Blocking] Send to customer and Import products would email real addresses or bulk-write data: should these be generated as test cases but excluded from live execution, or executed live with a designated test email/CSV (please name the address/file)?",
+   "[Behavior] [Blocking] Create template: with valid Template name and Quote type, should test cases create a real document template (run-created, then deleted), and what are the expected validation messages for blank Template name and blank Quote type?",
+   "[Behavior] [Blocking] Create product validation: what are the expected rules and messages for required fields (Name, Pricing type, Unit price on clone), negative or non-numeric unit price, maximum Name length, and Product code/SKU uniqueness?",
+   "[Behavior] [Nice-to-have] Subscription pricing: should test cases cover creating a Subscription-type product (billing cycle/term fields) and multi-currency prices, or only One-time pricing?",
+   "[Behavior] [Nice-to-have] CPQ Settings Pricing radios (One-time/Subscription/Both) appeared disabled for this account: is that expected (plan/permission restriction), and should tests only assert the read-only state rather than changing settings?",
+   "[Edge Case] [Nice-to-have] After deleting a product or quote (moved to Recycle Bin for 90 days), should tests verify it appears in the Recycle Bin and can be restored, or is verifying disappearance from the list sufficient?",
+   "[Edge Case] [Nice-to-have] Should tests include a product that is already used on a quote being edited, deactivated (Active off) or deleted, and what behaviour is expected for the quote?",
+   "[Scope] [Nice-to-have] Are Quotes list Filters, Edit columns, sorting, Manage Quote types, Customize fields and Products category filter/bulk actions in scope for test cases despite not being explored?"
+  ]
+ }
+}

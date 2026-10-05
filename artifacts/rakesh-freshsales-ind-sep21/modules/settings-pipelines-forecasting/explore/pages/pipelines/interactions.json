@@ -1,0 +1,22 @@
+[
+ {
+  "label": "Create pipeline (header button and card)",
+  "role": "button",
+  "kind": "opens-overlay",
+  "overlay": "Create pipeline modal (Pipeline name*, Set as default pipeline, stages+probability, Add deal stage, Closing stages Won/Lost, summarize by Deal value, Deals go stale after* days); Cancel/Save"
+ },
+ {
+  "label": "Pipeline card edit/delete icon buttons (unlabelled)",
+  "role": "button",
+  "kind": "mutates",
+  "skipped": true,
+  "reason": "existing tenant pipeline; not opened"
+ },
+ {
+  "label": "Help links (crmsupport.freshworks.com), Interactive tour (storylane)",
+  "role": "link",
+  "kind": "external",
+  "skipped": true,
+  "reason": "external domain"
+ }
+]

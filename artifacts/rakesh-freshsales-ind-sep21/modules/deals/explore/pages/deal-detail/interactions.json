@@ -1,0 +1,86 @@
+[
+ {
+  "label": "Commit deal",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "modal: This month / Next month / 31 Dec 2026 / specific date; Commit -> toast 'You committed the deal.' sets Forecast category Committed"
+ },
+ {
+  "label": "Call log",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Call type, Outcome, Associate, Notes"
+ },
+ {
+  "label": "Task",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Add task: Title*, Description, Task type, Due date*, Outcome, Owner, Related to, Collaborators"
+ },
+ {
+  "label": "Meeting",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Add meeting: Title, From/To, All day, TZ, video conf, Location, Description, attendees"
+ },
+ {
+  "label": "Sales activities",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Add task, Add meeting, Add call log, Send SMS, Create custom sales activity"
+ },
+ {
+  "label": "Add product",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Add or edit products slide-over"
+ },
+ {
+  "label": "Discussions / +",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": ""
+ },
+ {
+  "label": "kebab",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Edit, Clone, Delete, Remove commit, Forget"
+ },
+ {
+  "label": "stage bar New..Negotiation",
+  "role": "button",
+  "kind": "mutates",
+  "detail": "click stage -> toast 'Deal updated.'"
+ },
+ {
+  "label": "Won/Lost dropdown",
+  "role": "button",
+  "kind": "opens-overlay",
+  "detail": "Won / Lost -> 'Add more details' modal (Deal stage, Lost reason, Closed date)"
+ },
+ {
+  "label": "Overview nav: Deal details, Activities (Notes, Tasks, Meetings), Deal team, Contacts, Conversations, Products, Quotes, Files, Freddy AI insights, Apps in marketplace",
+  "role": "tab",
+  "kind": "navigates",
+  "detail": "?tab=... same page"
+ },
+ {
+  "label": "Search and edit all fields",
+  "role": "link",
+  "kind": "opens-overlay",
+  "detail": ""
+ },
+ {
+  "label": "Customize this section / Manage fields",
+  "role": "link",
+  "kind": "navigates",
+  "detail": "admin field settings (not followed)"
+ },
+ {
+  "label": "Show empty fields",
+  "role": "toggle",
+  "kind": "toggles",
+  "detail": ""
+ }
+]
