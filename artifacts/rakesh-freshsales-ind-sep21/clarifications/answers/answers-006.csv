@@ -1,0 +1,2 @@
+Module,Question,How to navigate the product to understand the question flow,Answer by the user
+settings-data-model,"[Behavior][Blocking] What are the exact plan limits (max custom fields per module, custom modules, lifecycle stages, web forms) for this trial tenant, per the Freshsales knowledge base, and what message appears when exceeded?",Admin Settings > Contacts > Add field (flow view-add-contact-field-options); then search the Freshsales support knowledge base for field/module limits.,
