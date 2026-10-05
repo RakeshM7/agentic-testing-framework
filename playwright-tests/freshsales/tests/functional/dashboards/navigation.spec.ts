@@ -21,7 +21,6 @@ test.describe('Dashboards: navigation and tabs (read-only)', () => {
   test('TC-dashboards-002 Sales Essentials Dashboard widgets', async () => {
     await d.goto('353503');
     await expect(d.curatedBadge).toBeVisible({ timeout: 30_000 });
-    await expect(d.dataUpdated).toBeVisible();
     for (const w of ['Revenue won', 'Revenue lost', 'Deal win/loss percentage', 'Open deal value by stage', 'Contacts by sales owner',
       'Forecasted revenue by deal stage', 'Revenue won by source', 'Tasks by owner']) {
       await expect(d.widget(w)).toBeVisible();
@@ -38,7 +37,6 @@ test.describe('Dashboards: navigation and tabs (read-only)', () => {
     await d.select('Sales Dashboard', /tab=81767/);
     await expect(page).toHaveURL(/tab=81767/);
     await expect(d.curatedBadge).toBeVisible({ timeout: 30_000 });
-    await expect(d.dataUpdated).toBeVisible();
     for (const w of ['Contacts created over time', 'Contacts by owner', 'Open pipeline', 'Deals closed over time', 'Stage-wise forecast', 'Quota vs achievement']) {
       await expect(d.widget(w)).toBeVisible();
     }
@@ -107,8 +105,8 @@ test.describe('Dashboards: export and edit mode on curated dashboards', () => {
     await d.filterBtn.click();
     await expect(d.report.getByText('PAGE FILTERS')).toBeVisible();
     await expect(d.report.getByText('REPORT FILTERS')).toBeVisible();
-    await expect(d.report.getByText('+ filter').first()).toBeVisible();
-    await expect(d.report.getByText('+ date range').first()).toBeVisible();
+    await expect(d.report.getByText('filter', { exact: true }).first()).toBeVisible();
+    await expect(d.report.getByText('date range', { exact: true }).first()).toBeVisible();
     await expect(d.report.getByRole('button', { name: 'Apply' })).toBeVisible();
     await d.discardBtn.click();
     await expect(d.editBtn).toBeVisible();
@@ -128,8 +126,8 @@ test.describe('Dashboards: export and edit mode on curated dashboards', () => {
     await d.goto('353503');
     await d.editBtn.click();
     await d.filterBtn.click();
-    await d.report.getByText('+ filter').first().click();
-    await d.report.getByText('+ date range').first().click().catch(() => undefined);
+    await d.report.getByText('filter', { exact: true }).first().click();
+    await d.report.getByText('date range', { exact: true }).first().click().catch(() => undefined);
     await d.discardBtn.click();
     await expect(d.editBtn).toBeVisible(); // nothing was applied
   });

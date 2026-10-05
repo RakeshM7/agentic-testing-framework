@@ -28,7 +28,7 @@ export class DashboardsPage extends BasePage {
 
   // Activities dashboard (main document)
   get configureWidgets(): Locator { return this.page.getByRole('button', { name: 'Configure widgets' }); }
-  get activityTypeBtn(): Locator { return this.page.getByRole('button', { name: /activities$/ }); }
+  get activityTypeBtn(): Locator { return this.page.getByRole('button', { name: /\+ \d+ activit(y|ies)$/ }); }
   widgetTitle(title: string): Locator { return this.page.getByRole('heading', { name: title, level: 5, exact: true }); }
   get visibleCols(): Locator { return this.page.locator('[data-test-visible-col]'); }
   visibleCol(id: string): Locator { return this.page.locator(`[data-test-visible-col="${id}"]`); }
