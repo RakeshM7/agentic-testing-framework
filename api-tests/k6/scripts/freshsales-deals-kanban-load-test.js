@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 import { requireBaseUrl } from './lib/guard.js';
+import { loadSessionCookie } from './lib/freshsales-session.js';
 
 /**
  * Load profile for the Deals Kanban board's 3-call load unit:
@@ -27,7 +28,8 @@ import { requireBaseUrl } from './lib/guard.js';
  */
 
 const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
-const SESSION_COOKIE = __ENV.FRESHSALES_SESSION_COOKIE || '';
+const RAW = __ENV.FRESHSALES_SESSION_COOKIE ? '' : open(__ENV.FRESHSALES_SESSION_STATE_FILE || '../../../playwright-tests/freshsales/.auth/freshsales-handoff.json');
+const SESSION_COOKIE = loadSessionCookie(() => RAW);
 // Tenant-specific constants observed in explore-agent's captures (deals-kanban/network-requests.json)
 const DEALS_VIEW_ID = __ENV.FRESHSALES_DEALS_VIEW_ID || '402015942744';
 
@@ -78,7 +80,7 @@ export function loadKanbanBoard() {
       { headers: { ...headers(), 'Content-Type': 'application/json' }, tags: { name: 'POST /crm/sales/deals/kanban_funnels' } }
     );
     const aggregatedRes = http.get(
-      `${BASE_URL}/crm/sales/deals/view/${DEALS_VIEW_ID}/aggregated_data?group_by_type=deal_stage_id&include=lookup_information&load_as_per_kanban_page_config=true&page=1&per_page=10&sort=updated_at&sort_type=desc`,
+      `${BASE_URL}/crm/sales/deals/view/${DEALS_VIEW_ID}/aggregated_data?group_by_type=deal_stage_id&group_by_value[]=402001912038&group_by_value[]=402001912039&include=lookup_information&load_as_per_kanban_page_config=true&page=1&per_page=10&sort=updated_at&sort_type=desc`,
       { headers: headers(), tags: { name: 'GET /crm/sales/deals/view/:id/aggregated_data' } }
     );
 

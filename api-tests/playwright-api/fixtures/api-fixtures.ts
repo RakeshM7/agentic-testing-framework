@@ -7,7 +7,7 @@ import { guardedTest } from './mutationGuard';
  * GUARDRAIL: the only non-GET HTTP call anywhere in this suite is the single
  * `POST /auth/login` performed by `authToken` below. It authenticates the
  * pre-existing, already-verified EVENTHUB_EMAIL / EVENTHUB_PASSWORD dogfood
- * account (credentials come from playwright-tests/.env via playwright.config.ts) --
+ * account (credentials come from playwright-tests/eventhub/.env via playwright.config.ts) --
  * it does not create or mutate any business data (no new user, no booking, no
  * event). It exists solely so the GET-only auth/contract-discrepancy tests
  * (GET /auth/me, and the "does GET /events or /bookings actually enforce a
@@ -35,7 +35,7 @@ export const test = guardedTest.extend<{}, ApiFixtures>({
       if (!email || !password) {
         throw new Error(
           'EVENTHUB_EMAIL / EVENTHUB_PASSWORD not found in environment. ' +
-            'Expected them to be loaded from playwright-tests/.env by playwright.config.ts.'
+            'Expected them to be loaded from playwright-tests/eventhub/.env by playwright.config.ts.'
         );
       }
 

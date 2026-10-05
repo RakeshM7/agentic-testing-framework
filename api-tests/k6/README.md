@@ -134,3 +134,6 @@ No script has a default target. `scripts/lib/guard.js` requires `BASE_URL` and r
 `K6_ALLOWED_HOSTS` (comma-separated; localhost/127.0.0.1 always allowed). Static validation therefore needs a
 dummy value: `k6 inspect -e BASE_URL=http://localhost:3001 scripts/<file>.js`. Live runs additionally need
 `authorizations.mode: full-run` (enforced by `.claude/hooks/guard-bash.mjs` for Claude Code sessions).
+
+### Freshsales run update (2026-10-04, readonly in practice)
+Both Freshsales scripts were only statically validated with the inspect subcommand (`-e BASE_URL=... -e K6_ALLOWED_HOSTS=rakesh-freshsales-ind-sep21.myfreshworks.com`); NOT executed live (the shell hook requires `AUTHORIZATIONS_MODE=full-run` in the launch environment for live load runs). Scripts now read the session from `playwright-tests/freshsales/.auth/freshsales-handoff.json` (override with `-e FRESHSALES_SESSION_STATE_FILE`) and the contacts script now sends the required `segment_id`.

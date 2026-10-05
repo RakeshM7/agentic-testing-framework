@@ -25,7 +25,7 @@ test.describe('POST /auth/login', () => {
   }) => {
     const email = process.env.EVENTHUB_EMAIL;
     const password = process.env.EVENTHUB_PASSWORD;
-    test.skip(!email || !password, 'EVENTHUB_EMAIL / EVENTHUB_PASSWORD not set in playwright-tests/.env');
+    test.skip(!email || !password, 'EVENTHUB_EMAIL / EVENTHUB_PASSWORD not set in playwright-tests/eventhub/.env');
 
     const response = await request.post('/auth/login', { data: { email, password } });
     expect(response.status()).toBe(200);
@@ -57,7 +57,7 @@ test.describe('POST /auth/login', () => {
 
   test('Negative: correct email, deliberately wrong password for the dogfood account', async ({ request }) => {
     const email = process.env.EVENTHUB_EMAIL;
-    test.skip(!email, 'EVENTHUB_EMAIL not set in playwright-tests/.env');
+    test.skip(!email, 'EVENTHUB_EMAIL not set in playwright-tests/eventhub/.env');
 
     const response = await request.post('/auth/login', {
       data: { email, password: 'definitely-the-wrong-password-999!' },
