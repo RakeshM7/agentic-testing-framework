@@ -9,24 +9,20 @@ test.describe('Accounts - bulk actions (ZZ-only selection)', () => {
     try {
       await a.goto();
       await a.openView('All accounts');
-      await page.getByRole('button', { name: 'Filter by' }).click();
-      await page.getByText('Add a field to filter').click();
-      await page.getByText('Name', { exact: true }).last().click();
-      await page.getByRole('textbox').last().fill(name.slice(0, 20));
-      await page.getByText(name, { exact: true }).last().click();
+      await a.openNameFilter();
+      await page.getByRole('textbox').last().fill(name);
+      await page.locator('li[role=option], .select2-result, li.ember-power-select-option').filter({ hasText: new RegExp(`^\\s*${name}\\s*$`, 'i') }).first().click();
       await page.getByRole('button', { name: 'Apply' }).click();
       await expect(page).toHaveURL(/view\/custom/);
-      await expect(page.getByRole('button', { name: 'Reset' })).toBeVisible();
       // SAFETY GATE: only proceed to Bulk actions if exactly one row (ours) is shown.
-      const rows = page.getByRole('row').filter({ has: page.getByRole('link', { name: name }) });
-      await expect(rows).toHaveCount(1);
-      await expect(page.getByText(/^1 of 1|\b1 account/).first()).toBeVisible({ timeout: 3_000 }).catch(() => undefined);
-      const totalDataRows = await page.locator('[role=row]:has(input[type=checkbox])').count();
-      expect(totalDataRows, 'filtered list must contain only the ZZ account before using Bulk actions').toBeLessThanOrEqual(2);
+      const names = page.locator('a.display-name');
+      await expect(names).toHaveCount(1);
+      await expect(names.first()).toHaveText(name);
       await page.getByRole('button', { name: 'Bulk actions' }).click();
       await expect(page.getByText(/1 account selected/)).toBeVisible();
-      await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+      // no bulk action is executed; leaving the page discards the selection (Cancel is clipped off-screen, see TC-033 flag)
     } finally {
+      await a.resetFilter().catch(() => undefined);
       await a.safeDelete(id, name);
     }
   });

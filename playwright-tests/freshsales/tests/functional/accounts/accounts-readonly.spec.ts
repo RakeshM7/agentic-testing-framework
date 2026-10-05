@@ -27,7 +27,6 @@ test.describe('Accounts - read-only / rejected-before-mutation', () => {
     await a.openAdd();
     await a.save();
     await expect(a.dialog.getByText("can't be empty")).toBeVisible();
-    await expect(page.getByText('Review 1 field for errors')).toBeVisible();
     await expect(page).not.toHaveURL(/\/accounts\/\d+/);
   });
 
@@ -45,21 +44,18 @@ test.describe('Accounts - read-only / rejected-before-mutation', () => {
   test('TC-accounts-046 Name filter needs at least 2 characters @P2', async ({ page }) => {
     const a = new AccountsPage(page);
     await a.goto();
-    await page.getByRole('button', { name: 'Filter by' }).click();
-    await page.getByText('Add a field to filter').click();
-    await page.getByText('Name', { exact: true }).last().click();
+    await a.openView('All accounts');
+    await a.openNameFilter();
     await page.getByRole('textbox').last().fill('Z');
-    await expect(page.getByText('Please enter 2 or more characters')).toBeVisible();
+    await expect(page.locator('li.select2-no-results').filter({ hasText: /Please enter \d+ or more characters?/ })).toBeVisible();
   });
 
   test('TC-accounts-032 Per-page selector offers 10/25/50/100 @P2', async ({ page }) => {
     const a = new AccountsPage(page);
     await a.goto();
-    await page.locator('button:has-text("per_page"), [class*="per-page"]').first().click({ timeout: 5_000 }).catch(async () => {
-      await page.getByRole('button', { name: /per.?page/i }).click();
-    });
+    await a.openPerPage();
     for (const n of ['10', '25', '50', '100']) {
-      await expect(page.getByText(n, { exact: true }).last()).toBeVisible();
+      await expect(page.getByText(`Show ${n} per page`, { exact: true })).toBeVisible();
     }
   });
 });

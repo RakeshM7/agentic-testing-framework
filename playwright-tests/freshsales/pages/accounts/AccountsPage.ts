@@ -10,11 +10,11 @@ export const ZZ_RUN = `${Date.now()}`.slice(-8);
 
 export interface AccountEntity { type: 'account'; identifier: string; url: string; createdAt: string; note: string; deleted?: boolean }
 
-export function recordAccount(e: Omit<AccountEntity, 'type' | 'createdAt'> & { note?: string }) {
+export function recordAccount(e: Omit<AccountEntity, 'type' | 'createdAt' | 'note'> & { note?: string }) {
   fs.mkdirSync(path.dirname(ENTITIES_FILE), { recursive: true });
   const list: AccountEntity[] = fs.existsSync(ENTITIES_FILE) ? JSON.parse(fs.readFileSync(ENTITIES_FILE, 'utf-8')) : [];
   const i = list.findIndex((x) => x.identifier === e.identifier);
-  const rec = { type: 'account' as const, createdAt: new Date().toISOString(), note: 'created by accounts track', ...e };
+  const rec = { type: 'account' as const, createdAt: new Date().toISOString(), ...e, note: e.note ?? 'created by accounts track' };
   if (i >= 0) list[i] = { ...list[i], ...rec, createdAt: list[i].createdAt };
   else list.push(rec);
   fs.writeFileSync(ENTITIES_FILE, JSON.stringify(list, null, 2) + '\n');
@@ -112,5 +112,29 @@ export class AccountsPage extends BasePage {
   async openView(label: string) {
     await this.page.getByText(/\d+ more\.\.\./).first().click();
     await this.page.getByText(label, { exact: true }).first().click();
+  }
+
+  /** The filter trigger reads "Filter by" or "N filter(s) applied" (it is not a role=button). */
+  async openFilter() {
+    await this.page.getByText(/^(Filter by|\d+ filters? applied)$/).first().click();
+  }
+
+  /** Removes any persisted filter so tests never depend on state left by an earlier test. */
+  async resetFilter() {
+    const reset = this.page.getByRole('button', { name: 'Reset' });
+    if (await reset.isVisible().catch(() => false)) await reset.click().catch(() => undefined);
+  }
+
+  async openPerPage() {
+    await this.page.getByText(/^Showing \d+ per page$/).click();
+  }
+
+  /** Opens the filter drawer and picks the Name field (the field combobox is auto-opened and focused). */
+  async openNameFilter() {
+    await this.openFilter();
+    const combo = this.page.getByPlaceholder('Add a field to filter');
+    if (!(await combo.isVisible({ timeout: 2_000 }).catch(() => false))) await this.page.getByText('Add filter', { exact: true }).click();
+    await combo.fill('Name');
+    await this.page.getByRole('option', { name: 'Name', exact: true }).click();
   }
 }
