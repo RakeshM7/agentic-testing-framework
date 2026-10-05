@@ -28,3 +28,8 @@ export function isSACreated(type: string, identifier: string): boolean {
 }
 
 export const RUN = `${Date.now()}`;
+
+/** Entities of a type this track created and has not yet deleted (used for orphan cleanup after a cut-off run). */
+export function pendingSA(type: string): string[] {
+  return read().filter((x) => x.type === type && !x.deleted).map((x) => x.identifier);
+}

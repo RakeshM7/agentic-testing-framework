@@ -50,8 +50,13 @@ test.describe.serial('Sales activities: call logs and custom activities against 
     await a.pickRecord(a.dialog.getByRole('button', { name: 'Enter last name' }), LAST, `ZZSA ${LAST}`);
     await expect(a.dialog.getByRole('button', { name: new RegExp(`ZZSA ${LAST}`) })).toBeVisible();
     await expect(a.dialog.getByRole('button', { name: /Interested/ })).toBeVisible();
-    await a.saveBtn(a.dialog).click();
-    await expect(a.dialog).toHaveCount(0);
+    // The first click only blurs the Name combobox in this form; retry until the POST is actually issued (never double-submits).
+    const saved = page.waitForResponse(r => r.url().includes('/crm/sales/phone_calls') && r.request().method() === 'POST');
+    await expect(async () => {
+      if (await a.dialog.count()) await a.saveBtn(a.dialog).click({ timeout: 3000 });
+      await expect(a.dialog).toHaveCount(0, { timeout: 2500 });
+    }).toPass({ timeout: 15000 });
+    expect((await saved).status()).toBe(201);
   });
 
   test('TC-sales-activities-029 Custom activity with empty form shows Title and Related to errors', async () => {
@@ -75,7 +80,8 @@ test.describe.serial('Sales activities: call logs and custom activities against 
     await a.gotoDashboard();
     await a.openQuickCreate(`Add ${TYPE}`);
     await a.dialog.getByRole('textbox', { name: 'Title *' }).fill('ZZ SA Custom Activity');
-    await a.pickRecord(a.dialog.getByText('Related to *').locator('xpath=following::button[1]'), LAST, `ZZSA ${LAST}`);
+    // Related to is the first power-select multi-input in the form (Collaborators is the second).
+    await a.pickRecord(a.dialog.locator('input.ember-power-select-trigger-multiple-input').first(), LAST, `ZZSA ${LAST}`);
     await a.saveBtn(a.dialog).click();
     await expect(a.dialog).toHaveCount(0);
   });

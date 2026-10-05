@@ -23,6 +23,7 @@ export class ActivitiesPage extends BasePage {
   }
   get dueFilter(): Locator { return this.page.getByRole('button', { name: /\(\w{3} \d{2}\)|^(Next|Last) \d+ days|^Custom period/ }); }
   async filterDue(option: string) {
+    if ((await this.dueFilter.innerText()).includes(option)) return; // already selected
     await this.dueFilter.click();
     await this.page.getByText(option, { exact: true }).click();
     await expect(this.dueFilter).toContainText(option);
@@ -43,6 +44,7 @@ export class ActivitiesPage extends BasePage {
   async deleteTask(title: string) {
     if (!isSACreated('task', title)) throw new Error(`Refusing to delete task "${title}": not created by this suite`);
     const row = this.taskRow(title);
+    await row.scrollIntoViewIfNeeded();
     await row.getByRole('button').last().click();
     await this.page.getByText('Delete', { exact: true }).last().click();
     await expect(this.dialog.getByText('Delete this task?')).toBeVisible();

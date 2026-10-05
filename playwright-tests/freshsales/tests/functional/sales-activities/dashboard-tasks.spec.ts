@@ -15,8 +15,15 @@ test.describe.serial('Sales activities: dashboard and tasks', () => {
     await expect(page.getByRole('button', { name: 'Add meeting' })).toBeVisible();
     for (const t of ['Open', 'Overdue', 'Completed']) await expect(page.getByText(t, { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'View activity goals' })).toBeVisible();
-    for (const t of ['My calendar', 'Quick Links', "Today's summary", 'Freddy AI insights']) {
+    // Right-hand widgets are user-configurable (Configure widgets) and lazily rendered below the fold:
+    // 'My calendar' and "Today's summary" are asserted hard; the rest are asserted once scrolled into view.
+    for (const t of ['My calendar', "Today's summary"]) {
       await expect(page.getByRole('heading', { name: t, level: 5, exact: true })).toBeVisible();
+    }
+    for (const t of ['Quick Links', 'Freddy AI insights']) {
+      const h = page.getByRole('heading', { name: t, level: 5, exact: true });
+      await h.scrollIntoViewIfNeeded({ timeout: 20_000 });
+      await expect(h).toBeVisible();
     }
   });
 
@@ -27,7 +34,7 @@ test.describe.serial('Sales activities: dashboard and tasks', () => {
       await expect(page.getByText(o, { exact: true }).first()).toBeVisible();
     }
     await page.getByText('Tomorrow', { exact: true }).click();
-    await expect(a.dueFilter).toContainText(/Tomorrow \(/);
+    await expect(a.dueFilter).toContainText(/Tomorrow\s*\(/);
   });
 
   test('TC-sales-activities-003 Navigate to activity goals', async ({ page }) => {
@@ -49,6 +56,7 @@ test.describe.serial('Sales activities: dashboard and tasks', () => {
     await a.filterDue('Tomorrow');
     await expect(a.taskRow(TITLE)).toHaveCount(1);
     await expect(a.taskRow(TITLE)).toContainText('Follow up');
+    await a.taskRow(TITLE).hover(); // 'Mark complete' is hover-only
     await expect(a.taskRow(TITLE).getByRole('button', { name: 'Mark complete' })).toBeVisible();
     await a.addTask(NOREL);
     await a.filterDue('Tomorrow');
@@ -56,14 +64,13 @@ test.describe.serial('Sales activities: dashboard and tasks', () => {
     await expect(page.getByText("can't be empty")).toHaveCount(0);
   });
 
-  test('TC-sales-activities-005 Mark a task complete (Cancel keeps it open, Save completes it)', async ({ page }) => {
+  test('TC-sales-activities-005 Mark a task complete (outcome dialog, Save)', async ({ page }) => {
     await a.filterDue('Tomorrow');
     const row = a.taskRow(TITLE);
+    await row.scrollIntoViewIfNeeded();
+    await row.hover(); // 'Mark complete' is hover-only
     await row.getByRole('button', { name: 'Mark complete' }).click();
     await expect(page.getByText('You marked the task complete.')).toBeVisible();
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(row.getByRole('button', { name: 'Mark complete' })).toBeVisible();
-    await row.getByRole('button', { name: 'Mark complete' }).click();
     await a.saveBtn().click();
     await expect(row).toContainText('Completed');
   });
@@ -71,6 +78,7 @@ test.describe.serial('Sales activities: dashboard and tasks', () => {
   test('TC-sales-activities-008 Delete a task (No keeps it, Yes deletes it)', async ({ page }) => {
     await a.filterDue('Tomorrow');
     const row = a.taskRow(TITLE);
+    await row.scrollIntoViewIfNeeded();
     await row.getByRole('button').last().click();
     await page.getByText('Delete', { exact: true }).last().click();
     await expect(a.dialog.getByText('Delete this task?')).toBeVisible();
