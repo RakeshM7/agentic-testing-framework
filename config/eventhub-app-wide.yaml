@@ -57,7 +57,7 @@ feature:
 authorizations:
   mode: readonly  # readonly (default) | full-run — see config/run-config.example.yaml for what each implies
   authenticated_crawl: true
-  credentials_file: playwright-tests/.env
+  credentials_file: playwright-tests/eventhub/.env
 
 testcases:
   output_format: markdown-table

@@ -20,6 +20,7 @@
 target:
   url: https://rakesh-freshsales-ind-sep21.myfreshworks.com/  # replace with your own trial tenant's URL
   # slug: freshsales            # optional — derived from url's hostname if omitted
+  product: freshsales           # playwright-tests/freshsales/ — the tenant subdomain is not a product name
   maxPages: 25                  # CRM apps are module-heavy (Leads/Contacts/Accounts/Deals/
                                  # Tasks/Reports); a plain event-site depth is too shallow here
   maxDepth: 3
@@ -57,10 +58,10 @@ authorizations:
   authenticated_crawl: true      # true = explore-agent performs an authenticated crawl using
                                   #        session_state_file below (never by typing credentials
                                   #        itself — see docs/conventions.md's session_state_file entry)
-  credentials_file: playwright-tests/.env.freshsales   # a FILE PATH, never inline values.
+  credentials_file: playwright-tests/freshsales/.env.freshsales   # a FILE PATH, never inline values.
                                   # Used by playwright-automation-agent / api-testing-agent's own
                                   # scripted logins, NOT read by explore-agent.
-  session_state_file: null       # e.g. playwright-tests/.auth/freshsales-handoff.json — a
+  session_state_file: playwright-tests/freshsales/.auth/freshsales-handoff.json  # e.g. playwright-tests/freshsales/.auth/freshsales-handoff.json — a
                                   # pre-authenticated storageState (or session-cookie value file) a
                                   # human produces by completing this tenant's login + reCAPTCHA
                                   # once, interactively, out-of-band. Leave null to let explore-agent
@@ -94,6 +95,91 @@ answers:
       (which auto-promotes Lifecycle stage to "Sales Qualified Lead"). This
       is the lead-equivalent mechanism for this tenant, since the Leads
       module returns 403 for this role.
+  - match: "no separate \"Leads\" module"
+    answer: >
+      Target the newer layout where a lead is a Contact with a lifecycle
+      stage. Use the Contact-status substitution described above.
+  - match: "qualify a lead\" mean concretely"
+    answer: >
+      Advance Contact Status to "Qualified" (auto-promotes Lifecycle stage to
+      "Sales Qualified Lead").
+  - match: "What are the conversion rules"
+    answer: >
+      Use standard defaults: convert the qualified contact, link or create an
+      Account, and create a Deal from it. Flag any unconfirmed rules in the
+      test cases as unconfirmed.
+  - match: "which pipeline and stages"
+    answer: >
+      Use the default pipeline and move one deal through all of its stages in
+      order, first to last, without closing it as Won or Lost.
+  - match: "How should the deal be moved"
+    answer: "Drag and drop the deal card between columns on the Kanban board."
+  - match: "Which activity types must be logged"
+    answer: "Use standard/default coverage for Task/Call/Note activity types."
+  - match: "confirm the authorization mode"
+    answer: "Confirmed: full-run, against this trial tenant only."
+  - match: "What format should the test cases"
+    answer: "CSV."
+  # Short topic keywords: Pass-1 question wording varies between runs.
+  - match: "no Leads module"
+    answer: >
+      Lead = a Contact in an early lifecycle stage (Status=New/Lifecycle=Lead).
+      Use the Contact-status substitution described above. Same tenant and role.
+  - match: "does \"qualify\" mean"
+    answer: >
+      Advance Contact Status to "Qualified" (auto-promotes Lifecycle stage to
+      "Sales Qualified Lead"). Use these exact values.
+  - match: "convert into contact/account"
+    answer: >
+      Standard defaults: a Contact linked to a new Account (or an existing one
+      if the UI offers it). Derive mandatory fields from the live UI form
+      validation; flag anything unconfirmed.
+  - match: "created \"from\" the lead"
+    answer: >
+      Standard defaults: use the Deals "+ New Deal" form with the contact and
+      account linked. Derive required deal fields from the live UI form
+      validation; flag anything unconfirmed.
+  - match: "How should stage moves"
+    answer: >
+      Kanban drag-and-drop across all stages of the default pipeline, in order,
+      without closing the deal as Won or Lost. Do not cover Won/Lost behavior.
+  - match: "activity types are in scope"
+    answer: >
+      Task, Call and Note with standard/default coverage, logged from the deal
+      detail/summary panel. Derive required fields from the live UI.
+  - match: "authorizations.mode"
+    answer: >
+      full-run, confirmed, against this trial tenant only. Deliberately invalid
+      submissions blocked by validation may run live.
+  - match: "What output format"
+    answer: "CSV."
+  # Shortest distinctive keywords, since Pass-1 wording drifts between runs.
+  - match: "convert into a contact"
+    answer: >
+      Standard defaults: a Contact linked to a new Account (or an existing one
+      if the UI offers it). Record the observed links/ownership/stage values;
+      flag anything unconfirmed.
+  - match: "pipeline(s)"
+    answer: >
+      Use the default pipeline and move one deal through all of its stages in
+      order, first to last (forward one stage at a time). Do not cover
+      skipping, backward moves, Won or Lost behavior.
+  - match: "stage move"
+    answer: >
+      Kanban drag-and-drop. Assert the card appears in the target column and
+      persists after reload.
+  - match: "activity types must be covered"
+    answer: >
+      Task, Call and Note with standard/default coverage, attached via the deal
+      detail/summary panel. Derive required fields from the live UI; verify in
+      the deal timeline.
+  - match: "Validation-only negative"
+    answer: >
+      Yes, include them (missing required field, invalid email/phone, empty
+      deal name or non-numeric amount, task with no title). Record the observed
+      error messages.
+  - match: "output format"
+    answer: "CSV."
   - match: "Leads module returns 403"
     answer: >
       Skip Leads-module coverage entirely; rely solely on the

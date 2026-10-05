@@ -6,7 +6,7 @@
   "scripts": {
     "sync-agent-models": "node sync-agent-models.mjs",
     "generate-k6-report": "node generate-k6-report.mjs",
-    "test": "node --test run-config.test.mjs"
+    "test": "node --test run-config.test.mjs clarification-csv.test.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"

@@ -16,7 +16,7 @@ jobs:
         working-directory: scripts
         run: |
           npm ci
-          node --test run-config.test.mjs
+          node --test run-config.test.mjs clarification-csv.test.mjs
           node sync-agent-models.mjs --check
       - name: validate shipped run-configs
         run: |
@@ -25,11 +25,12 @@ jobs:
           done
       - name: shipped examples must default to readonly
         run: "! grep -E '^\\s+mode: full-run' config/run-config*.example.yaml"
-      - name: playwright-tests — typecheck
-        working-directory: playwright-tests
+      - name: playwright-tests — typecheck every product project
         run: |
-          npm ci
-          npx tsc --noEmit
+          for d in playwright-tests/*/; do
+            [ -f "$d/package.json" ] || continue
+            (cd "$d" && npm ci && npx tsc --noEmit)
+          done
       - name: api-tests — typecheck
         working-directory: api-tests/playwright-api
         run: |

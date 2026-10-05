@@ -88,6 +88,8 @@ It drives explore → clarify → testcases → automation → API testing → (
 - **Completed** — read `artifacts/<target-slug>/run-report.md` for the active `authorizations.mode`, what ran, what got skipped as already-done, every artifact path, and which `defaults`/`answers` from your config got applied where.
 - **Halted at stage N** — the response names the exact stage and, if it's the clarification stage, the exact unanswered `[Blocking]` question(s). Add an `answers` entry (or a more specific `feature.description`) to your config and re-invoke with the same `configPath`; completed stages won't re-run.
 
+**Whole product instead of one feature:** set `feature.slug: full-product` (worked example: [`config/run-config-full-product.example.yaml`](config/run-config-full-product.example.yaml)). The orchestrator first has `explore-agent` discover the product's modules (live navigation + vendor docs/knowledge-base research), then one `explore-agent` per module explores it thoroughly and writes sitemaps plus a `flows/` navigation guide, then every module gets its own parallel pipeline track (clarifications → test cases → Playwright → API tests). Questions for you that the config can't pre-answer are collected into a main `questions.csv` that only the orchestrator writes (once there are more than 5); you answer in a separate `answers/answers-NNN.csv` sheet, so your edits and the orchestrator's never overlap, and the answers are merged into the main file once the sheet is fully answered. Modules resume as soon as their own rows are answered, and a module still unresolved after 5 question rounds is marked uncovered. All tracks write into one project per product, `playwright-tests/<product>/`. See "Full-product runs" in [`docs/conventions.md`](docs/conventions.md).
+
 The full schema, matching rules, and what the config can never override (a spoke agent's own hard safety rules) are documented in [`docs/conventions.md`](docs/conventions.md)'s "Orchestrator & run-config contract".
 
 ## How to use this repo — step by step
@@ -147,7 +149,7 @@ using artifacts/<target-slug>/testcases/<feature>-testcases.<ext> as the source 
 Then actually run what it produced and read the real output — do not trust a summary alone:
 
 ```bash
-cd playwright-tests   # or wherever it scaffolded
+cd playwright-tests/<product>   # or wherever it scaffolded
 npm install
 npx playwright install
 cp .env.example .env  # fill in real, authorized credentials if the app needs auth
