@@ -1,49 +1,470 @@
-# Contacts (All contacts list)
-
-URL: https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/view/402015942732?per_page=25&sort=lead_score
-Title: Contacts : Freshsales
-
-## Page text content
-
-Connect your mailbox to improve deliverability and enable 2-way sync of email conversations. Import all your sales data so you don't have to start from scratch.
-
-Contacts
-
-My contacts | New contacts | All contacts (10) | 12 more...
-
-Customize table | Import contacts | Add contact
-
-Table view. Columns: Name, Account, Job title, Email, Mobile, Status, Tags, Sales owner
-
-Rows (10 sample contacts, all owned by Rakesh M):
-1. Jane Sampleton (sample) — Widgetz.io (sample) — CEO — janesampleton@... — +19266529503 — Qualified — Decision maker
-2. Spector Calista (sample) — Techcave (sample) — Co-founder — spectorcalista@... — +19266520001 — Won — Industry Expert
-3. Laura Norda (sample) — Acme Inc (sample) — CFO — lauranordasample@... — +16473456789 — Qualified — Decision maker
-4. Nick Raymond (sample) — E Corp (sample) — Sales Director — nickraymond@... — +19266184415 — Qualified — Influencer
-5. Martha Jackson (sample) — Optiscape Inc (sample) — COO — marthajackson@... — +19266091164 — Won — High-Value Customer
-6. Kevin Jordan (sample) — Apex IQ (sample) — VP Marketing — kevinjordan@... — +15898899911 — Won — Customer Advocate
-7. Johnny Chow (sample) — Nexus Hub (sample) — President — johnnychow@... — +19800011111 — Qualified — Key Stakeholder
-8. Syed Kareem (sample) — Synth Corp (sample) — Project Manager — syedkareem@... — +447456123456 — Qualified — Influencer
-9. Heather White (sample) — Pivotal Tech (sample) — Head of IT — heatherwhite@... — +15436946523 — Qualified — Champion
-10. Jay Patel (sample) — E Corp (sample) — HR Manager — jaypatelsample@... — +149255652345 — Qualified — Influencer
-
-Showing 1-10 of 10, 25 per page.
-
-## Notable structure
-
-- Left sidebar icon nav (unlabeled icons, identified by clicking): Dashboards, Contacts (active), Accounts, Deals, Email/Inbox, Reports, Settings. No "Leads" icon present.
-- Quick-create ("+") menu offers: Add contact, Add account, Add deal, Add product, Add Quote; Sales activities: Add task, Add meeting, Add call log, Send SMS; Emails: Send email, Create template, Create sales sequence. No "Add Lead" option — this tenant/user has no accessible Leads module (confirmed separately: GET /crm/sales/leads returns a 403 "You are not authorised to perform this operation" page).
-- Each contact row links to `/crm/sales/contacts/<id>`.
-
-## Links discovered (same-origin)
-- /crm/sales/contacts/402213988056 (Jane Sampleton)
-- /crm/sales/contacts/402213988058
-- /crm/sales/contacts/402213988049
-- /crm/sales/contacts/402213988051
-- /crm/sales/contacts/402213988068
-- /crm/sales/contacts/402213988071
-- /crm/sales/contacts/402213988075
-- /crm/sales/contacts/402213988079
-- /crm/sales/contacts/402213988080
-- /crm/sales/contacts/402213988070
-- Account links (e.g. Acme Inc, E Corp, Widgetz.io, Techcave, Apex IQ, Nexus Hub, Synth Corp, Pivotal Tech, Optiscape Inc)
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e44]:
+    - generic [ref=f6e47]:
+      - generic [ref=f6e48]:
+        - link "Connect your mailbox" [ref=f6e49] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f6e887] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f6e50] [cursor=pointer]
+    - generic [ref=f6e53]:
+      - generic [ref=f6e54]:
+        - list [ref=f6e56]:
+          - listitem [ref=f6e57]: Contacts
+        - generic [ref=f6e59]:
+          - list [ref=f6e60]:
+            - listitem [ref=f6e61]
+            - listitem [ref=f6e65]:
+              - generic "Send email" [ref=f6e66] [cursor=pointer]
+            - listitem [ref=f6e70]:
+              - generic "What's new" [ref=f6e71] [cursor=pointer]: "1"
+            - listitem [ref=f6e75]:
+              - generic [ref=f6e76]: "5"
+              - generic [ref=f6e889]:
+                - generic [ref=f6e890]:
+                  - listitem [ref=f6e892]:
+                    - generic [ref=f6e900] [cursor=pointer]:
+                      - heading "MEETING REMINDER" [level=6] [ref=f6e901]
+                      - strong [ref=f6e902]: (Sample) Meeting - final discussion about the deal
+                      - text: due in 15 mins for
+                      - strong [ref=f6e907]: Jane Sampleton (sample) .
+                  - button "Close" [ref=f6e909] [cursor=pointer]
+                - generic [ref=f6e915]:
+                  - listitem [ref=f6e917]:
+                    - generic [ref=f6e925] [cursor=pointer]:
+                      - heading "TASK REMINDER" [level=6] [ref=f6e926]
+                      - strong [ref=f6e927]: Follow up with Widgetz (sample)
+                      - text: due in 15 mins for
+                      - strong [ref=f6e932]: Widgetz.io (sample) .
+                  - button "Close" [ref=f6e934] [cursor=pointer]
+                - generic [ref=f6e940]:
+                  - listitem [ref=f6e942]:
+                    - generic [ref=f6e950] [cursor=pointer]:
+                      - heading "TASK REMINDER" [level=6] [ref=f6e951]
+                      - strong [ref=f6e952]: Weekly follow up (sample)
+                      - text: due in 15 mins for
+                      - strong [ref=f6e957]: Widgetz.io (sample) .
+                  - button "Close" [ref=f6e959] [cursor=pointer]
+            - listitem [ref=f6e82]
+            - listitem [ref=f6e83]:
+              - img "Your User Avatar" [ref=f6e87] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f6e97]
+          - generic [ref=f6e99]:
+            - emphasis [ref=f6e100]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f6e106] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f6e108] [cursor=pointer]
+      - navigation:
+        - generic [ref=f6e110]:
+          - link [ref=f6e114] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f6e117]:
+            - listitem "Dashboards" [ref=f6e118]:
+              - link [ref=f6e121] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f6e123]:
+              - link [ref=f6e126] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f6e128]:
+              - link [ref=f6e131] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f6e133]:
+              - link [ref=f6e136] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f6e138]:
+              - link [ref=f6e141] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f6e143]:
+              - link [ref=f6e146] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f6e148]:
+              - link [ref=f6e151] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f6e153]:
+            - generic "Phone" [ref=f6e973]
+            - generic "Freshworks Switcher" [ref=f6e156]:
+              - button "Freshworks Switcher" [ref=f6e157] [cursor=pointer]
+      - generic [ref=f6e164]:
+        - generic [ref=f6e165]:
+          - generic [ref=f6e166]:
+            - generic [ref=f6e167]: Your Freshsales setup guide
+            - generic [ref=f6e168]:
+              - button "[object Object]" [ref=f6e171] [cursor=pointer]:
+                - button "Take an interactive tour" [ref=f6e172]
+              - button [ref=f6e182] [cursor=pointer]
+          - generic [ref=f6e186]:
+            - generic [ref=f6e190]:
+              - button "Personalize your CRM" [ref=f6e191] [cursor=pointer]
+              - button "Import contacts" [ref=f6e197] [cursor=pointer]
+              - button "Bring in website leads" [ref=f6e205] [cursor=pointer]
+              - button "Invite your team" [ref=f6e215] [cursor=pointer]
+              - button "Route leads to your team" [ref=f6e223] [cursor=pointer]
+              - button "Create sales sequence" [ref=f6e233] [cursor=pointer]
+              - button "Set up your sales pipeline" [ref=f6e241] [cursor=pointer]
+              - button "Add deal" [ref=f6e250] [cursor=pointer]
+            - button [ref=f6e263] [cursor=pointer]
+        - generic [ref=f6e267]:
+          - generic [ref=f6e268]:
+            - button [ref=f6e270]:
+              - button "All contacts 11" [ref=f6e271]:
+                - generic [ref=f6e272]:
+                  - generic [ref=f6e273] [cursor=pointer]: All contacts
+                  - generic [ref=f6e274]: "11"
+            - button "button ⌘ O" [ref=f6e277] [cursor=pointer]:
+              - generic [ref=f6e278]:
+                - button "button" [ref=f6e279]:
+                  - generic [ref=f6e280]: 14 more...
+                - generic [ref=f6e285]: ⌘ O
+          - generic [ref=f6e286]:
+            - button "button" [ref=f6e288] [cursor=pointer]:
+              - generic [ref=f6e289]: Customize table
+            - generic [ref=f6e297]:
+              - button "button" [ref=f6e298] [cursor=pointer]:
+                - generic [ref=f6e299]: Import contacts
+              - button [ref=f6e305] [cursor=pointer]
+            - button "button" [ref=f6e311] [cursor=pointer]:
+              - generic [ref=f6e312]: Add contact
+        - generic [ref=f6e318]:
+          - generic [ref=f6e321]:
+            - button "Table" [ref=f6e323] [cursor=pointer]
+            - button [ref=f6e331] [cursor=pointer]:
+              - button "button" [ref=f6e332]
+            - button "Bulk actions" [ref=f6e338] [cursor=pointer]
+            - button "button" [ref=f6e342] [cursor=pointer]:
+              - generic [ref=f6e343]: Filter by
+          - generic [ref=f6e349]:
+            - treegrid [ref=f6e350]:
+              - rowgroup [ref=f6e351]:
+                - row [ref=f6e352]:
+                  - columnheader [ref=f6e353]:
+                    - text: 
+                    - generic [ref=f6e358] [cursor=pointer]:
+                      - checkbox
+                  - columnheader "Name" [ref=f6e359]:
+                    - text: 
+                    - generic [ref=f6e361]:
+                      - generic [ref=f6e362]: Name
+                      - button [ref=f6e365] [cursor=pointer]
+              - rowgroup [ref=f6e370]:
+                - row [ref=f6e371]:
+                  - columnheader "Account" [ref=f6e372]:
+                    - text: 
+                    - generic [ref=f6e374]:
+                      - generic [ref=f6e375]: Account
+                      - button [ref=f6e378] [cursor=pointer]
+                  - columnheader "Job title" [ref=f6e384]:
+                    - text: 
+                    - generic [ref=f6e386]:
+                      - generic [ref=f6e387]: Job title
+                      - button [ref=f6e390] [cursor=pointer]
+                  - columnheader "Email" [ref=f6e396]:
+                    - text: 
+                    - generic [ref=f6e398]:
+                      - generic [ref=f6e399]: Email
+                      - button [ref=f6e402] [cursor=pointer]
+                  - columnheader "Mobile" [ref=f6e408]:
+                    - text: 
+                    - generic [ref=f6e410]:
+                      - generic [ref=f6e411]: Mobile
+                      - button [ref=f6e414] [cursor=pointer]
+                  - columnheader "Status" [ref=f6e420]:
+                    - text: 
+                    - generic [ref=f6e422]:
+                      - generic [ref=f6e423]: Status
+                      - button [ref=f6e426] [cursor=pointer]
+                  - columnheader "Tags" [ref=f6e432]:
+                    - text: 
+                    - generic [ref=f6e434]:
+                      - generic [ref=f6e435]: Tags
+                      - button [ref=f6e438] [cursor=pointer]
+                  - columnheader "Sales owner" [ref=f6e444]:
+                    - text: 
+                    - generic [ref=f6e446]:
+                      - generic [ref=f6e447]: Sales owner
+                      - button [ref=f6e450] [cursor=pointer]
+                  - columnheader [ref=f6e456]:
+                    - text: 
+                    - button [ref=f6e458] [cursor=pointer]
+              - rowgroup [ref=f6e463]:
+                - row "Press SPACE to select this row." [ref=f6e976]:
+                  - gridcell [ref=f6e977]:
+                    - generic [ref=f6e982] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e983]:
+                    - button [ref=f6e984] [cursor=pointer]:
+                      - generic [ref=f6e985]:
+                        - img "Jane Sampleton (sample)" [ref=f6e986]:
+                          - img "J" [ref=f6e987]
+                        - link "display-name" [ref=f6e989]:
+                          - /url: /crm/sales/contacts/402213988049
+                          - text: Jane Sampleton (sample)
+                - row "Press SPACE to select this row." [ref=f6e995]:
+                  - gridcell [ref=f6e996]:
+                    - generic [ref=f6e1001] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1002]:
+                    - button [ref=f6e1003] [cursor=pointer]:
+                      - generic [ref=f6e1004]:
+                        - img "Spector Calista (sample)" [ref=f6e1005]:
+                          - img "S" [ref=f6e1006]
+                        - link "display-name" [ref=f6e1008]:
+                          - /url: /crm/sales/contacts/402213988051
+                          - text: Spector Calista (sample)
+                - row "Press SPACE to select this row." [ref=f6e1014]:
+                  - gridcell [ref=f6e1015]:
+                    - generic [ref=f6e1020] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1021]:
+                    - button [ref=f6e1022] [cursor=pointer]:
+                      - generic [ref=f6e1023]:
+                        - img "Laura Norda (sample)" [ref=f6e1024]:
+                          - img "L" [ref=f6e1025]
+                        - link "display-name" [ref=f6e1027]:
+                          - /url: /crm/sales/contacts/402213988056
+                          - text: Laura Norda (sample)
+                - row "Press SPACE to select this row." [ref=f6e1033]:
+                  - gridcell [ref=f6e1034]:
+                    - generic [ref=f6e1039] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1040]:
+                    - button [ref=f6e1041] [cursor=pointer]:
+                      - generic [ref=f6e1042]:
+                        - img "Nick Raymond (sample)" [ref=f6e1043]:
+                          - img "N" [ref=f6e1044]
+                        - link "display-name" [ref=f6e1046]:
+                          - /url: /crm/sales/contacts/402213988068
+                          - text: Nick Raymond (sample)
+                - row "Press SPACE to select this row." [ref=f6e1052]:
+                  - gridcell [ref=f6e1053]:
+                    - generic [ref=f6e1058] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1059]:
+                    - button [ref=f6e1060] [cursor=pointer]:
+                      - generic [ref=f6e1061]:
+                        - img "Martha Jackson (sample)" [ref=f6e1062]:
+                          - img "M" [ref=f6e1063]
+                        - link "display-name" [ref=f6e1065]:
+                          - /url: /crm/sales/contacts/402213988070
+                          - text: Martha Jackson (sample)
+                - row "Press SPACE to select this row." [ref=f6e1071]:
+                  - gridcell [ref=f6e1072]:
+                    - generic [ref=f6e1077] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1078]:
+                    - button [ref=f6e1079] [cursor=pointer]:
+                      - generic [ref=f6e1080]:
+                        - img "Kevin Jordan (sample)" [ref=f6e1081]:
+                          - img "K" [ref=f6e1082]
+                        - link "display-name" [ref=f6e1084]:
+                          - /url: /crm/sales/contacts/402213988071
+                          - text: Kevin Jordan (sample)
+                - row "Press SPACE to select this row." [ref=f6e1090]:
+                  - gridcell [ref=f6e1091]:
+                    - generic [ref=f6e1096] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1097]:
+                    - button [ref=f6e1098] [cursor=pointer]:
+                      - generic [ref=f6e1099]:
+                        - img "Johnny Chow (sample)" [ref=f6e1100]:
+                          - img "J" [ref=f6e1101]
+                        - link "display-name" [ref=f6e1103]:
+                          - /url: /crm/sales/contacts/402213988075
+                          - text: Johnny Chow (sample)
+                - row "Press SPACE to select this row." [ref=f6e1109]:
+                  - gridcell [ref=f6e1110]:
+                    - generic [ref=f6e1115] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1116]:
+                    - button [ref=f6e1117] [cursor=pointer]:
+                      - generic [ref=f6e1118]:
+                        - img "Syed Kareem (sample)" [ref=f6e1119]:
+                          - img "S" [ref=f6e1120]
+                        - link "display-name" [ref=f6e1122]:
+                          - /url: /crm/sales/contacts/402213988079
+                          - text: Syed Kareem (sample)
+                - row "Press SPACE to select this row." [ref=f6e1128]:
+                  - gridcell [ref=f6e1129]:
+                    - generic [ref=f6e1134] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1135]:
+                    - button [ref=f6e1136] [cursor=pointer]:
+                      - generic [ref=f6e1137]:
+                        - img "Heather White (sample)" [ref=f6e1138]:
+                          - img "H" [ref=f6e1139]
+                        - link "display-name" [ref=f6e1141]:
+                          - /url: /crm/sales/contacts/402213988080
+                          - text: Heather White (sample)
+                - row "Press SPACE to select this row." [ref=f6e1147]:
+                  - gridcell [ref=f6e1148]:
+                    - generic [ref=f6e1153] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1154]:
+                    - button [ref=f6e1155] [cursor=pointer]:
+                      - generic [ref=f6e1156]:
+                        - img "Jay Patel (sample)" [ref=f6e1157]:
+                          - img "J" [ref=f6e1158]
+                        - link "display-name" [ref=f6e1160]:
+                          - /url: /crm/sales/contacts/402213988058
+                          - text: Jay Patel (sample)
+                - row "Press SPACE to select this row." [ref=f6e1166]:
+                  - gridcell [ref=f6e1167]:
+                    - generic [ref=f6e1172] [cursor=pointer]:
+                      - checkbox
+                  - gridcell [ref=f6e1173]:
+                    - button [ref=f6e1174] [cursor=pointer]:
+                      - generic [ref=f6e1175]:
+                        - img "Explore AgentTestLead" [ref=f6e1176]:
+                          - generic [ref=f6e1177]: E
+                        - link "display-name" [ref=f6e1179]:
+                          - /url: /crm/sales/contacts/402219350782
+                          - text: Explore AgentTestLead
+              - rowgroup [ref=f6e673]:
+                - row "Press SPACE to select this row." [ref=f6e1185]:
+                  - gridcell [ref=f6e1186]:
+                    - link "Widgetz.io (sample)" [ref=f6e1188] [cursor=pointer]
+                  - gridcell "CEO" [ref=f6e1189]
+                  - gridcell [ref=f6e1190]:
+                    - link "janesampleton@gmail.com" [ref=f6e1192] [cursor=pointer]
+                  - gridcell [ref=f6e1193]:
+                    - link "+19266529503" [ref=f6e1195] [cursor=pointer]
+                  - gridcell "Qualified" [ref=f6e1196]
+                  - gridcell "Decision maker" [ref=f6e1198]
+                  - gridcell "Rakesh M" [ref=f6e1200]
+                  - gridcell [ref=f6e1201]
+                - row "Press SPACE to select this row." [ref=f6e1202]:
+                  - gridcell [ref=f6e1203]:
+                    - link "Techcave (sample)" [ref=f6e1205] [cursor=pointer]
+                  - gridcell "Co-founder" [ref=f6e1206]
+                  - gridcell [ref=f6e1207]:
+                    - link "spectorcalista@gmail.com" [ref=f6e1209] [cursor=pointer]
+                  - gridcell [ref=f6e1210]:
+                    - link "+19266520001" [ref=f6e1212] [cursor=pointer]
+                  - gridcell "Won" [ref=f6e1213]
+                  - gridcell "Industry Expert" [ref=f6e1215]
+                  - gridcell "Rakesh M" [ref=f6e1217]
+                  - gridcell [ref=f6e1218]
+                - row "Press SPACE to select this row." [ref=f6e1219]:
+                  - gridcell [ref=f6e1220]:
+                    - link "Acme Inc (sample)" [ref=f6e1222] [cursor=pointer]
+                  - gridcell "CFO" [ref=f6e1223]
+                  - gridcell [ref=f6e1224]:
+                    - link "lauranordasample@gmail.com" [ref=f6e1226] [cursor=pointer]
+                  - gridcell [ref=f6e1227]:
+                    - link "+16473456789" [ref=f6e1229] [cursor=pointer]
+                  - gridcell "Qualified" [ref=f6e1230]
+                  - gridcell "Decision maker" [ref=f6e1232]
+                  - gridcell "Rakesh M" [ref=f6e1234]
+                  - gridcell [ref=f6e1235]
+                - row "Press SPACE to select this row." [ref=f6e1236]:
+                  - gridcell [ref=f6e1237]:
+                    - link "E Corp (sample)" [ref=f6e1239] [cursor=pointer]
+                  - gridcell "Sales Director" [ref=f6e1240]
+                  - gridcell [ref=f6e1241]:
+                    - link "nickraymond@gmail.com" [ref=f6e1243] [cursor=pointer]
+                  - gridcell [ref=f6e1244]:
+                    - link "+19266184415" [ref=f6e1246] [cursor=pointer]
+                  - gridcell "Qualified" [ref=f6e1247]
+                  - gridcell "Influencer" [ref=f6e1249]
+                  - gridcell "Rakesh M" [ref=f6e1251]
+                  - gridcell [ref=f6e1252]
+                - row "Press SPACE to select this row." [ref=f6e1253]:
+                  - gridcell [ref=f6e1254]:
+                    - link "Optiscape Inc (sample)" [ref=f6e1256] [cursor=pointer]
+                  - gridcell "COO" [ref=f6e1257]
+                  - gridcell [ref=f6e1258]:
+                    - link "marthajackson@gmail.com" [ref=f6e1260] [cursor=pointer]
+                  - gridcell [ref=f6e1261]:
+                    - link "+19266091164" [ref=f6e1263] [cursor=pointer]
+                  - gridcell "Won" [ref=f6e1264]
+                  - gridcell "High-Value Customer" [ref=f6e1266]
+                  - gridcell "Rakesh M" [ref=f6e1268]
+                  - gridcell [ref=f6e1269]
+                - row "Press SPACE to select this row." [ref=f6e1270]:
+                  - gridcell [ref=f6e1271]:
+                    - link "Apex IQ (sample)" [ref=f6e1273] [cursor=pointer]
+                  - gridcell "VP Marketing" [ref=f6e1274]
+                  - gridcell [ref=f6e1275]:
+                    - link "kevinjordan@gmail.com" [ref=f6e1277] [cursor=pointer]
+                  - gridcell [ref=f6e1278]:
+                    - link "+15898899911" [ref=f6e1280] [cursor=pointer]
+                  - gridcell "Won" [ref=f6e1281]
+                  - gridcell "Customer Advocate" [ref=f6e1283]
+                  - gridcell "Rakesh M" [ref=f6e1285]
+                  - gridcell [ref=f6e1286]
+                - row "Press SPACE to select this row." [ref=f6e1287]:
+                  - gridcell [ref=f6e1288]:
+                    - link "Nexus Hub (sample)" [ref=f6e1290] [cursor=pointer]
+                  - gridcell "President" [ref=f6e1291]
+                  - gridcell [ref=f6e1292]:
+                    - link "johnnychow@gmail.com" [ref=f6e1294] [cursor=pointer]
+                  - gridcell [ref=f6e1295]:
+                    - link "+19800011111" [ref=f6e1297] [cursor=pointer]
+                  - gridcell "Qualified" [ref=f6e1298]
+                  - gridcell "Key Stakeholder" [ref=f6e1300]
+                  - gridcell "Rakesh M" [ref=f6e1302]
+                  - gridcell [ref=f6e1303]
+                - row "Press SPACE to select this row." [ref=f6e1304]:
+                  - gridcell [ref=f6e1305]:
+                    - link "Synth Corp (sample)" [ref=f6e1307] [cursor=pointer]
+                  - gridcell "Project Manager" [ref=f6e1308]
+                  - gridcell [ref=f6e1309]:
+                    - link "syedkareem@gmail.com" [ref=f6e1311] [cursor=pointer]
+                  - gridcell [ref=f6e1312]:
+                    - link "+447456123456" [ref=f6e1314] [cursor=pointer]
+                  - gridcell "Qualified" [ref=f6e1315]
+                  - gridcell "Influencer" [ref=f6e1317]
+                  - gridcell "Rakesh M" [ref=f6e1319]
+                  - gridcell [ref=f6e1320]
+                - row "Press SPACE to select this row." [ref=f6e1321]:
+                  - gridcell [ref=f6e1322]:
+                    - link "Pivotal Tech (sample)" [ref=f6e1324] [cursor=pointer]
+                  - gridcell "Head of IT" [ref=f6e1325]
+                  - gridcell [ref=f6e1326]:
+                    - link "heatherwhite@gmail.com" [ref=f6e1328] [cursor=pointer]
+                  - gridcell [ref=f6e1329]:
+                    - link "+15436946523" [ref=f6e1331] [cursor=pointer]
+                  - gridcell "Qualified" [ref=f6e1332]
+                  - gridcell "Champion" [ref=f6e1334]
+                  - gridcell "Rakesh M" [ref=f6e1336]
+                  - gridcell [ref=f6e1337]
+                - row "Press SPACE to select this row." [ref=f6e1338]:
+                  - gridcell [ref=f6e1339]:
+                    - link "E Corp (sample)" [ref=f6e1341] [cursor=pointer]
+                  - gridcell "HR Manager" [ref=f6e1342]
+                  - gridcell [ref=f6e1343]:
+                    - link "jaypatelsample@gmail.com" [ref=f6e1345] [cursor=pointer]
+                  - gridcell [ref=f6e1346]:
+                    - link "+149255652345" [ref=f6e1348] [cursor=pointer]
+                  - gridcell "Qualified" [ref=f6e1349]
+                  - gridcell "Influencer" [ref=f6e1351]
+                  - gridcell "Rakesh M" [ref=f6e1353]
+                  - gridcell [ref=f6e1354]
+                - row "Press SPACE to select this row." [ref=f6e1355]:
+                  - gridcell [ref=f6e1356]:
+                    - link "Explore Test Co" [ref=f6e1358] [cursor=pointer]
+                  - gridcell "Head of Procurement" [ref=f6e1359]
+                  - gridcell [ref=f6e1360]:
+                    - link "explore.agent.testlead@example.com" [ref=f6e1362] [cursor=pointer]
+                  - gridcell "+ Click to add" [ref=f6e1363]
+                  - gridcell "Qualified" [ref=f6e1364]
+                  - gridcell "+ Click to add" [ref=f6e1366]
+                  - gridcell "Rakesh M" [ref=f6e1367]
+                  - gridcell [ref=f6e1368]
+              - rowgroup
+              - rowgroup
+              - rowgroup
+              - rowgroup
+            - text:    
+          - generic [ref=f6e863]:
+            - generic [ref=f6e865]:
+              - generic [ref=f6e1369]: Showing 1–11 of 11
+              - button "Previous" [disabled] [ref=f6e868]
+              - button "1" [ref=f6e872] [cursor=pointer]
+              - button "Next" [disabled] [ref=f6e873]
+            - button "pagination.per_page.label" [ref=f6e1370] [cursor=pointer]:
+              - generic [ref=f6e1371]: Showing 25 per page
+    - generic [ref=f6e1375] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

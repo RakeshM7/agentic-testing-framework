@@ -1,109 +1,128 @@
 [
   {
-    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/view/402015942732?per_page=25",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/view/402015942732?per_page=25&sort=lead_score",
     "slug": "contacts-list",
     "title": "Contacts : Freshsales",
-    "screenshotPath": "pages/contacts-list/screenshot.png",
-    "domSnapshotPath": "pages/contacts-list/dom-snapshot.md",
-    "networkRequestsPath": "pages/contacts-list/network-requests.json",
-    "consoleLogPath": "pages/contacts-list/console-log.txt",
+    "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/contacts-list/screenshot.png",
+    "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/contacts-list/dom-snapshot.md",
+    "networkRequestsPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/contacts-list/network-requests.json",
+    "consoleLogPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/contacts-list/console-log.txt",
     "links": [
-      "/crm/sales/contacts/402213988056",
-      "/crm/sales/contacts/402213988058",
-      "/crm/sales/contacts/402213988049",
-      "/crm/sales/contacts/402213988051",
-      "/crm/sales/contacts/402213988068",
-      "/crm/sales/contacts/402213988071",
-      "/crm/sales/contacts/402213988075",
-      "/crm/sales/contacts/402213988079",
-      "/crm/sales/contacts/402213988080",
-      "/crm/sales/contacts/402213988070",
+      "/crm/sales/my_dashboards",
+      "/crm/sales/contacts",
       "/crm/sales/accounts",
       "/crm/sales/deals",
-      "/crm/sales/my_dashboards"
+      "/crm/sales/conversations/awaiting_response",
+      "/crm/sales/analytics",
+      "/crm/sales/settings"
     ]
   },
   {
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/view/402015942758?per_page=25",
     "slug": "accounts-list",
     "title": "Accounts : Freshsales",
-    "screenshotPath": "pages/accounts-list/screenshot.png",
-    "domSnapshotPath": "pages/accounts-list/dom-snapshot.md",
-    "networkRequestsPath": "pages/accounts-list/network-requests.json",
-    "consoleLogPath": "pages/accounts-list/console-log.txt",
+    "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/accounts-list/screenshot.png",
+    "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/accounts-list/dom-snapshot.md",
+    "networkRequestsPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/accounts-list/network-requests.json",
+    "consoleLogPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/accounts-list/console-log.txt",
     "links": [
-      "/crm/sales/accounts/402012650925",
+      "/crm/sales/my_dashboards",
       "/crm/sales/contacts",
-      "/crm/sales/deals"
+      "/crm/sales/accounts",
+      "/crm/sales/deals",
+      "/crm/sales/conversations/awaiting_response",
+      "/crm/sales/analytics",
+      "/crm/sales/settings"
     ]
   },
   {
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744?per_page=25&sort=amount",
     "slug": "deals-kanban",
     "title": "Deals : Freshsales",
-    "screenshotPath": "pages/deals-kanban/screenshot.png",
-    "domSnapshotPath": "pages/deals-kanban/dom-snapshot.md",
-    "networkRequestsPath": "pages/deals-kanban/network-requests.json",
-    "consoleLogPath": "pages/deals-kanban/console-log.txt",
+    "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/deals-kanban/screenshot.png",
+    "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/deals-kanban/dom-snapshot.md",
+    "networkRequestsPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/deals-kanban/network-requests.json",
+    "consoleLogPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/deals-kanban/console-log.txt",
     "links": [
-      "/crm/sales/deals/402012367593",
+      "/crm/sales/my_dashboards",
       "/crm/sales/contacts",
-      "/crm/sales/accounts"
+      "/crm/sales/accounts",
+      "/crm/sales/deals",
+      "/crm/sales/conversations/awaiting_response",
+      "/crm/sales/analytics",
+      "/crm/sales/settings"
     ]
   },
   {
-    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402219350782",
-    "slug": "contact-detail-explore-agenttestlead",
-    "title": "Contact : Explore AgentTestLead (explore.agent.testlead@example.com) : Freshsales",
-    "screenshotPath": "pages/contact-detail-explore-agenttestlead/screenshot.png",
-    "domSnapshotPath": "pages/contact-detail-explore-agenttestlead/dom-snapshot.md",
-    "networkRequestsPath": "pages/contact-detail-explore-agenttestlead/network-requests.json",
-    "consoleLogPath": "pages/contact-detail-explore-agenttestlead/console-log.txt",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402213988049",
+    "slug": "contact-detail",
+    "title": "Contact : Jane Sampleton (sample)",
+    "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/contact-detail/screenshot.png",
+    "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/contact-detail/dom-snapshot.md",
+    "networkRequestsPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/contact-detail/network-requests.json",
+    "consoleLogPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/contact-detail/console-log.txt",
     "links": [
-      "/crm/sales/accounts/402012650925",
-      "/crm/sales/deals/402012367593"
-    ],
-    "note": "Entity created this run (full-run mode). Stand-in for a 'Lead' since this tenant has no Leads module for this user role."
+      "/crm/sales/my_dashboards",
+      "/crm/sales/contacts",
+      "/crm/sales/accounts",
+      "/crm/sales/deals",
+      "/crm/sales/conversations/awaiting_response",
+      "/crm/sales/analytics",
+      "/crm/sales/settings"
+    ]
   },
   {
-    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012367593",
-    "slug": "deal-detail-explore-test-co",
-    "title": "Deal : Explore Test Co - Pipeline Kanban Test Deal : Freshsales",
-    "screenshotPath": "pages/deal-detail-explore-test-co/screenshot.png",
-    "domSnapshotPath": "pages/deal-detail-explore-test-co/dom-snapshot.md",
-    "networkRequestsPath": "pages/deal-detail-explore-test-co/network-requests.json",
-    "consoleLogPath": "pages/deal-detail-explore-test-co/console-log.txt",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012383128",
+    "slug": "account-detail",
+    "title": "Account : Widgetz.io (sample)",
+    "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/account-detail/screenshot.png",
+    "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/account-detail/dom-snapshot.md",
+    "networkRequestsPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/account-detail/network-requests.json",
+    "consoleLogPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/account-detail/console-log.txt",
     "links": [
-      "/crm/sales/contacts/402219350782",
-      "/crm/sales/accounts/402012650925"
-    ],
-    "note": "Entity created this run (full-run mode). Moved through pipeline stages New->Qualification->Discovery->Demo->Negotiation; task activity logged against it."
+      "/crm/sales/my_dashboards",
+      "/crm/sales/contacts",
+      "/crm/sales/accounts",
+      "/crm/sales/deals",
+      "/crm/sales/conversations/awaiting_response",
+      "/crm/sales/analytics",
+      "/crm/sales/settings"
+    ]
   },
   {
-    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/view/402015942744?per_page=25&sort=amount",
-    "slug": "deals-kanban-after-move",
-    "title": "Deals : Freshsales",
-    "screenshotPath": "pages/deals-kanban-after-move/screenshot.png",
-    "domSnapshotPath": "pages/deals-kanban-after-move/dom-snapshot.md",
-    "networkRequestsPath": "pages/deals-kanban-after-move/network-requests.json",
-    "consoleLogPath": "pages/deals-kanban-after-move/console-log.txt",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/my_dashboards?tab=353503",
+    "slug": "my-dashboards",
+    "title": "Activities Dashboard : Freshsales",
+    "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/my-dashboards/screenshot.png",
+    "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/my-dashboards/dom-snapshot.md",
+    "networkRequestsPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/my-dashboards/network-requests.json",
+    "consoleLogPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/my-dashboards/console-log.txt",
     "links": [
-      "/crm/sales/deals/402012367593"
-    ],
-    "note": "Re-visit of the Kanban board confirming the created deal now renders in the Negotiation column."
+      "/crm/sales/my_dashboards",
+      "/crm/sales/contacts",
+      "/crm/sales/accounts",
+      "/crm/sales/deals",
+      "/crm/sales/conversations/awaiting_response",
+      "/crm/sales/analytics",
+      "/crm/sales/settings"
+    ]
   },
   {
-    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012650925",
-    "slug": "account-detail-explore-test-co",
-    "title": "Account : Explore Test Co : Freshsales",
-    "screenshotPath": "pages/account-detail-explore-test-co/screenshot.png",
-    "domSnapshotPath": "pages/account-detail-explore-test-co/dom-snapshot.md",
-    "networkRequestsPath": "pages/account-detail-explore-test-co/network-requests.json",
-    "consoleLogPath": "pages/account-detail-explore-test-co/console-log.txt",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/conversations/awaiting_response",
+    "slug": "conversations",
+    "title": "Conversations : Freshsales",
+    "screenshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/conversations/screenshot.png",
+    "domSnapshotPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/conversations/dom-snapshot.md",
+    "networkRequestsPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/conversations/network-requests.json",
+    "consoleLogPath": "artifacts/rakesh-freshsales-ind-sep21/explore/pages/conversations/console-log.txt",
     "links": [
-      "/crm/sales/contacts/402219350782",
-      "/crm/sales/deals/402012367593"
-    ],
-    "note": "Entity created this run (full-run mode, auto-created via inline account creation from the Add Contact form)."
+      "/crm/sales/my_dashboards",
+      "/crm/sales/contacts",
+      "/crm/sales/accounts",
+      "/crm/sales/deals",
+      "/crm/sales/conversations/awaiting_response",
+      "/crm/sales/analytics",
+      "/crm/sales/settings"
+    ]
   }
 ]

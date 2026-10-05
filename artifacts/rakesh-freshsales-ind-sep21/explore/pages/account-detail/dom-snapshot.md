@@ -1,0 +1,238 @@
+- generic [active] [ref=f42e1]:
+  - generic [ref=f42e42]:
+    - generic [ref=f42e45]:
+      - generic [ref=f42e46]:
+        - link "Connect your mailbox" [ref=f42e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f42e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f42e49] [cursor=pointer]
+    - generic [ref=f42e52]:
+      - generic [ref=f42e53]:
+        - list [ref=f42e55]:
+          - listitem [ref=f42e56]:
+            - link "Accounts" [ref=f42e57] [cursor=pointer]:
+              - /url: /crm/sales/accounts
+          - listitem [ref=f42e58]: Widgetz.io (sample)
+        - generic [ref=f42e60]:
+          - list [ref=f42e61]:
+            - listitem [ref=f42e62]
+            - listitem [ref=f42e66]:
+              - generic "Send email" [ref=f42e67] [cursor=pointer]
+            - listitem [ref=f42e71]:
+              - generic "What's new" [ref=f42e72] [cursor=pointer]: "1"
+            - listitem [ref=f42e77]:
+              - generic [ref=f42e78]: "5"
+              - generic [ref=f42e84]:
+                - generic [ref=f42e85]:
+                  - listitem [ref=f42e87]:
+                    - generic [ref=f42e95] [cursor=pointer]:
+                      - heading "MEETING REMINDER" [level=6] [ref=f42e96]
+                      - strong [ref=f42e97]: (Sample) Meeting - final discussion about the deal
+                      - text: due in 15 mins for
+                      - strong [ref=f42e102]: Jane Sampleton (sample) .
+                  - button "Close" [ref=f42e104] [cursor=pointer]
+                - generic [ref=f42e110]:
+                  - listitem [ref=f42e112]:
+                    - generic [ref=f42e120] [cursor=pointer]:
+                      - heading "TASK REMINDER" [level=6] [ref=f42e121]
+                      - strong [ref=f42e122]: Follow up with Widgetz (sample)
+                      - text: due in 15 mins for
+                      - strong [ref=f42e127]: Widgetz.io (sample) .
+                  - button "Close" [ref=f42e129] [cursor=pointer]
+                - generic [ref=f42e135]:
+                  - listitem [ref=f42e137]:
+                    - generic [ref=f42e145] [cursor=pointer]:
+                      - heading "TASK REMINDER" [level=6] [ref=f42e146]
+                      - strong [ref=f42e147]: Weekly follow up (sample)
+                      - text: due in 15 mins for
+                      - strong [ref=f42e152]: Widgetz.io (sample) .
+                  - button "Close" [ref=f42e154] [cursor=pointer]
+            - listitem [ref=f42e160]
+            - listitem [ref=f42e161]:
+              - img "Your User Avatar" [ref=f42e165] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f42e175]
+          - generic [ref=f42e177]:
+            - emphasis [ref=f42e178]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f42e184] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f42e186] [cursor=pointer]
+      - navigation:
+        - generic [ref=f42e188]:
+          - link [ref=f42e192] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f42e196]:
+            - listitem "Dashboards" [ref=f42e197]:
+              - link [ref=f42e200] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards
+            - listitem "Contacts" [ref=f42e203]:
+              - link [ref=f42e206] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f42e209]:
+              - link [ref=f42e212] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f42e215]:
+              - link [ref=f42e218] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f42e221]:
+              - link [ref=f42e224] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f42e227]:
+              - link [ref=f42e230] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f42e233]:
+              - link [ref=f42e236] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f42e239]:
+            - generic "Phone" [ref=f42e240]
+            - generic "Freshworks Switcher" [ref=f42e243]:
+              - button "Freshworks Switcher" [ref=f42e244] [cursor=pointer]
+      - generic [ref=f42e251]:
+        - generic [ref=f42e252]:
+          - generic [ref=f42e253]:
+            - button "Call" [ref=f42e255] [cursor=pointer]
+            - button [ref=f42e263] [cursor=pointer]
+          - button "Task" [ref=f42e268] [cursor=pointer]
+          - button "Meeting" [ref=f42e277] [cursor=pointer]
+        - button [ref=f42e285] [cursor=pointer]:
+          - button "Sales activities" [ref=f42e286]
+        - generic [ref=f42e295]:
+          - button "Add deal" [ref=f42e296] [cursor=pointer]
+          - button [ref=f42e304] [cursor=pointer]:
+            - button [ref=f42e305]
+        - button [ref=f42e311] [cursor=pointer]
+      - generic [ref=f42e321]:
+        - generic [ref=f42e322]:
+          - generic [ref=f42e323]:
+            - generic [ref=f42e324]:
+              - generic [ref=f42e328]:
+                - generic [ref=f42e329]: Wi
+                - generic [ref=f42e330] [cursor=pointer]: Add
+              - generic [ref=f42e331]: Widgetz.io (sample)
+            - generic [ref=f42e335]:
+              - button "Wi Add" [ref=f42e339] [cursor=pointer]:
+                - generic [ref=f42e342]:
+                  - generic [ref=f42e343]: Wi
+                  - generic [ref=f42e344]: Add
+              - heading "Widgetz.io (sample) widgetz.io Add parent account" [level=3] [ref=f42e345]:
+                - generic [ref=f42e346]: Widgetz.io (sample)
+                - link "widgetz.io" [ref=f42e359] [cursor=pointer]:
+                  - /url: http://widgetz.io
+                - generic [ref=f42e366]:
+                  - link [ref=f42e367] [cursor=pointer]:
+                    - /url: http://facebook.com/widgetz-io
+                  - link [ref=f42e372] [cursor=pointer]:
+                    - /url: http://twitter.com/widgetz-io
+                  - link [ref=f42e378] [cursor=pointer]:
+                    - /url: http://linkedin.com/company/widgetz-io
+                - generic [ref=f42e383]: Add parent account
+          - generic [ref=f42e396]:
+            - generic [ref=f42e397]: Account information
+            - button [ref=f42e399] [cursor=pointer]
+          - generic [ref=f42e406]:
+            - generic [ref=f42e407] [cursor=pointer]: Overview
+            - generic [ref=f42e417] [cursor=pointer]: Account details
+            - generic [ref=f42e424] [cursor=pointer]: Conversations
+            - generic [ref=f42e431] [cursor=pointer]: Activities
+            - generic [ref=f42e438] [cursor=pointer]: Contacts
+            - generic [ref=f42e447] [cursor=pointer]: Deals
+            - generic [ref=f42e455] [cursor=pointer]: Files
+            - generic [ref=f42e462] [cursor=pointer]: Freddy AI insights
+            - generic [ref=f42e471] [cursor=pointer]: Apps in marketplace
+        - generic [ref=f42e479]:
+          - generic [ref=f42e480]:
+            - heading "Overview" [level=2] [ref=f42e481]
+            - button "Customize overview" [ref=f42e483] [cursor=pointer]
+          - generic [ref=f42e492]:
+            - generic [ref=f42e494]:
+              - generic "Summary" [ref=f42e504] [cursor=pointer]
+              - generic [ref=f42e510]: High-Value
+              - generic [ref=f42e530]:
+                - generic [ref=f42e531]:
+                  - generic [ref=f42e532]:
+                    - generic "Sales owner" [ref=f42e534]
+                    - generic "Rakesh M" [ref=f42e539] [cursor=pointer]
+                  - generic [ref=f42e540]:
+                    - generic "Phone" [ref=f42e542]
+                    - generic "5036153947" [ref=f42e547] [cursor=pointer]
+                  - generic [ref=f42e549]:
+                    - generic "Industry type" [ref=f42e551]
+                    - generic "Insurance" [ref=f42e556] [cursor=pointer]
+                  - generic [ref=f42e557]:
+                    - generic "Business type" [ref=f42e559]
+                    - generic "Competitor" [ref=f42e564] [cursor=pointer]
+                  - generic [ref=f42e565]:
+                    - generic "Number of employees" [ref=f42e567]
+                    - generic "1001-5000" [ref=f42e572] [cursor=pointer]
+                  - generic [ref=f42e573]:
+                    - generic "Annual revenue" [ref=f42e575]
+                    - generic "$10,000,000" [ref=f42e580] [cursor=pointer]
+                  - generic [ref=f42e581]:
+                    - generic "Last contacted time" [ref=f42e583]
+                    - generic [ref=f42e584]: 16 days ago
+                  - generic [ref=f42e589]:
+                    - generic "Last contacted mode" [ref=f42e591]
+                    - generic "Incoming email" [ref=f42e596]
+                  - generic [ref=f42e597]:
+                    - generic "Territory" [ref=f42e599]
+                    - generic [ref=f42e600]: Click to add
+                - generic [ref=f42e605] [cursor=pointer]: Show all
+              - generic [ref=f42e611]:
+                - generic [ref=f42e619]:
+                  - generic [ref=f42e620]: Widgetz.io (sample)'s deals
+                  - generic [ref=f42e621]:
+                    - 'button "Open Deals: 1 open deal worth $5.6K" [ref=f42e623] [cursor=pointer]': 1 open deal worth $5.6K
+                    - generic [ref=f42e625]:
+                      - treegrid [ref=f42e626]:
+                        - text:            
+                        - rowgroup [ref=f42e627]:
+                          - row [ref=f42e628]:
+                            - gridcell [ref=f42e629]:
+                              - button "Widgetz.io (sample)" [ref=f42e630] [cursor=pointer]
+                            - gridcell "CRM - Gold plan monthly (sample)" [ref=f42e631]
+                            - gridcell "$5,600" [ref=f42e634]
+                            - gridcell "New" [ref=f42e636]
+                        - rowgroup
+                        - rowgroup
+                        - rowgroup
+                      - text:    
+                - generic [ref=f42e648]:
+                  - generic [ref=f42e649]: Widgetz.io (sample)'s contacts
+                  - generic [ref=f42e652]:
+                    - treegrid [ref=f42e653]:
+                      - text:      
+                      - rowgroup [ref=f42e654]:
+                        - row [ref=f42e655]:
+                          - gridcell "Jane Sampleton (sample) CEO" [ref=f42e656]:
+                            - button "Jane Sampleton (sample)" [ref=f42e657] [cursor=pointer]
+                            - generic "CEO" [ref=f42e658]
+                          - gridcell [ref=f42e659]:
+                            - button "Last contacted time" [ref=f42e660] [cursor=pointer]: Sent email 16 days ago
+                      - rowgroup
+                      - rowgroup
+                      - rowgroup
+                    - text:    
+                - generic [ref=f42e677]:
+                  - generic "No upcoming meetings with Widgetz.io (sample)." [ref=f42e679]
+                  - button "Add meeting" [ref=f42e681] [cursor=pointer]
+            - generic [ref=f42e690] [cursor=pointer]:
+              - button "Add a note..." [ref=f42e693]
+              - generic [ref=f42e697]:
+                - generic [ref=f42e698]:
+                  - paragraph [ref=f42e704]:
+                    - link "Widgetz.io" [ref=f42e705]:
+                      - /url: http://Widgetz.io
+                    - text: is a large insurance company with a 100 member sales team
+                  - generic [ref=f42e706]:
+                    - generic "Rakesh M" [ref=f42e712]
+                    - generic [ref=f42e713]:
+                      - text: 
+                      - generic [ref=f42e714]: a month ago
+                - generic [ref=f42e716]:
+                  - button [ref=f42e717]
+                  - button [ref=f42e724]
+    - generic [ref=f42e731] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe

@@ -1,0 +1,98 @@
+- generic [active] [ref=f51e1]:
+  - generic [ref=f51e42]:
+    - generic [ref=f51e45]:
+      - generic [ref=f51e46]:
+        - link "Connect your mailbox" [ref=f51e47] [cursor=pointer]:
+          - /url: /crm/sales/personal-settings/connect-your-email
+        - text: to improve deliverability and enable 2-way sync of email conversations.
+        - generic [ref=f51e48] [cursor=pointer]: Import all your sales data
+        - text: so you don't have to start from scratch.
+      - generic "Close" [ref=f51e49] [cursor=pointer]
+    - generic [ref=f51e52]:
+      - generic [ref=f51e53]:
+        - list [ref=f51e55]:
+          - listitem [ref=f51e56]: Dashboards
+        - generic [ref=f51e58]:
+          - list [ref=f51e59]:
+            - listitem [ref=f51e60]
+            - listitem [ref=f51e64]:
+              - generic "Send email" [ref=f51e65] [cursor=pointer]
+            - listitem [ref=f51e69]:
+              - generic "What's new" [ref=f51e70] [cursor=pointer]: "1"
+            - listitem [ref=f51e75]:
+              - generic [ref=f51e76]: "5"
+              - generic [ref=f51e82]:
+                - generic [ref=f51e83]:
+                  - listitem [ref=f51e85]:
+                    - generic [ref=f51e93] [cursor=pointer]:
+                      - heading "MEETING REMINDER" [level=6] [ref=f51e94]
+                      - strong [ref=f51e95]: (Sample) Meeting - final discussion about the deal
+                      - text: due in 15 mins for
+                      - strong [ref=f51e100]: Jane Sampleton (sample) .
+                  - button "Close" [ref=f51e102] [cursor=pointer]
+                - generic [ref=f51e108]:
+                  - listitem [ref=f51e110]:
+                    - generic [ref=f51e118] [cursor=pointer]:
+                      - heading "TASK REMINDER" [level=6] [ref=f51e119]
+                      - strong [ref=f51e120]: Follow up with Widgetz (sample)
+                      - text: due in 15 mins for
+                      - strong [ref=f51e125]: Widgetz.io (sample) .
+                  - button "Close" [ref=f51e127] [cursor=pointer]
+                - generic [ref=f51e133]:
+                  - listitem [ref=f51e135]:
+                    - generic [ref=f51e143] [cursor=pointer]:
+                      - heading "TASK REMINDER" [level=6] [ref=f51e144]
+                      - strong [ref=f51e145]: Weekly follow up (sample)
+                      - text: due in 15 mins for
+                      - strong [ref=f51e150]: Widgetz.io (sample) .
+                  - button "Close" [ref=f51e152] [cursor=pointer]
+            - listitem [ref=f51e158]
+            - listitem [ref=f51e159]:
+              - img "Your User Avatar" [ref=f51e163] [cursor=pointer]
+          - textbox "Search your CRM" [ref=f51e173]
+          - generic [ref=f51e175]:
+            - emphasis [ref=f51e176]: Your trial ends in 8 days
+            - link "Explore plans" [ref=f51e182] [cursor=pointer]:
+              - /url: /subscriptions/1022166243640797888/checkout?manageTrial=true&cp=true
+            - button "Request demo" [ref=f51e184] [cursor=pointer]
+      - navigation:
+        - generic [ref=f51e186]:
+          - link [ref=f51e190] [cursor=pointer]:
+            - /url: /crm/sales/contacts
+          - list [ref=f51e194]:
+            - listitem "Dashboards" [ref=f51e195]:
+              - link [ref=f51e198] [cursor=pointer]:
+                - /url: /crm/sales/my_dashboards?tab=353503
+            - listitem "Contacts" [ref=f51e201]:
+              - link [ref=f51e204] [cursor=pointer]:
+                - /url: /crm/sales/contacts
+            - listitem "Accounts" [ref=f51e207]:
+              - link [ref=f51e210] [cursor=pointer]:
+                - /url: /crm/sales/accounts
+            - listitem "Deals" [ref=f51e213]:
+              - link [ref=f51e216] [cursor=pointer]:
+                - /url: /crm/sales/deals
+            - listitem "Conversations" [ref=f51e219]:
+              - link [ref=f51e222] [cursor=pointer]:
+                - /url: /crm/sales/conversations/awaiting_response
+            - listitem "Analytics" [ref=f51e225]:
+              - link [ref=f51e228] [cursor=pointer]:
+                - /url: /crm/sales/analytics
+            - listitem "Admin Settings" [ref=f51e231]:
+              - link [ref=f51e234] [cursor=pointer]:
+                - /url: /crm/sales/settings
+          - generic [ref=f51e237]:
+            - generic "Phone" [ref=f51e238]
+            - generic "Freshworks Switcher" [ref=f51e241]:
+              - button "Freshworks Switcher" [ref=f51e242] [cursor=pointer]
+      - generic [ref=f51e247]:
+        - generic [ref=f51e248] [cursor=pointer]: Sales Essentials Dashboard
+        - generic [ref=f51e256] [cursor=pointer]: Sales Dashboard
+        - generic [ref=f51e264] [cursor=pointer]: Activities Dashboard
+        - button [ref=f51e274] [cursor=pointer]
+      - iframe [ref=f51e286]:
+        - generic [ref=f55e1]: Loading...
+    - generic [ref=f51e288] [cursor=pointer]
+  - iframe
+  - generic:
+    - iframe
