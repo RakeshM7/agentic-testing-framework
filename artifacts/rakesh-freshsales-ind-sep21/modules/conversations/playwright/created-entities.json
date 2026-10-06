@@ -1,0 +1,155 @@
+[
+  {
+    "createdAt": "2026-10-06T04:20:58.498Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-1791260439743",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:32:25.422Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:21:14.061Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-nameonly-1791260439743",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:32:34.871Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:23:32.285Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-1791260587152",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:32:45.546Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:23:44.499Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-nameonly-1791260587152",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:32:58.238Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:24:18.768Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-dup-1791260587152",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:36:41.491Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:29:17.446Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-1791260794431",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:37:14.936Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:29:31.098Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-nameonly-1791260794431",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:37:24.888Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:30:29.266Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-dup-1791260794431",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:41:33.425Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:30:59.155Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ <b>x</b> & q 1791260794431",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:41:33.426Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:31:07.542Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-1791260794431-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:41:33.426Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:35:18.913Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-1791261296164",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:41:33.426Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:35:30.775Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-nameonly-1791261296164",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:41:33.427Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:43:39.362Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-1791261699814",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:46:14.565Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:43:49.754Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-nameonly-1791261699814",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:45:26.328Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:44:32.783Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-TC-dup-1791261699814",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:45:37.025Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:45:05.511Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ <b>x</b> & q 1791261699814",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:46:14.565Z"
+  },
+  {
+    "createdAt": "2026-10-06T04:45:11.371Z",
+    "deleted": true,
+    "type": "email-template",
+    "identifier": "ZZ-1791261699814-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "url": "",
+    "note": "",
+    "deletedAt": "2026-10-06T04:46:14.565Z"
+  }
+]
