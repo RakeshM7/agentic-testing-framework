@@ -1,0 +1,202 @@
+[
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA probe",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzQ2/page/1",
+    "createdAt": "2026-10-06T03:53:30.236Z",
+    "note": "probe; trashed by sweep",
+    "deleted": true
+  },
+  {
+    "type": "schedule",
+    "identifier": "ZZ Schedule QA",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzQ2/page/1",
+    "createdAt": "2026-10-06T03:55:35.086Z",
+    "note": "probe; about to save; deleted by the ZZ sweep (deleteSchedulesNamed) before report trash",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 179847",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzQ3/page/1",
+    "createdAt": "2026-10-06T04:16:51.638Z",
+    "note": "TC-analytics-003; trashed by sweep",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 291339",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzQ4/page/1",
+    "createdAt": "2026-10-06T04:18:46.885Z",
+    "note": "TC-analytics-003; trashed by sweep",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 403461",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzQ5/page/1",
+    "createdAt": "2026-10-06T04:20:40.958Z",
+    "note": "TC-analytics-003; trashed by sweep",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 546238",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzUw/page/1",
+    "createdAt": "2026-10-06T04:23:04.305Z",
+    "note": "TC-analytics-003; trashed by sweep",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA star probe",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzUx/page/1",
+    "createdAt": "2026-10-06T04:25:23.276Z",
+    "note": "star probe; trashed by sweep",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 777089",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzUy/page/1",
+    "createdAt": "2026-10-06T04:26:46.522Z",
+    "note": "TC-analytics-003; trashed by sweep",
+    "deleted": true
+  },
+  {
+    "type": "schedule",
+    "identifier": "ZZ Schedule QA",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzUy/page/1",
+    "createdAt": "2026-10-06T04:29:54.348Z",
+    "note": "TC-analytics-020; about to save; deleted by the ZZ sweep (deleteSchedulesNamed) before report trash",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 082204",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzU1/page/1",
+    "createdAt": "2026-10-06T04:31:49.598Z",
+    "note": "TC-analytics-003; trashed by sweep",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 188646",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzU2/page/1",
+    "createdAt": "2026-10-06T04:36:59.586Z",
+    "note": "TC-analytics-003; trashed by TC-analytics-010",
+    "deleted": true
+  },
+  {
+    "type": "schedule",
+    "identifier": "ZZ Schedule QA",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzU2/page/1",
+    "createdAt": "2026-10-06T04:36:39.066Z",
+    "note": "TC-analytics-020; deleted",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA dup 445841",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzU3/page/1",
+    "createdAt": "2026-10-06T04:38:43.953Z",
+    "note": "trashed by test",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA dup 445841",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzU4/page/1",
+    "createdAt": "2026-10-06T04:38:40.670Z",
+    "note": "trashed by test",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 445841 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzU5/page/1",
+    "createdAt": "2026-10-06T04:39:02.009Z",
+    "note": "TC-029; trashed by sweep",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA dup 625537",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzYw/page/1",
+    "createdAt": "2026-10-06T04:41:59.743Z",
+    "note": "trashed by test",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA dup 625537",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzYx/page/1",
+    "createdAt": "2026-10-06T04:41:55.342Z",
+    "note": "trashed by test",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA dup 039050",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzYy/page/1",
+    "createdAt": "2026-10-06T04:48:32.130Z",
+    "note": "trashed by test",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA dup 039050",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzYz/page/1",
+    "createdAt": "2026-10-06T04:48:27.581Z",
+    "note": "trashed by test",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 039050 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzY0/page/1",
+    "createdAt": "2026-10-06T04:49:01.785Z",
+    "note": "trashed by test",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 337554",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzY2/page/1",
+    "createdAt": "2026-10-06T04:54:27.058Z",
+    "note": "TC-analytics-003; trashed by TC-analytics-010",
+    "deleted": true
+  },
+  {
+    "type": "schedule",
+    "identifier": "ZZ Schedule QA",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzY2/page/1",
+    "createdAt": "2026-10-06T04:54:13.982Z",
+    "note": "TC-analytics-020; deleted",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA dup 337554",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzY3/page/1",
+    "createdAt": "2026-10-06T04:56:19.479Z",
+    "note": "trashed by test",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA dup 337554",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5NzY4/page/1",
+    "createdAt": "2026-10-06T04:56:13.561Z",
+    "note": "trashed by test",
+    "deleted": true
+  },
+  {
+    "type": "report",
+    "identifier": "ZZ Analytics QA 337554 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/analytics/reports/MjM5Nzcw/page/1",
+    "createdAt": "2026-10-06T04:56:45.957Z",
+    "note": "trashed by test",
+    "deleted": true
+  }
+]

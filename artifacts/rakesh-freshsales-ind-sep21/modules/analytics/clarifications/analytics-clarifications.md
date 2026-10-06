@@ -6,38 +6,41 @@ Verify, create, edit, trash and navigate Freshsales Analytics: the reports libra
 ## Safety basis
 `authorizations.mode` = **full-run** (set explicitly by the user for their own trial tenant). Mutating flows are executed live. Deletes/trash apply only to entities the run created (tracked in `created-entities.json`); never pre-existing or curated reports.
 - (a) Submissions that could succeed and mutate data: run live under full-run, scoped as above.
-- (b) Submissions expected to be blocked by validation before mutation (e.g. empty required schedule fields, empty report name if the UI blocks it): non-mutating, run live regardless of mode.
+- (b) Submissions expected to be blocked by validation before mutation (e.g. empty required schedule fields, empty report name): non-mutating, run live regardless of mode.
 
 ## In scope
 - Reports library navigation, sidebar filters (Recent, Favorites, My, Curated, Private, Shared), Sort By, paging (10 per page) as UI navigation checks.
 - Create report from Gallery template; view Report Details; favorite; move own report to Trash.
 - Opening curated reports (e.g. Sales Dashboard).
 - Schedule report form (validation and a valid save for the logged-in user); Email Now and Download on a report.
-- Analytics Settings browsing (Data Export, Custom Metrics, Custom Attributes lists) and opening the New Attribute form.
+- Analytics Settings: list/navigation checks for Data Export, Custom Metrics and Custom Attributes, and opening the New Attribute form.
 
 ## Out of scope
 - Editing, trashing or deleting curated/System reports or any pre-existing report not created by the run.
-- Creating Data Export and Custom Metric records, and Custom Attribute formula validation (forms not explored; see Open questions).
-- Schedules with recipients other than the logged-in user (permitted by the product, but not authorized for live execution; see Confirmed behaviors).
+- Creating Data Export and Custom Metric records, and Custom Attribute formula validation (deferred until forms are explored; see Confirmed behaviors).
+- Live-saved schedules with recipients other than the logged-in user (not confirmed; see Open questions).
 
 ## Confirmed behaviors
 - Output format and mode: CSV; full-run (run-config).
-- Trash retention: answer given as "4w 2d" (source: trash recoverability question). Interpreted as the retention period shown for trashed reports; exact semantics unconfirmed (see Open questions).
-- Schedule frequencies other than Monthly are permitted. Recipients other than the logged-in user are permitted provided they are a Lead, Contact or Agent in the system (source: schedule frequencies/recipients question).
-- A valid schedule MAY be saved live for the logged-in user only, and the test MUST delete or disable the schedule it created afterwards (answer "yes" to a genuine yes/no question).
-- Email Now and Download on a report are safe to run live (email goes to the logged-in user only; download saves a file locally). Answer "Yes".
-- Recurring emails to anyone other than the logged-in user are not authorized for tests: the recipients answer says it is permitted by the product, while the live-save authorization covers the logged-in user only. These do not conflict, but test cases for other recipients should be written without live execution unless a human confirms.
+- Trash retention: answer given as "4w 2d" (round 1). Interpreted as the retention period shown for trashed reports; exact semantics unconfirmed (Open questions).
+- Schedule frequencies other than Monthly are permitted. Recipients other than the logged-in user are permitted by the product provided they are a Lead, Contact or Agent in the system (round 1).
+- A valid schedule MAY be saved live for the logged-in user only, and the test MUST delete or disable the schedule it created afterwards (round 1).
+- Email Now and Download on a report are safe to run live (email goes to the logged-in user only; download saves a file locally) (round 1).
+- Data Export and Custom Metrics: answer "Defer until forms are explored" (round 2). Therefore these get list/navigation test cases only; no Create Export / Create Metric cases until the forms are explored.
+- A report cannot be saved with an empty name (round 2). Test case: attempt Save with empty name, expect it blocked, nothing created. This is a validation-blocked (case b) attempt and runs live regardless of mode. Exact message to be taken from the live UI.
 
 ## Edge cases
 | Scenario | Expected behavior |
 |---|---|
 | Schedule form submitted with required fields empty | Blocked by validation, nothing saved; runs live (case b). Exact messages per `flows/schedule-report-validation.md`. |
 | Valid schedule, logged-in user as sole recipient, non-Monthly frequency | Saved; test cleans up (delete/disable). |
-| Schedule recipient is a Lead/Contact/Agent other than self | Permitted by the product; live execution not authorized. |
-| Schedule recipient not a Lead/Contact/Agent | Not confirmed (inferred rejection only; see Open questions). |
+| Schedule recipient is a Lead/Contact/Agent other than self | Permitted by the product; live save NOT authorized by default (round-2 answer "Yes" was ambiguous; see Open questions). Case written, flagged, not executed live. |
+| Schedule recipient not a Lead/Contact/Agent | Not confirmed (inferred rejection only). |
+| Report saved with empty name | Cannot be saved (confirmed, round 2). Runs live (case b). |
+| Report with duplicate / over-long name / default "Untitled Report" | Not confirmed (see Open questions). Flag as unconfirmed; assert observed behavior only. |
 | Trash a report created by the run | Moves to Trash; retention shown as "4w 2d". |
-| Report name empty / duplicate / max length / default "Untitled Report" | Not confirmed (see Open questions). |
-| Edit/Clone/Trash/Favorite on a curated report | Not confirmed (see Open questions). |
+| Edit/Clone/Trash/Favorite on a curated report | Not confirmed (see Open questions). Tests must not trash or edit curated reports. |
+| Data Export / Custom Metrics create forms | Deferred; list/navigation only. |
 
 ## Non-functional constraints
 None raised. Authorization: tenant is the user's own trial tenant; credentials via env-file path only.
@@ -46,19 +49,17 @@ None raised. Authorization: tenant is the user's own trial tenant; credentials v
 CSV
 
 ## Open questions
-Bare "yes"/"Yes" answers to non-yes/no questions, a skip and unanswered sub-parts are carried here, not treated as spec.
-1. Data export and custom metrics scope: the answer "yes" does not choose among assumed-fields / list-and-navigation-only / defer. Default until clarified: list/navigation checks only for Data Export and Custom Metrics; Create Export/Create Metric forms deferred pending exploration.
-2. Report name and Save validation (empty name, duplicate name, max length, default "Untitled Report"): the answer "yes" gives no rules. Whether empty/duplicate names may be attempted live is also unresolved (a validation-blocked attempt is non-mutating; a duplicate that succeeds would create a report, allowed only under full-run and trashed afterwards).
-3. Curated (System) report protection (Edit/Clone/Move to trash/Favorite): the answer "yes" is unclear as to which actions are protected. Tests must not trash or edit curated reports regardless.
-4. Sidebar filters, Sort By, 10-per-page paging, Private vs Shared visibility: "yes" does not specify behaviors to verify or visibility rules. Default: generic navigation/filter checks only.
-5. Landing on /analytics: "Yes" to an either/or question; unclear whether tests assert redirect to last viewed report or treat it as non-deterministic. Default: non-deterministic, assert only that Analytics loads.
-6. Trash: "4w 2d" is ambiguous (retention before auto-purge assumed). Not answered: whether an org admin can restore or permanently delete from Trash.
-7. Schedule: how failed deliveries are surfaced is unanswered; behavior for recipients who are not Lead/Contact/Agent is unanswered.
-8. Custom Attribute formula and Custom Metric validation (functions, name uniqueness, limits): skipped, flagged for later.
-9. Coverage gaps from explore (Data Export and Custom Metrics create forms never opened) remain; the notes in `explore/crawl-log.md` apply.
+Bare "yes"/"Yes" answers to either/or questions, skips and unanswered sub-parts are carried here, not treated as spec. Defaults follow config (assume-standard-and-flag / flag-as-unconfirmed-case).
+1. Third-party schedule recipients (round 2): the answer "Yes" to an either/or question ("save live for another Lead/Contact/Agent, or only the logged-in user?") does not say which. ASSUMED DEFAULT (flagged): only the logged-in user may be used in live execution; other-recipient cases are written but marked not-executed-live, since they would email third parties.
+2. Report name validation, beyond empty name: duplicate name, max length, default "Untitled Report" rules and whether those may be attempted live are unanswered. ASSUMED DEFAULT (flagged): duplicate/over-long cases written as unconfirmed cases asserting observed behavior; a duplicate that succeeds is created by the run and trashed afterwards.
+3. Curated (System) report protection (Edit/Clone/Move to trash/Favorite): round-1 "yes" unclear on which actions are protected. Tests must not trash or edit curated reports regardless.
+4. Sidebar filters, Sort By, 10-per-page paging, Private vs Shared visibility: "yes" gives no behaviors. Default: generic navigation/filter checks only.
+5. Landing on /analytics: "Yes" to an either/or question. Default: non-deterministic; assert only that Analytics loads.
+6. Trash: "4w 2d" assumed to be retention before auto-purge. Unanswered: whether an org admin can restore or permanently delete from Trash.
+7. Schedule: how failed deliveries are surfaced and behavior for recipients who are not Lead/Contact/Agent are unanswered.
+8. Custom Attribute formula and Custom Metric validation (functions, name uniqueness, limits): deferred, flagged for later.
+9. Coverage gaps from explore (Data Export and Custom Metrics create forms never opened) remain; per round-2 ruling these stay list/navigation only until explored. Notes in `explore/crawl-log.md` apply.
 
 ## Follow-up Questions
-- [Behavior][Nice-to-have] Does "4w 2d" mean a trashed report is auto-purged after 4 weeks 2 days, and can it be restored in that window? Navigate: Analytics > Trash (flow trash-report).
-- [Behavior][Blocking] When a Schedule recipient is a Lead/Contact/Agent other than the logged-in user, may a test save it live (sends recurring emails to a third party), or only the logged-in user? Navigate: Analytics > <report> > Export > Schedule report (flow schedule-report-validation).
-- [Scope][Blocking] For Data Export and Custom Metrics, please pick one: list/navigation checks only, tests from assumed fields, or defer until forms are explored. Navigate: Analytics > Settings > Data Export / Custom Metrics (flow browse-analytics-settings).
-- [Edge Case][Blocking] What should happen when a report is saved with an empty name, a duplicate name, or an over-long name, and may these be tried live? Navigate: Analytics > New Report > Save (flow create-report-from-gallery-template).
+- [Behavior][Nice-to-have] Please answer explicitly (not Yes/No): may a test save a recurring schedule live with a Lead/Contact/Agent other than the logged-in user, or must live schedules use the logged-in user only? Navigate: Analytics > <report> > Export > Schedule report (flow schedule-report-validation).
+- [Edge Case][Nice-to-have] What happens when a report is saved with a duplicate name or an over-long name (rejected with a message, or allowed), and is there a max length? Navigate: Analytics > New Report > Save (flow create-report-from-gallery-template).
