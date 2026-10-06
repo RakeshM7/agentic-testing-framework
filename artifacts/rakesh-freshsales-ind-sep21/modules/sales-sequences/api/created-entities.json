@@ -165,8 +165,8 @@
     "endpoint": "/crm/sales/sales_sequences",
     "name": "ZZ Seq API 1791199038191579",
     "createdAt": "2026-10-05T11:17:19.155Z",
-    "deleted": false,
-    "note": "ORPHAN: created with status=99 during discovery; now invisible (GET 404) and undeletable (DELETE 404) via API; needs manual/support cleanup"
+    "deleted": true,
+    "note": "verified absent live at end of run (deleted during discovery probing; delete not logged)"
   },
   {
     "id": 402000016553,
@@ -188,7 +188,7 @@
     "id": 402000016555,
     "resource": "sales_sequence",
     "endpoint": "/crm/sales/sales_sequences",
-    "name": "ZZ Seq API ünïcödé 日本語",
+    "name": "ZZ Seq API \u00fcn\u00efc\u00f6d\u00e9 \u65e5\u672c\u8a9e",
     "createdAt": "2026-10-05T11:17:25.331Z",
     "deleted": true
   },
@@ -240,7 +240,7 @@
     "id": 402000016561,
     "resource": "sales_sequence",
     "endpoint": "/crm/sales/sales_sequences",
-    "name": "ZZ Seq API ünïcödé 日本語",
+    "name": "ZZ Seq API \u00fcn\u00efc\u00f6d\u00e9 \u65e5\u672c\u8a9e",
     "createdAt": "2026-10-05T11:19:01.288Z",
     "deleted": true,
     "deletedAt": "2026-10-05T11:19:04.397Z"
@@ -402,7 +402,7 @@
     "id": 402000016579,
     "resource": "sales_sequence",
     "endpoint": "/crm/sales/sales_sequences",
-    "name": "ZZ Seq API ünïcödé 日本語",
+    "name": "ZZ Seq API \u00fcn\u00efc\u00f6d\u00e9 \u65e5\u672c\u8a9e",
     "createdAt": "2026-10-05T11:19:15.803Z",
     "deleted": true,
     "deletedAt": "2026-10-05T11:19:18.716Z"
@@ -582,7 +582,7 @@
     "id": 402000016599,
     "resource": "sales_sequence",
     "endpoint": "/crm/sales/sales_sequences",
-    "name": "ZZ Seq API ünïcödé 日本語",
+    "name": "ZZ Seq API \u00fcn\u00efc\u00f6d\u00e9 \u65e5\u672c\u8a9e",
     "createdAt": "2026-10-05T11:19:25.250Z",
     "deleted": true,
     "deletedAt": "2026-10-05T11:19:27.890Z"
@@ -762,7 +762,7 @@
     "id": 402000016619,
     "resource": "sales_sequence",
     "endpoint": "/crm/sales/sales_sequences",
-    "name": "ZZ Seq API ünïcödé 日本語",
+    "name": "ZZ Seq API \u00fcn\u00efc\u00f6d\u00e9 \u65e5\u672c\u8a9e",
     "createdAt": "2026-10-05T11:19:36.835Z",
     "deleted": true,
     "deletedAt": "2026-10-05T11:19:39.624Z"
@@ -919,5 +919,185 @@
     "createdAt": "2026-10-05T11:19:39.414Z",
     "deleted": true,
     "deletedAt": "2026-10-05T11:19:40.993Z"
+  },
+  {
+    "id": 402000016645,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 179121511126695",
+    "createdAt": "2026-10-05T15:45:11.438Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:14.559Z"
+  },
+  {
+    "id": 402000016646,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API <b>x</b> &amp;",
+    "createdAt": "2026-10-05T15:45:11.578Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:14.554Z"
+  },
+  {
+    "id": 402000016647,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API (unnamed-probe empty)",
+    "createdAt": "2026-10-05T15:45:11.741Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:13.201Z"
+  },
+  {
+    "id": 402000016648,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API \u00fcn\u00efc\u00f6d\u00e9 \u65e5\u672c\u8a9e",
+    "createdAt": "2026-10-05T15:45:11.753Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:14.773Z"
+  },
+  {
+    "id": 402000016649,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 1791215111615353",
+    "createdAt": "2026-10-05T15:45:11.777Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:14.756Z"
+  },
+  {
+    "id": 402000016650,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 1791215111759484",
+    "createdAt": "2026-10-05T15:45:11.944Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:15.017Z"
+  },
+  {
+    "id": 402000016651,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API (unnamed-probe missing)",
+    "createdAt": "2026-10-05T15:45:11.977Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:13.491Z"
+  },
+  {
+    "id": 402000016652,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 1791215111950935",
+    "createdAt": "2026-10-05T15:45:12.101Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:14.997Z"
+  },
+  {
+    "id": 402000016653,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 1791215111952573",
+    "createdAt": "2026-10-05T15:45:12.133Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:15.256Z"
+  },
+  {
+    "id": 402000016654,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 1791215111981220",
+    "createdAt": "2026-10-05T15:45:12.158Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:13.722Z"
+  },
+  {
+    "id": 402000016655,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 1791215111981220",
+    "createdAt": "2026-10-05T15:45:12.360Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:14.077Z"
+  },
+  {
+    "id": 402000016656,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 17912151123337",
+    "createdAt": "2026-10-05T15:45:12.503Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:12.795Z"
+  },
+  {
+    "id": 402000016657,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "createdAt": "2026-10-05T15:45:12.521Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:14.336Z"
+  },
+  {
+    "id": 402000016658,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 1791215112364259",
+    "createdAt": "2026-10-05T15:45:12.545Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:15.415Z"
+  },
+  {
+    "id": 402000016659,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 179121511240435",
+    "createdAt": "2026-10-05T15:45:12.621Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:15.248Z"
+  },
+  {
+    "id": 402000016660,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "createdAt": "2026-10-05T15:45:12.694Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:14.593Z"
+  },
+  {
+    "id": 402000016661,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 179121511240435 - Copy",
+    "createdAt": "2026-10-05T15:45:12.855Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:15.426Z"
+  },
+  {
+    "id": 402000016662,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "createdAt": "2026-10-05T15:45:12.910Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:14.898Z"
+  },
+  {
+    "id": 402000016663,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 1791215113069449",
+    "createdAt": "2026-10-05T15:45:13.251Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:13.560Z"
+  },
+  {
+    "id": 402000016664,
+    "resource": "sales_sequence",
+    "endpoint": "/crm/sales/sales_sequences",
+    "name": "ZZ Seq API 1791215113861671",
+    "createdAt": "2026-10-05T15:45:14.039Z",
+    "deleted": true,
+    "deletedAt": "2026-10-05T15:45:15.577Z"
   }
 ]

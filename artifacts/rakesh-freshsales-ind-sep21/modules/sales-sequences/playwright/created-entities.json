@@ -601,5 +601,82 @@
     "note": "deleted TC-024",
     "deleted": true,
     "deletedAt": "2026-10-05T12:02:32.774Z"
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:45:02.188Z",
+    "identifier": "ZZ Seq 1791218697863 edited (id 402000016665)",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/sales-sequences/contact/402000016665",
+    "note": "deleted via UI",
+    "deleted": true,
+    "deletedAt": "2026-10-05T16:45:41.951Z"
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:45:29.520Z",
+    "identifier": "ZZ Seq 1791218697863 - Copy (id 402000016666)",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/sales-sequences/contact/402000016666",
+    "note": "TC-010 clone present in list"
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:45:39.505Z",
+    "identifier": "ZZ Seq 1791218697863 - Copy",
+    "note": "deleted TC-012",
+    "deleted": true
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:45:46.075Z",
+    "identifier": "ZZ Seq 1791218697863 own (id 402000016667)",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/sales-sequences/contact/402000016667",
+    "note": "deleted via UI",
+    "deleted": true,
+    "deletedAt": "2026-10-05T16:45:49.747Z"
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:45:57.441Z",
+    "identifier": "ZZ Seq 1791218697863 acct (id 402000016668)",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/sales-sequences/sales_account/402000016668",
+    "note": "TC-015 created"
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:46:01.121Z",
+    "identifier": "ZZ Seq 1791218697863 acct",
+    "note": "deleted via UI",
+    "deleted": true
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:46:11.211Z",
+    "identifier": "ZZ Seq 1791218697863 dup (id 402000016669)",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/sales-sequences/contact/402000016669",
+    "note": "created by sales-sequences Playwright track"
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:46:17.521Z",
+    "identifier": "ZZ Seq 1791218697863 dup (id 402000016670)",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/sales-sequences/contact/402000016670",
+    "note": "TC-023 duplicate"
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:46:21.107Z",
+    "identifier": "ZZ Seq 1791218697863 dup",
+    "note": "deleted via UI",
+    "deleted": true,
+    "deletedAt": "2026-10-05T16:46:23.450Z"
+  },
+  {
+    "type": "sales sequence",
+    "createdAt": "2026-10-05T16:47:04.000Z",
+    "identifier": "ZZ Seq 1791218697863 LLLLLLLLLLLLLLLLLLL... (id 402000016671)",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/sales-sequences/contact/402000016671",
+    "note": "deleted TC-024",
+    "deleted": true,
+    "deletedAt": "2026-10-05T16:47:06.296Z"
   }
 ]

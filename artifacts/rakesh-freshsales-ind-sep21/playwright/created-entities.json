@@ -281,5 +281,33 @@
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221072381",
     "createdAt": "2026-10-05T12:03:29.028Z",
     "note": "AgentTest BadPhone1791201804392 (TC-011; invalid phone accepted, value discarded)"
+  },
+  {
+    "type": "contact",
+    "identifier": "402221092745",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221092745",
+    "createdAt": "2026-10-05T16:41:21.879Z",
+    "note": "AgentTest Lead1791218478108 (TC-001)"
+  },
+  {
+    "type": "account",
+    "identifier": "402012715488",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012715488",
+    "createdAt": "2026-10-05T16:41:55.993Z",
+    "note": "AgentTest Co 1791218478108 (TC-003)"
+  },
+  {
+    "type": "deal",
+    "identifier": "402012477953",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012477953",
+    "createdAt": "2026-10-05T16:42:07.689Z",
+    "note": "AgentTest Deal 1791218478108 (TC-004)"
+  },
+  {
+    "type": "contact",
+    "identifier": "402221093122",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221093122",
+    "createdAt": "2026-10-05T16:47:48.367Z",
+    "note": "AgentTest BadPhone1791218697861 (TC-011; invalid phone accepted, value discarded)"
   }
 ]

@@ -1084,5 +1084,148 @@
     "identifier": "ZZ Tld Acct 00657454",
     "url": "/crm/sales/accounts/402012714531",
     "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:25:38.840Z",
+    "identifier": "ZZ Filter Acct 17534574",
+    "url": "/crm/sales/accounts/402012715463",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:26:40.481Z",
+    "identifier": "ZZ Tabs Acct 17596197",
+    "url": "/crm/sales/accounts/402012715464",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:27:08.114Z",
+    "identifier": "ZZ Clone Src 17596197",
+    "url": "/crm/sales/accounts/402012715465",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:27:19.368Z",
+    "identifier": "ZZ Clone Copy 17596197",
+    "url": "/crm/sales/accounts/402012715466",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:27:29.927Z",
+    "identifier": "ZZ CloneDup Acct 17596197",
+    "url": "/crm/sales/accounts/402012715467",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:27:52.276Z",
+    "identifier": "ZZ EditDupA 17596197",
+    "url": "/crm/sales/accounts/402012715468",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:27:54.713Z",
+    "identifier": "ZZ EditDupB 17596197",
+    "url": "/crm/sales/accounts/402012715469",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:28:49.557Z",
+    "identifier": "ZZ Site042 Acct 17596197",
+    "url": "/crm/sales/accounts/402012715470",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:28:56.819Z",
+    "identifier": "ZZ NoSite Acct 17596197",
+    "url": "/crm/sales/accounts/402012715471",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:29:37.296Z",
+    "identifier": "ZZ Create Acct 17754214",
+    "url": "/crm/sales/accounts/402012715474",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:29:45.681Z",
+    "identifier": "ZZ Full Acct 17754214",
+    "url": "/crm/sales/accounts/402012715475",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:29:52.897Z",
+    "identifier": "ZZ Edit Acct 17754214",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts/402012715476",
+    "note": "created by accounts track"
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:29:53.774Z",
+    "identifier": "ZZ Edit Acct 17754214 Edited",
+    "url": "/crm/sales/accounts/402012715476",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:30:00.862Z",
+    "identifier": "ZZ Delete Acct 17754214",
+    "url": "/crm/sales/accounts/402012715477",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:30:10.731Z",
+    "identifier": "ZZ Dup Acct 17754214",
+    "url": "/crm/sales/accounts/402012715478",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:30:24.261Z",
+    "identifier": "ZZ EditEmpty Acct 17754214",
+    "url": "/crm/sales/accounts/402012715479",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:30:32.161Z",
+    "identifier": "ZZ Tld Acct 17754214",
+    "url": "/crm/sales/accounts/402012715480",
+    "note": "created by accounts track",
+    "deleted": true
+  },
+  {
+    "type": "account",
+    "createdAt": "2026-10-05T16:30:44.040Z",
+    "identifier": "ZZ BadPhone Acct 17754214",
+    "url": "/crm/sales/accounts/402012715481",
+    "note": "created by accounts track",
+    "deleted": true
   }
 ]

@@ -124,5 +124,19 @@
     "createdAt": "2026-10-05T11:54:51.339Z",
     "note": "TC-011 removed",
     "deleted": true
+  },
+  {
+    "type": "dashboard-tab",
+    "identifier": "Sales Trends",
+    "createdAt": "2026-10-05T16:38:37.537Z",
+    "note": "TC-dashboards-009 removed",
+    "deleted": true
+  },
+  {
+    "type": "dashboard-tab",
+    "identifier": "Sales Forecast",
+    "createdAt": "2026-10-05T16:38:41.717Z",
+    "note": "TC-011 removed",
+    "deleted": true
   }
 ]
