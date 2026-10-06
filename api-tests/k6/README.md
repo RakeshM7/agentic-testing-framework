@@ -140,3 +140,7 @@ Both Freshsales scripts were only statically validated with the inspect subcomma
 
 ## Accounts track (accounts-sales-accounts-load-test.js)
 GET-only ramp (0 to 5 VUs, 70s) over Accounts views/list/detail. Inspect-only validation passed. The live run was BLOCKED by the repo guard hook (process env not full-run); hook not overridden. Not executed live; no result file.
+
+## Sales Sequences track (`rakesh-freshsales-ind-sep21`)
+
+`scripts/sales-sequences-sales-sequences-load-test.js`: read-only `GET /crm/sales/sales_sequences`, ramp 0->3 VUs (20s), hold 40s, down 10s; p95<1500ms, failures <1%. Statically validated only (`k6 inspect -e BASE_URL=... -e K6_ALLOWED_HOSTS=...`). The live load run was blocked by the repo guard hook (AUTHORIZATIONS_MODE was not full-run in the shell), so no live result exists.
