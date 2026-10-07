@@ -1,0 +1,20 @@
+<section id="structure" data-transition="fade" style="background:#000000;color:#F5F5F7;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:28px;font-weight:600;color:#2997FF">Folder structure</p>
+<h2 style="font-size:80px;font-weight:700;line-height:1.05;letter-spacing:-3px">Agents on one side. Artifacts on the other.</h2>
+</div>
+<table style="font-size:26px;color:#A1A1A6;background:#1D1D1F">
+<tr><th style="width:36%;color:#F5F5F7">Path</th><th style="width:64%;color:#F5F5F7">What lives there</th></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#2997FF">claude-agents/</td><td>Seven personas, Claude Code flavor (.claude/agents)</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#2997FF">copilot-agents/</td><td>The same seven, GitHub Copilot flavor (.github/agents)</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#2997FF">config/</td><td>run-config YAMLs and models.yaml</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#2997FF">scripts/</td><td>Model sync, run-config validator, clarification CSV tools</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#2997FF">docs/</td><td>conventions.md: the shared artifact and feedback contract</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#F5F5F7">artifacts/&lt;target&gt;/</td><td>Per-target handoff: explore, clarifications, testcases, api</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#F5F5F7">playwright-tests/</td><td>Generated UI suite, functional and visual</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#F5F5F7">api-tests/</td><td>Playwright API specs and k6 scripts</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#F5F5F7">feedback/&lt;agent&gt;/</td><td>Dated feedback files, each with a Resolution appended</td></tr>
+</table>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-size:24px;color:#86868B">7</p>
+<aside>Four tiers with different lifetimes: the agent definitions are the product and change rarely; config holds one run-config per target; artifacts are per-engagement handoff data; playwright-tests and api-tests are standalone projects meant to be lifted into the repo that owns the product. Copying claude-agents/ or copilot-agents/ into another repo makes the framework available there.</aside>
+</section>

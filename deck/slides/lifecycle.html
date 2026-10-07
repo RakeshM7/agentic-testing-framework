@@ -1,0 +1,53 @@
+<section id="lifecycle" data-transition="fade" style="background:#000000;color:#F5F5F7;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:28px;font-weight:600;color:#2997FF">Lifecycle</p>
+<h2 style="font-size:80px;font-weight:700;line-height:1.05;letter-spacing:-3px">From a URL to a closed loop.</h2>
+</div>
+<div style="display:flex;gap:16px;align-items:center">
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#1D1D1F;border-radius:28px;padding:28px">
+<p style="font-size:56px;font-weight:700;line-height:1;color:#2997FF">1</p>
+<h3 style="font-size:32px;font-weight:600;line-height:1.15">Discover</h3>
+<p style="font-size:24px;line-height:1.4;color:#A1A1A6">Crawl the app into a sitemap and page snapshots.</p>
+</div>
+<x-shape kind="arrow-right" style="width:32px;height:24px;background:#48484A"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#1D1D1F;border-radius:28px;padding:28px">
+<p style="font-size:56px;font-weight:700;line-height:1;color:#2997FF">2</p>
+<h3 style="font-size:32px;font-weight:600;line-height:1.15">Clarify</h3>
+<p style="font-size:24px;line-height:1.4;color:#A1A1A6">A human answers the blocking questions.</p>
+</div>
+<x-shape kind="arrow-right" style="width:32px;height:24px;background:#48484A"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#1D1D1F;border-radius:28px;padding:28px">
+<p style="font-size:56px;font-weight:700;line-height:1;color:#2997FF">3</p>
+<h3 style="font-size:32px;font-weight:600;line-height:1.15">Design</h3>
+<p style="font-size:24px;line-height:1.4;color:#A1A1A6">Manual test cases with a traceability matrix.</p>
+</div>
+<x-shape kind="arrow-right" style="width:32px;height:24px;background:#48484A"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#1D1D1F;border-radius:28px;padding:28px">
+<p style="font-size:56px;font-weight:700;line-height:1;color:#2997FF">4</p>
+<h3 style="font-size:32px;font-weight:600;line-height:1.15">Automate</h3>
+<p style="font-size:24px;line-height:1.4;color:#A1A1A6">Playwright UI suite plus API tests and k6.</p>
+</div>
+<x-shape kind="arrow-right" style="width:32px;height:24px;background:#48484A"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#1D1D1F;border-radius:28px;padding:28px">
+<p style="font-size:56px;font-weight:700;line-height:1;color:#2997FF">5</p>
+<h3 style="font-size:32px;font-weight:600;line-height:1.15">Learn</h3>
+<p style="font-size:24px;line-height:1.4;color:#A1A1A6">Feedback files are fixed and resolved.</p>
+</div>
+</div>
+<div style="display:flex;gap:48px">
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;border-top:2px solid #3A3A3C;padding-top:24px">
+<p style="font-size:30px;font-weight:600">Closed feedback loop</p>
+<p style="font-size:24px;line-height:1.4;color:#A1A1A6">Agents file feedback and pass only the path. The implementor fixes it and appends a Resolution.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;border-top:2px solid #3A3A3C;padding-top:24px">
+<p style="font-size:30px;font-weight:600">Resumable</p>
+<p style="font-size:24px;line-height:1.4;color:#A1A1A6">Artifacts on disk are the checkpoint. Re-invoke after a halt and finished stages are skipped.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;border-top:2px solid #3A3A3C;padding-top:24px">
+<p style="font-size:30px;font-weight:600">Halt, never guess</p>
+<p style="font-size:24px;line-height:1.4;color:#A1A1A6">An unanswered blocking question stops the run and is reported by name.</p>
+</div>
+</div>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-size:24px;color:#86868B">5</p>
+<aside>Five stages. Stage 4 runs the Playwright UI agent and the API agent from the same test cases. Feedback is a closed loop kept outside the linear per-target pipeline. The orchestrator checks for each stage's output file before invoking a spoke, which makes re-invocation after a halt a resume rather than a restart.</aside>
+</section>

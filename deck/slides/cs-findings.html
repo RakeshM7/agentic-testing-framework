@@ -1,0 +1,30 @@
+<section id="cs-findings" data-transition="fade" style="background:#000000;color:#F5F5F7;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:64px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:28px;font-weight:600;color:#2997FF">Case study · Findings</p>
+<h2 style="font-size:80px;font-weight:700;line-height:1.05;letter-spacing:-3px">What it found. What it taught us.</h2>
+</div>
+<div style="display:flex;gap:64px">
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#FF9F0A">In the application</h3>
+<ul style="font-size:28px;line-height:1.45;color:#D2D2D7">
+<li>Account phone “abc” is accepted</li>
+<li>Deal value of -5 is accepted, though the rules say reject</li>
+<li>A deal marked Lost saves with no reason</li>
+<li>Contact save is blocked with only a mobile number</li>
+<li>GET /tasks with page=0 returns a 500</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#30D158">In the framework</h3>
+<ul style="font-size:28px;line-height:1.45;color:#D2D2D7">
+<li>Mutating API calls need an X-CSRF-Token or return 422</li>
+<li>Parallel explorers shared one browser, so explore_concurrency is now 1</li>
+<li>The guard hook blocked k6 because mode was not in the shell environment</li>
+<li>Rate-limit cut-offs orphaned test data, so a scoped cleanup agent removed it</li>
+<li>11 feedback files filed for the implementor</li>
+</ul>
+</div>
+</div>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-size:24px;color:#86868B">11</p>
+<aside>Source: run-report.md in artifacts/rakesh-freshsales-ind-sep21. Application findings were recorded as expected-fail or flagged deviations from the clarification answers. Framework lessons were filed under feedback/playwright-automation-agent and feedback/api-testing-agent (6 and 5 files); auto-invoking the implementor was off for this run, so they await a human decision. Cleanup matched only recorded entities or the ZZ and TCContacts naming patterns.</aside>
+</section>

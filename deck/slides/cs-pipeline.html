@@ -1,0 +1,38 @@
+<section id="cs-pipeline" data-transition="fade" style="background:#000000;color:#F5F5F7;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:28px;font-weight:600;color:#2997FF">Case study · Output</p>
+<h2 style="font-size:88px;font-weight:700;line-height:1.05;letter-spacing:-3px">What one run produced.</h2>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;border-top:2px solid #3A3A3C;padding-top:20px">
+<p style="font-size:120px;font-weight:700;line-height:1;letter-spacing:-4px">19</p>
+<p style="font-size:24px;line-height:1.35;color:#A1A1A6">modules found, 17 reachable</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;border-top:2px solid #3A3A3C;padding-top:20px">
+<p style="font-size:120px;font-weight:700;line-height:1;letter-spacing:-4px">12</p>
+<p style="font-size:24px;line-height:1.35;color:#A1A1A6">modules selected</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;border-top:2px solid #3A3A3C;padding-top:20px">
+<p style="font-size:120px;font-weight:700;line-height:1;letter-spacing:-4px">436</p>
+<p style="font-size:24px;line-height:1.35;color:#A1A1A6">manual test cases</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;border-top:2px solid #3A3A3C;padding-top:20px">
+<p style="font-size:120px;font-weight:700;line-height:1;letter-spacing:-4px">568</p>
+<p style="font-size:24px;line-height:1.35;color:#A1A1A6">Playwright UI tests</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;border-top:2px solid #3A3A3C;padding-top:20px">
+<p style="font-size:120px;font-weight:700;line-height:1;letter-spacing:-4px">291</p>
+<p style="font-size:24px;line-height:1.35;color:#A1A1A6">API tests, 6 modules</p>
+</div>
+</div>
+<table style="font-size:26px;color:#A1A1A6;background:#1D1D1F">
+<tr><th style="width:38%;color:#F5F5F7">Where it landed</th><th style="width:62%;color:#F5F5F7">Contents</th></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#2997FF">artifacts/&lt;target&gt;/discovery/</td><td>Module map, flows, product overview</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#2997FF">artifacts/&lt;target&gt;/modules/</td><td>Per module: explore, clarifications, testcases, api</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#2997FF">playwright-tests/, api-tests/</td><td>Runnable UI and API projects, plus k6 scripts</td></tr>
+<tr><td style="font-family:'JetBrains Mono', monospace;color:#2997FF">run-report.md</td><td>Per-track status, created entities, findings</td></tr>
+</table>
+<p style="position:absolute;left:128px;bottom:64px;width:1200px;font-size:24px;color:#86868B">Counts taken from the committed repository.</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-size:24px;color:#86868B">9</p>
+<aside>Counts come from the repository: 436 manual test-case rows across ten module CSVs; 568 test() declarations in playwright-tests/freshsales (544 functional, 24 visual); 291 test() declarations in the six per-module API suites. The crawl also captured 169 page snapshots. Two modules, pipelines-forecasting and teams-territories, were explored view-only and have no generated tests yet.</aside>
+</section>
