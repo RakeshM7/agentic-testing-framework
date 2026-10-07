@@ -44,13 +44,14 @@ export function resolvePermissions(doc) {
 }
 
 // readonly runs cap every agent at read (browser/http) and none (load), whatever the file says.
+// full-run runs give every agent that has browser access at all (read or mutate) the full browser.
 export function effectiveLiveTarget(row, mode) {
   const lt = { ...row.live_target };
   if (mode !== "full-run") {
     if (lt.browser === "mutate") lt.browser = "read";
     if (lt.http === "mutate") lt.http = "read";
     lt.load = "none";
-  }
+  } else if (lt.browser === "read") lt.browser = "mutate";
   return lt;
 }
 
