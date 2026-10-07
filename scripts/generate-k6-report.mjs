@@ -6,7 +6,7 @@
 //
 // Usage: node scripts/generate-k6-report.mjs [--results-dir <dir>] [--out <file>]
 
-import { readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -272,6 +272,7 @@ function main() {
   const generatedAt = new Date().toISOString();
   const html = renderReport(sections, generatedAt);
 
+  mkdirSync(path.dirname(outPath), { recursive: true });
   writeFileSync(outPath, html, "utf8");
 
   console.log(`k6 report: ${resultFiles.length} result file(s) processed`);

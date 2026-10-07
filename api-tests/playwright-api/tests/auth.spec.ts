@@ -10,7 +10,7 @@ import { test, expect } from '../fixtures/api-fixtures';
 
 test.describe('GET /auth/me', () => {
   test('Functional: valid token returns the authenticated user identity', async ({ request, authToken }) => {
-    const response = await request.get('/auth/me', {
+    const response = await request.get('auth/me', {
       headers: { Authorization: `Bearer ${authToken}` },
     });
 
@@ -23,7 +23,7 @@ test.describe('GET /auth/me', () => {
   });
 
   test('Auth (negative): missing Authorization header is rejected', async ({ request }) => {
-    const response = await request.get('/auth/me');
+    const response = await request.get('auth/me');
     expect(response.status()).toBe(401);
     const body = await response.json();
     expect(body.success).toBe(false);
@@ -31,28 +31,28 @@ test.describe('GET /auth/me', () => {
   });
 
   test('Auth (negative): header missing the "Bearer " scheme prefix is rejected', async ({ request, authToken }) => {
-    const response = await request.get('/auth/me', {
+    const response = await request.get('auth/me', {
       headers: { Authorization: authToken }, // raw token, no "Bearer " prefix
     });
     expect(response.status()).toBe(401);
   });
 
   test('Auth (negative): well-formed-looking but garbage JWT is rejected', async ({ request }) => {
-    const response = await request.get('/auth/me', {
+    const response = await request.get('auth/me', {
       headers: { Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.bm90LWEtcmVhbC1wYXlsb2Fk.fakefakefake' },
     });
     expect(response.status()).toBe(401);
   });
 
   test('Auth (negative): completely non-JWT garbage string is rejected', async ({ request }) => {
-    const response = await request.get('/auth/me', {
+    const response = await request.get('auth/me', {
       headers: { Authorization: 'Bearer not-a-jwt-at-all' },
     });
     expect(response.status()).toBe(401);
   });
 
   test('Auth (negative): empty-string bearer token is rejected', async ({ request }) => {
-    const response = await request.get('/auth/me', {
+    const response = await request.get('auth/me', {
       headers: { Authorization: 'Bearer ' },
     });
     expect(response.status()).toBe(401);
@@ -63,7 +63,7 @@ test.describe('GET /auth/me', () => {
   // account without a signing secret it doesn't have. See api-test-plan.md section 3.
 
   test('Schema: success-response shape matches MeResponse', async ({ request, authToken }) => {
-    const response = await request.get('/auth/me', {
+    const response = await request.get('auth/me', {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     const body = await response.json();

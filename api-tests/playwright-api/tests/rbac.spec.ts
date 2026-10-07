@@ -22,7 +22,7 @@ test.describe('RBAC -- role/permission claim exposure (schema/contract)', () => 
     request,
     authToken,
   }) => {
-    const response = await request.get('/auth/me', {
+    const response = await request.get('auth/me', {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     expect(response.status()).toBe(200);

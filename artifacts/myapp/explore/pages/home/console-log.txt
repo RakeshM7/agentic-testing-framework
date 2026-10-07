@@ -1,0 +1,8 @@
+Total messages: 6 (Errors: 5, Warnings: 0)
+Returning 5 messages for level "error"
+
+[ERROR] Failed to load resource: the server responded with a status of 404 () @ https://crmsupport.freshworks.com/stylesheet.css:0
+[ERROR] Failed to load resource: the server responded with a status of 404 () @ https://crmsupport.freshworks.com/stylesheet.css:0
+[ERROR] Failed to load resource: the server responded with a status of 404 () @ https://crmsupport.freshworks.com/stylesheet.css:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ https://platform.twitter.com/widgets.js:0
+[ERROR] Failed to load resource: net::ERR_QUIC_PROTOCOL_ERROR.QUIC_NETWORK_IDLE_TIMEOUT @ https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v2.0:0

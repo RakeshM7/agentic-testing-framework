@@ -127,20 +127,3 @@ k6 run scripts/freshsales-deals-kanban-load-test.js  -e FRESHSALES_SESSION_COOKI
 
 Both scripts' `teardown()` hooks print a reminder to verify no requests silently 401'd mid-run
 (a session expiring partway through would look like *faster*, not failing, latency).
-
-## Safety: explicit `BASE_URL` + host allowlist
-
-No script has a default target. `scripts/lib/guard.js` requires `BASE_URL` and refuses any host not in
-`K6_ALLOWED_HOSTS` (comma-separated; localhost/127.0.0.1 always allowed). Static validation therefore needs a
-dummy value: `k6 inspect -e BASE_URL=http://localhost:3001 scripts/<file>.js`. Live runs additionally need
-`authorizations.mode: full-run` (enforced by `.claude/hooks/guard-bash.mjs` for Claude Code sessions).
-
-### Freshsales run update (2026-10-04, readonly in practice)
-Both Freshsales scripts were only statically validated with the inspect subcommand (`-e BASE_URL=... -e K6_ALLOWED_HOSTS=rakesh-freshsales-ind-sep21.myfreshworks.com`); NOT executed live (the shell hook requires `AUTHORIZATIONS_MODE=full-run` in the launch environment for live load runs). Scripts now read the session from `playwright-tests/freshsales/.auth/freshsales-handoff.json` (override with `-e FRESHSALES_SESSION_STATE_FILE`) and the contacts script now sends the required `segment_id`.
-
-## Accounts track (accounts-sales-accounts-load-test.js)
-GET-only ramp (0 to 5 VUs, 70s) over Accounts views/list/detail. Inspect-only validation passed. The live run was BLOCKED by the repo guard hook (process env not full-run); hook not overridden. Not executed live; no result file.
-
-## Sales Sequences track (`rakesh-freshsales-ind-sep21`)
-
-`scripts/sales-sequences-sales-sequences-load-test.js`: read-only `GET /crm/sales/sales_sequences`, ramp 0->3 VUs (20s), hold 40s, down 10s; p95<1500ms, failures <1%. Statically validated only (`k6 inspect -e BASE_URL=... -e K6_ALLOWED_HOSTS=...`). The live load run was blocked by the repo guard hook (AUTHORIZATIONS_MODE was not full-run in the shell), so no live result exists.

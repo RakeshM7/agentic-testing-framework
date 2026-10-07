@@ -1,10 +1,10 @@
-import { test, expect } from '../fixtures/api-fixtures';
+import { test, expect } from '@playwright/test';
 
 // GET /health -- no auth, no params. See artifacts/eventhub/api/api-test-plan.md section 12.
 
 test.describe('GET /health', () => {
   test('Functional: returns ok status with a well-formed schema', async ({ request }) => {
-    const response = await request.get('/health');
+    const response = await request.get('health');
 
     expect(response.status()).toBe(200);
     const body = await response.json();
@@ -17,7 +17,7 @@ test.describe('GET /health', () => {
   });
 
   test('Schema: content-type is application/json', async ({ request }) => {
-    const response = await request.get('/health');
+    const response = await request.get('health');
     expect(response.headers()['content-type']).toContain('application/json');
   });
 });

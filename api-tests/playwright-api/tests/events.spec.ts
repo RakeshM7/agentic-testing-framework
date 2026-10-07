@@ -28,7 +28,7 @@ function assertEventSchema(event: any) {
 
 test.describe('GET /events (list)', () => {
   test('Functional: default call returns paginated event list', async ({ request }) => {
-    const response = await request.get('/events');
+    const response = await request.get('events');
     expect(response.status()).toBe(200);
     const body = await response.json();
 
@@ -47,7 +47,7 @@ test.describe('GET /events (list)', () => {
   });
 
   test('Functional: filter by category returns only matching events', async ({ request }) => {
-    const response = await request.get('/events?category=Conference');
+    const response = await request.get('events?category=Conference');
     expect(response.status()).toBe(200);
     const body = await response.json();
     for (const event of body.data) {
@@ -56,7 +56,7 @@ test.describe('GET /events (list)', () => {
   });
 
   test('Functional: filter by city returns only matching events', async ({ request }) => {
-    const response = await request.get('/events?city=Hyderabad');
+    const response = await request.get('events?city=Hyderabad');
     expect(response.status()).toBe(200);
     const body = await response.json();
     for (const event of body.data) {
@@ -65,7 +65,7 @@ test.describe('GET /events (list)', () => {
   });
 
   test('Functional: search filters results by relevance to the term', async ({ request }) => {
-    const response = await request.get('/events?search=Tech');
+    const response = await request.get('events?search=Tech');
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(Array.isArray(body.data)).toBe(true);
@@ -77,7 +77,7 @@ test.describe('GET /events (list)', () => {
   });
 
   test('Boundary: limit=100 (documented max) is accepted', async ({ request }) => {
-    const response = await request.get('/events?limit=100');
+    const response = await request.get('events?limit=100');
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.data.length).toBeLessThanOrEqual(100);
@@ -85,7 +85,7 @@ test.describe('GET /events (list)', () => {
   });
 
   test('Boundary: limit above documented max (101) -- records actual behavior', async ({ request }) => {
-    const response = await request.get('/events?limit=101');
+    const response = await request.get('events?limit=101');
     // Contract question (see api-test-plan.md): spec declares maximum:100 but doesn't say whether
     // the API clamps, ignores, or rejects an out-of-range value. Assert it doesn't 500, and record
     // which of the plausible outcomes actually happened.
@@ -97,29 +97,29 @@ test.describe('GET /events (list)', () => {
   });
 
   test('Boundary: page far beyond last page returns an empty (not error) result', async ({ request }) => {
-    const response = await request.get('/events?page=9999&limit=10');
+    const response = await request.get('events?page=9999&limit=10');
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.data).toEqual([]);
   });
 
   test('Negative: non-numeric page param does not 500', async ({ request }) => {
-    const response = await request.get('/events?page=abc');
+    const response = await request.get('events?page=abc');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Negative: category value outside documented enum does not 500', async ({ request }) => {
-    const response = await request.get('/events?category=NotARealCategory');
+    const response = await request.get('events?category=NotARealCategory');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Auth/contract: list is reachable without a token (per spec, no security declared)', async ({ request }) => {
-    const response = await request.get('/events');
+    const response = await request.get('events');
     expect(response.status()).toBe(200);
   });
 
   test('Auth/contract: list behavior is unchanged with a valid token', async ({ request, authToken }) => {
-    const response = await request.get('/events', {
+    const response = await request.get('events', {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     // Resolves the discrepancy flagged in api-test-plan.md: spec's silence on `security` for this
@@ -129,7 +129,7 @@ test.describe('GET /events (list)', () => {
   });
 
   test('Auth/contract: list behavior with an invalid/malformed token', async ({ request }) => {
-    const response = await request.get('/events', {
+    const response = await request.get('events', {
       headers: { Authorization: 'Bearer not-a-real-jwt' },
     });
     // Documented as a contract question rather than a hard assertion of 401, since the spec
@@ -141,7 +141,7 @@ test.describe('GET /events (list)', () => {
 test.describe('GET /events/:id', () => {
   for (const [id, fixture] of Object.entries(FIXTURES)) {
     test(`Functional: fixture event ${id} (${fixture.title}) returns correct data`, async ({ request }) => {
-      const response = await request.get(`/events/${id}`);
+      const response = await request.get(`events/${id}`);
       expect(response.status()).toBe(200);
       const body = await response.json();
 
@@ -154,7 +154,7 @@ test.describe('GET /events/:id', () => {
   }
 
   test('Negative: nonexistent numeric id returns 404', async ({ request }) => {
-    const response = await request.get('/events/999999999');
+    const response = await request.get('events/999999999');
     expect(response.status()).toBe(404);
     const body = await response.json();
     expect(body.success).toBe(false);
@@ -162,22 +162,22 @@ test.describe('GET /events/:id', () => {
   });
 
   test('Negative: non-numeric id does not 500', async ({ request }) => {
-    const response = await request.get('/events/abc');
+    const response = await request.get('events/abc');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Negative: negative id does not 500', async ({ request }) => {
-    const response = await request.get('/events/-1');
+    const response = await request.get('events/-1');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Negative: zero id does not 500', async ({ request }) => {
-    const response = await request.get('/events/0');
+    const response = await request.get('events/0');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Boundary: extremely large id does not 500', async ({ request }) => {
-    const response = await request.get('/events/99999999999999999999');
+    const response = await request.get('events/99999999999999999999');
     expect(response.status()).toBeLessThan(500);
   });
 
@@ -187,7 +187,7 @@ test.describe('GET /events/:id', () => {
     // entirely) is stable for the same ids -- a negative result here would suggest the 503s
     // originate in the API/backend rather than purely in the Next.js SSR layer.
     for (const id of [283, 284, 285]) {
-      const response = await request.get(`/events/${id}`);
+      const response = await request.get(`events/${id}`);
       expect(response.status()).toBe(200);
     }
   });

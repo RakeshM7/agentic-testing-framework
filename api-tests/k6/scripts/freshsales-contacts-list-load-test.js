@@ -1,8 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
-import { requireBaseUrl } from './lib/guard.js';
-import { loadSessionCookie } from './lib/freshsales-session.js';
 
 /**
  * Load profile for GET /crm/sales/contacts (paginated list, read-only).
@@ -26,9 +24,8 @@ import { loadSessionCookie } from './lib/freshsales-session.js';
  *        -e FRESHSALES_SESSION_COOKIE="<the cookie string>"
  */
 
-const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
-const RAW = __ENV.FRESHSALES_SESSION_COOKIE ? '' : open(__ENV.FRESHSALES_SESSION_STATE_FILE || '../../../playwright-tests/freshsales/.auth/freshsales-handoff.json');
-const SESSION_COOKIE = loadSessionCookie(() => RAW);
+const BASE_URL = __ENV.BASE_URL || 'https://rakesh-freshsales-ind-sep21.myfreshworks.com';
+const SESSION_COOKIE = __ENV.FRESHSALES_SESSION_COOKIE || '';
 
 const failureRate = new Rate('freshsales_contacts_list_failed');
 const duration = new Trend('freshsales_contacts_list_duration', true);
@@ -66,7 +63,7 @@ export function setup() {
 
 export function listContacts() {
   const res = http.get(
-    `${BASE_URL}/crm/sales/contacts?include=lookup_information&load_as_per_list_page_config=true&page=1&per_page=25&segment_id=${__ENV.FRESHSALES_CONTACTS_SEGMENT_ID || '402015942732'}&sort=updated_at&sort_type=desc`,
+    `${BASE_URL}/crm/sales/contacts?include=lookup_information&load_as_per_list_page_config=true&page=1&per_page=25&sort=updated_at&sort_type=desc`,
     {
       headers: {
         Accept: 'application/json',

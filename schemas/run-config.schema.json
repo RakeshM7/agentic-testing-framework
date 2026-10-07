@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agentic-testing-framework/schemas/run-config.schema.json",
+  "title": "Run config",
+  "description": "One YAML file configures one full pipeline pass (one target, one feature). Contract: docs/conventions.md, 'Orchestrator & run-config contract'. Validated after YAML parsing.",
+  "type": "object",
+  "required": [
+    "target"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "target": {
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "description": "Optional; derived from the url hostname if omitted."
+        },
+        "maxPages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requirement_docs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "authorizations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "readonly",
+            "full-run"
+          ],
+          "description": "Defaults to readonly when absent."
+        },
+        "authenticated_crawl": {
+          "type": "boolean"
+        },
+        "credentials_file": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[^\\s=]+$",
+          "description": "A FILE PATH, never inline values. The pattern rejects anything with whitespace or '=' (i.e. KEY=value pairs)."
+        },
+        "session_state_file": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[^\\s=]+$",
+          "description": "Path to a human-produced storageState JSON or session-cookie value file."
+        }
+      }
+    },
+    "testcases": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "output_format": {
+          "enum": [
+            "markdown-table",
+            "gherkin",
+            "csv",
+            "testrail"
+          ]
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unconfirmed_behavior_policy": {
+          "enum": [
+            "assume-standard-and-flag",
+            "skip-coverage"
+          ]
+        },
+        "unconfirmed_edge_case_policy": {
+          "enum": [
+            "flag-as-unconfirmed-case",
+            "omit"
+          ]
+        }
+      }
+    },
+    "answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "match",
+          "answer"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "match": {
+            "type": "string",
+            "minLength": 3
+          },
+          "answer": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "feedback_loop": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auto_invoke_implementor": {
+          "type": "boolean"
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auto_commit": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

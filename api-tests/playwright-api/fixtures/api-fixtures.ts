@@ -1,5 +1,4 @@
-import { expect, APIRequestContext } from '@playwright/test';
-import { guardedTest } from './mutationGuard';
+import { test as base, expect, APIRequestContext } from '@playwright/test';
 
 /**
  * Shared fixtures for the EventHub API test suite.
@@ -7,7 +6,7 @@ import { guardedTest } from './mutationGuard';
  * GUARDRAIL: the only non-GET HTTP call anywhere in this suite is the single
  * `POST /auth/login` performed by `authToken` below. It authenticates the
  * pre-existing, already-verified EVENTHUB_EMAIL / EVENTHUB_PASSWORD dogfood
- * account (credentials come from playwright-tests/eventhub/.env via playwright.config.ts) --
+ * account (credentials come from playwright-tests/.env via playwright.config.ts) --
  * it does not create or mutate any business data (no new user, no booking, no
  * event). It exists solely so the GET-only auth/contract-discrepancy tests
  * (GET /auth/me, and the "does GET /events or /bookings actually enforce a
@@ -26,7 +25,7 @@ type ApiFixtures = {
   authToken: string;
 };
 
-export const test = guardedTest.extend<{}, ApiFixtures>({
+export const test = base.extend<{}, ApiFixtures>({
   authToken: [
     async ({ playwright }, use) => {
       const email = process.env.EVENTHUB_EMAIL;
@@ -35,15 +34,15 @@ export const test = guardedTest.extend<{}, ApiFixtures>({
       if (!email || !password) {
         throw new Error(
           'EVENTHUB_EMAIL / EVENTHUB_PASSWORD not found in environment. ' +
-            'Expected them to be loaded from playwright-tests/eventhub/.env by playwright.config.ts.'
+            'Expected them to be loaded from playwright-tests/.env by playwright.config.ts.'
         );
       }
 
       const context: APIRequestContext = await playwright.request.newContext({
-        baseURL: 'https://api.eventhub.rahulshettyacademy.com/api',
+        baseURL: (process.env.EVENTHUB_API_URL ?? 'https://api.eventhub.rahulshettyacademy.com/api').replace(/\/*$/, '/'),
       });
 
-      const response = await context.post('/auth/login', {
+      const response = await context.post('auth/login', {
         data: { email, password },
       });
 

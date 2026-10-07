@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/api-fixtures';
+import { test, expect } from '@playwright/test';
 
 // GET /events -- search/filter combination & data-anomaly coverage for the app-wide feature
 // (events search & filtering on /events). See artifacts/eventhub/api/api-test-plan.md section 17.
@@ -18,7 +18,7 @@ const FIXTURES = {
 
 test.describe('GET /events -- filter combinations (AND/intersection semantics)', () => {
   test('Functional: category=Concert&city=Los Angeles combined matches event 284 only', async ({ request }) => {
-    const response = await request.get('/events', {
+    const response = await request.get('events', {
       params: { category: 'Concert', city: 'Los Angeles' },
     });
     expect(response.status()).toBe(200);
@@ -38,7 +38,7 @@ test.describe('GET /events -- filter combinations (AND/intersection semantics)',
     // Resolves TC-app-wide-027's open question at the API level: 284 is Concert (but city=Los
     // Angeles, not Delhi); 285 is city=Delhi (but category=Festival, not Concert). If the API used
     // OR/union semantics, one of them would incorrectly still be returned.
-    const response = await request.get('/events', {
+    const response = await request.get('events', {
       params: { category: 'Concert', city: 'Delhi' },
     });
     expect(response.status()).toBe(200);
@@ -47,7 +47,7 @@ test.describe('GET /events -- filter combinations (AND/intersection semantics)',
   });
 
   test('Functional: category=Festival&city=Delhi combined matches event 285 only', async ({ request }) => {
-    const response = await request.get('/events', {
+    const response = await request.get('events', {
       params: { category: 'Festival', city: 'Delhi' },
     });
     expect(response.status()).toBe(200);
@@ -65,7 +65,7 @@ test.describe('GET /events -- search with no matches', () => {
   test('Negative/Boundary: search term matching no seeded event returns empty data, not an error', async ({
     request,
   }) => {
-    const response = await request.get('/events', { params: { search: 'zzz-no-match-zzz' } });
+    const response = await request.get('events', { params: { search: 'zzz-no-match-zzz' } });
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.success).toBe(true);
@@ -84,7 +84,7 @@ test.describe('GET /events -- "Hollywood Monsoon Night / Los Angeles" city-filte
     // `enum` constraint in the spec, unlike `category`): calling the API directly with
     // city=Los Angeles works correctly and returns the event. This confirms the gap is purely in
     // the frontend's fixed dropdown option list, not a defect in the API's filtering capability.
-    const response = await request.get('/events', { params: { city: 'Los Angeles' } });
+    const response = await request.get('events', { params: { city: 'Los Angeles' } });
     expect(response.status()).toBe(200);
     const body = await response.json();
 
@@ -97,7 +97,7 @@ test.describe('GET /events -- "Hollywood Monsoon Night / Los Angeles" city-filte
   test("Cross-check: event 284's city value is exactly what the frontend dropdown cannot represent", async ({
     request,
   }) => {
-    const response = await request.get('/events/284');
+    const response = await request.get('events/284');
     expect(response.status()).toBe(200);
     const body = await response.json();
 

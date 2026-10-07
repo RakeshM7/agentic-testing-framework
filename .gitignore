@@ -1,6 +1,6 @@
 node_modules/
-playwright-tests/*/playwright-report/
-playwright-tests/*/test-results/
+playwright-tests/playwright-report/
+playwright-tests/test-results/
 api-tests/playwright-api/playwright-report/
 api-tests/playwright-api/test-results/
 api-tests/k6/results/
@@ -9,15 +9,9 @@ api-tests/k6/results/
 !.env.example
 !**/.env.example
 !**/.env.*.example
-playwright-tests/*/.auth/
+playwright-tests/.auth/
 *.log
 .DS_Store
-
-
-# Authenticated crawl captures may contain tokens/PII -- keep local, never commit
-artifacts/**/network-requests.json
-artifacts/**/network-request.json
-artifacts/**/console-log.txt
-
-# Parallel full-product tracks: per-run lock dir (live k6 serialization)
-artifacts/**/.locks/
+# Session / cookie files (repo-root .auth/ is where MCP-saved sessions land) and MCP browser traces
+.auth/
+.playwright-mcp/

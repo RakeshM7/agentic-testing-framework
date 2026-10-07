@@ -41,17 +41,17 @@ and it's easy to hit the moment a spec touches a filter/search UI rather than a 
 
 **Summary:** The invocation prompt (and `artifacts/eventhub/testcases/app-wide-testcases.md` /
 `app-wide-clarifications.md`, presumably carried from `requirements-clarification-agent`'s own
-run) both name `akashmrakesh+1@gmail.com` as "the admin-capable account." The account actually
+run) both name `admin-user@example.com` as "the admin-capable account." The account actually
 configured in `playwright-tests/.env` (`EVENTHUB_EMAIL`, read by `tests/setup/auth.setup.ts`) is a
 different, `eventhub.dogfood.<random>@example.com`-style address from an earlier dogfooding run —
 confirmed live to also be admin-capable (reaches `/admin/events`, sees the "+ New Event" form), so
 this suite runs correctly against it, but the identity mismatch could confuse a future
 agent/human who greps the test-case docs for the literal email and expects it to match `.env`.
 
-**Evidence:** `node -e "require('dotenv').config(); ... email.startsWith('akashmrakesh+1')"` (run
+**Evidence:** `node -e "require('dotenv').config(); ... email.startsWith('admin-userrakesh+1')"` (run
 without printing the actual value, per the secrets hard rule) returned `false`; a live DOM probe
 confirmed the currently-authenticated account's `data-testid="user-email-display"` text is
-`eventhub.dogfood.hkm7kgad@example.com`, not `akashmrakesh+1@gmail.com`.
+`eventhub.dogfood.hkm7kgad@example.com`, not `admin-user@example.com`.
 
 **Suggested fix:** `requirements-clarification-agent`/`testcase-generator-agent` could cross-check
 the account identity they name in clarifications/test-case docs against whatever

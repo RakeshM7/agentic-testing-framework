@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/api-fixtures';
+import { test, expect } from '@playwright/test';
 
 // POST /auth/login -- functional + negative coverage. See artifacts/eventhub/api/api-test-plan.md
 // section 15 (app-wide run, added 2026-09-20).
@@ -25,9 +25,9 @@ test.describe('POST /auth/login', () => {
   }) => {
     const email = process.env.EVENTHUB_EMAIL;
     const password = process.env.EVENTHUB_PASSWORD;
-    test.skip(!email || !password, 'EVENTHUB_EMAIL / EVENTHUB_PASSWORD not set in playwright-tests/eventhub/.env');
+    test.skip(!email || !password, 'EVENTHUB_EMAIL / EVENTHUB_PASSWORD not set in playwright-tests/.env');
 
-    const response = await request.post('/auth/login', { data: { email, password } });
+    const response = await request.post('auth/login', { data: { email, password } });
     expect(response.status()).toBe(200);
 
     const body = await response.json();
@@ -41,12 +41,13 @@ test.describe('POST /auth/login', () => {
   });
 
   test('Negative: directly-observed invalid-credentials fixture returns 400', async ({ request }) => {
-    // Directly observed during explore-agent's app-wide crawl (not a guess): POST /api/auth/login
-    // for akashmrakesh@gmail.com returned 400 live, with UI toast "Invalid email or password".
+    // A 400 was directly observed during explore-agent's app-wide crawl for a real, unregistered
+    // address (since replaced by this placeholder; re-verify live). POST /api/auth/login
+    // for known-bad-user@example.com returned 400 live, with UI toast "Invalid email or password".
     // See artifacts/eventhub/explore/login-attempt-failed/network-request.json. Reused as-is here
     // as a known, reproducible negative fixture at the API level.
-    const response = await request.post('/auth/login', {
-      data: { email: 'akashmrakesh@gmail.com', password: 'clearly-wrong-password-for-api-test' },
+    const response = await request.post('auth/login', {
+      data: { email: 'known-bad-user@example.com', password: 'clearly-wrong-password-for-api-test' },
     });
 
     expect(response.status()).toBe(400);
@@ -57,9 +58,9 @@ test.describe('POST /auth/login', () => {
 
   test('Negative: correct email, deliberately wrong password for the dogfood account', async ({ request }) => {
     const email = process.env.EVENTHUB_EMAIL;
-    test.skip(!email, 'EVENTHUB_EMAIL not set in playwright-tests/eventhub/.env');
+    test.skip(!email, 'EVENTHUB_EMAIL not set in playwright-tests/.env');
 
-    const response = await request.post('/auth/login', {
+    const response = await request.post('auth/login', {
       data: { email, password: 'definitely-the-wrong-password-999!' },
     });
 
@@ -69,7 +70,7 @@ test.describe('POST /auth/login', () => {
   });
 
   test('Negative: well-formed but never-registered email', async ({ request }) => {
-    const response = await request.post('/auth/login', {
+    const response = await request.post('auth/login', {
       data: {
         email: `nonexistent-api-test-${Date.now()}@example.invalid`,
         password: 'whatever-password-123',
@@ -87,33 +88,33 @@ test.describe('POST /auth/login', () => {
   });
 
   test('Negative: missing password field entirely', async ({ request }) => {
-    const response = await request.post('/auth/login', {
+    const response = await request.post('auth/login', {
       data: { email: 'someone-api-test@example.com' },
     });
     expect(response.status()).toBe(400);
   });
 
   test('Negative: missing email field entirely', async ({ request }) => {
-    const response = await request.post('/auth/login', {
+    const response = await request.post('auth/login', {
       data: { password: 'whatever-password-123' },
     });
     expect(response.status()).toBe(400);
   });
 
   test('Negative: malformed email (no @)', async ({ request }) => {
-    const response = await request.post('/auth/login', {
+    const response = await request.post('auth/login', {
       data: { email: 'not-an-email', password: 'whatever-password-123' },
     });
     expect(response.status()).toBe(400);
   });
 
   test('Negative: empty request body', async ({ request }) => {
-    const response = await request.post('/auth/login', { data: {} });
+    const response = await request.post('auth/login', { data: {} });
     expect(response.status()).toBe(400);
   });
 
   test('Schema: failure response shape is consistent across negative cases', async ({ request }) => {
-    const response = await request.post('/auth/login', { data: {} });
+    const response = await request.post('auth/login', { data: {} });
     const body = await response.json();
     expect(body).toMatchObject({
       success: false,

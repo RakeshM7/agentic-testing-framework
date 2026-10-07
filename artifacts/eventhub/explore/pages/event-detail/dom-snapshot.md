@@ -1,7 +1,7 @@
 # DOM / Accessibility Snapshot — Event Detail ("/events/285")
 
 URL: https://eventhub.rahulshettyacademy.com/events/285
-Authenticated as: akashmrakesh+1@gmail.com
+Authenticated as: admin-user@example.com
 
 Page title: EventHub — Discover & Book Events
 

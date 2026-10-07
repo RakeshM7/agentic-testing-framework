@@ -1,7 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
-import { requireBaseUrl } from './lib/guard.js';
 
 /**
  * Load profile for GET /bookings (paginated list, read-only).
@@ -14,7 +13,7 @@ import { requireBaseUrl } from './lib/guard.js';
  * accumulates data over time.
  */
 
-const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
+const BASE_URL = __ENV.BASE_URL || 'https://api.eventhub.rahulshettyacademy.com/api';
 
 const failureRate = new Rate('bookings_list_failed');
 const duration = new Trend('bookings_list_duration', true);

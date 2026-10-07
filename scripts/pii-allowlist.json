@@ -1,0 +1,19 @@
+{
+  "_comment": "Allowlist + watch terms for scripts/check-pii.mjs. Anything not allowlisted that looks like a real email or secret fails the check.",
+  "emailDomains": [
+    "example.com",
+    "example.org",
+    "example.net",
+    "example.test",
+    "email.com",
+    "users.noreply.github.com"
+  ],
+  "emails": [
+    "support@appcues.com",
+    "support@freshsales.io",
+    "support@freshworks.com"
+  ],
+  "warnTerms": [
+    "rakesh-freshsales-ind-sep21"
+  ]
+}

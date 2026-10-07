@@ -7,7 +7,7 @@ This framework ships in **two flavors**, sharing one artifact/config contract:
 | | Claude Code | GitHub Copilot |
 |---|---|---|
 | Agent files | [`claude-agents/`](claude-agents/) (discovered via the `.claude/agents` symlink) | [`copilot-agents/`](copilot-agents/) (discovered via the `.github/agents` symlink, both VS Code and GitHub's cloud coding agent) |
-| Setup | Playwright MCP server registered via the committed [`.mcp.json`](.mcp.json) (installed on first use via `npx -y @playwright/mcp@latest`) | See [`docs/copilot-setup.md`](docs/copilot-setup.md) (same Playwright MCP server, registered via `.vscode/mcp.json`) |
+| Setup | Playwright MCP server registered via the committed [`.mcp.json`](.mcp.json) (installed on first use via `npx -y @playwright/mcp@0.0.83`) | See [`docs/copilot-setup.md`](docs/copilot-setup.md) (same Playwright MCP server, registered via `.vscode/mcp.json`) |
 | Model/provider | Anthropic only, via Claude Code | GPT / Claude / Gemini, brokered by Copilot |
 
 Both flavors are controlled from the **same** `config/models.yaml` — see "Configuring which model/provider each agent uses" below — and read/write the **same** `artifacts/`, `playwright-tests/`, `api-tests/`, and `feedback/` trees, so a run started in one flavor produces output the other can pick up.
@@ -73,6 +73,26 @@ These are documented in full, with root causes, in [`docs/validation-report.md`]
 - **`orchestrator-agent` cannot pop a structured question-and-wait, in either flavor.** Claude Code's `orchestrator-agent` has no `AskUserQuestion` access (only the top-level session a human is actually driving reliably has that tool); Copilot's `orchestrator-agent` has no equivalent tool at all. This is exactly why the run-config file exists (see below), and exactly why an unanswered `[Blocking]` question still halts the run instead of the orchestrator finding some other way to ask.
 - **The orchestrator needs all six spoke types registered too.** In Claude Code it hits the same session-hot-load limitation as everything else, one level deeper — it can't natively delegate to `explore-agent` etc. until a fresh session has all seven definitions loaded. In Copilot, its `agents:` whitelist depends on all six spoke files existing under `.github/agents/` and being resolvable by name.
 
+## Quality gates and CI
+
+```
+cd scripts && npm ci
+npm run check    # artifact/config schemas + personal-data guard + model-sync drift
+```
+
+The same checks run in GitHub Actions on every push/PR (`.github/workflows/ci.yml`), together with a typecheck and `playwright test --list` of both Playwright projects. Details: [`docs/conventions.md`](docs/conventions.md#machine-readable-contracts--quality-gates). Everything Phase 1 changed (including behaviour changes and open risks): [`docs/changelog/phase1-changes.md`](docs/changelog/phase1-changes.md).
+
+**Recommended clean run (EventHub):** fill `playwright-tests/.env` (`EVENTHUB_EMAIL`, `EVENTHUB_PASSWORD`), then
+```
+cd playwright-tests && npm ci && npx playwright install chromium && npm run test:eventhub
+cd ../api-tests/playwright-api && npm ci && npm run test:eventhub
+```
+Freshsales public help center (no login, no CAPTCHA; the `freshsales-help` project): `cd playwright-tests && npm run test:freshsales-help`.
+
+Plain `npx playwright test` also runs the Freshsales projects, whose login setup is *designed to fail* without a Freshsales account and a human-supplied session (the tenant's login is reCAPTCHA-gated and the framework never bypasses CAPTCHAs). Visual specs are skipped automatically on non-macOS machines until baselines for that OS exist (`RUN_VISUAL=1` to opt in).
+
+Playwright projects are headless by default and take their targets from env vars (`EVENTHUB_BASE_URL`, `EVENTHUB_API_URL`, `FRESHSALES_BASE_URL`); use `HEADED=1 SLOWMO=500` (or `npm run test:debug` in `playwright-tests/`) for local debugging. See `playwright-tests/.env.example`.
+
 ## Orchestrated run (recommended once you have a run-config)
 
 The walkthrough below applies to either flavor — invoke `orchestrator-agent`/`orchestrator-agent.agent.md` the way your platform normally invokes an agent (Claude Code: `Use orchestrator-agent...`; Copilot: select it from the agent picker in Chat).
@@ -87,8 +107,6 @@ It drives explore → clarify → testcases → automation → API testing → (
 
 - **Completed** — read `artifacts/<target-slug>/run-report.md` for the active `authorizations.mode`, what ran, what got skipped as already-done, every artifact path, and which `defaults`/`answers` from your config got applied where.
 - **Halted at stage N** — the response names the exact stage and, if it's the clarification stage, the exact unanswered `[Blocking]` question(s). Add an `answers` entry (or a more specific `feature.description`) to your config and re-invoke with the same `configPath`; completed stages won't re-run.
-
-**Whole product instead of one feature:** set `feature.slug: full-product` (worked example: [`config/run-config-full-product.example.yaml`](config/run-config-full-product.example.yaml)). The orchestrator first has `explore-agent` discover the product's modules (live navigation + vendor docs/knowledge-base research), then one `explore-agent` per module explores it thoroughly and writes sitemaps plus a `flows/` navigation guide, then every module gets its own parallel pipeline track (clarifications → test cases → Playwright → API tests). Questions for you that the config can't pre-answer are collected into a main `questions.csv` that only the orchestrator writes (once there are more than 5); you answer in a separate `answers/answers-NNN.csv` sheet, so your edits and the orchestrator's never overlap, and the answers are merged into the main file once the sheet is fully answered. Modules resume as soon as their own rows are answered, and a module still unresolved after 5 question rounds is marked uncovered. All tracks write into one project per product, `playwright-tests/<product>/`. See "Full-product runs" in [`docs/conventions.md`](docs/conventions.md).
 
 The full schema, matching rules, and what the config can never override (a spoke agent's own hard safety rules) are documented in [`docs/conventions.md`](docs/conventions.md)'s "Orchestrator & run-config contract".
 
@@ -149,7 +167,7 @@ using artifacts/<target-slug>/testcases/<feature>-testcases.<ext> as the source 
 Then actually run what it produced and read the real output — do not trust a summary alone:
 
 ```bash
-cd playwright-tests/<product>   # or wherever it scaffolded
+cd playwright-tests   # or wherever it scaffolded
 npm install
 npx playwright install
 cp .env.example .env  # fill in real, authorized credentials if the app needs auth

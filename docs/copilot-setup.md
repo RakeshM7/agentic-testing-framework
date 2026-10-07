@@ -5,7 +5,7 @@ This is the Copilot-specific companion to `docs/conventions.md`, which stays pla
 ## One-time setup
 
 1. **VS Code + GitHub Copilot Chat**, a recent enough build to support custom agents (formerly "custom chat modes") with `agents:`/`tools: ['agent']` subagent invocation. If your build only shows `.chatmode.md`-style single-mode behavior with no subagent support, `orchestrator-agent`'s automated chaining (step 3 below) won't work — fall back to invoking the six spokes by hand in the order `docs/conventions.md`'s pipeline table describes.
-2. **Playwright MCP server**, registered in `.vscode/mcp.json` (already committed in this repo) and installed on first use via `npx -y @playwright/mcp@latest`. This is what `explore-agent.agent.md`'s `playwright/*` tools resolve to. Confirm the tool names in that file (`browser_navigate`, `browser_snapshot`, etc.) match your installed server version — these drift between releases; check the server's own tool listing if invocation fails with an unknown-tool error.
+2. **Playwright MCP server**, registered in `.vscode/mcp.json` (already committed in this repo) and installed on first use via `npx -y @playwright/mcp@0.0.83`. This is what `explore-agent.agent.md`'s `playwright/*` tools resolve to. Confirm the tool names in that file (`browser_navigate`, `browser_snapshot`, etc.) match your installed server version — these drift between releases; check the server's own tool listing if invocation fails with an unknown-tool error.
 3. Confirm `.github/agents` resolves (it's a symlink to `copilot-agents/`) and that the 7 agents there appear in VS Code's agent picker.
 
 ## What's structurally different from the Claude flavor

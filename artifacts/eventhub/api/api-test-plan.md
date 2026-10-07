@@ -205,7 +205,7 @@ consistent with keeping live traffic to this third-party target minimal.)*
 | Schema | Response matches `Booking` schema | pass |
 
 *Note: at explore-agent crawl time, `/bookings/network-requests.json` observed an empty bookings
-list for the crawled account (`akashmrakesh+1@gmail.com`), and no booking was ever created during
+list for the crawled account (`admin-user@example.com`), and no booking was ever created during
 exploration or by this agent (no mutating calls made). The "valid existing booking id" functional
 case may have no live fixture to run against; if so it's marked skipped/inconclusive in the spec
 file rather than faked.*
@@ -308,7 +308,7 @@ the happy path.
 | Category | Scenario | Expected |
 |---|---|---|
 | Functional | Valid `EVENTHUB_EMAIL` / `EVENTHUB_PASSWORD` | 200, `AuthResponse` (`success:true`, non-empty `token`, `user.email` matches) |
-| Negative | Directly-observed fixture: `akashmrakesh@gmail.com` + any password | 400 — **directly observed during explore-agent's app-wide crawl**, not a guess (`artifacts/eventhub/explore/login-attempt-failed/network-request.json`); UI toast was "Invalid email or password" |
+| Negative | Fixture: `known-bad-user@example.com` (placeholder; the 400 was observed live for the original real unregistered address, re-verify) + any password | 400 — **directly observed during explore-agent's app-wide crawl**, not a guess (`artifacts/eventhub/explore/login-attempt-failed/network-request.json`); UI toast was "Invalid email or password" |
 | Negative | Correct `EVENTHUB_EMAIL`, deliberately wrong password | 400, `{"success":false,"error":"..."}` |
 | Negative | Well-formed but never-registered email | Verify: 400 vs 404 — spec documents both as plausible (`400` = wrong password/validation, `404` = "User not found"); live behavior for this exact case is not yet directly observed, so this case asserts "one of {400,404}" rather than a single hard-coded value |
 | Negative | Missing `password` field entirely | 400, `ValidationErrorResponse` |

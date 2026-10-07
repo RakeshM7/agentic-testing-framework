@@ -1,7 +1,7 @@
 # DOM / Accessibility Snapshot — Admin: Manage Events ("/admin/events")
 
 URL: https://eventhub.rahulshettyacademy.com/admin/events
-Authenticated as: akashmrakesh+1@gmail.com (confirmed admin/event-manager role)
+Authenticated as: admin-user@example.com (confirmed admin/event-manager role)
 
 Page title: EventHub — Discover & Book Events
 
@@ -67,7 +67,7 @@ Given the table row order matches the /events page's href order (285, 284, 283):
   all previously catalogued on other pages, external or already-visited same-origin links.
 
 ## Notable for api-testing-agent
-- This confirms a real **admin role** exists in the app (`akashmrakesh+1@gmail.com`), distinct from
+- This confirms a real **admin role** exists in the app (`admin-user@example.com`), distinct from
   a plain consumer account, with its own event-management surface at `/admin/events`.
 - Likely backing REST endpoints (not directly observed, since "+ Add Event" was not submitted):
   something like `POST /api/events` (create), and probably `PUT`/`DELETE /api/events/:id` for

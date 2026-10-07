@@ -1,0 +1,125 @@
+- generic [ref=e11]:
+  - complementary [ref=e12]:
+    - generic [ref=e13]:
+      - img "Logo" [ref=e15] [cursor=pointer]
+      - menu [ref=e16]:
+        - menuitem [ref=e17] [cursor=pointer]:
+          - img "dashboard" [ref=e18]
+          - link "Dashboard" [ref=e22]:
+            - /url: /
+        - menuitem [ref=e23] [cursor=pointer]:
+          - img "container" [ref=e24]
+          - link "Invoices" [ref=e28]:
+            - /url: /invoice
+        - menuitem [ref=e29] [cursor=pointer]:
+          - img "credit-card" [ref=e30]
+          - link "Payments" [ref=e34]:
+            - /url: /payment
+        - menuitem [ref=e35] [cursor=pointer]:
+          - img "file-sync" [ref=e36]
+          - link "Quotes" [ref=e40]:
+            - /url: /quote
+        - menuitem [ref=e41] [cursor=pointer]:
+          - img "customer-service" [ref=e42]
+          - link "Customers" [active] [ref=e46]:
+            - /url: /customer
+        - menuitem [ref=e47] [cursor=pointer]:
+          - img "user" [ref=e48]
+          - link "Peoples" [ref=e52]:
+            - /url: /people
+        - menuitem [ref=e53] [cursor=pointer]:
+          - img "shop" [ref=e54]
+          - link "Companies" [ref=e58]:
+            - /url: /company
+        - menuitem [ref=e59] [cursor=pointer]:
+          - img "filter" [ref=e60]
+          - link "Leads" [ref=e64]:
+            - /url: /lead
+        - menuitem [ref=e65] [cursor=pointer]:
+          - img "file" [ref=e66]
+          - link "Offers for Leads" [ref=e70]:
+            - /url: /offer
+        - menuitem [ref=e71] [cursor=pointer]:
+          - img "tag" [ref=e72]
+          - link "Products" [ref=e76]:
+            - /url: /product
+        - menuitem [ref=e77] [cursor=pointer]:
+          - img "tags" [ref=e78]
+          - link "Products Category" [ref=e82]:
+            - /url: /category/product
+        - menuitem [ref=e83] [cursor=pointer]:
+          - img "tag" [ref=e84]
+          - link "Order" [ref=e88]:
+            - /url: /order
+        - menuitem [ref=e89] [cursor=pointer]:
+          - img "wallet" [ref=e90]
+          - link "Expenses" [ref=e94]:
+            - /url: /expenses
+        - menuitem [ref=e95] [cursor=pointer]:
+          - img "reconciliation" [ref=e96]
+          - link "Expenses Category" [ref=e100]:
+            - /url: /category/expenses
+        - menuitem [ref=e101] [cursor=pointer]:
+          - img "pie-chart" [ref=e102]
+          - link "Report" [ref=e106]:
+            - /url: /report
+        - menuitem "setting Settings" [ref=e107] [cursor=pointer]:
+          - img "setting" [ref=e108]
+          - generic [ref=e111]: Settings
+  - generic [ref=e112]:
+    - banner [ref=e113]:
+      - generic [ref=e114] [cursor=pointer]: J
+      - generic [ref=e116]:
+        - button "rocket Add Custom Features" [ref=e117] [cursor=pointer]:
+          - img "rocket" [ref=e119]
+          - generic [ref=e122]: Add Custom Features
+        - superscript [ref=e123]:
+          - generic [ref=e124]: "1"
+      - generic [ref=e126]:
+        - button "rocket Buy & Get Code Source" [ref=e127] [cursor=pointer]:
+          - img "rocket" [ref=e129]
+          - generic [ref=e132]: Buy & Get Code Source
+        - superscript [ref=e133]:
+          - generic [ref=e134]: "2"
+      - generic [ref=e137] [cursor=pointer]:
+        - generic "Main" [ref=e138]:
+          - text: Main
+          - combobox [ref=e139]
+        - img "down" [ref=e141]
+      - generic: _
+      - generic [ref=e154] [cursor=pointer]:
+        - generic "english" [ref=e155]:
+          - combobox [ref=e157]
+        - img "down" [ref=e159]
+    - main [ref=e162]:
+      - main [ref=e444]:
+        - generic [ref=e446]:
+          - generic [ref=e447]:
+            - button "back" [ref=e449] [cursor=pointer]:
+              - img "arrow-left" [ref=e450]
+            - generic "Customer List" [ref=e453]
+          - generic [ref=e455]:
+            - button "sort-descending Desc" [ref=e457] [cursor=pointer]:
+              - img "sort-descending" [ref=e459]
+              - generic [ref=e462]: Desc
+            - button "filter Add Filter" [ref=e464] [cursor=pointer]:
+              - img "filter" [ref=e466]
+              - generic [ref=e469]: Add Filter
+            - textbox "search" [ref=e472]
+            - button "redo Refresh" [ref=e475] [cursor=pointer]:
+              - img "redo" [ref=e477]
+              - generic [ref=e480]: Refresh
+            - button "Add New Customer" [ref=e482] [cursor=pointer]
+        - table [ref=e490]:
+          - rowgroup [ref=e491]:
+            - row "Type Name Country Phone Email" [ref=e492]:
+              - columnheader "Type" [ref=e493]
+              - columnheader "Name" [ref=e494]
+              - columnheader "Country" [ref=e495]
+              - columnheader "Phone" [ref=e496]
+              - columnheader "Email" [ref=e497]
+              - columnheader [ref=e498]
+          - rowgroup [ref=e499]:
+            - row "No data No data" [ref=e500]:
+              - cell "No data No data" [ref=e501]:
+                - generic [ref=e503]

@@ -1,0 +1,183 @@
+- generic [active] [ref=e1]:
+  - banner:
+    - navigation [ref=e2]:
+      - generic [ref=e4]:
+        - link "Freshworks" [ref=e6] [cursor=pointer]:
+          - /url: https://www.freshworks.com/?FSales_Header
+        - list [ref=e9]:
+          - listitem [ref=e10] [cursor=pointer]:
+            - link "Sign up for Freshdesk Omni" [ref=e11]:
+              - /url: https://www.freshworks.com/customer-service-suite/signup/
+            - generic [ref=e12]:
+              - img [aria-hidden] [ref=e13]: phone
+              - text: +1-866-832-3090
+      - generic [ref=e17]:
+        - link [ref=e20] [cursor=pointer]:
+          - /url: https://www.freshworks.com/support/
+        - list [ref=e22]:
+          - listitem [ref=e23] [cursor=pointer]:
+            - link "NEW SUPPORT TICKET" [ref=e24]:
+              - /url: /support/tickets/new
+          - listitem [ref=e25] [cursor=pointer]:
+            - button "jagan" [ref=e28]
+  - generic [ref=e31]:
+    - heading "Welcome to our support portal" [level=1] [ref=e32]
+    - generic [ref=e34]:
+      - textbox "Enter your search term here..." [ref=e37]:
+        - /placeholder: Search the knowledge base
+      - generic: 
+  - text: phone
+  - generic [ref=e38]:
+    - paragraph [ref=e39]: You have questions, we have solutions
+    - paragraph [ref=e40]: Solution articles, how-tos, and troubleshooting guides to help you find answers directly
+  - generic [ref=e41]:
+    - list [ref=e42]:
+      - listitem [ref=e43]:
+        - generic [ref=e44]:
+          - heading "Freshdesk Omni" [level=3] [ref=e45]
+          - paragraph [ref=e46]: Elevate customer service with AI-first omnichannel experiences
+        - paragraph [ref=e49]: Freshdesk Omni
+      - listitem [ref=e50]:
+        - generic [ref=e51]:
+          - heading "Conversations" [level=3] [ref=e52]
+          - paragraph [ref=e53]: Engage with customers in smart conversations across all channels
+        - paragraph [ref=e56]: Freshchat
+      - listitem [ref=e57]:
+        - generic [ref=e58]:
+          - heading "Ticketing" [level=3] [ref=e59]
+          - paragraph [ref=e60]: Turn customer support into customer delight with a comprehensive helpdesk
+        - paragraph [ref=e63]: Freshdesk
+      - listitem [ref=e64]:
+        - generic [ref=e65]:
+          - heading "Freshsales Suite" [level=3] [ref=e66]
+          - paragraph [ref=e67]: Unite sales and marketing around the customer with an all-in-one CRM
+        - paragraph [ref=e70]: Freshsales Suite
+      - listitem [ref=e71]:
+        - generic [ref=e72]:
+          - heading "Sales" [level=3] [ref=e73]
+          - paragraph [ref=e74]: Drive productivity and revenue growth with the ultimate sales tech stack
+        - paragraph [ref=e77]: Freshsales
+      - listitem [ref=e78]:
+        - generic [ref=e79]:
+          - heading "Marketing" [level=3] [ref=e80]
+          - paragraph [ref=e81]: Personalized multichannel customer journeys at scale
+        - paragraph [ref=e84]: Freshmarketer
+      - listitem [ref=e85]:
+        - generic [ref=e86]:
+          - heading "Telephony" [level=3] [ref=e87]
+          - paragraph [ref=e88]: A smart call center solution for effortless customer service
+        - paragraph [ref=e91]: Freshcaller
+      - listitem [ref=e92]:
+        - generic [ref=e93]:
+          - heading "Customer Success" [level=3] [ref=e94]
+          - paragraph [ref=e95]: Proactively help customers achieve their goals faster
+        - paragraph [ref=e98]: Freshsuccess
+    - generic [ref=e99]:
+      - paragraph [ref=e100]: Other resources
+      - paragraph [ref=e101]: Get the most out of Freshworks with these additional valuable resources
+    - list [ref=e103]:
+      - listitem [ref=e104]:
+        - generic [ref=e105]:
+          - heading "Marketplace" [level=3] [ref=e107]
+          - paragraph [ref=e108]: Connect all your apps to extend the power of Freshworks products for your business-specific needs
+        - link "Go to Freshworks Marketplace" [ref=e110] [cursor=pointer]:
+          - /url: https://www.freshworks.com/apps/
+      - listitem [ref=e112]:
+        - generic [ref=e113]:
+          - heading "Developer Documentation" [level=3] [ref=e115]
+          - paragraph [ref=e116]: Documentation, tutorials, and other resources for developers to build tools to help thousands of businesses worldwide
+        - link "Go to Freshworks Developer Documentation" [ref=e118] [cursor=pointer]:
+          - /url: https://developers.freshworks.com/documentation
+      - listitem [ref=e120]:
+        - generic [ref=e121]:
+          - heading "Community" [level=3] [ref=e123]
+          - paragraph [ref=e124]: Join the diverse and thriving community for exclusive resources, networking events, and share best practices
+        - link "Go to Freshworks Community" [ref=e126] [cursor=pointer]:
+          - /url: https://community.freshworks.com/?utm_source=supportportal
+  - generic [ref=e129]:
+    - heading "Sign up for Freshdesk Omni today" [level=3] [ref=e130]
+    - paragraph [ref=e131]: Start your 14-day free trial. No credit card required. No strings attached.
+    - link "Start Free Trial" [ref=e132] [cursor=pointer]:
+      - /url: https://www.freshworks.com/customer-service-suite/signup/
+  - contentinfo [ref=e133]:
+    - generic [ref=e134]:
+      - generic [ref=e135]:
+        - generic:
+          - generic [ref=e136]:
+            - button [ref=e137] [cursor=pointer]:
+              - paragraph [ref=e138]: Company angle-down
+            - list [ref=e140]:
+              - listitem [ref=e141]:
+                - link "About" [ref=e142] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/company/about/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e143]:
+                - link "Leadership" [ref=e144] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/company/leadership/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e145]:
+                - link "Board of Directors" [ref=e146] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/company/board/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e147]:
+                - link "Investors" [ref=e148] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/company/investors/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e149]:
+                - link "Customers" [ref=e150] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/customers/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e151]:
+                - link "Solutions" [ref=e152] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/solutions/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e153]:
+                - link "Affiliates" [ref=e154] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/company/affiliate-partner/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e155]:
+                - link "Partners" [ref=e156] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/company/partners/reseller-partner-program/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e157]:
+                - link "Careers" [ref=e158] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/company/careers/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e159]:
+                - link "Newsroom" [ref=e160] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/newsroom/press-releases/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e161]:
+                - link "Contact Us" [ref=e162] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/contact/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e163]:
+                - link "GDPR" [ref=e164] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/gdpr/?source=freshsales&medium=referral&campaign=fsales_footer_main
+              - listitem [ref=e165]:
+                - link "US Sales Tax FAQ" [ref=e166] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/company/faq/us-sales-tax/?source=freshsales&medium=referral&campaign=fsales_footer_main
+          - generic [ref=e167]:
+            - button [ref=e168] [cursor=pointer]:
+              - paragraph [ref=e169]: Freshdesk Omni angle-down
+            - list [ref=e171]:
+              - listitem [ref=e172]:
+                - link "Features" [ref=e173] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/customer-service-suite/
+              - listitem [ref=e174]:
+                - link "Pricing" [ref=e175] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/customer-service-suite/pricing/
+              - listitem [ref=e176]:
+                - link "Signup" [ref=e177] [cursor=pointer]:
+                  - /url: https://www.freshworks.com/customer-service-suite/signup/
+      - list [ref=e179]:
+        - listitem [ref=e180]: Sales & Support
+        - listitem [ref=e181]:
+          - link "+1-866-832-3090" [ref=e182] [cursor=pointer]:
+            - /url: tel:+18668323090
+            - img [aria-hidden] [ref=e183]: phone
+            - text: +1-866-832-3090
+        - listitem [ref=e185]:
+          - link "support@freshworks.com" [ref=e186] [cursor=pointer]:
+            - /url: mailto:support@freshworks.com
+            - img [aria-hidden] [ref=e187]: envelope
+            - text: support@freshworks.com
+      - generic [ref=e189]:
+        - list [ref=e191]:
+          - listitem [ref=e192]:
+            - link "Terms of service" [ref=e193] [cursor=pointer]:
+              - /url: https://www.freshworks.com/terms/
+            - text: "-"
+            - link "Privacy policy" [ref=e194] [cursor=pointer]:
+              - /url: https://www.freshworks.com/privacy/
+        - paragraph [ref=e196]: Copyright © Freshworks Inc. All Rights Reserved.
+  - status
