@@ -1,38 +1,14 @@
-# Single source of truth for which model each agent uses, per platform.
+# Which model each agent uses, per platform. Applied by `node scripts/build-agents.mjs` (part of `npm run check`),
+# which writes the `model:` line of every .claude/agents/<name>.md -- never hand-edit that line.
 #
-# Do NOT hand-edit the `model:` frontmatter line in an agent file -- the next run of
-# scripts/sync-agent-models.mjs overwrites it with whatever is here. Edit this file, then run:
+# `default` applies to every agent without an entry under `agents`. Claude values: sonnet | opus | haiku, or a
+# pinned model id. Only the `claude` platform is wired up; another platform would add its own key here and in
+# build-agents.mjs.
 #
-#   node scripts/sync-agent-models.mjs          (or `--check` in CI)
-#
-# Only the `claude` platform is wired up today. The structure is platform-keyed on purpose: adding another
-# platform later means adding a key under each agent here plus one entry in PLATFORMS in the sync script --
-# the pipeline, artifact contract and scripts are platform-neutral and stay unchanged.
-#
-# `claude` values must be ones Claude Code's `model:` frontmatter accepts (alias: sonnet | opus | haiku,
-# or a pinned model id).
+# Per-role tiering (e.g. stronger models for planners/reviewers/triagers) is not decided yet: everything uses the
+# default until it is.
 
-agents:
-  knowledge-generator:
-    claude: sonnet
+default:
+  claude: sonnet
 
-  orchestrator-agent:
-    claude: sonnet
-
-  explore-agent:
-    claude: sonnet
-
-  requirements-clarification-agent:
-    claude: sonnet
-
-  testcase-generator-agent:
-    claude: sonnet
-
-  playwright-automation-agent:
-    claude: sonnet
-
-  api-testing-agent:
-    claude: sonnet
-
-  feedback-implementor-agent:
-    claude: sonnet
+agents: {}

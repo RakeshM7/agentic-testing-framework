@@ -30,6 +30,7 @@ export function resolvePermissions(doc) {
       shell: a.shell ?? "none",
       shell_allow: a.shell_allow ?? [],
       filesystem: { read: a.filesystem?.read ?? [], write: a.filesystem?.write ?? [] },
+      extra_tools: a.extra_tools ?? [],
     };
     if (![0, 1, 2].includes(row.layer)) errors.push(`${name}: layer must be 0, 1 or 2`);
     for (const k of ["browser", "http", "load"]) if (!ENUMS[k].includes(row.live_target[k])) errors.push(`${name}: live_target.${k} '${row.live_target[k]}' not in [${ENUMS[k]}]`);
