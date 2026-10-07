@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Patches the `model:` frontmatter line in every claude-agents/*.md and
-// copilot-agents/*.agent.md file from the single source of truth at
+// Patches the `model:` frontmatter line in every agent file, per platform, from the single source of truth at
 // config/models.yaml. See that file's header comment for the config format.
 //
 // Usage: node scripts/sync-agent-models.mjs [--check]
@@ -12,6 +11,10 @@ import path from "node:path";
 import yaml from "js-yaml";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// One entry per supported agent platform. To add one: list its agent dir + file naming here and add a
+// `<platform>:` model value per agent in config/models.yaml.
+const PLATFORMS = [{ name: "claude", dir: "claude-agents", file: (role) => `${role}.md` }];
+
 const modelsConfigPath = path.join(repoRoot, "config", "models.yaml");
 
 function renderYamlValue(value) {
@@ -28,7 +31,8 @@ const CHECK = process.argv.includes("--check");
 
 function patchModelLine(filePath, newValue) {
   const original = readFileSync(filePath, "utf8");
-  const lines = original.split("\n");
+  const eol = original.includes("\r\n") ? "\r\n" : "\n"; // working copies are CRLF on Windows
+  const lines = original.split(/\r?\n/);
 
   if (lines[0].trim() !== "---") {
     throw new Error(`${filePath}: expected a YAML frontmatter block starting with '---'`);
@@ -50,7 +54,7 @@ function patchModelLine(filePath, newValue) {
     throw new Error(`${filePath}: no 'model:' line found in frontmatter`);
   }
 
-  const next = lines.join("\n");
+  const next = lines.join(eol);
   if (next === original) {
     return false;
   }
@@ -66,10 +70,7 @@ function main() {
   let skipped = 0;
 
   for (const [role, byPlatform] of Object.entries(agents)) {
-    const targets = [
-      { platform: "claude", file: path.join(repoRoot, "claude-agents", `${role}.md`) },
-      { platform: "copilot", file: path.join(repoRoot, "copilot-agents", `${role}.agent.md`) },
-    ];
+    const targets = PLATFORMS.map((p) => ({ platform: p.name, file: path.join(repoRoot, p.dir, p.file(role)) }));
 
     for (const { platform, file } of targets) {
       const value = byPlatform?.[platform];

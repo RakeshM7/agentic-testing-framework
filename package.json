@@ -1,0 +1,16 @@
+{
+  "name": "agentic-testing-framework",
+  "private": true,
+  "type": "module",
+  "description": "Repo-maintenance and run-orchestration scripts. playwright-tests/ and api-tests/ keep their own dependency trees.",
+  "scripts": {
+    "sync-agent-models": "node scripts/sync-agent-models.mjs",
+    "check": "node scripts/sync-agent-models.mjs --check && npm test",
+    "generate-k6-report": "node scripts/generate-k6-report.mjs",
+    "test": "node --test \"scripts/**/*.test.mjs\""
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "js-yaml": "^4.1.0"
+  }
+}
