@@ -24,7 +24,7 @@ test.describe('Admin "All Events" table -- backing data inspection (GET-only)', 
     request,
   }) => {
     for (const id of SEEDED_EVENT_IDS) {
-      const response = await request.get(`/events/${id}`);
+      const response = await request.get(`events/${id}`);
       expect(response.status()).toBe(200);
       const body = await response.json();
       const event = body.data;
@@ -60,7 +60,7 @@ test.describe('Admin "All Events" table -- backing data inspection (GET-only)', 
   test('Functional: GET /events (high limit, unfiltered) includes all 3 known seeded fixtures', async ({
     request,
   }) => {
-    const response = await request.get('/events', { params: { limit: 100 } });
+    const response = await request.get('events', { params: { limit: 100 } });
     expect(response.status()).toBe(200);
     const body = await response.json();
     const ids = body.data.map((e: any) => e.id);
@@ -75,8 +75,8 @@ test.describe('Admin "All Events" table -- backing data inspection (GET-only)', 
     authToken,
   }) => {
     for (const id of SEEDED_EVENT_IDS) {
-      const withoutToken = await request.get(`/events/${id}`);
-      const withToken = await request.get(`/events/${id}`, {
+      const withoutToken = await request.get(`events/${id}`);
+      const withToken = await request.get(`events/${id}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
 

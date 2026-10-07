@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: "Also run the live EventHub functional suite (needs EVENTHUB_EMAIL / EVENTHUB_PASSWORD secrets)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast, offline gate: contracts, personal-data guard, model-config drift.
+  contracts:
+    name: Contracts, PII guard, model sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+      - run: npm ci
+      - name: Validate artifacts + configs against schemas/
+        run: npm run validate
+      - name: Personal data / secrets guard
+        run: npm run check:pii
+      - name: Agent model frontmatter matches config/models.yaml
+        run: npm run check:models
+
+  # Proves both Playwright projects compile and every spec parses, without touching any live target.
+  typecheck:
+    name: Typecheck + list (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [playwright-tests, api-tests/playwright-api]
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:list
+        env:
+          CI: "true"
+
+  # Live run against EventHub. Opt-in only (manual trigger): it hits a real third-party site with a
+  # real account. Visual specs are excluded here because committed baselines are macOS-only; use the
+  # "Visual baselines (Linux)" workflow to generate Linux ones first.
+  e2e-eventhub:
+    name: Live EventHub functional suite
+    if: github.event_name == 'workflow_dispatch' && inputs.run_e2e
+    needs: [contracts, typecheck]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: playwright-tests
+    env:
+      CI: "true"
+      EVENTHUB_EMAIL: ${{ secrets.EVENTHUB_EMAIL }}
+      EVENTHUB_PASSWORD: ${{ secrets.EVENTHUB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: playwright-tests/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=chromium tests/functional
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-tests/playwright-report
+            playwright-tests/test-results
+          retention-days: 7

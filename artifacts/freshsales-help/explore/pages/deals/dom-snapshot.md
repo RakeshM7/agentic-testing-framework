@@ -1,0 +1,141 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - generic [ref=f4e3]:
+      - link "Skip to main content" [ref=f4e4] [cursor=pointer]:
+        - /url: "#fw-main-content"
+      - paragraph [ref=f4e6]:
+        - text: "PLEASE NOTE: You are on the Freshsales Classic support portal. Please"
+        - link "click here" [ref=f4e7] [cursor=pointer]:
+          - /url: https://crmsupport.freshworks.com/support/home?cloud=freshsales
+        - text: to access the brand new support portal for Freshsales.
+    - navigation [ref=f4e9]:
+      - link [ref=f4e10] [cursor=pointer]:
+        - /url: http://support.freshsales.io
+        - img "Freshsales Classic" [ref=f4e11]
+        - text: Freshsales Classic
+      - button [ref=f4e12] [cursor=pointer]
+  - main [ref=f4e14]:
+    - generic [ref=f4e16]:
+      - generic [ref=f4e20]:
+        - generic [ref=f4e21]:
+          - textbox "Find some solutions here..." [ref=f4e22]
+          - button "Search" [ref=f4e23] [cursor=pointer]:
+            - generic [ref=f4e24]: 
+        - text:   View All   View All
+      - generic [ref=f4e26]:
+        - link " Solution home" [ref=f4e27] [cursor=pointer]:
+          - /url: /support/solutions
+          - generic [ref=f4e28]: 
+          - text: Solution home
+        - paragraph [ref=f4e29]: Deals
+        - generic [ref=f4e30]:
+          - generic [ref=f4e31]:
+            - link "Prioritising Deals" [ref=f4e32] [cursor=pointer]:
+              - /url: /support/solutions/folders/271504
+            - list [ref=f4e33]
+            - link "View all 11" [ref=f4e54] [cursor=pointer]:
+              - /url: /support/solutions/folders/271504
+          - generic [ref=f4e55]:
+            - link "Using deals" [ref=f4e56] [cursor=pointer]:
+              - /url: /support/solutions/folders/271505
+            - list [ref=f4e57]
+            - link "View all 16" [ref=f4e78] [cursor=pointer]:
+              - /url: /support/solutions/folders/271505
+          - generic [ref=f4e79]:
+            - link "Sales Forecasting" [ref=f4e80] [cursor=pointer]:
+              - /url: /support/solutions/folders/50000000477
+            - list [ref=f4e81]
+  - contentinfo [ref=f4e94]:
+    - generic [ref=f4e96]:
+      - generic [ref=f4e97]: Sign up for Freshsales Suite
+      - paragraph [ref=f4e98]: Start your 14-day free trial. No credit card required. No strings attached.
+      - link "Start free trial" [ref=f4e99] [cursor=pointer]:
+        - /url: https://www.freshworks.com/crm/signup/?plan_id=suite
+    - generic [ref=f4e102]:
+      - generic [ref=f4e103]:
+        - generic [ref=f4e104]: Our Products
+        - generic [ref=f4e105]:
+          - link "Freshdesk" [ref=f4e106] [cursor=pointer]:
+            - /url: https://www.freshworks.com/freshdesk/
+          - link "Freshservice" [ref=f4e107] [cursor=pointer]:
+            - /url: https://www.freshworks.com/freshservice/
+          - link "Freshsales" [ref=f4e108] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/sales/
+          - link "Freshdesk Contact Center" [ref=f4e109] [cursor=pointer]:
+            - /url: https://www.freshworks.com/freshcaller-cloud-pbx/
+          - link "Freshteam" [ref=f4e110] [cursor=pointer]:
+            - /url: https://www.freshworks.com/freshservice/business-teams/
+          - link "Freshchat" [ref=f4e111] [cursor=pointer]:
+            - /url: https://www.freshworks.com/live-chat-software/
+          - link "Freshmarketer" [ref=f4e112] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/marketing/
+          - link "Freshsurvey" [ref=f4e113] [cursor=pointer]:
+            - /url: https://www.freshworks.com/survey/
+      - generic [ref=f4e114]:
+        - generic [ref=f4e115]: Company
+        - generic [ref=f4e116]:
+          - link "About" [ref=f4e117] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/about/
+          - link "Leadership" [ref=f4e118] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/leadership/
+          - link "Board of Directors" [ref=f4e119] [cursor=pointer]:
+            - /url: /company/board/?utm_source=freshcaller&utm_medium=referral&utm_campaign=fcaller_footer_main
+          - link "Investors" [ref=f4e120] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/investors/
+          - link "Customers" [ref=f4e121] [cursor=pointer]:
+            - /url: https://www.freshworks.com/customers/
+          - link "Solutions" [ref=f4e122] [cursor=pointer]:
+            - /url: https://www.freshworks.com/solutions/
+          - link "Affiliates" [ref=f4e123] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/affiliate-partner/
+          - link "Partners" [ref=f4e124] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/partners/solution-partner-program/
+          - link "Careers" [ref=f4e125] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/careers/
+          - link "Newsroom" [ref=f4e126] [cursor=pointer]:
+            - /url: https://www.freshworks.com/newsroom/press-releases/
+          - link "Contact Us" [ref=f4e127] [cursor=pointer]:
+            - /url: https://www.freshworks.com/contact/
+          - link "GDPR" [ref=f4e128] [cursor=pointer]:
+            - /url: https://www.freshworks.com/gdpr/
+          - link "US Sales Tax FAQ" [ref=f4e129] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/faq/us-sales-tax-faqs/
+      - generic [ref=f4e130]:
+        - generic [ref=f4e131]: Freshsales suite
+        - generic [ref=f4e132]:
+          - link "Features" [ref=f4e133] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/sales/features
+          - link "Pricing" [ref=f4e134] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/pricing/
+          - link "Signup" [ref=f4e135] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/signup/?plan_id=suite
+      - generic [ref=f4e136]:
+        - generic [ref=f4e137]: Sales & support
+        - generic [ref=f4e138]:
+          - generic [ref=f4e139]:
+            - generic [ref=f4e140]: 
+            - link "+1 (866) 832-3090" [ref=f4e141] [cursor=pointer]:
+              - /url: tel:+18668323080
+          - generic [ref=f4e142]:
+            - generic [ref=f4e143]: 
+            - link "support@freshsales.io" [ref=f4e144] [cursor=pointer]:
+              - /url: mailto:support@freshsales.io
+        - generic [ref=f4e145]: Mobile apps
+        - generic [ref=f4e146]:
+          - link "Download on the App Store" [ref=f4e147] [cursor=pointer]:
+            - /url: https://apps.apple.com/ca/app/freshdesk/id849713306
+            - img "Download on the App Store" [ref=f4e148]
+          - link "Get it on Google Play" [ref=f4e149] [cursor=pointer]:
+            - /url: http://ad.apps.fm/ozXtEc5ZI9HQ_q2ra73VL15KLoEjTszcQMJsV6-2VnHFDLXitVHB6BlL95nuoNYffAIOoczw-YGfIaoZYt7xO4LNOZ4hHcXlOAoj_MgX7b8gZe2OOIvCAxOQtZGmw1KoF6ewiom4sKC4xZyurG0g7Q
+            - img "Get it on Google Play" [ref=f4e150]
+    - generic [ref=f4e152]:
+      - generic [ref=f4e153]:
+        - link "Privacy policy" [ref=f4e154] [cursor=pointer]:
+          - /url: https://www.freshworks.com/privacy/
+        - generic [ref=f4e155]: "|"
+        - link "Terms of service" [ref=f4e156] [cursor=pointer]:
+          - /url: https://www.freshworks.com/terms/
+        - generic [ref=f4e157]: "|"
+        - link "Site Map" [ref=f4e158] [cursor=pointer]:
+          - /url: https://www.freshworks.com/sitemap/
+      - generic [ref=f4e159]: Copyright © Freshworks Inc - All rights reserved

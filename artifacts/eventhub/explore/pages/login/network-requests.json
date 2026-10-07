@@ -1,0 +1,20 @@
+{
+  "page": "https://eventhub.rahulshettyacademy.com/login",
+  "note": "Captured across multiple navigations that all resolved to /login (direct visit, and redirects from /, /events, /dashboard, /bookings, /admin). No Sign In submission was made (read-only mandate), so no auth API call was captured.",
+  "requests": [
+    { "url": "https://eventhub.rahulshettyacademy.com/login?_rsc=8kzk2", "method": "GET", "statusCode": 200, "type": "rsc-fetch" },
+    { "url": "https://eventhub.rahulshettyacademy.com/_next/static/chunks/app/login/page-2da47f014e22c09a.js", "method": "GET", "statusCode": 200, "type": "script" },
+    { "url": "https://eventhub.rahulshettyacademy.com/login?_rsc=fo9td", "method": "GET", "statusCode": 200, "type": "rsc-fetch" },
+    { "url": "https://eventhub.rahulshettyacademy.com/login?_rsc=1hmmm", "method": "GET", "statusCode": 200, "type": "rsc-fetch" },
+    { "url": "https://eventhub.rahulshettyacademy.com/login?_rsc=4dyyk", "method": "GET", "statusCode": 200, "type": "rsc-fetch" },
+    { "url": "https://eventhub.rahulshettyacademy.com/login?_rsc=1xk40", "method": "GET", "statusCode": 200, "type": "rsc-fetch" },
+    { "url": "https://api.eventhub.rahulshettyacademy.com/api/config", "method": "GET", "statusCode": 200, "type": "xhr/fetch" }
+  ],
+  "redirectSourcesObserved": [
+    { "from": "https://eventhub.rahulshettyacademy.com/", "to": "/login", "mechanism": "client-side redirect (200 doc, then RSC fetch to /login)" },
+    { "from": "https://eventhub.rahulshettyacademy.com/events", "to": "/login", "mechanism": "client-side auth guard redirect" },
+    { "from": "https://eventhub.rahulshettyacademy.com/dashboard", "to": "/login", "mechanism": "server 404 on /dashboard, app falls back to /login" },
+    { "from": "https://eventhub.rahulshettyacademy.com/bookings", "to": "/login", "mechanism": "document 200 but client-side auth guard redirect" },
+    { "from": "https://eventhub.rahulshettyacademy.com/admin", "to": "/login", "mechanism": "server 404 on /admin, app falls back to /login" }
+  ]
+}

@@ -25,7 +25,7 @@ function assertBookingSchema(booking: any) {
 
 test.describe('GET /bookings (list)', () => {
   test('Functional: default call returns a paginated booking list', async ({ request }) => {
-    const response = await request.get('/bookings');
+    const response = await request.get('bookings');
     expect(response.status()).toBe(200);
     const body = await response.json();
 
@@ -41,7 +41,7 @@ test.describe('GET /bookings (list)', () => {
   });
 
   test('Functional: eventId filter returns only matching bookings', async ({ request }) => {
-    const response = await request.get('/bookings?eventId=283');
+    const response = await request.get('bookings?eventId=283');
     expect(response.status()).toBe(200);
     const body = await response.json();
     for (const booking of body.data) {
@@ -50,7 +50,7 @@ test.describe('GET /bookings (list)', () => {
   });
 
   test('Functional: status=confirmed filter returns only confirmed bookings', async ({ request }) => {
-    const response = await request.get('/bookings?status=confirmed');
+    const response = await request.get('bookings?status=confirmed');
     expect(response.status()).toBe(200);
     const body = await response.json();
     for (const booking of body.data) {
@@ -59,7 +59,7 @@ test.describe('GET /bookings (list)', () => {
   });
 
   test('Functional: status=cancelled filter returns only cancelled bookings (possibly empty)', async ({ request }) => {
-    const response = await request.get('/bookings?status=cancelled');
+    const response = await request.get('bookings?status=cancelled');
     expect(response.status()).toBe(200);
     const body = await response.json();
     for (const booking of body.data) {
@@ -68,31 +68,31 @@ test.describe('GET /bookings (list)', () => {
   });
 
   test('Boundary: limit=100 (documented max) is accepted', async ({ request }) => {
-    const response = await request.get('/bookings?limit=100');
+    const response = await request.get('bookings?limit=100');
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.data.length).toBeLessThanOrEqual(100);
   });
 
   test('Boundary: page far beyond last page returns an empty (not error) result', async ({ request }) => {
-    const response = await request.get('/bookings?page=9999&limit=10');
+    const response = await request.get('bookings?page=9999&limit=10');
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.data).toEqual([]);
   });
 
   test('Negative: status value outside documented enum does not 500', async ({ request }) => {
-    const response = await request.get('/bookings?status=bogus');
+    const response = await request.get('bookings?status=bogus');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Negative: non-numeric eventId does not 500', async ({ request }) => {
-    const response = await request.get('/bookings?eventId=abc');
+    const response = await request.get('bookings?eventId=abc');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Auth/contract: list is reachable without a token (per spec, no security declared)', async ({ request }) => {
-    const response = await request.get('/bookings');
+    const response = await request.get('bookings');
     expect(response.status()).toBe(200);
   });
 
@@ -100,7 +100,7 @@ test.describe('GET /bookings (list)', () => {
     request,
     authToken,
   }) => {
-    const withToken = await request.get('/bookings', {
+    const withToken = await request.get('bookings', {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     expect(withToken.status()).toBe(200);
@@ -109,12 +109,12 @@ test.describe('GET /bookings (list)', () => {
     // are "private to their account" per-user sandboxing, but declares no security requirement on
     // this route. If the no-token and with-token calls return an identical (non-empty) data set,
     // that is worth flagging as a genuine isolation gap rather than treated as passing quietly.
-    const withoutToken = await request.get('/bookings');
+    const withoutToken = await request.get('bookings');
     expect(withoutToken.status()).toBe(200);
   });
 
   test('Auth/contract: list behavior with an invalid/malformed token', async ({ request }) => {
-    const response = await request.get('/bookings', {
+    const response = await request.get('bookings', {
       headers: { Authorization: 'Bearer not-a-real-jwt' },
     });
     expect(response.status()).toBeLessThan(500);
@@ -123,19 +123,19 @@ test.describe('GET /bookings (list)', () => {
 
 test.describe('GET /bookings/:id', () => {
   test('Negative: nonexistent booking id returns 404', async ({ request }) => {
-    const response = await request.get('/bookings/999999999');
+    const response = await request.get('bookings/999999999');
     expect(response.status()).toBe(404);
     const body = await response.json();
     expect(body.success).toBe(false);
   });
 
   test('Negative: non-numeric id does not 500', async ({ request }) => {
-    const response = await request.get('/bookings/abc');
+    const response = await request.get('bookings/abc');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Functional: an existing booking (if any exist live) matches the Booking schema', async ({ request }) => {
-    const list = await request.get('/bookings?limit=1');
+    const list = await request.get('bookings?limit=1');
     const listBody = await list.json();
 
     test.skip(
@@ -146,7 +146,7 @@ test.describe('GET /bookings/:id', () => {
     );
 
     const id = listBody.data[0].id;
-    const response = await request.get(`/bookings/${id}`);
+    const response = await request.get(`bookings/${id}`);
     expect(response.status()).toBe(200);
     const body = await response.json();
     assertBookingSchema(body.data);
@@ -156,24 +156,24 @@ test.describe('GET /bookings/:id', () => {
 
 test.describe('GET /bookings/ref/:ref', () => {
   test('Negative: nonexistent booking ref returns 404', async ({ request }) => {
-    const response = await request.get('/bookings/ref/EVT-ZZZZZZ');
+    const response = await request.get('bookings/ref/EVT-ZZZZZZ');
     expect(response.status()).toBe(404);
     const body = await response.json();
     expect(body.success).toBe(false);
   });
 
   test('Negative: malformed ref does not 500', async ({ request }) => {
-    const response = await request.get('/bookings/ref/abc');
+    const response = await request.get('bookings/ref/abc');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Boundary: ref with URL-encoded characters does not 500', async ({ request }) => {
-    const response = await request.get('/bookings/ref/EVT-A1B2C3%20');
+    const response = await request.get('bookings/ref/EVT-A1B2C3%20');
     expect(response.status()).toBeLessThan(500);
   });
 
   test('Functional: an existing booking ref (if any exist live) matches the Booking schema', async ({ request }) => {
-    const list = await request.get('/bookings?limit=1');
+    const list = await request.get('bookings?limit=1');
     const listBody = await list.json();
 
     test.skip(
@@ -183,7 +183,7 @@ test.describe('GET /bookings/ref/:ref', () => {
     );
 
     const ref = listBody.data[0].bookingRef;
-    const response = await request.get(`/bookings/ref/${ref}`);
+    const response = await request.get(`bookings/ref/${ref}`);
     expect(response.status()).toBe(200);
     const body = await response.json();
     assertBookingSchema(body.data);

@@ -1,0 +1,36 @@
+target:
+  url: https://crmsupport.freshworks.com/support/home
+  slug: freshsales-help
+  maxPages: 5
+  maxDepth: 1
+
+feature:
+  slug: help-search
+  description: >
+    Browse the knowledge base categories and search for help articles.
+  requirement_docs: []
+
+authorizations:
+  mode: readonly
+  authenticated_crawl: false
+  credentials_file: null
+  session_state_file: null
+
+testcases:
+  output_format: gherkin
+
+defaults:
+  unconfirmed_behavior_policy: assume-standard-and-flag
+  unconfirmed_edge_case_policy: flag-as-unconfirmed-case
+
+answers:
+  - match: "role-based access"
+    answer: "Out of scope for this run."
+  - match: "login"
+    answer: "Out of scope. Test only the public pages."
+
+feedback_loop:
+  auto_invoke_implementor: false
+
+git:
+  auto_commit: false

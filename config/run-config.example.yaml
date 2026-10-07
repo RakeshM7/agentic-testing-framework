@@ -25,7 +25,7 @@ feature:
 # The orchestrator can only exercise opt-in exceptions the spoke agents
 # already define — it can never override a hard rule (see orchestrator-agent.md).
 authorizations:
-  mode: readonly                # readonly (default) | full-run
+  mode: full-run                # readonly (default) | full-run
                                  # readonly   = explore-agent stays a non-mutating crawler;
                                  #              api-testing-agent's Playwright specs default to
                                  #              GET-only and it never runs k6 live;
@@ -45,10 +45,10 @@ authorizations:
   authenticated_crawl: true    # true = explore-agent performs an authenticated crawl using
                                  #        session_state_file below (never by typing credentials
                                  #        itself — see docs/conventions.md's session_state_file entry)
-  credentials_file: null        # e.g. playwright-tests/<product>/.env — a FILE PATH, never inline values.
+  credentials_file: null        # e.g. playwright-tests/.env — a FILE PATH, never inline values.
                                  # Used by playwright-automation-agent / api-testing-agent's own
                                  # scripted logins, NOT read by explore-agent.
-  session_state_file: null      # e.g. playwright-tests/<product>/.auth/handoff.json — a pre-authenticated
+  session_state_file: null      # e.g. playwright-tests/.auth/handoff.json — a pre-authenticated
                                  # Playwright storageState (or session-cookie value file) a human
                                  # produced by completing login (+ any CAPTCHA/MFA) once,
                                  # interactively, out-of-band. Required for explore-agent's
@@ -79,7 +79,7 @@ answers:
     answer: "Write as a flagged/unconfirmed case if no sold-out fixture exists."
 
 feedback_loop:
-  auto_invoke_implementor: false  # false = orchestrator only reports filed feedback file paths
+  auto_invoke_implementor: true  # false = orchestrator only reports filed feedback file paths
 
 git:
   auto_commit: false             # orchestrator never runs `git commit` unless this is explicitly true

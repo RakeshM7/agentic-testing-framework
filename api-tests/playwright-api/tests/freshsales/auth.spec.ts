@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/api-fixtures';
+import { test, expect } from '@playwright/test';
 
 // Auth-boundary checks for the rakesh-freshsales-ind-sep21 tenant's /crm/sales/* app API.
 //
@@ -53,7 +53,7 @@ test.describe('Auth: unauthenticated access to /crm/sales/* is redirected, not d
     // `Accept: application/json` override. Both this test and the four 401-JSON tests above were
     // empirically verified against the live tenant before being written, not assumed.
     const context = await playwright.request.newContext({
-      baseURL: 'https://rakesh-freshsales-ind-sep21.myfreshworks.com',
+      baseURL: process.env.FRESHSALES_BASE_URL ?? 'https://rakesh-freshsales-ind-sep21.myfreshworks.com',
     });
     const response = await context.get('/crm/sales/contacts', {
       maxRedirects: 0,

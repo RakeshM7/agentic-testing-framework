@@ -179,7 +179,7 @@ boundary test case (TC-app-wide-017 through TC-app-wide-039), with no row skippe
 | TC-app-wide-001 | Happy path | Confirmed behavior: `/register` form fields, password policy display, "Sign in" link |
 | TC-app-wide-002 | Happy path | Confirmed behavior (item 3): successful registration auto-logs in and redirects — flagged assumption, DO NOT EXECUTE LIVE |
 | TC-app-wide-003 | Happy path | Confirmed behavior: `/login` form fields, "Register" link |
-| TC-app-wide-004 | Happy path | Confirmed behavior: valid-credentials login for `akashmrakesh+1@gmail.com` |
+| TC-app-wide-004 | Happy path | Confirmed behavior: valid-credentials login for `admin-user@example.com` |
 | TC-app-wide-005 | Happy path | Confirmed behavior: `/events` search box + Category/City filter option sets |
 | TC-app-wide-006 | Happy path | Edge case row: "Category filter alone" |
 | TC-app-wide-007 | Happy path | Edge case row: "City filter alone" |

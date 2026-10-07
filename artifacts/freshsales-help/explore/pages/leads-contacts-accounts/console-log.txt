@@ -1,0 +1,5 @@
+Total messages: 3 (Errors: 2, Warnings: 0)
+
+[LOG] No active session replay experiments! @ https://cdn.freshmarketer.com/61608/70421.js:2
+[ERROR] Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID @ https://platform.twitter.com/widgets.js:0
+[ERROR] Failed to load resource: net::ERR_QUIC_PROTOCOL_ERROR.QUIC_NETWORK_IDLE_TIMEOUT @ https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v2.0:0

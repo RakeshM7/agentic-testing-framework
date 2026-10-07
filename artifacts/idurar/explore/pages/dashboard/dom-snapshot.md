@@ -1,0 +1,255 @@
+- generic [ref=e11]:
+  - complementary [ref=e12]:
+    - generic [ref=e13]:
+      - img "Logo" [ref=e15] [cursor=pointer]
+      - menu [ref=e16]:
+        - menuitem [ref=e17] [cursor=pointer]:
+          - img "dashboard" [ref=e18]
+          - link "Dashboard" [ref=e22]:
+            - /url: /
+        - menuitem [ref=e23] [cursor=pointer]:
+          - img "container" [ref=e24]
+          - link "Invoices" [ref=e28]:
+            - /url: /invoice
+        - menuitem [ref=e29] [cursor=pointer]:
+          - img "credit-card" [ref=e30]
+          - link "Payments" [ref=e34]:
+            - /url: /payment
+        - menuitem [ref=e35] [cursor=pointer]:
+          - img "file-sync" [ref=e36]
+          - link "Quotes" [ref=e40]:
+            - /url: /quote
+        - menuitem [ref=e41] [cursor=pointer]:
+          - img "customer-service" [ref=e42]
+          - link "Customers" [ref=e46]:
+            - /url: /customer
+        - menuitem [ref=e47] [cursor=pointer]:
+          - img "user" [ref=e48]
+          - link "Peoples" [ref=e52]:
+            - /url: /people
+        - menuitem [ref=e53] [cursor=pointer]:
+          - img "shop" [ref=e54]
+          - link "Companies" [ref=e58]:
+            - /url: /company
+        - menuitem [ref=e59] [cursor=pointer]:
+          - img "filter" [ref=e60]
+          - link "Leads" [ref=e64]:
+            - /url: /lead
+        - menuitem [ref=e65] [cursor=pointer]:
+          - img "file" [ref=e66]
+          - link "Offers for Leads" [ref=e70]:
+            - /url: /offer
+        - menuitem [ref=e71] [cursor=pointer]:
+          - img "tag" [ref=e72]
+          - link "Products" [ref=e76]:
+            - /url: /product
+        - menuitem [ref=e77] [cursor=pointer]:
+          - img "tags" [ref=e78]
+          - link "Products Category" [ref=e82]:
+            - /url: /category/product
+        - menuitem [ref=e83] [cursor=pointer]:
+          - img "tag" [ref=e84]
+          - link "Order" [ref=e88]:
+            - /url: /order
+        - menuitem [ref=e89] [cursor=pointer]:
+          - img "wallet" [ref=e90]
+          - link "Expenses" [ref=e94]:
+            - /url: /expenses
+        - menuitem [ref=e95] [cursor=pointer]:
+          - img "reconciliation" [ref=e96]
+          - link "Expenses Category" [ref=e100]:
+            - /url: /category/expenses
+        - menuitem [ref=e101] [cursor=pointer]:
+          - img "pie-chart" [ref=e102]
+          - link "Report" [ref=e106]:
+            - /url: /report
+        - menuitem "setting Settings" [ref=e107] [cursor=pointer]:
+          - img "setting" [ref=e108]
+          - generic [ref=e111]: Settings
+  - generic [ref=e112]:
+    - banner [ref=e113]:
+      - generic [ref=e114] [cursor=pointer]: J
+      - generic [ref=e116]:
+        - button "rocket Add Custom Features" [ref=e117] [cursor=pointer]:
+          - img "rocket" [ref=e119]
+          - generic [ref=e122]: Add Custom Features
+        - superscript [ref=e123]:
+          - generic [ref=e124]: "1"
+      - generic [ref=e126]:
+        - button "rocket Buy & Get Code Source" [ref=e127] [cursor=pointer]:
+          - img "rocket" [ref=e129]
+          - generic [ref=e132]: Buy & Get Code Source
+        - superscript [ref=e133]:
+          - generic [ref=e134]: "2"
+      - generic [ref=e137] [cursor=pointer]:
+        - generic "Main" [ref=e138]:
+          - text: Main
+          - combobox [ref=e139]
+        - img "down" [ref=e141]
+      - generic [ref=e145] [cursor=pointer]:
+        - generic [ref=e146]:
+          - generic [ref=e147]: $
+          - combobox [ref=e149]
+        - img "down" [ref=e151]
+      - generic: _
+      - generic [ref=e154] [cursor=pointer]:
+        - generic "english" [ref=e155]:
+          - combobox [ref=e157]
+        - img "down" [ref=e159]
+    - main [ref=e162]:
+      - generic [ref=e163]:
+        - generic [ref=e165]:
+          - generic [ref=e166]:
+            - heading "Paid Invoice" [level=3] [ref=e167]
+            - generic [ref=e168]: 00.00 $
+          - separator [ref=e169]
+          - generic [ref=e174]:
+            - button "From Begining" [ref=e175] [cursor=pointer]
+            - button "calendar" [ref=e177] [cursor=pointer]:
+              - img "calendar" [ref=e179]
+        - generic [ref=e183]:
+          - generic [ref=e184]:
+            - heading "Unpaid Invoice" [level=3] [ref=e185]
+            - generic [ref=e186]: 00.00 $
+          - separator [ref=e187]
+          - generic [ref=e192]:
+            - button "From Begining" [ref=e193] [cursor=pointer]
+            - button "calendar" [ref=e195] [cursor=pointer]:
+              - img "calendar" [ref=e197]
+        - generic [ref=e201]:
+          - generic [ref=e202]:
+            - heading "Quote" [level=3] [ref=e203]
+            - generic [ref=e204]: 00.00 $
+          - separator [ref=e205]
+          - generic [ref=e210]:
+            - button "From Begining" [ref=e211] [cursor=pointer]
+            - button "calendar" [ref=e213] [cursor=pointer]:
+              - img "calendar" [ref=e215]
+        - generic [ref=e219]:
+          - generic [ref=e220]:
+            - heading "Offer" [level=3] [ref=e221]
+            - generic [ref=e222]: 00.00 $
+          - separator [ref=e223]
+          - generic [ref=e228]:
+            - button "From Begining" [ref=e229] [cursor=pointer]
+            - button "calendar" [ref=e231] [cursor=pointer]:
+              - img "calendar" [ref=e233]
+      - generic [ref=e237]:
+        - generic [ref=e240]:
+          - generic [ref=e242]:
+            - heading "Invoices" [level=3] [ref=e244]
+            - generic [ref=e245]:
+              - generic [ref=e246]: Draft
+              - generic [ref=e247]: 0 %
+              - progressbar [ref=e248]
+            - generic [ref=e251]:
+              - generic [ref=e252]: Pending
+              - generic [ref=e253]: 0 %
+              - progressbar [ref=e254]
+            - generic [ref=e257]:
+              - generic [ref=e258]: Sent
+              - generic [ref=e259]: 0 %
+              - progressbar [ref=e260]
+            - generic [ref=e263]:
+              - generic [ref=e264]: Paid
+              - generic [ref=e265]: 0 %
+              - progressbar [ref=e266]
+            - generic [ref=e269]:
+              - generic [ref=e270]: Unpaid
+              - generic [ref=e271]: 0 %
+              - progressbar [ref=e272]
+            - generic [ref=e275]:
+              - generic [ref=e276]: Partially
+              - generic [ref=e277]: 0 %
+              - progressbar [ref=e278]
+          - generic [ref=e282]:
+            - heading "Quotes For Customers" [level=3] [ref=e284]
+            - generic [ref=e285]:
+              - generic [ref=e286]: Draft
+              - generic [ref=e287]: 0 %
+              - progressbar [ref=e288]
+            - generic [ref=e291]:
+              - generic [ref=e292]: Pending
+              - generic [ref=e293]: 0 %
+              - progressbar [ref=e294]
+            - generic [ref=e297]:
+              - generic [ref=e298]: Sent
+              - generic [ref=e299]: 0 %
+              - progressbar [ref=e300]
+            - generic [ref=e303]:
+              - generic [ref=e304]: Declined
+              - generic [ref=e305]: 0 %
+              - progressbar [ref=e306]
+            - generic [ref=e309]:
+              - generic [ref=e310]: Accepted
+              - generic [ref=e311]: 0 %
+              - progressbar [ref=e312]
+            - generic [ref=e315]:
+              - generic [ref=e316]: Expired
+              - generic [ref=e317]: 0 %
+              - progressbar [ref=e318]
+          - generic [ref=e322]:
+            - heading "Quotes For Leads" [level=3] [ref=e324]
+            - generic [ref=e325]:
+              - generic [ref=e326]: Draft
+              - generic [ref=e327]: 0 %
+              - progressbar [ref=e328]
+            - generic [ref=e331]:
+              - generic [ref=e332]: Pending
+              - generic [ref=e333]: 0 %
+              - progressbar [ref=e334]
+            - generic [ref=e337]:
+              - generic [ref=e338]: Sent
+              - generic [ref=e339]: 0 %
+              - progressbar [ref=e340]
+            - generic [ref=e343]:
+              - generic [ref=e344]: Declined
+              - generic [ref=e345]: 0 %
+              - progressbar [ref=e346]
+            - generic [ref=e349]:
+              - generic [ref=e350]: Accepted
+              - generic [ref=e351]: 0 %
+              - progressbar [ref=e352]
+            - generic [ref=e355]:
+              - generic [ref=e356]: Expired
+              - generic [ref=e357]: 0 %
+              - progressbar [ref=e358]
+        - generic [ref=e364]:
+          - heading "Customers" [level=3] [ref=e366]
+          - generic [ref=e367]:
+            - progressbar [ref=e368]:
+              - generic "0%" [ref=e373]
+            - paragraph [ref=e374]: "Last Month : 0"
+            - separator [ref=e375]
+            - generic [ref=e376]:
+              - generic [ref=e377]: Total
+              - generic [ref=e379]:
+                - generic [ref=e380]: "0.00"
+                - generic [ref=e381]: "%"
+      - generic [ref=e383]:
+        - generic [ref=e385]:
+          - heading "Recent Invoices" [level=3] [ref=e386]
+          - table [ref=e393]:
+            - rowgroup [ref=e394]:
+              - row "Number Client Total Status" [ref=e395]:
+                - columnheader "Number" [ref=e396]
+                - columnheader "Client" [ref=e397]
+                - columnheader "Total" [ref=e398]
+                - columnheader "Status" [ref=e399]
+                - columnheader [ref=e400]
+            - rowgroup [ref=e401]:
+              - row "No data No data" [ref=e402]:
+                - cell "No data No data" [ref=e403]
+        - generic [ref=e415]:
+          - heading "Recent Quotes" [level=3] [ref=e416]
+          - table [ref=e423]:
+            - rowgroup [ref=e424]:
+              - row "Number Client Total Status" [ref=e425]:
+                - columnheader "Number" [ref=e426]
+                - columnheader "Client" [ref=e427]
+                - columnheader "Total" [ref=e428]
+                - columnheader "Status" [ref=e429]
+                - columnheader [ref=e430]
+            - rowgroup [ref=e431]:
+              - row "No data No data" [ref=e432]:
+                - cell "No data No data" [ref=e433]

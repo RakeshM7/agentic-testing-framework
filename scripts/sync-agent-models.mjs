@@ -3,8 +3,9 @@
 // copilot-agents/*.agent.md file from the single source of truth at
 // config/models.yaml. See that file's header comment for the config format.
 //
-// Usage: node scripts/sync-agent-models.mjs [--check]
-//   --check  write nothing; exit 1 if any file's `model:` line differs from config/models.yaml (for CI).
+// Usage: node scripts/sync-agent-models.mjs            patch files in place
+//        node scripts/sync-agent-models.mjs --check     write nothing; exit 1 if any file has drifted
+//                                                       from config/models.yaml (used by CI)
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -24,9 +25,7 @@ function renderYamlValue(value) {
 // Replaces the first `model: ...` line found inside the YAML frontmatter
 // block (between the first two `---` lines) with `model: <newValue>`.
 // Leaves every other line -- frontmatter or body -- untouched.
-const CHECK = process.argv.includes("--check");
-
-function patchModelLine(filePath, newValue) {
+function patchModelLine(filePath, newValue, dryRun = false) {
   const original = readFileSync(filePath, "utf8");
   const lines = original.split("\n");
 
@@ -54,11 +53,12 @@ function patchModelLine(filePath, newValue) {
   if (next === original) {
     return false;
   }
-  if (!CHECK) writeFileSync(filePath, next, "utf8");
+  if (!dryRun) writeFileSync(filePath, next, "utf8");
   return true;
 }
 
 function main() {
+  const check = process.argv.includes("--check");
   const config = yaml.load(readFileSync(modelsConfigPath, "utf8"));
   const agents = config?.agents ?? {};
 
@@ -82,16 +82,23 @@ function main() {
         skipped++;
         continue;
       }
-      const didChange = patchModelLine(file, value);
+      const didChange = patchModelLine(file, value, check);
       if (didChange) {
-        console.log(`${CHECK ? "drift" : "updated"}: ${path.relative(repoRoot, file)} -> model: ${renderYamlValue(value)}`);
+        console.log(`${check ? "DRIFT" : "updated"}: ${path.relative(repoRoot, file)} -> model: ${renderYamlValue(value)}`);
         changed++;
       }
     }
   }
 
-  console.log(`\n${changed} file(s) ${CHECK ? "out of sync" : "updated"}, ${skipped} skipped (missing).`);
-  if (CHECK && changed > 0) process.exit(1);
+  if (check) {
+    console.log(`\n${changed} file(s) out of sync with config/models.yaml, ${skipped} skipped (missing).`);
+    if (changed > 0) {
+      console.error("Run `node scripts/sync-agent-models.mjs` to fix.");
+      process.exit(1);
+    }
+    return;
+  }
+  console.log(`\n${changed} file(s) updated, ${skipped} skipped (missing).`);
 }
 
 main();

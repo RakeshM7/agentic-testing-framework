@@ -1,0 +1,35 @@
+target:
+  url: https://YOUR-APP-URL/
+  slug: myapp
+  maxPages: 25
+  maxDepth: 3
+
+feature:
+  slug: full-app-exploration
+  description: >
+    Explore the whole application end to end by navigating page to page
+    after login: dashboard, modules, lists, detail pages, settings.
+  requirement_docs: []
+
+authorizations:
+  mode: readonly
+  authenticated_crawl: true
+  credentials_file: null
+  session_state_file: playwright-tests/.auth/myapp-session.json
+
+testcases:
+  output_format: gherkin
+
+defaults:
+  unconfirmed_behavior_policy: assume-standard-and-flag
+  unconfirmed_edge_case_policy: flag-as-unconfirmed-case
+
+answers:
+  - match: "role-based access"
+    answer: "Out of scope for this run."
+
+feedback_loop:
+  auto_invoke_implementor: false
+
+git:
+  auto_commit: false

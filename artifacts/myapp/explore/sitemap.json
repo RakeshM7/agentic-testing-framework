@@ -1,0 +1,14 @@
+[
+  {
+    "url": "https://crmsupport.freshworks.com/support/home",
+    "slug": "home",
+    "title": "Support : Freshworks",
+    "screenshotPath": "pages/home/screenshot.png",
+    "domSnapshotPath": "pages/home/dom-snapshot.md",
+    "networkRequestsPath": "pages/home/network-requests.json",
+    "consoleLogPath": "pages/home/console-log.txt",
+    "links": [
+      "https://crmsupport.freshworks.com/support/tickets/new"
+    ]
+  }
+]

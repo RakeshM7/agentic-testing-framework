@@ -1,0 +1,14 @@
+{
+  "page": "https://eventhub.rahulshettyacademy.com/register",
+  "note": "Register route renders directly (no redirect). No XHR/fetch calls beyond the shared /api/config observed prior to this navigation; the Create Account button was never clicked so no signup API call was triggered (read-only mandate).",
+  "requests": [
+    { "url": "https://eventhub.rahulshettyacademy.com/register?_rsc=1obve", "method": "GET", "statusCode": 200, "type": "rsc-fetch" },
+    { "url": "https://eventhub.rahulshettyacademy.com/_next/static/chunks/app/register/page-73f91ff0bbb3d8d7.js", "method": "GET", "statusCode": 200, "type": "script" },
+    { "url": "https://eventhub.rahulshettyacademy.com/register", "method": "GET", "statusCode": 200, "type": "document" },
+    { "url": "https://eventhub.rahulshettyacademy.com/_next/static/media/e4af272ccee01ff0-s.p.woff2", "method": "GET", "statusCode": 200, "type": "font" },
+    { "url": "https://eventhub.rahulshettyacademy.com/_next/static/css/0a16f07bf5dfa7eb.css", "method": "GET", "statusCode": 200, "type": "stylesheet" }
+  ],
+  "apiEndpointsSeenSoFar": [
+    "https://api.eventhub.rahulshettyacademy.com/api/config"
+  ]
+}

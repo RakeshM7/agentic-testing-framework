@@ -1,0 +1,4 @@
+Console log — https://eventhub.rahulshettyacademy.com/ (redirects to /login)
+Captured via read_console_messages (pattern: ".*", tracking started at first call on this tab).
+
+No console messages (log/warn/error/info) were emitted during this page load.

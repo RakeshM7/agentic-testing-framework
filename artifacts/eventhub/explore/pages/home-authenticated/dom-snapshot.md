@@ -1,7 +1,7 @@
 # DOM / Accessibility Snapshot — Home, Authenticated ("/")
 
 URL: https://eventhub.rahulshettyacademy.com/
-Authenticated as: akashmrakesh+1@gmail.com
+Authenticated as: admin-user@example.com
 
 Page title: EventHub — Discover & Book Events
 
@@ -15,7 +15,7 @@ $2,500
 2959 seats available
 Book Now
 
-(Full page also shows: top nav — Home / Events / My Bookings / API Docs / Admin (dropdown) / user email chip (akashmrakesh+1@...) / Logout; hero "Discover & Book Amazing Events" with "Browse Events" and "My Bookings" CTA buttons; "Featured Events" section listing 3 featured event cards — Festival, Concert, Conference categories visible in the fold.)
+(Full page also shows: top nav — Home / Events / My Bookings / API Docs / Admin (dropdown) / user email chip (admin-user@...) / Logout; hero "Discover & Book Amazing Events" with "Browse Events" and "My Bookings" CTA buttons; "Featured Events" section listing 3 featured event cards — Festival, Concert, Conference categories visible in the fold.)
 
 ## Interactive elements (read_page, filter=interactive)
 - link [ref_1] href="/" (logo)
@@ -32,7 +32,7 @@ Book Now
 
 ## Key finding
 The authenticated nav differs from the unauthenticated marketing preview image: real nav is
-Home / Events / My Bookings / API Docs / Admin — confirming the account akashmrakesh+1@gmail.com
+Home / Events / My Bookings / API Docs / Admin — confirming the account admin-user@example.com
 has an **Admin** role/link (not just a normal user). This is notable for api-testing-agent /
 role-based-access-control testing.
 

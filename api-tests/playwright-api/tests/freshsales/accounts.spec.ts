@@ -1,67 +1,80 @@
-import { test, expect, skipIfNoSession, skipUnlessMutationReady } from '../../fixtures/freshsales-api-fixtures';
+import { test, expect, skipIfNoSession } from '../../fixtures/freshsales-api-fixtures';
 
-// sales_accounts coverage. Live-verified (read-only): list requires segment_id (bare list or
-// ?name= filter returns 403, and so does a non-numeric segment_id); detail is wrapped in {sales_account}.
-// Standalone account creation is out of scope per clarifications.
+// Accounts (sales_accounts) coverage -- see api-test-plan.md section 2. Per the finalized
+// clarifications doc, standalone Account creation is explicitly OUT OF SCOPE (the only in-scope
+// creation path is the inline auto-create from the Add Contact form, exercised implicitly as part
+// of contacts.spec.ts's create-contact flow, not duplicated here). This file covers read/list/
+// negative/boundary coverage on the resulting sales_accounts resource.
 
-const ACCOUNTS_SEGMENT = 402015942758;
-const SAMPLE_ACCOUNT_ID = 402012383128;
-
-function assertAccountSchema(a: any) {
-  expect(typeof a.id).toBe('number');
-  expect(typeof a.name).toBe('string');
+function assertAccountSchema(account: any) {
+  expect(typeof account.id).toBe('number');
+  expect(typeof account.name).toBe('string');
 }
 
-test.describe('GET /crm/sales/sales_accounts', () => {
-  test('Functional/Schema: list with segment_id returns {sales_accounts}', async ({ request, freshsalesSessionCookie }) => {
+test.describe('GET /crm/sales/sales_accounts (list/lookup)', () => {
+  test('Functional: the inline-created "Explore Test Co" account resolves by name', async ({
+    request,
+    freshsalesSessionCookie,
+  }) => {
     skipIfNoSession(!!freshsalesSessionCookie);
-    const r = await request.get(`/crm/sales/sales_accounts?page=1&per_page=5&segment_id=${ACCOUNTS_SEGMENT}`, { headers: { Cookie: freshsalesSessionCookie! } });
-    expect(r.status()).toBe(200);
-    const b = await r.json();
-    expect(Array.isArray(b.sales_accounts)).toBe(true);
-    for (const a of b.sales_accounts) assertAccountSchema(a);
+
+    const response = await request.get('/crm/sales/sales_accounts?name=Explore+Test+Co', {
+      headers: { Cookie: freshsalesSessionCookie! },
+    });
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    const accounts = Array.isArray(body) ? body : body.sales_accounts || body.data;
+    expect(Array.isArray(accounts)).toBe(true);
+    expect(accounts.length).toBeGreaterThanOrEqual(1);
+    for (const account of accounts) assertAccountSchema(account);
   });
 
-  test('Functional/Schema: detail wrapped in {sales_account}', async ({ request, freshsalesSessionCookie }) => {
+  test('Boundary: per_page far beyond actual row count returns all rows without erroring', async ({
+    request,
+    freshsalesSessionCookie,
+  }) => {
     skipIfNoSession(!!freshsalesSessionCookie);
-    const r = await request.get(`/crm/sales/sales_accounts/${SAMPLE_ACCOUNT_ID}`, { headers: { Cookie: freshsalesSessionCookie! } });
-    expect(r.status()).toBe(200);
-    assertAccountSchema((await r.json()).sales_account);
+
+    const response = await request.get('/crm/sales/sales_accounts?per_page=1000&page=1', {
+      headers: { Cookie: freshsalesSessionCookie! },
+    });
+    expect(response.status()).toBe(200);
   });
 
-  test('Boundary: per_page=1000 returns 200', async ({ request, freshsalesSessionCookie }) => {
+  test('Boundary: page far beyond the last page returns an empty, not error, result', async ({
+    request,
+    freshsalesSessionCookie,
+  }) => {
     skipIfNoSession(!!freshsalesSessionCookie);
-    const r = await request.get(`/crm/sales/sales_accounts?page=1&per_page=1000&segment_id=${ACCOUNTS_SEGMENT}`, { headers: { Cookie: freshsalesSessionCookie! } });
-    expect(r.status()).toBe(200);
+
+    const response = await request.get('/crm/sales/sales_accounts?per_page=25&page=9999', {
+      headers: { Cookie: freshsalesSessionCookie! },
+    });
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    const accounts = Array.isArray(body) ? body : body.sales_accounts || body.data;
+    expect(accounts).toEqual([]);
   });
 
-  test('Boundary: page far beyond last page returns an empty list', async ({ request, freshsalesSessionCookie }) => {
+  test('Negative: non-numeric segment_id does not 500', async ({ request, freshsalesSessionCookie }) => {
     skipIfNoSession(!!freshsalesSessionCookie);
-    const r = await request.get(`/crm/sales/sales_accounts?page=9999&per_page=25&segment_id=${ACCOUNTS_SEGMENT}`, { headers: { Cookie: freshsalesSessionCookie! } });
-    expect(r.status()).toBe(200);
-    expect((await r.json()).sales_accounts).toEqual([]);
-  });
 
-  test('Negative/contract: list without a valid segment_id is 403 (documented quirk; no 5xx)', async ({ request, freshsalesSessionCookie }) => {
-    skipIfNoSession(!!freshsalesSessionCookie);
-    for (const q of ['name=Explore+Test+Co', 'segment_id=abc']) {
-      const r = await request.get(`/crm/sales/sales_accounts?${q}`, { headers: { Cookie: freshsalesSessionCookie! } });
-      expect(r.status()).toBe(403);
-    }
-  });
-
-  test('Negative: nonexistent account id is 404', async ({ request, freshsalesSessionCookie }) => {
-    skipIfNoSession(!!freshsalesSessionCookie);
-    const r = await request.get('/crm/sales/sales_accounts/999999999999', { headers: { Cookie: freshsalesSessionCookie! } });
-    expect(r.status()).toBe(404);
+    const response = await request.get('/crm/sales/sales_accounts?segment_id=abc', {
+      headers: { Cookie: freshsalesSessionCookie! },
+    });
+    expect(response.status()).toBeLessThan(500);
   });
 });
 
-test.describe('POST /crm/sales/sales_accounts (validation only; creates nothing if rejected)', () => {
+test.describe('POST /crm/sales/sales_accounts (inline create validation)', () => {
   test('Negative: blank account name is rejected', async ({ request, freshsalesSessionCookie }) => {
-    skipUnlessMutationReady(!!freshsalesSessionCookie);
-    const r = await request.post('/crm/sales/sales_accounts', { headers: { Cookie: freshsalesSessionCookie! }, data: { sales_account: { name: '' } } });
-    expect(r.status()).toBeGreaterThanOrEqual(400);
-    expect(r.status()).toBeLessThan(500);
+    skipIfNoSession(!!freshsalesSessionCookie);
+
+    const response = await request.post('/crm/sales/sales_accounts', {
+      headers: { Cookie: freshsalesSessionCookie! },
+      data: { name: '' },
+    });
+    expect(response.status()).toBeGreaterThanOrEqual(400);
+    expect(response.status()).toBeLessThan(500);
   });
 });

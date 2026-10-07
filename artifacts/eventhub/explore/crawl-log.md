@@ -39,7 +39,7 @@ None. All same-origin document requests returned 200 or a handled 404 (for `/das
 
 **Context:** explore-agent's default persona is READ-ONLY and never logs in with guessed or supplied credentials. For this specific run, the human user of the session **explicitly provided real credentials for this exact public training/demo site and explicitly authorized, as a deliberate one-off exception, using them to log in** — EventHub is a known QA-practice application published by Rahul Shetty Academy, not a real production service, and the authorization was scoped to this site only. No credentials were guessed, generated, or reused from any other source.
 
-**Attempt:** Navigated to `/login`, entered the supplied email (`akashmrakesh@gmail.com`) and password, and clicked **Sign In** exactly once.
+**Attempt:** Navigated to `/login`, entered the supplied email (`known-bad-user@example.com`) and password, and clicked **Sign In** exactly once.
 
 **Result: LOGIN FAILED.**
 - UI showed a toast error: **"Invalid email or password"**.
@@ -59,15 +59,15 @@ None. All same-origin document requests returned 200 or a handled 404 (for `/das
 ## Authenticated crawl — retry with alternate email (2026-09-20)
 
 **Context:** Same one-off, site-scoped exception as the prior authenticated extension above. The
-human user supplied a **different** email this time (`akashmrakesh+1@gmail.com`, same password) to
-retry after the earlier `akashmrakesh@gmail.com` attempt failed with `400 Invalid email or
+human user supplied a **different** email this time (`admin-user@example.com`, same password) to
+retry after the earlier `known-bad-user@example.com` attempt failed with `400 Invalid email or
 password`. No credentials were guessed — both emails were explicitly supplied by the human user.
 
-**Attempt:** Navigated to `/login`, entered `akashmrakesh+1@gmail.com` + the supplied password,
+**Attempt:** Navigated to `/login`, entered `admin-user@example.com` + the supplied password,
 clicked **Sign In** once.
 
 **Result: LOGIN SUCCEEDED.** Redirected to `/` with an authenticated session (email chip
-`akashmrakesh+1@...` and a **Logout** button visible in the nav). No `400`/error response this
+`admin-user@...` and a **Logout** button visible in the nav). No `400`/error response this
 time.
 
 **Key discovery — this account has admin privileges.** The authenticated nav is
@@ -134,7 +134,7 @@ role than a typical booking-only user and is useful context for role-based-acces
 - Business rules worth turning into test cases: (a) admin "add event" 6-event cap with FIFO
   eviction of the oldest event; (b) seeded/featured events are protected from edit/delete; (c) a
   "Clear all bookings" bulk-delete exists for the authenticated user's own bookings.
-- Role signal: `akashmrakesh+1@gmail.com` is an **admin-capable** account (sees Admin nav item,
+- Role signal: `admin-user@example.com` is an **admin-capable** account (sees Admin nav item,
   can reach `/admin/events`). Worth testing whether a non-admin registered account can access
   `/admin/events` directly (expect a redirect/403) as a follow-up authz check.
 

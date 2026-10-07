@@ -1,0 +1,178 @@
+- generic [ref=e11]:
+  - complementary [ref=e12]:
+    - generic [ref=e13]:
+      - img "Logo" [ref=e15] [cursor=pointer]
+      - menu [ref=e16]:
+        - menuitem [ref=e17] [cursor=pointer]:
+          - img "dashboard" [ref=e18]
+          - link "Dashboard" [ref=e22]:
+            - /url: /
+        - menuitem [ref=e23] [cursor=pointer]:
+          - img "container" [ref=e24]
+          - link "Invoices" [ref=e28]:
+            - /url: /invoice
+        - menuitem [ref=e29] [cursor=pointer]:
+          - img "credit-card" [ref=e30]
+          - link "Payments" [ref=e34]:
+            - /url: /payment
+        - menuitem [ref=e35] [cursor=pointer]:
+          - img "file-sync" [ref=e36]
+          - link "Quotes" [ref=e40]:
+            - /url: /quote
+        - menuitem [ref=e41] [cursor=pointer]:
+          - img "customer-service" [ref=e42]
+          - link "Customers" [ref=e46]:
+            - /url: /customer
+        - menuitem [ref=e47] [cursor=pointer]:
+          - img "user" [ref=e48]
+          - link "Peoples" [ref=e52]:
+            - /url: /people
+        - menuitem [ref=e53] [cursor=pointer]:
+          - img "shop" [ref=e54]
+          - link "Companies" [ref=e58]:
+            - /url: /company
+        - menuitem [ref=e59] [cursor=pointer]:
+          - img "filter" [ref=e60]
+          - link "Leads" [ref=e64]:
+            - /url: /lead
+        - menuitem [ref=e65] [cursor=pointer]:
+          - img "file" [ref=e66]
+          - link "Offers for Leads" [ref=e70]:
+            - /url: /offer
+        - menuitem [ref=e71] [cursor=pointer]:
+          - img "tag" [ref=e72]
+          - link "Products" [ref=e76]:
+            - /url: /product
+        - menuitem [ref=e77] [cursor=pointer]:
+          - img "tags" [ref=e78]
+          - link "Products Category" [ref=e82]:
+            - /url: /category/product
+        - menuitem [ref=e83] [cursor=pointer]:
+          - img "tag" [ref=e84]
+          - link "Order" [ref=e88]:
+            - /url: /order
+        - menuitem [ref=e89] [cursor=pointer]:
+          - img "wallet" [ref=e90]
+          - link "Expenses" [ref=e94]:
+            - /url: /expenses
+        - menuitem [ref=e95] [cursor=pointer]:
+          - img "reconciliation" [ref=e96]
+          - link "Expenses Category" [ref=e100]:
+            - /url: /category/expenses
+        - menuitem [ref=e101] [cursor=pointer]:
+          - img "pie-chart" [ref=e102]
+          - link "Report" [ref=e106]:
+            - /url: /report
+        - menuitem "setting Settings" [expanded] [ref=e107] [cursor=pointer]:
+          - img "setting" [ref=e108]
+          - generic [ref=e111]: Settings
+        - menu [ref=e990]:
+          - menuitem [ref=e991] [cursor=pointer]:
+            - link "Settings" [active] [ref=e993]:
+              - /url: /settings
+          - menuitem [ref=e994] [cursor=pointer]:
+            - link "Admin" [ref=e996]:
+              - /url: /admin
+          - menuitem [ref=e997] [cursor=pointer]:
+            - link "Developer Api Key" [ref=e999]:
+              - /url: /developer
+          - menuitem [ref=e1000] [cursor=pointer]:
+            - link "About" [ref=e1002]:
+              - /url: /about
+          - menuitem [ref=e1003] [cursor=pointer]:
+            - link "Email Templates" [ref=e1005]:
+              - /url: /email
+          - menuitem [ref=e1006] [cursor=pointer]:
+            - link "Multi-company" [ref=e1008]:
+              - /url: /settings/branch
+          - menuitem [ref=e1009] [cursor=pointer]:
+            - link "Currencies" [ref=e1011]:
+              - /url: /settings/currency
+          - menuitem [ref=e1012] [cursor=pointer]:
+            - link "Public Form" [ref=e1014]:
+              - /url: /forms
+          - menuitem [ref=e1015] [cursor=pointer]:
+            - link "Tax" [ref=e1017]:
+              - /url: /tax
+          - menuitem [ref=e1018] [cursor=pointer]:
+            - link "Payments Mode" [ref=e1020]:
+              - /url: /payment/mode
+  - generic [ref=e112]:
+    - banner [ref=e113]:
+      - generic [ref=e114] [cursor=pointer]: J
+      - generic [ref=e116]:
+        - button "rocket Add Custom Features" [ref=e117] [cursor=pointer]:
+          - img "rocket" [ref=e119]
+          - generic [ref=e122]: Add Custom Features
+        - superscript [ref=e123]:
+          - generic [ref=e124]: "1"
+      - generic [ref=e126]:
+        - button "rocket Buy & Get Code Source" [ref=e127] [cursor=pointer]:
+          - img "rocket" [ref=e129]
+          - generic [ref=e132]: Buy & Get Code Source
+        - superscript [ref=e133]:
+          - generic [ref=e134]: "2"
+      - generic [ref=e137] [cursor=pointer]:
+        - generic "Main" [ref=e138]:
+          - text: Main
+          - combobox [ref=e139]
+        - img "down" [ref=e141]
+      - generic: _
+      - generic [ref=e154] [cursor=pointer]:
+        - generic "english" [ref=e155]:
+          - combobox [ref=e157]
+        - img "down" [ref=e159]
+    - main [ref=e162]:
+      - generic [ref=e1022]:
+        - generic [ref=e1023]:
+          - heading "Settings" [level=2] [ref=e1026]
+          - tablist [ref=e1029]:
+            - generic [ref=e1031]:
+              - tab "setting General Settings" [selected] [ref=e1033] [cursor=pointer]:
+                - generic [ref=e1034]:
+                  - img "setting" [ref=e1035]
+                  - generic [ref=e1038]: General Settings
+              - tab "trophy Company Settings" [ref=e1040] [cursor=pointer]:
+                - generic [ref=e1041]:
+                  - img "trophy" [ref=e1042]
+                  - generic [ref=e1045]: Company Settings
+              - tab "file-image Company Logo" [ref=e1047] [cursor=pointer]:
+                - generic [ref=e1048]:
+                  - img "file-image" [ref=e1049]
+                  - generic [ref=e1052]: Company Logo
+              - tab "dollar Currency Settings" [ref=e1054] [cursor=pointer]:
+                - generic [ref=e1055]:
+                  - img "dollar" [ref=e1056]
+                  - generic [ref=e1059]: Currency Settings
+              - tab "file-pdf PDF Settings" [ref=e1061] [cursor=pointer]:
+                - generic [ref=e1062]:
+                  - img "file-pdf" [ref=e1063]
+                  - generic [ref=e1066]: PDF Settings
+              - tab "credit-card Finance Settings" [ref=e1068] [cursor=pointer]:
+                - generic [ref=e1069]:
+                  - img "credit-card" [ref=e1070]
+                  - generic [ref=e1073]: Finance Settings
+        - tabpanel "setting General Settings" [ref=e1077]:
+          - generic [ref=e1080]:
+            - generic "General Settings" [ref=e1084]
+            - separator [ref=e1085]
+            - generic [ref=e1089]:
+              - generic [ref=e1090]:
+                - generic [ref=e1091]:
+                  - heading "App Settings" [level=4] [ref=e1092]
+                  - text: Update Your App Configuration
+                - generic [ref=e1094]:
+                  - generic [ref=e1096]:
+                    - generic "Language" [ref=e1098]: "* Language :"
+                    - generic [ref=e1102]
+                  - generic [ref=e1112]:
+                    - generic "Country" [ref=e1114]: "* Country :"
+                    - generic [ref=e1118]
+                  - generic [ref=e1126]:
+                    - generic "Date Format" [ref=e1128]: "* Date Format :"
+                    - generic [ref=e1132]
+                  - generic [ref=e1140]:
+                    - generic "Email" [ref=e1142]: "* Email :"
+                    - textbox "* Email :" [ref=e1146]: idurar-user@example.com
+                - separator [ref=e1147]
+              - button "Save" [ref=e1153] [cursor=pointer]

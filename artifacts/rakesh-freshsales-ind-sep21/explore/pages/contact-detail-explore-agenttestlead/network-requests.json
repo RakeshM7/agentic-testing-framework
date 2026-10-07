@@ -1,0 +1,16 @@
+[
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/selector/lifecycle_stages", "method": "GET", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/selector/contact_statuses", "method": "GET", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/search/auto_suggest/sales_accounts_full_details.json?q=Explore%20Test%20Co&qf=name", "method": "GET", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/sales_accounts", "method": "POST", "statusCode": 200, "note": "creates Account 'Explore Test Co'"},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts?include=owner,sales_accounts,creater,source,updater,campaign,contact_status,lead_score_information,territory,emails,lookup_information,lists,lifecycle_stage,lost_reason,tags,social_handler", "method": "POST", "statusCode": 200, "note": "creates Contact 'Explore AgentTestLead', id 402219350782"},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/detail_page_customizations?version=2", "method": "GET", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/overview_sections?version=2", "method": "GET", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402219350782?include=owner,sales_accounts,creater,source,updater,campaign,contact_status,lead_score_information,territory,emails,lookup_information,lists,lifecycle_stage,lost_reason,tags", "method": "GET", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/freddy/out_of_office/suggestions?context_type=contact&context_id=402219350782&source_type=contact", "method": "GET", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402219350782/duplicates", "method": "POST", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402219350782/connections", "method": "POST", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402219350782/notes?per_page=5&page=1&include=creater&highlight_mention=true&sort=updated_at", "method": "GET", "statusCode": 200},
+  {"url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402219350782?include=owner,sales_accounts,creater,source,updater,campaign,contact_status,lead_score_information,territory,emails,lookup_information,lists,lifecycle_stage,lost_reason,tags,social_handler", "method": "PUT", "statusCode": 200, "note": "updates status to Qualified / lifecycle_stage to Sales Qualified Lead"},
+  {"url": "https://rum.haystack.es/freshsales/analytics", "method": "POST", "statusCode": 503, "note": "third-party analytics, not app API"}
+]

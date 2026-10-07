@@ -1,7 +1,7 @@
 # DOM / Accessibility Snapshot — Events Listing ("/events")
 
 URL: https://eventhub.rahulshettyacademy.com/events
-Authenticated as: akashmrakesh+1@gmail.com
+Authenticated as: admin-user@example.com
 
 Page title: EventHub — Discover & Book Events
 
@@ -22,7 +22,7 @@ id-to-title mapping as needing confirmation via the individual event detail page
 capture) rather than assumed from visual order alone.
 
 Below the listing: **"+ Add New Event"** button linking to `/admin/events` — confirms this account
-(akashmrakesh+1@gmail.com) has **admin/event-management privileges**, not a plain consumer account.
+(admin-user@example.com) has **admin/event-management privileges**, not a plain consumer account.
 
 ## Interactive elements (read_page, filter=interactive)
 - link [ref_1] href="/" (logo)

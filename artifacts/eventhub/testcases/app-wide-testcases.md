@@ -40,15 +40,15 @@ Same format as the sibling `event-booking-testcases.md`.
 | 284 | Hollywood Monsoon Night — Los Angeles | Concert | Dome, NSCI SVP Stadium, Worli, Los Angeles | $2,500 | 2959 / 3000 |
 | 283 | World Tech Summit | Conference | Hitech City, Hyderabad | $1,500 | 233 / 500 |
 
-**Test-account strategy (governs every case below):** `akashmrakesh+1@gmail.com` is the sole
+**Test-account strategy (governs every case below):** `admin-user@example.com` is the sole
 reusable, admin-capable authenticated fixture account for this run (confirmed via the crawl to see
 the Admin nav item and reach `/admin/events`). No new account is registered live, and no non-admin
-account is registered or available. `akashmrakesh@gmail.com`'s invalid-credentials behavior
+account is registered or available. `known-bad-user@example.com`'s invalid-credentials behavior
 (`POST /api/auth/login` → `400`, toast "Invalid email or password") is directly-observed evidence
 from exploration, reused as-is.
 
 **General precondition for every test case below unless stated otherwise:** tester is logged into
-EventHub as `akashmrakesh+1@gmail.com`. Cases covering `/register` and `/login` themselves instead
+EventHub as `admin-user@example.com`. Cases covering `/register` and `/login` themselves instead
 start from an unauthenticated session, as stated in each case's own preconditions.
 
 ---
@@ -109,13 +109,13 @@ field (placeholder "••••••", type=password), a "Sign In" submit butt
 ### TC-app-wide-004 — Successful login with valid credentials redirects into the authenticated app
 **Priority:** P0
 **Preconditions:** Tester is unauthenticated and on `/login`. Uses the confirmed reusable fixture
-account `akashmrakesh+1@gmail.com`.
+account `admin-user@example.com`.
 **Flagged:** Assumed — this account's authenticated session was used throughout the crawl, implying
 a successful prior login, but the login submission itself was never independently re-observed as a
 fresh interactive action during exploration. Verify live.
 **Steps:**
 1. Load `/login`.
-2. Fill Email with `akashmrakesh+1@gmail.com` and Password with the account's correct password.
+2. Fill Email with `admin-user@example.com` and Password with the account's correct password.
 3. Click "Sign In".
 **Expected result:** Authentication succeeds; user is redirected into the authenticated app (`/` or
 `/events`). Nav bar shows Home / Events / My Bookings / API Docs / Admin (dropdown, confirming
@@ -163,7 +163,7 @@ with city Delhi). The other two events are no longer shown.
 
 ### TC-app-wide-008 — My Bookings empty state renders for an account with zero bookings
 **Priority:** P1
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com` (directly observed to have zero
+**Preconditions:** Tester is logged in as `admin-user@example.com` (directly observed to have zero
 existing bookings at crawl time).
 **Steps:**
 1. Navigate to `/bookings`.
@@ -176,7 +176,7 @@ that links to `/events`.
 
 ### TC-app-wide-009 — Admin "All Events" table lists all 3 seeded events with correct field values
 **Priority:** P2
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com` (admin-capable) and on
+**Preconditions:** Tester is logged in as `admin-user@example.com` (admin-capable) and on
 `/admin/events`.
 **Steps:**
 1. Load `/admin/events`.
@@ -190,7 +190,7 @@ Actions: "Dilli Diwali Mela (Featured)" / Festival / Delhi / 20 Oct 2026 / $300 
 
 ### TC-app-wide-010 — Admin nav item and `/admin/events` route are reachable for the admin-capable account
 **Priority:** P1
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com`.
+**Preconditions:** Tester is logged in as `admin-user@example.com`.
 **Steps:**
 1. From any authenticated page, open the "Admin" nav dropdown.
 2. Navigate to `/admin/events` (directly, or via the dropdown / the "Manage Events" footer link / the
@@ -204,13 +204,13 @@ Event" form and the "All Events" table, confirming this account has admin/event-
 
 ### TC-app-wide-011 — Login with invalid credentials shows "Invalid email or password"
 **Priority:** P0
-**Preconditions:** Tester is unauthenticated and on `/login`. Uses `akashmrakesh@gmail.com` (an
+**Preconditions:** Tester is unauthenticated and on `/login`. Uses `known-bad-user@example.com` (an
 account confirmed, via direct exploration, to return `400` from the login API).
 **Directly observed, not an assumption.** `POST /api/auth/login` returned `400` for this account;
 UI toast displayed "Invalid email or password" (`artifacts/eventhub/explore/login-attempt-failed/network-request.json`).
 **Steps:**
 1. Load `/login`.
-2. Fill Email with `akashmrakesh@gmail.com` and Password with an incorrect/any password.
+2. Fill Email with `known-bad-user@example.com` and Password with an incorrect/any password.
 3. Click "Sign In".
 **Expected result:** Login is rejected. A toast/error message reading "Invalid email or password" is
 shown. User remains on `/login`, not authenticated.
@@ -298,13 +298,13 @@ shown in place of the event cards.
 **Priority:** P1
 **Execution status: DO NOT EXECUTE LIVE — documented-but-not-executed only.** Attempting this would
 require submitting the registration form with the fixture account's own email
-(`akashmrakesh+1@gmail.com`) or another already-registered address, which this run's non-mutation
+(`admin-user@example.com`) or another already-registered address, which this run's non-mutation
 stance treats as out-of-scope account-creation testing (clarifications doc, item 3).
-**Preconditions:** Tester is unauthenticated and on `/register`. `akashmrakesh+1@gmail.com` is a
+**Preconditions:** Tester is unauthenticated and on `/register`. `admin-user@example.com` is a
 known already-registered address.
 **Flagged:** Assumed — never exercised live.
 **Steps:**
-1. Fill Email with `akashmrakesh+1@gmail.com` (already registered).
+1. Fill Email with `admin-user@example.com` (already registered).
 2. Fill Password and Confirm Password with a policy-compliant matching value.
 3. Click "Create Account".
 **Expected result (assumed, unverified):** Backend rejects the submission with a clear inline error
@@ -388,7 +388,7 @@ fresh interactive action starting from a logged-out state. Verify live.
 **Steps:**
 1. Ensure the browser session is fully logged out (clear cookies/local storage if needed).
 2. Load `/login`.
-3. Fill Email with `akashmrakesh+1@gmail.com` and the correct Password.
+3. Fill Email with `admin-user@example.com` and the correct Password.
 4. Click "Sign In".
 **Expected result:** Authentication succeeds on the first attempt from a clean/logged-out state;
 redirect into the authenticated app occurs exactly as in TC-app-wide-004.
@@ -397,14 +397,14 @@ redirect into the authenticated app occurs exactly as in TC-app-wide-004.
 
 ### TC-app-wide-023 — Login with invalid credentials — directly-observed API-level fixture
 **Priority:** P0
-**Preconditions:** Tester is unauthenticated and on `/login`. Uses `akashmrakesh@gmail.com`.
+**Preconditions:** Tester is unauthenticated and on `/login`. Uses `known-bad-user@example.com`.
 **Directly observed, not an assumption.** During exploration, `POST /api/auth/login` for this exact
 account returned HTTP `400`, and the UI displayed the toast "Invalid email or password"
 (`artifacts/eventhub/explore/login-attempt-failed/network-request.json`). This case additionally
 asserts the underlying network response, not just the UI toast covered by TC-app-wide-011.
 **Steps:**
 1. Load `/login` with network-request inspection tooling enabled (dev tools / network capture).
-2. Fill Email with `akashmrakesh@gmail.com` and any password.
+2. Fill Email with `known-bad-user@example.com` and any password.
 3. Click "Sign In".
 4. Inspect the `POST /api/auth/login` network response.
 **Expected result:** `POST /api/auth/login` returns HTTP `400`. UI shows toast "Invalid email or
@@ -487,7 +487,7 @@ filter UI can never select), not as intended behavior, and flag for human/produc
 stance as "Confirm Booking" in the `event-booking` suite (clarifications doc, item 9). This is a
 destructive bulk action; do not automate it as a live click.
 **Preconditions:** Tester is logged in as an account with at least one existing booking (not
-currently true for `akashmrakesh+1@gmail.com`, which has zero bookings at doc time — this
+currently true for `admin-user@example.com`, which has zero bookings at doc time — this
 precondition itself depends on the `event-booking` suite's own unexecuted "Confirm Booking" flow).
 **Flagged:** Assumed effect; never exercised live.
 **Steps:**
@@ -502,7 +502,7 @@ scoped to the authenticated account).
 
 ### TC-app-wide-030 — My Bookings empty state exact copy verification
 **Priority:** P2
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com` (zero existing bookings).
+**Preconditions:** Tester is logged in as `admin-user@example.com` (zero existing bookings).
 **Directly observed, not an assumption.** Exact copy captured during exploration
 (`pages/my-bookings/dom-snapshot.md`).
 **Steps:**
@@ -519,7 +519,7 @@ upcoming events and grab your tickets!" with a "Browse Events" button below it, 
 "+ New Event" form (positive or negative test data) is out of scope for live execution this run per
 the clarifications doc's explicit statement that "no such live event creation is authorized in this
 run either," even for narrow field-level validation checks (see clarifications doc "Open questions").
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com` and on `/admin/events`, with
+**Preconditions:** Tester is logged in as `admin-user@example.com` and on `/admin/events`, with
 Title/Category/City/Venue/Event Date & Time/Total Seats filled validly.
 **Flagged:** Assumed — requires a positive number (> 0); no confirmed error copy. Never exercised
 live.
@@ -535,7 +535,7 @@ field (e.g. "Price must be greater than 0"). No event is created.
 **Priority:** P2
 **Execution status: DO NOT EXECUTE LIVE — documented-but-not-executed only.** Same reason as
 TC-app-wide-031.
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com` and on `/admin/events`, with all
+**Preconditions:** Tester is logged in as `admin-user@example.com` and on `/admin/events`, with all
 other required fields filled validly.
 **Flagged:** Assumed — requires a positive integer; no confirmed error copy. Never exercised live.
 **Steps:**
@@ -550,7 +550,7 @@ Seats field. No event is created.
 **Priority:** P2
 **Execution status: DO NOT EXECUTE LIVE — documented-but-not-executed only.** Same reason as
 TC-app-wide-031.
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com` and on `/admin/events`, with all
+**Preconditions:** Tester is logged in as `admin-user@example.com` and on `/admin/events`, with all
 other required fields filled validly.
 **Flagged:** No past-date restriction confirmed; assumed none is enforced. Never exercised live.
 **Steps:**
@@ -566,7 +566,7 @@ being observed in exploration).
 **Priority:** P2
 **Execution status: DO NOT EXECUTE LIVE — documented-but-not-executed only.** Same reason as
 TC-app-wide-031.
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com` and on `/admin/events`, with all
+**Preconditions:** Tester is logged in as `admin-user@example.com` and on `/admin/events`, with all
 required fields filled validly.
 **Flagged:** Assumed optional free text with no confirmed URL-format enforcement. Never exercised
 live.
@@ -583,7 +583,7 @@ come only from other required fields, not from Image URL's own validation.
 **Priority:** P1
 **Execution status: DO NOT EXECUTE LIVE — documented-but-not-executed only.** Same reason as
 TC-app-wide-031.
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com` and on `/admin/events`.
+**Preconditions:** Tester is logged in as `admin-user@example.com` and on `/admin/events`.
 **Flagged:** Assumed standard client-side required-field validation; never exercised live.
 **Steps:**
 1. Leave Title, Category, City, Venue, Event Date & Time, Price, and Total Seats all empty
@@ -605,7 +605,7 @@ live execution** — per `docs/conventions.md`'s "Orchestrator & run-config cont
 `playwright-automation-agent` must **not** create or delete real events for this flow regardless of
 what any run-config requests. See the clarifications doc's "Orchestrator-level non-execution
 override (item 10)" section, recorded verbatim.
-**Preconditions:** Admin-capable account (`akashmrakesh+1@gmail.com`) has exactly 6 events total (3
+**Preconditions:** Admin-capable account (`admin-user@example.com`) has exactly 6 events total (3
 seeded + 3 test-created, in an environment/run where such setup is authorized — not this one).
 **Confirmed business rule** (per the admin page's own banner text: "You can add up to 6 events. Once
 the limit is reached, your oldest event is automatically replaced when you add a new one." —
@@ -646,7 +646,7 @@ questions."
 
 ### TC-app-wide-038 — Seeded/Featured events show "Read-only" in Admin All Events table with no Edit/Delete controls
 **Priority:** P1
-**Preconditions:** Tester is logged in as `akashmrakesh+1@gmail.com` and on `/admin/events`.
+**Preconditions:** Tester is logged in as `admin-user@example.com` and on `/admin/events`.
 **Directly observed, not an assumption**, at the UI level (`pages/admin/dom-snapshot.md`). Backend
 bypass testing (direct API calls attempting to edit/delete these events) is explicitly out of scope
 for this suite and left as a candidate for a companion `api-testing-agent` effort — this test case

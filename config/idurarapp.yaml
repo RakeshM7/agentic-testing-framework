@@ -1,0 +1,36 @@
+target:
+  url: https://cloud.idurarapp.com/
+  slug: idurar
+  maxPages: 25
+  maxDepth: 3
+
+feature:
+  slug: full-app-exploration
+  description: >
+    Explore the IDURAR ERP/CRM application end to end after login:
+    dashboard, customers, leads, offers, quotes, invoices, payments,
+    products, expenses, and settings.
+  requirement_docs: []
+
+authorizations:
+  mode: readonly
+  authenticated_crawl: true
+  credentials_file: null
+  session_state_file: playwright-tests/.auth/idurar-session.json
+
+testcases:
+  output_format: gherkin
+
+defaults:
+  unconfirmed_behavior_policy: assume-standard-and-flag
+  unconfirmed_edge_case_policy: flag-as-unconfirmed-case
+
+answers:
+  - match: "role-based access"
+    answer: "Out of scope for this run."
+
+feedback_loop:
+  auto_invoke_implementor: false
+
+git:
+  auto_commit: false

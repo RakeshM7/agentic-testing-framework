@@ -1,0 +1,104 @@
+[
+  {
+    "url": "https://support.freshsales.io/support/home",
+    "slug": "home",
+    "title": "Home | Support : Freshsalessuite Support",
+    "screenshotPath": "pages/home/screenshot.png",
+    "domSnapshotPath": "pages/home/dom-snapshot.md",
+    "networkRequestsPath": "pages/home/network-requests.json",
+    "consoleLogPath": "pages/home/console-log.txt",
+    "links": [
+      "https://support.freshsales.io/support/solutions/articles/232647-genral-settings",
+      "https://support.freshsales.io/support/solutions/articles/232653-email",
+      "https://support.freshsales.io/support/solutions/articles/232634-phone",
+      "https://support.freshsales.io/support/solutions/articles/232635-deals",
+      "https://support.freshsales.io/support/solutions/articles/232637-layout-customization",
+      "https://support.freshsales.io/support/solutions/articles/232638-workflows",
+      "https://support.freshsales.io/support/solutions/articles/232636-sales-campaigns",
+      "https://support.freshsales.io/support/solutions/articles/232648-web-forms",
+      "https://support.freshsales.io/support/solutions/160486",
+      "https://support.freshsales.io/support/solutions/160485",
+      "https://support.freshsales.io/support/solutions/160694",
+      "https://support.freshsales.io/support/solutions/160489",
+      "https://support.freshsales.io/support/solutions/160490",
+      "https://support.freshsales.io/support/solutions/160491",
+      "https://support.freshsales.io/support/solutions/160695",
+      "https://support.freshsales.io/support/solutions/160696",
+      "https://support.freshsales.io/support/solutions/160493",
+      "https://support.freshsales.io/support/solutions/160492",
+      "https://support.freshsales.io/support/solutions/160651",
+      "https://support.freshsales.io/support/solutions"
+    ]
+  },
+  {
+    "url": "https://support.freshsales.io/support/solutions/160486",
+    "slug": "getting-started",
+    "title": "Getting Started with Freshsales : Freshsalessuite Support",
+    "screenshotPath": "pages/getting-started/screenshot.png",
+    "domSnapshotPath": "pages/getting-started/dom-snapshot.md",
+    "networkRequestsPath": "pages/getting-started/network-requests.json",
+    "consoleLogPath": "pages/getting-started/console-log.txt",
+    "links": [
+      "https://support.freshsales.io/support/solutions/folders/270777",
+      "https://support.freshsales.io/support/solutions/folders/270778",
+      "https://support.freshsales.io/support/solutions"
+    ]
+  },
+  {
+    "url": "https://support.freshsales.io/support/solutions/160485",
+    "slug": "leads-contacts-accounts",
+    "title": "Leads, Contacts, Accounts, Products, and Custom modules : Freshsalessuite Support",
+    "screenshotPath": "pages/leads-contacts-accounts/screenshot.png",
+    "domSnapshotPath": "pages/leads-contacts-accounts/dom-snapshot.md",
+    "networkRequestsPath": "pages/leads-contacts-accounts/network-requests.json",
+    "consoleLogPath": "pages/leads-contacts-accounts/console-log.txt",
+    "links": [
+      "https://support.freshsales.io/support/solutions/folders/270774",
+      "https://support.freshsales.io/support/solutions/folders/271034",
+      "https://support.freshsales.io/support/solutions/folders/274283",
+      "https://support.freshsales.io/support/solutions/folders/50000000011",
+      "https://support.freshsales.io/support/solutions/folders/50000000263",
+      "https://support.freshsales.io/support/solutions"
+    ]
+  },
+  {
+    "url": "https://support.freshsales.io/support/solutions/160694",
+    "slug": "deals",
+    "title": "Deals : Freshsalessuite Support",
+    "screenshotPath": "pages/deals/screenshot.png",
+    "domSnapshotPath": "pages/deals/dom-snapshot.md",
+    "networkRequestsPath": "pages/deals/network-requests.json",
+    "consoleLogPath": "pages/deals/console-log.txt",
+    "links": [
+      "https://support.freshsales.io/support/solutions/folders/271504",
+      "https://support.freshsales.io/support/solutions/folders/271505",
+      "https://support.freshsales.io/support/solutions/folders/50000000477",
+      "https://support.freshsales.io/support/solutions"
+    ]
+  },
+  {
+    "url": "https://support.freshsales.io/support/solutions/160489",
+    "slug": "admin-settings",
+    "title": "Admin Settings : Freshsalessuite Support",
+    "screenshotPath": "pages/admin-settings/screenshot.png",
+    "domSnapshotPath": "pages/admin-settings/dom-snapshot.md",
+    "networkRequestsPath": "pages/admin-settings/network-requests.json",
+    "consoleLogPath": "pages/admin-settings/console-log.txt",
+    "links": [
+      "https://support.freshsales.io/support/solutions/folders/270783",
+      "https://support.freshsales.io/support/solutions/folders/270785",
+      "https://support.freshsales.io/support/solutions/folders/270786",
+      "https://support.freshsales.io/support/solutions/folders/270787",
+      "https://support.freshsales.io/support/solutions/folders/272238",
+      "https://support.freshsales.io/support/solutions/folders/50000000058",
+      "https://support.freshsales.io/support/solutions/folders/272409",
+      "https://support.freshsales.io/support/solutions/folders/273157",
+      "https://support.freshsales.io/support/solutions/folders/274920",
+      "https://support.freshsales.io/support/solutions/folders/275008",
+      "https://support.freshsales.io/support/solutions/folders/275445",
+      "https://support.freshsales.io/support/solutions/folders/50000000060",
+      "https://support.freshsales.io/support/solutions/folders/50000000915",
+      "https://support.freshsales.io/support/solutions"
+    ]
+  }
+]

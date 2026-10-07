@@ -1,0 +1,189 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Skip to main content" [ref=e4] [cursor=pointer]:
+        - /url: "#fw-main-content"
+      - paragraph [ref=e6]:
+        - text: "PLEASE NOTE: You are on the Freshsales Classic support portal. Please"
+        - link "click here" [ref=e7] [cursor=pointer]:
+          - /url: https://crmsupport.freshworks.com/support/home?cloud=freshsales
+        - text: to access the brand new support portal for Freshsales.
+    - navigation [ref=e9]:
+      - link [ref=e10] [cursor=pointer]:
+        - /url: http://support.freshsales.io
+        - img "Freshsales Classic" [ref=e11]
+        - text: Freshsales Classic
+      - button [ref=e12] [cursor=pointer]
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - generic [ref=e18]: We are here to help!
+          - paragraph [ref=e19]: Find answers in our support resources.
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - textbox "Go ahead, ask us anything" [ref=e25]
+            - button "Search" [ref=e26] [cursor=pointer]
+          - text:   View All   View All
+      - generic [ref=e29]:
+        - generic [ref=e30]: Videos
+        - generic [ref=e31]:
+          - link "General Settings General Settings Learn to set up your freshsales account and get started by bringing your team onboard" [ref=e32] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/articles/232647-genral-settings
+            - generic [ref=e33]
+          - link "Email Email Get a good understanding of how email works on Freshsales and dive deep into email management" [ref=e37] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/articles/232653-email
+            - generic [ref=e38]
+          - link "Phone Phone Get an idea of how phone works- learn how to configure your phone and buy a phone number" [ref=e42] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/articles/232634-phone
+            - generic [ref=e43]
+          - link "Deals Deals Learn how deals work and setup multiple sales pipelines to suit your business" [ref=e47] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/articles/232635-deals
+            - generic [ref=e48]
+          - link "Layout Customization Layout Customization Get an idea of how layout customization works on Freshsales" [ref=e52] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/articles/232637-layout-customization
+            - generic [ref=e53]
+          - link "Workflows Workflows Learn how to set up a workflow and automate repetitive tasks" [ref=e57] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/articles/232638-workflows
+            - generic [ref=e58]
+          - link "Sales Sequences Sales Sequences Automate your email marketing with Sales campaigns" [ref=e62] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/articles/232636-sales-campaigns
+            - generic [ref=e63]
+          - link "Web Forms Web Forms Convert website visitors into leads by integrating Web forms on your website" [ref=e67] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/articles/232648-web-forms
+            - generic [ref=e68]
+      - generic [ref=e72]:
+        - generic [ref=e73]: Knowledge base
+        - generic [ref=e74]:
+          - link "Getting Started Getting Started Set up your account, connect email, add users, define roles and scopes, configure territories and more" [ref=e75] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160486
+            - generic [ref=e76]
+          - link "Leads, Contacts, & Accounts Leads, Contacts, & Accounts Create and manage leads, contacts and accounts" [ref=e80] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160485
+            - generic [ref=e81]
+          - link "Deals Deals Create multiple sales pipelines, track and manage deals with tasks, appointments and more" [ref=e85] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160694
+            - generic [ref=e86]
+          - link "Admin Settings Admin Settings Customize layout, configure territories, lead score and workflows, manage users, create sales activities and more" [ref=e90] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160489
+            - generic [ref=e91]
+          - link "User Settings User Settings Connect your email, modify your profile and customize notifications" [ref=e95] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160490
+            - generic [ref=e96]
+          - link "Email Email Send and receive emails individually or in-bulk, create email templates, run campaigns and view email metrics" [ref=e100] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160491
+            - generic [ref=e101]
+          - link "Phone Phone Get access to a phone, customize your phone number and assign numbers to your team" [ref=e105] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160695
+            - generic [ref=e106]
+          - link "Tasks & Appointments Tasks & Appointments Create tasks, schedule appointments, take notes, and sync your Google Calendar to the CRM" [ref=e110] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160696
+            - generic [ref=e111]
+          - link "Data Migration Data Migration Migrate from other CRMs and import leads, deals, contacts, and accounts through CSV files" [ref=e115] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160493
+            - generic [ref=e116]
+          - link "Integrations Integrations Integrate with business apps such as MailChimp, Quickbooks install libraries and set up web forms" [ref=e120] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160492
+            - generic [ref=e121]
+          - link "Reports Reports Generate and schedule reports and use dashboards to view select reports" [ref=e125] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160651
+            - generic [ref=e126]
+          - link "Plans And Billing Plans And Billing Explore features available across plans and manage your billing and payments" [ref=e130] [cursor=pointer]:
+            - /url: https://support.freshsales.io/support/solutions/160651
+            - generic [ref=e131]
+        - link "View all categories →" [ref=e137] [cursor=pointer]:
+          - /url: /support/solutions
+  - contentinfo [ref=e138]:
+    - generic [ref=e140]:
+      - generic [ref=e141]: Sign up for Freshsales Suite
+      - paragraph [ref=e142]: Start your 14-day free trial. No credit card required. No strings attached.
+      - link "Start free trial" [ref=e143] [cursor=pointer]:
+        - /url: https://www.freshworks.com/crm/signup/?plan_id=suite
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - generic [ref=e148]: Our Products
+        - generic [ref=e149]:
+          - link "Freshdesk" [ref=e150] [cursor=pointer]:
+            - /url: https://www.freshworks.com/freshdesk/
+          - link "Freshservice" [ref=e151] [cursor=pointer]:
+            - /url: https://www.freshworks.com/freshservice/
+          - link "Freshsales" [ref=e152] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/sales/
+          - link "Freshdesk Contact Center" [ref=e153] [cursor=pointer]:
+            - /url: https://www.freshworks.com/freshcaller-cloud-pbx/
+          - link "Freshteam" [ref=e154] [cursor=pointer]:
+            - /url: https://www.freshworks.com/freshservice/business-teams/
+          - link "Freshchat" [ref=e155] [cursor=pointer]:
+            - /url: https://www.freshworks.com/live-chat-software/
+          - link "Freshmarketer" [ref=e156] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/marketing/
+          - link "Freshsurvey" [ref=e157] [cursor=pointer]:
+            - /url: https://www.freshworks.com/survey/
+      - generic [ref=e158]:
+        - generic [ref=e159]: Company
+        - generic [ref=e160]:
+          - link "About" [ref=e161] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/about/
+          - link "Leadership" [ref=e162] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/leadership/
+          - link "Board of Directors" [ref=e163] [cursor=pointer]:
+            - /url: /company/board/?utm_source=freshcaller&utm_medium=referral&utm_campaign=fcaller_footer_main
+          - link "Investors" [ref=e164] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/investors/
+          - link "Customers" [ref=e165] [cursor=pointer]:
+            - /url: https://www.freshworks.com/customers/
+          - link "Solutions" [ref=e166] [cursor=pointer]:
+            - /url: https://www.freshworks.com/solutions/
+          - link "Affiliates" [ref=e167] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/affiliate-partner/
+          - link "Partners" [ref=e168] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/partners/solution-partner-program/
+          - link "Careers" [ref=e169] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/careers/
+          - link "Newsroom" [ref=e170] [cursor=pointer]:
+            - /url: https://www.freshworks.com/newsroom/press-releases/
+          - link "Contact Us" [ref=e171] [cursor=pointer]:
+            - /url: https://www.freshworks.com/contact/
+          - link "GDPR" [ref=e172] [cursor=pointer]:
+            - /url: https://www.freshworks.com/gdpr/
+          - link "US Sales Tax FAQ" [ref=e173] [cursor=pointer]:
+            - /url: https://www.freshworks.com/company/faq/us-sales-tax-faqs/
+      - generic [ref=e174]:
+        - generic [ref=e175]: Freshsales suite
+        - generic [ref=e176]:
+          - link "Features" [ref=e177] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/sales/features
+          - link "Pricing" [ref=e178] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/pricing/
+          - link "Signup" [ref=e179] [cursor=pointer]:
+            - /url: https://www.freshworks.com/crm/signup/?plan_id=suite
+      - generic [ref=e180]:
+        - generic [ref=e181]: Sales & support
+        - generic [ref=e182]:
+          - generic [ref=e183]:
+            - generic [ref=e184]: 
+            - link "+1 (866) 832-3090" [ref=e185] [cursor=pointer]:
+              - /url: tel:+18668323080
+          - generic [ref=e186]:
+            - generic [ref=e187]: 
+            - link "support@freshsales.io" [ref=e188] [cursor=pointer]:
+              - /url: mailto:support@freshsales.io
+        - generic [ref=e189]: Mobile apps
+        - generic [ref=e190]:
+          - link "Download on the App Store" [ref=e191] [cursor=pointer]:
+            - /url: https://apps.apple.com/ca/app/freshdesk/id849713306
+            - img "Download on the App Store" [ref=e192]
+          - link "Get it on Google Play" [ref=e193] [cursor=pointer]:
+            - /url: http://ad.apps.fm/ozXtEc5ZI9HQ_q2ra73VL15KLoEjTszcQMJsV6-2VnHFDLXitVHB6BlL95nuoNYffAIOoczw-YGfIaoZYt7xO4LNOZ4hHcXlOAoj_MgX7b8gZe2OOIvCAxOQtZGmw1KoF6ewiom4sKC4xZyurG0g7Q
+            - img "Get it on Google Play" [ref=e194]
+    - generic [ref=e196]:
+      - generic [ref=e197]:
+        - link "Privacy policy" [ref=e198] [cursor=pointer]:
+          - /url: https://www.freshworks.com/privacy/
+        - generic [ref=e199]: "|"
+        - link "Terms of service" [ref=e200] [cursor=pointer]:
+          - /url: https://www.freshworks.com/terms/
+        - generic [ref=e201]: "|"
+        - link "Site Map" [ref=e202] [cursor=pointer]:
+          - /url: https://www.freshworks.com/sitemap/
+      - generic [ref=e203]: Copyright © Freshworks Inc - All rights reserved

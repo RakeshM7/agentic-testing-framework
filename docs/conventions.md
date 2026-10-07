@@ -18,7 +18,7 @@ Never hand-edit a `model:` frontmatter line directly in either flavor — `confi
 
 ## Artifact root
 
-All pipeline artifacts for a given target live under `artifacts/<target-slug>/`, where `<target-slug>` is the target hostname's first label, lowercased with non-alphanumeric characters replaced by `-` (computed by `scripts/run-config.mjs`; e.g. `eventhub.rahulshettyacademy.com` → `eventhub`).
+All pipeline artifacts for a given target live under `artifacts/<target-slug>/`, where `<target-slug>` is the target's hostname, lowercased with non-alphanumeric characters replaced by `-` (e.g. `eventhub.rahulshettyacademy.com` → `eventhub`).
 
 ## Pipeline order and handoff contract
 
@@ -27,10 +27,9 @@ All pipeline artifacts for a given target live under `artifacts/<target-slug>/`,
 | 1 | `explore-agent` | `artifacts/<target>/explore/sitemap.json` + `pages/<slug>/{screenshot.png, dom-snapshot.md, network-requests.json, console-log.txt}` | All downstream agents |
 | 2 | `requirements-clarification-agent` | `artifacts/<target>/clarifications/<feature-slug>-clarifications.md` | `testcase-generator-agent` (authoritative), `playwright-automation-agent` & `api-testing-agent` (behavior context) |
 | 3 | `testcase-generator-agent` | `artifacts/<target>/testcases/<feature-slug>-testcases.<ext>` + `testcases-summary.md` | `playwright-automation-agent` (cases to automate), `api-testing-agent` (functional cross-reference) |
-| 4 | `playwright-automation-agent` | `docs/playwright-framework-research.md` (greenfield only) + the product's project `playwright-tests/<product>/` | Terminal |
+| 4 | `playwright-automation-agent` | `docs/playwright-framework-research.md` (greenfield only) + `playwright-tests/` project | Terminal |
 | 5 | `api-testing-agent` | `artifacts/<target>/api/{discovered-endpoints.json, api-test-plan.md}` + `api-tests/playwright-api/` + `api-tests/k6/` | Terminal |
 | 6 | `feedback-implementor-agent` | Fixes applied to whatever files a feedback file's findings concern + a `## Resolution` section appended to that same feedback file | Terminal (invoked ad hoc, not part of the linear per-target pipeline) |
-| 1′ | `explore-agent` (`role: discover` / `role: module`) | Full-product runs only: `discovery/` + `modules/<module>/explore/` (incl. `flows/`) — replaces stage 1; stages 2–5 then run per module track under `modules/<module>/` | Per-module tracks (see "Full-product runs") |
 | — | `orchestrator-agent` | `artifacts/<target>/run-report.md`, plus drives stages 1–6 above in order via the same paths | Hub, not a stage — invoked once per run instead of the other six being invoked by hand |
 
 ## The two-pass clarification handshake
@@ -53,12 +52,11 @@ Any orchestrator invoking this agent must expect two calls, not one.
 
 ### Run-config file
 
-One YAML file configures one full pipeline pass: one target, one feature. A worked example lives at `config/run-config.example.yaml`. The config is validated, and its slug/answer-matching computed, by `node scripts/run-config.mjs validate|match` (not by LLM judgment). Top-level keys:
+One YAML file configures one full pipeline pass: one target, one feature. A worked example lives at `config/run-config.example.yaml`. Top-level keys:
 
 | Key | Purpose |
 |---|---|
 | `target.url` / `maxPages` / `maxDepth` | Passed straight to `explore-agent`. `target.url` is the only required field in the whole file. |
-| `target.product` | Optional lowercase-kebab product name; the folder `playwright-tests/<product>/` that holds this product's Playwright project. Defaults to the target slug -- set it when the slug (a tenant subdomain, say) isn't a good product name. |
 | `feature.slug` / `description` / `requirement_docs` | Passed to `requirements-clarification-agent` as Pass 1 grounding. |
 | `authorizations.mode` | The master switch for every spoke agent's safe-vs-full posture: `readonly` (default when absent) or `full-run`. `readonly` = explore-agent stays a non-mutating crawler, api-testing-agent's generated Playwright specs default to GET-only and it never runs `k6 run` live, playwright-automation-agent generates mutating specs but skips them at run time. `full-run` = explore-agent performs full UI interaction, api-testing-agent generates and executes full GET/POST/PUT/PATCH/DELETE coverage and may run a live k6 load test, and playwright-automation-agent executes mutating specs live. In `full-run`, every agent still self-scopes destructive actions (delete/cancel/remove) to entities that agent's own run created — see each agent's own persona for its `created-entities.json` contract. This is not something the config can loosen further. |
 | `authorizations.authenticated_crawl` / `credentials_file` | Opt-in exception to explore-agent's read-only default, orthogonal to `mode`. `credentials_file` is always a **file path**, never inline secret values — the credential-leakage classifier blocks inline secrets in an agent prompt regardless. **explore-agent itself never reads or types the credentials in this file** — typing a password or attempting to solve/bypass a CAPTCHA via its own live, interactive browser-tool session is a hard, non-overridable rule for that agent, regardless of what `mode`/`authenticated_crawl` say (see `authorizations.session_state_file` below for how explore-agent actually performs an authenticated crawl). `credentials_file` remains exactly as before for `playwright-automation-agent` and `api-testing-agent`, which perform login by writing and executing real Playwright test code (a non-interactive, scripted execution mode, not live turn-by-turn browsing) rather than driving a browser themselves turn by turn. |
@@ -66,8 +64,7 @@ One YAML file configures one full pipeline pass: one target, one feature. A work
 | `testcases.output_format` | The format `testcase-generator-agent` should confirm and use. |
 | `defaults.unconfirmed_behavior_policy` / `unconfirmed_edge_case_policy` | Applied only to `[Nice-to-have]`-tagged Pass-1 questions that `answers` doesn't already cover. Never applied to `[Blocking]` questions. |
 | `answers` | A list of `{match, answer}` pairs. The orchestrator resolves a Pass-1 question by a case-insensitive substring match of `match` against the question text, first match wins, **after normalizing both strings** (replace `-`/`_` with a space, then collapse runs of whitespace to one space) so that generation-time punctuation variance (e.g. `duplicate-email` vs. `duplicate email`) doesn't produce a false-negative miss. Because substring matching can still produce a false positive if `match` is a short/common word that happens to appear inside an unrelated question, prefer specific, multi-word `match` strings over single common words, and where a topic could plausibly be phrased with either a hyphen or a space, list both forms as separate `answers` entries rather than relying on the normalization alone. This is the main lever for avoiding a halt on a question you already anticipate. |
-| `full_product` | Optional, valid only when `feature.slug` is `full-product` (see "Full-product runs"): `max_modules` (12), `explore_concurrency` (1), `max_parallel_tracks` (4), `per_module.{maxPages,maxDepth}` (40/4), `modules.{include,exclude}` (slug lists), `knowledge_urls` (docs for the discovery agent), `clarifications.{csv_threshold,max_rounds}` (5/5; see "Clarification session"). Validated and defaulted by `run-config.mjs`. |
-| `feedback_loop.auto_invoke_implementor` | Whether the orchestrator hands any feedback files filed mid-run straight to `feedback-implementor-agent` (default `false`; set `true` only for reviewed runs, since the implementor edits agent prompts) or just reports their paths. |
+| `feedback_loop.auto_invoke_implementor` | Whether the orchestrator hands any feedback files filed mid-run straight to `feedback-implementor-agent` (default `true`) or just reports their paths. |
 | `git.auto_commit` | Whether the orchestrator may run `git commit` at all. Default/absent is `false` — the orchestrator never commits unless this is explicitly `true`. |
 
 ### Halting and resuming
@@ -79,53 +76,6 @@ Re-invocation is naturally resumable, with no separate state file: before runnin
 ### What the config can never do
 
 The config can only exercise opt-in exceptions a spoke agent already defines in its own persona: an authenticated crawl, and — via `authorizations.mode: full-run` — full UI/API mutation and a live k6 run. It can never override a spoke agent's *inner* hard rule: even in `full-run`, every agent still scopes destructive actions (delete/cancel/remove) to entities it created itself this run, never pre-existing or other users' data, and never completes an irreversible real-world side effect (e.g. a real payment) with no test/sandbox path available. Those inner rules are enforced inside each spoke agent's own definition and are not parameters.
-
-## Full-product runs (`feature.slug: full-product`)
-
-A run-config whose `feature.slug` is `full-product` (see `config/run-config-full-product.example.yaml`) does not test one feature; it maps the whole product and tests every module. `scripts/run-config.mjs` sets `feature.full_product: true` and fills the `full_product` defaults in the normalized config, and `orchestrator-agent` switches to its "Full-product mode" section.
-
-**Flow:** `explore-agent` `role: discover` (research the vendor's docs/knowledge base + walk the live navigation -> modules) -> `explore-agent` `role: module`, one invocation per module (thorough exploration with that module's context) -> one **track** per module running clarifications -> test cases -> Playwright -> API tests with the module as its own goal. Tracks run in parallel; stages inside a track are sequential. Only the orchestrator spawns agents, so tracks are orchestrator-managed state machines rather than agents.
-
-### Artifact layout
-```
-artifacts/<target>/
-  discovery/                       # role: discover
-    modules.json                   # [{slug, name, entryUrl, navPath[], description, howItWorks, keyEntities[], keyActions[],
-                                   #   subPages[], dependsOn[], reachable, unreachableReason?, mutationNotes?, sources[]}]
-    product-overview.md  knowledge-sources.md  navigation-graph.json  flows/  sitemap.json  pages/  crawl-log.md
-  modules/<module-slug>/           # one track root per module
-    explore/                       # role: module -- same shape as a normal explore root, plus the extras below
-      sitemap.json  crawl-log.md  navigation-graph.json  module-summary.md  created-entities.json (full-run)
-      pages/<page-slug>/{screenshot.png, dom-snapshot.md, network-requests.json, console-log.txt, interactions.json}
-      flows/{index.json, <flow-slug>.md}
-    clarifications/<module-slug>-clarifications.md
-    testcases/<module-slug>-testcases.<ext> + testcases-summary.md
-    api/{discovered-endpoints.json, api-test-plan.md, created-entities.json}
-    playwright-created-entities.json
-    track-report.md                # written by the orchestrator
-  clarifications/questions.csv                 # main questionnaire -- orchestrator-written only (full-product)
-  clarifications/answers/answers-NNN.csv       # one human-owned answer sheet per batch of questions
-  clarifications/state.json                    # per-module round/status; with the CSVs, the resume state
-  run-report.md
-  .locks/k6/                       # transient; serializes live k6 runs across tracks (gitignored)
-```
-Test code stays in the shared projects but inside per-track subfolders: `playwright-tests/<product>/{tests/functional,tests/visual,pages}/<module-slug>/`, `api-tests/playwright-api/tests/<target>/<module-slug>/`, `api-tests/k6/scripts/<module-slug>-<resource>-load-test.js`. Tracks never edit shared files (package/config/fixtures); the first track's Playwright/API stage runs alone to scaffold a project that doesn't exist yet, then the rest are released.
-
-### One Playwright project per product
-Every track of a product writes into the same self-contained project `playwright-tests/<product>/` (own `package.json`, `playwright.config.ts`, `fixtures/`, `pages/`, `tests/`, `utils/`, `.env*`, `.auth/`), so the suite evolves and scales as a single repository per product, one module at a time. A different product never shares a folder: running the workflow for another product creates `playwright-tests/<other-product>/` (scaffolded by copying an existing sibling's conventions). `<product>` is `target.product` from the run-config (default: the slug). A `playwright.config.*` sitting directly in `playwright-tests/` is the old single-project layout; the orchestrator halts and asks for it to be moved into its product folder rather than extending it. API tests keep their own per-target layout under `api-tests/`.
-
-### Clarification session (human questions across modules)
-Per-module Pass 1 questions that the run-config's `answers`/`defaults` can't resolve are the module's **open questions** (unresolved `[Blocking]` ones, including those explore-agent left in `artifacts/<slug>/open-questions.csv`, one row per question with a `module` column). Modules with none run straight through; the rest are pipelined so a module's track starts the moment *its* questions are answered, not when everyone's are.
-- **Two files kinds, two separate writers (no overlapping edits).**
-  - `artifacts/<target>/clarifications/questions.csv` -- the **main questionnaire**, columns exactly `Module`, `Question`, `How to navigate the product to understand the question flow`, `Answer by the user`. Written **only** by the orchestrator, through `scripts/clarification-csv.mjs`; the human never edits it.
-  - `artifacts/<target>/clarifications/answers/answers-NNN.csv` -- **answer sheets**, same four columns. Each batch of new questions (the first round, and every follow-up round) gets its own new sheet, created once with just that batch. From then on the sheet is the human's; the orchestrator only reads it and never rewrites, renames or deletes it. Follow-ups arrive as a *new* sheet, never as edits to an old one.
-- **When it's used:** when the open questions across all modules this round exceed `full_product.clarifications.csv_threshold` (default 5), and for every later question once the questionnaire exists; at or below the threshold, questions are asked inline as in a single-feature run.
-- **Answered / ready / merged:** a question is answered when its answer is non-empty in the main file or in its sheet. A module becomes ready (its Pass 2 and track launch) as soon as all its rows are answered, reading the sheet as the human left it. Once a sheet is **fully** clarified (every row answered) the orchestrator runs `merge`, which copies the sheet's answers into the main questionnaire in one atomic write; the sheet is left untouched. A sheet the human is mid-save, or has damaged, is reported and ignored until it parses cleanly again. Answers given in chat are recorded in the main file (never the sheet) and count the same.
-- **Script commands:** `append <main> <items.json> <answersDir>` (adds rows to main, creates the next sheet), `status <main> <answersDir>`, `answers <main> <answersDir> <module>`, `answer <main> <module> <question> <answer>`, `merge <main> <answersDir>`. Quoting, multi-line cells and Excel's BOM are handled in the script; only `answers-NNN.csv` filenames count as sheets, so Excel lock/temp files are ignored.
-- **Navigation column:** written by the clarification agent from the module's `flows/` (`navPath` + flow slug) so a human can reproduce the behavior in the live product before answering.
-- **Loop:** Pass 2 ends with `## Follow-up Questions`; unresolved blocking follow-ups are appended (new rows, new sheet) and the module goes around again. `full_product.clarifications.max_rounds` (default 5; round 1 = the initial questions) caps it -- a module still unresolved afterwards is marked **`uncovered`**: no test cases, Playwright or API stages are produced for it, its latest clarifications file (open questions intact) and questionnaire rows stay, and the run report lists the unresolved questions verbatim.
-- **State:** `artifacts/<target>/clarifications/state.json` -- `{"<module>": {round, status: no-questions|awaiting-user|ready|done|uncovered, open[]}}`. With the questionnaire and sheets it is the resume state: re-invoke with the same `configPath` after answering and fully-answered modules continue.
-- **Interaction:** as the main session (`claude --agent orchestrator-agent`) the orchestrator points the user at the answer sheet, re-checks state on every user message and background-track completion, and -- once the question-free tracks have finished -- can walk through the remaining modules one at a time, recording chat answers. As a subagent (or on Copilot, which has no ask-and-wait tool) it finishes everything that can run, then halts with the sheet path(s) and the resume instruction.
 
 ## Standing safety guardrails (apply across the whole framework)
 
@@ -147,9 +97,42 @@ Per-module Pass 1 questions that the run-config's `answers`/`defaults` can't res
 - **A reproducible CAPTCHA/MFA/bot-challenge on a login form that blocks scripted or API-level authentication is a hard blocker to report, not a puzzle to solve or bypass** — the same category as an irreversible real-world side effect with no test/sandbox path, above. This applies to `playwright-automation-agent` (scripted UI login) and `api-testing-agent` (session-cookie/API-level auth) alike: reproduce it at least a couple of times across different launch configs before concluding it isn't a transient flake, then fall back to `authorizations.session_state_file` if the run-config provides one (see the run-config contract above), and otherwise leave the blocked tests as `test.skip()`/skipped-with-an-explicit-reason — never faked as passing — while still generating and executing live whatever unauthenticated-boundary subset (missing/invalid-session responses, a public page's visual baseline, etc.) is reachable without a session. `explore-agent` is under a stricter, non-mode-gated version of this same rule: it never attempts to type a password or solve a CAPTCHA itself under any circumstance — see `authorizations.session_state_file` above.
 - **If a target's feature description names a module/entity that isn't actually reachable during `explore-agent`'s crawl** (a permission gap, a disabled module, a role mismatch), `explore-agent` documents the substitution it made under a machine-greppable `## Feature-mapping caveats` heading in `crawl-log.md` rather than silently working around it, and `requirements-clarification-agent`'s Pass 1 greps for that heading and surfaces it as a `[Blocking]` clarification question rather than assuming the feature description is accurate.
 
+## Machine-readable contracts & quality gates
+
+The JSON artifacts and YAML configs that agents hand to each other are validated against JSON Schemas in `schemas/`, instead of being defined only in prose:
+
+| File | Schema | Notes |
+|---|---|---|
+| `config/*.yaml` (run-configs) | `schemas/run-config.schema.json` | Unknown keys are rejected (catches typos such as `authorisations`). `credentials_file` / `session_state_file` must be a path: whitespace or `=` (an inline `KEY=value`) fails validation. |
+| `config/models.yaml` | `schemas/models.schema.json` | |
+| `artifacts/<target>/explore/sitemap.json` | `schemas/sitemap.schema.json` | Also checks that referenced screenshot/DOM/network/console files exist (warning). |
+| `**/created-entities.json` | `schemas/created-entities.schema.json` | The ledger that destructive actions are scoped to. `[]` is valid. |
+| `artifacts/<target>/api/discovered-endpoints.json` | `schemas/discovered-endpoints.schema.json` | Requires only the fields consumers rely on; per-target extras are allowed. |
+
+Run the gates from `scripts/` (`npm ci` once):
+
+```
+npm run validate      # schemas + semantic checks (errors fail, warnings print)
+npm run check:pii     # real e-mail addresses, secrets, committed .env / storageState files
+npm run check:models  # claude-agents/ + copilot-agents/ `model:` lines match config/models.yaml
+npm run check         # all three (this is what CI runs)
+```
+
+`node scripts/validate-artifacts.mjs --strict` turns warnings into failures. Validation warnings worth acting on: a single-word `answers[].match` (substring matching can hit unrelated questions), and `authenticated_crawl: true` without `session_state_file` (the orchestrator only forwards a session when both are set, so the crawl silently runs unauthenticated).
+
+Agents that write one of these artifacts should run `node scripts/validate-artifacts.mjs <path>` on it before reporting the stage complete; a half-written file then fails loudly instead of being treated as "done" by the resumability check.
+
+CI (`.github/workflows/ci.yml`) runs those three gates plus typecheck and `playwright test --list` for both Playwright projects on every push/PR, without touching any live target. The live EventHub suite is a manual opt-in job. Visual baselines are macOS-only in the repo; the manual `visual-baselines.yml` workflow generates Linux ones as a downloadable artifact for you to review and commit.
+
+### Pinned tooling
+
+The Playwright MCP server is pinned (`@playwright/mcp@0.0.83` in `.mcp.json` and `.vscode/mcp.json`) so runs are reproducible and a new upstream release cannot silently change agent behavior. To upgrade: change the version in both files and the references in `README.md`, `docs/copilot-setup.md` and `claude-agents/explore-agent.md`, then re-run a smoke crawl.
+
+Full record of what the quality-gate work changed, including behaviour changes and open risks: [`docs/changelog/phase1-changes.md`](changelog/phase1-changes.md).
+
 ## Executable project scaffolds
 
-`playwright-tests/<product>/` (one per product) and `api-tests/playwright-api/` are independent, self-contained Node projects (own `package.json` each), separate from the `artifacts/` handoff zone, so either can be lifted directly into a real target product repo.
+`playwright-tests/` and `api-tests/playwright-api/` are independent, self-contained Node projects (own `package.json` each), separate from the `artifacts/` handoff zone, so either can be lifted directly into a real target product repo.
 
 ## Feedback contract
 
@@ -189,15 +172,3 @@ severity: <blocking | high | medium | low>
 1. An agent that files feedback states **only the file path** in its final response to the coordinator — never the full feedback text inline.
 2. The coordinator passes that same file path (unread, or lightly skimmed for prioritization — never retyped or paraphrased) to `feedback-implementor-agent`.
 3. `feedback-implementor-agent` reads the file itself, implements each finding's suggested fix, verifies it where possible (re-run tests, typecheck, `k6 inspect`, etc.), and appends a dated `## Resolution` section to the **same** file recording status (`Fixed` / `Skipped` / `Deferred`) and why — so the file remains the permanent, traceable record of both the problem and its resolution.
-
-
-### Code-level enforcement of `authorizations.mode`
-
-Prose is not the only guard. A human sets `AUTHORIZATIONS_MODE=full-run` in the environment for a run they are authorized to mutate; without it:
-- `.claude/hooks/guard-bash.mjs` (PreToolUse hook, `.claude/settings.json`) blocks live k6 runs and mutating `curl` from Claude Code.
-- `playwright-tests/<product>/fixtures/mutationGuard.ts` aborts non-GET browser requests, and `api-tests/playwright-api/fixtures/mutationGuard.ts` throws on non-GET `request.*` calls, for every spec built on the shared fixtures. Auth setup projects are exempt (they must POST a login).
-- k6 scripts have no default host: `BASE_URL` is required and must be in `K6_ALLOWED_HOSTS` (see `api-tests/k6/README.md`).
-
-### `created-entities.json` shape (all agents)
-
-An array of `{type, identifier, url, createdAt, note?}`; api-testing-agent additionally records resource and endpoint inside `note`. Writers must append, never overwrite.

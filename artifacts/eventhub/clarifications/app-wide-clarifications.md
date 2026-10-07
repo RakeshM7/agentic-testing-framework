@@ -27,13 +27,13 @@ management (`/admin/events`, including the "+ New Event" creation form and the 6
 eviction business rule), and role-based access control for `/admin/events`.
 
 **Test-account strategy (governs every case in this suite) [Config-confirmed, item 2]:**
-- `akashmrakesh+1@gmail.com` is the sole reusable authenticated fixture account for this run
+- `admin-user@example.com` is the sole reusable authenticated fixture account for this run
   (admin-capable; confirmed via the crawl to see the Admin nav item and reach `/admin/events`).
   No brand-new account is registered live for this run.
 - No new non-admin account is registered live either. The non-admin/RBAC case against
   `/admin/events` is written as a flagged/unconfirmed placeholder (see Edge cases and Open
   questions).
-- `akashmrakesh@gmail.com`'s behavior does **not** need live re-verification. Exploration already
+- `known-bad-user@example.com`'s behavior does **not** need live re-verification. Exploration already
   directly observed a real `400` response from `POST /api/auth/login` for this account, with UI
   toast "Invalid email or password" (`artifacts/eventhub/explore/login-attempt-failed/network-request.json`).
   This is **directly-observed evidence, not an assumption**, and is used as-is as the
@@ -59,7 +59,7 @@ dedicated edge case below.
    policy (≥8 chars, 1 uppercase, 1 number, 1 special character), "Create Account" submit,
    duplicate-email handling, the "Sign in" link to `/login`.
 2. **Login (`/login`)** — valid-credentials login, invalid-credentials login (using the
-   directly-observed `akashmrakesh@gmail.com` 400 fixture), empty-field submission, the "Register"
+   directly-observed `known-bad-user@example.com` 400 fixture), empty-field submission, the "Register"
    link to `/register`.
 3. **Events listing search & filtering (`/events`)** — the free-text search box, the "All
    Categories" filter (Conference/Concert/Sports/Workshop/Festival), the "All Cities" filter
@@ -67,7 +67,7 @@ dedicated edge case below.
    Now" navigation itself is **out of scope here** (owned by `event-booking`).
 4. **My Bookings management (`/bookings`)** — the empty state (directly observed: "No bookings
    yet... Browse upcoming events and grab your tickets!" with a "Browse Events" button, since
-   `akashmrakesh+1@gmail.com` has zero existing bookings), and the "Clear all bookings" bulk
+   `admin-user@example.com` has zero existing bookings), and the "Clear all bookings" bulk
    action, written as documented-but-not-executed (see item 9).
 5. **Admin event management (`/admin/events`)** — the "+ New Event" creation form (Title,
    Description, Category, City, Venue, Event Date & Time, Price, Total Seats, Image URL) and its
@@ -94,9 +94,9 @@ dedicated edge case below.
 
 ## Confirmed behaviors
 
-- **[Config-confirmed, item 2]** `akashmrakesh+1@gmail.com` is the sole authenticated fixture
+- **[Config-confirmed, item 2]** `admin-user@example.com` is the sole authenticated fixture
   account for login/bookings/admin cases in this suite; no new account is registered live.
-  `akashmrakesh@gmail.com`'s invalid-credentials 400 response is directly-observed evidence (not
+  `known-bad-user@example.com`'s invalid-credentials 400 response is directly-observed evidence (not
   an assumption) and is reused as-is for the invalid-login test case.
 - **[Config-confirmed, item 3]** Successful registration submission is assumed to auto-log the
   user in and redirect to `/events` (or home). Flagged as an assumption — "Create Account" was
@@ -152,15 +152,15 @@ dedicated edge case below.
 | Registration with Confirm Password ≠ Password | Assumed: generic "passwords do not match" error shown, submission blocked. Flagged assumption. | Config-applied-default |
 | Successful registration submission | Assumed: user is auto-logged-in and redirected to `/events` (or home). Flagged assumption — never submitted live. | Config-confirmed |
 | Empty-field submission on `/register` or `/login` | Assumed: client-side required-field validation blocks submission with no network call. Flagged as an unconfirmed case. | Config-applied-default |
-| Login with valid credentials (`akashmrakesh+1@gmail.com`) | Assumed: successful auth, redirect into the authenticated app (`/events` or home). This account was used throughout the authenticated crawl, so a successful prior login is implied, but the login submission itself (vs. an already-authenticated session) was not independently re-observed as a fresh action. Flagged assumption for the login-submission step specifically. | Config-applied-default |
-| Login with invalid credentials (`akashmrakesh@gmail.com`) | **Directly observed, not an assumption.** `POST /api/auth/login` returned `400`; UI toast displayed "Invalid email or password". Use as-is. | Config-confirmed, directly observed (`login-attempt-failed/network-request.json`) |
+| Login with valid credentials (`admin-user@example.com`) | Assumed: successful auth, redirect into the authenticated app (`/events` or home). This account was used throughout the authenticated crawl, so a successful prior login is implied, but the login submission itself (vs. an already-authenticated session) was not independently re-observed as a fresh action. Flagged assumption for the login-submission step specifically. | Config-applied-default |
+| Login with invalid credentials (`known-bad-user@example.com`) | **Directly observed, not an assumption.** `POST /api/auth/login` returned `400`; UI toast displayed "Invalid email or password". Use as-is. | Config-confirmed, directly observed (`login-attempt-failed/network-request.json`) |
 | Free-text search on `/events` (e.g. by title, venue, or city substring) | Assumed: case-insensitive match against title/venue/city, live/debounced filtering, "No events found" (or similar) empty state on zero results. Flagged assumption — mechanism and exact copy unconfirmed. | Config-applied-default |
 | Category filter alone (e.g. "Festival") | Narrows the listing to events matching that category only. In scope, assertable against the 3 known fixtures (e.g. "Festival" → Dilli Diwali Mela only). | Directly derivable from fixture data |
 | City filter alone (e.g. "Delhi") | Narrows the listing to events matching that city only. In scope, assertable (e.g. "Delhi" → Dilli Diwali Mela only). | Directly derivable from fixture data |
 | Category + City filter combined | Assumed AND/intersection semantics (both filters narrow the result set together). Flagged assumption. | Config-applied-default |
 | City filter cannot select "Los Angeles" — "Hollywood Monsoon Night" (city = Los Angeles) is unreachable via the City filter dropdown | **Not expected/known behavior — treat as a likely bug.** The City filter dropdown's 6 options (Mumbai, Bangalore, Delhi, Hyderabad, Chennai, Pune) do not include Los Angeles, yet a real seeded event has that city value. Write the test case documenting this as a probable data/dropdown-mismatch bug (an event exists with a city value the filter UI can never select) — not as intended behavior. | Config-confirmed |
 | "Clear all bookings" on `/bookings` | Documented but never executed live in this run (same non-execution stance as booking confirmation in `event-booking`). Expected: empties the My Bookings list for that account only. | Config-confirmed |
-| My Bookings empty state | Directly observed: "No bookings yet — You haven't booked any events yet. Browse upcoming events and grab your tickets!" with a "Browse Events" button, for `akashmrakesh+1@gmail.com` (zero existing bookings). | Directly observed (`pages/my-bookings/dom-snapshot.md`) |
+| My Bookings empty state | Directly observed: "No bookings yet — You haven't booked any events yet. Browse upcoming events and grab your tickets!" with a "Browse Events" button, for `admin-user@example.com` (zero existing bookings). | Directly observed (`pages/my-bookings/dom-snapshot.md`) |
 | Admin "+ New Event" form — Price field | Assumed: requires a positive number (> 0); no confirmed error copy. Flagged unconfirmed. | Config-applied-default |
 | Admin "+ New Event" form — Total Seats field | Assumed: requires a positive integer; no confirmed error copy. Flagged unconfirmed. | Config-applied-default |
 | Admin "+ New Event" form — Event Date & Time field | No past-date restriction confirmed; assume none enforced unless observed otherwise. Flagged unconfirmed. | Config-applied-default |
@@ -219,7 +219,7 @@ case in this suite — no Gherkin, no CSV, no TestRail import format.
   Needs live verification before being treated as ground truth.
 - **Login empty-field and valid-credentials submission behavior** is assumed standard but was
   never exercised as a fresh interactive submission during exploration (the authenticated crawl
-  used an already-established session for `akashmrakesh+1@gmail.com`). Needs live verification.
+  used an already-established session for `admin-user@example.com`). Needs live verification.
 - **Events search mechanism** (live/debounced vs. submit-only) and the exact zero-results
   empty-state copy are unconfirmed — flagged for human follow-up if precise assertions are needed.
 - **Category + City filter combination semantics (AND vs. OR)** is assumed AND but was never

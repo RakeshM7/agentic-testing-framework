@@ -47,17 +47,17 @@ feature:
     where the 3 seeded/featured events are marked Read-only and cannot be
     edited or deleted via this UI.
     (6) Role-based access control -- the crawled account
-    (akashmrakesh+1@gmail.com) is admin-capable (sees the Admin nav item
+    (admin-user@example.com) is admin-capable (sees the Admin nav item
     and can reach /admin/events). Write test cases for the expected
     behavior of a non-admin/plain consumer account attempting to reach
     /admin/events directly (expect redirect/403) -- flag as unconfirmed
-    since no non-admin account was crawled.
+    since no non-admin account was crawled
   requirement_docs: []
 
 authorizations:
   mode: readonly  # readonly (default) | full-run — see config/run-config.example.yaml for what each implies
   authenticated_crawl: true
-  credentials_file: playwright-tests/eventhub/.env
+  credentials_file: playwright-tests/.env
 
 testcases:
   output_format: markdown-table
@@ -91,7 +91,7 @@ answers:
     answer: "markdown-table, same as the event-booking run, for consistency across the suite."
 
 feedback_loop:
-  auto_invoke_implementor: false
+  auto_invoke_implementor: true
 
 git:
   auto_commit: false

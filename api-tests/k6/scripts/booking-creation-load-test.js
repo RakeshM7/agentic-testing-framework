@@ -1,7 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate } from 'k6/metrics';
-import { requireBaseUrl } from './lib/guard.js';
 
 /**
  * Concurrency/atomicity load profile for POST /bookings.
@@ -29,7 +28,7 @@ import { requireBaseUrl } from './lib/guard.js';
  * throughput.
  */
 
-const BASE_URL = requireBaseUrl(__ENV.BASE_URL);
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:3001/api'; // deliberately NOT the production host by default
 const TARGET_EVENT_ID = Number(__ENV.TARGET_EVENT_ID || 283); // use a low-availability event in your staging clone
 const CONCURRENT_BOOKINGS = 10;
 const QUANTITY_PER_BOOKING = 1;

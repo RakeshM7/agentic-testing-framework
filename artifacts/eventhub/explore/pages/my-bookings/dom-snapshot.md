@@ -1,7 +1,7 @@
 # DOM / Accessibility Snapshot — My Bookings ("/bookings")
 
 URL: https://eventhub.rahulshettyacademy.com/bookings
-Authenticated as: akashmrakesh+1@gmail.com
+Authenticated as: admin-user@example.com
 
 Page title: EventHub — Discover & Book Events
 
@@ -12,7 +12,7 @@ the app itself as a "reset your test data" convenience — NOT CLICKED per read-
 Empty state: "No bookings yet — You haven't booked any events yet. Browse upcoming events and grab
 your tickets!" — "Browse Events" button.
 
-This account (akashmrakesh+1@gmail.com) has zero existing bookings.
+This account (admin-user@example.com) has zero existing bookings.
 
 Footer (site-wide, visible because page content is short): Rahul Shetty Academy blurb, "Popular
 Courses" links (Selenium WebDriver with Java, Playwright with JavaScript, RestAssured API Testing,

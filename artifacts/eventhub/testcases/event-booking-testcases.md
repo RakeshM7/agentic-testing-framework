@@ -26,7 +26,7 @@ any earlier/uncertain id-to-card mapping seen in raw crawl snapshots):**
 | 283 | World Tech Summit | Conference | Hitech City, Hyderabad | $1,500 | 233 / 500 |
 
 **General precondition for every test case:** tester is logged into EventHub as an authenticated
-test account (e.g. `akashmrakesh+1@gmail.com`, the account used during exploration) unless a test
+test account (e.g. `admin-user@example.com`, the account used during exploration) unless a test
 case states otherwise. Login/registration flow itself is out of scope for this suite.
 
 ---

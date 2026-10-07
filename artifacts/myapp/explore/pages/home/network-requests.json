@@ -1,0 +1,10 @@
+6. [GET] https://crmsupport.freshworks.com/stylesheet.css => [404] 
+20. [GET] https://ip.freshmarketer.com/json/?callback=setGeoTargeting => [FAILED] net::ERR_BLOCKED_BY_ORB
+21. [GET] https://tp.freshmarketer.com/getandset => [200] 
+24. [GET] https://crmsupport.freshworks.com/stylesheet.css => [404] 
+25. [GET] https://crmsupport.freshworks.com/stylesheet.css => [404] 
+26. [GET] https://connect.facebook.net/en_US/sdk.js => [FAILED] net::ERR_QUIC_PROTOCOL_ERROR.QUIC_NETWORK_IDLE_TIMEOUT
+27. [GET] https://platform.twitter.com/widgets.js => [FAILED] net::ERR_CONNECTION_RESET
+37. [POST] https://www.google-analytics.com/j/collect?v=1&_v=j102&a=1022836997&t=pageview&_s=1&dl=https%3A%2F%2Fcrmsupport.freshworks.com%2Fsupport%2Fhome&ul=en-us&dt=Support%20%3A%20Freshworks&sr=1280x720&vp=1021x558&_u=AACAAEABAAAAACAAI~&jid=416413396&gjid=1524750891&cid=286811563.1790594728&tid=UA-78569416-2&_gid=246001818.1790594728&_r=1&_slc=1&z=1106148590 => [200] 
+
+Note: 30 static requests not shown, run with "static" option to see them.

@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agentic-testing-framework/schemas/created-entities.schema.json",
+  "title": "Created-entities ledger",
+  "description": "created-entities.json: every entity an agent created during a full-run. Destructive actions (delete/cancel/remove) are only allowed on entries listed here. An empty array is valid (nothing created).",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["type", "identifier", "createdAt"],
+    "additionalProperties": false,
+    "properties": {
+      "type": { "type": "string", "minLength": 1, "description": "Entity kind, e.g. contact, deal, booking, event." },
+      "identifier": { "type": "string", "minLength": 1, "description": "Human-readable or API id used to find the entity again." },
+      "url": { "type": "string" },
+      "createdAt": { "type": "string", "format": "date-time" },
+      "note": { "type": "string" }
+    }
+  }
+}

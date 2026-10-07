@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agentic-testing-framework/schemas/sitemap.schema.json",
+  "title": "explore-agent sitemap",
+  "description": "artifacts/<target>/explore/sitemap.json. One entry per crawled page. Path fields are relative to the explore/ directory.",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["url", "slug"],
+    "additionalProperties": false,
+    "properties": {
+      "url": { "type": "string", "pattern": "^https?://" },
+      "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "title": { "type": "string" },
+      "note": { "type": "string" },
+      "screenshotPath": { "type": "string", "minLength": 1 },
+      "domSnapshotPath": { "type": "string", "minLength": 1 },
+      "networkRequestsPath": { "type": "string", "minLength": 1 },
+      "consoleLogPath": { "type": "string", "minLength": 1 },
+      "links": { "type": "array", "items": { "type": "string" } }
+    }
+  }
+}
