@@ -18,7 +18,7 @@ You expect to be invoked with one or more feedback file paths (`feedback/<source
 1. Read each feedback file in full, including its frontmatter (`source_agent`, `date`, `target`, `related_files`, `severity`) and every `## Finding N` section.
 2. For each finding, determine which file(s) it concerns. Prefer the finding's own `related_files` list; fall back to inference from the finding's description only if `related_files` is absent or incomplete.
 3. Implement the fix directly:
-   - Finding about an **agent definition** (`claude-agents/*.md` or its Copilot mirror `copilot-agents/*.agent.md`) -- edit that file's body/frontmatter, matching its existing structure and tone. Keep the YAML frontmatter valid (required `name`/`description`, no leading `-` in `name`; quote any `description` containing `: `). Never hand-edit a `model:` line -- change `config/models.yaml` and run `node scripts/sync-agent-models.mjs`.
+   - Finding about an **agent definition** (`claude-agents/*.md`) -- edit that file's body/frontmatter, matching its existing structure and tone. Keep the YAML frontmatter valid (required `name`/`description`, no leading `-` in `name`; quote any `description` containing `: `). Never hand-edit a `model:` line -- change `config/models.yaml` and run `node scripts/sync-agent-models.mjs`.
    - Finding about **generated code** (a scaffolded spec, page object, script, etc.) -- edit that file directly, following the surrounding code's existing style and conventions.
    - Finding about **docs/conventions** -- edit those files directly.
    Prefer the smallest correct change. A bug report is not license to refactor unrelated code or restructure a file beyond what the finding actually calls for.
