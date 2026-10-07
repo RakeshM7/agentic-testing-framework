@@ -1,0 +1,366 @@
+# Per-agent permissions -- DRAFT FOR HUMAN REVIEW. Nothing reads this file yet.
+#
+# Purpose: one explicit, reviewable statement of what each agent may do. When implemented, three things are
+# generated/enforced from it (so a prompt can never grant more than this file):
+#   1. the agent's `tools:` / `disallowedTools:` frontmatter (incl. `Agent(<workers>)` for orchestrators),
+#   2. the framework guard (scripts/lib/guard.mjs), which learns who is calling from the PreToolUse hook's
+#      `agent_type` field and applies that agent's row,
+#   3. the filesystem write allow-list (a Write/Edit outside `filesystem.write` is blocked).
+#
+# ---- Field meanings --------------------------------------------------------------------------------------
+# layer            0 = main session (orchestrator) | 1 = domain orchestrator or product-level worker | 2 = worker
+# spawns           exact agent names this agent may start (rendered as `Agent(a, b)`); [] = cannot spawn.
+#                  Workers never spawn: all communication between agents goes through the parent orchestrator,
+#                  using files as the hand-off (no agent talks to a sibling).
+# live_target      what the agent may do against the PRODUCT UNDER TEST (the live app):
+#     browser:     none | read (navigate, observe, screenshot) | mutate (click/submit/create/edit/delete)
+#     http:        none | read (GET/HEAD/OPTIONS) | mutate (POST/PUT/PATCH/DELETE)
+#     load:        none | run   (execute k6 against the target)
+#     Every `mutate`/`run` is ALWAYS scoped to entities the CURRENT run created (state/ledger.jsonl, entries are
+#     tagged with the run id); deletes of anything else are blocked by the guard regardless of this file.
+# web_research     none | allowed -- may fetch pages from the public internet that are NOT the product under test
+# shell            none | restricted (only the commands listed in `shell_allow`) | project (any command that
+#                  passes the guard, e.g. npm/npx/node/k6 inspect)
+# filesystem       read / write glob lists (variables below).
+#
+# ---- How this combines with authorizations.mode (run-config) ---------------------------------------------
+# DECIDED: the run's authorizations.mode CAPS every agent. In `readonly` runs every `mutate` / `run` below is
+# automatically reduced to `read` / `none` for ALL agents (no per-agent override). In `full-run` runs the values in
+# this file apply as written. effective = min(this file, run mode), computed by the guard.
+#
+# ---- Variables (layout v2: everything is product-level, there is no artifacts/<run-id>/ directory) --------
+variables:
+  product_dir: "artifacts/${product}"
+  knowledge: "artifacts/${product}/knowledge"                 # reusable per-product knowledge base
+  modules: "artifacts/${product}/modules/${module}"           # per-module working files, latest state
+  state: "artifacts/${product}/state"                         # run.json, ledger.jsonl, lock, orchestration/, history/
+  results: "artifacts/${product}/results/${run_id}"           # per-run archive: review findings, results, triage, report
+  pw_project: "playwright-tests/${product}"                   # ONE Playwright repo: tests/ui + tests/api
+  k6_project: "k6-tests/${product}"
+#
+# ---- Decision log ----------------------------------------------------------------------------------------
+# Mode caps permissions | knowledge-generator: live product only if needed | module-explorer: mutate
+# scaffolders: web research allowed | api-discoverer: http read | global feedback implementor: as drafted
+# Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
+#
+# ---- Shared-repo ownership inside ${pw_project} (UI and API agents write into the same repo) -------------
+#   pw-repo-owner      the ONLY agent that writes shared repo files: package.json/lock, playwright.config.ts (defines
+#                      BOTH the `ui` and `api` Playwright projects), tsconfig, .env.example, .gitignore, README,
+#                      utils/shared/. Creates the skeleton (stage `playwright-repo`, spawned by orchestrator-agent)
+#                      and applies change requests later (spawned by either Playwright orchestrator, never both at once).
+#   pw-ui-scaffolder   UI-specific scaffolding only (config/ui/, tests/ui/ skeleton).
+#   pw-api-scaffolder  API-specific scaffolding only (config/api/, tests/api/ skeleton).
+#   ui side owns:  pages/, tests/ui/, helpers/ui/, fixtures/ui/, config/ui/
+#   api side owns: clients/, tests/api/, helpers/api/, fixtures/api/, config/api/
+#   Nobody edits another side's folders or the shared files; a needed shared change is a request the domain
+#   orchestrator passes to pw-repo-owner (file hand-off, no agent-to-agent messaging).
+
+profiles:
+  # Reusable bundles; an agent lists `profile:` and any per-agent overrides replace the profile's keys.
+  orchestrator:           # domain orchestrators: coordinate only, never touch the product, never write code
+    spawns: []            # filled per agent
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: restricted
+    shell_allow: ["node scripts/run.mjs *", "node scripts/ledger.mjs list *", "node scripts/run-config.mjs *"]
+  code_writer:            # writes generated test code only, no product access
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: project        # may run typecheck/lint/`k6 inspect`, never the suite against the product
+  reviewer:               # reads code, writes one findings file; cannot edit the code it reviews
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: project
+  feedback_implementor:   # applies reviewer findings to the code (the only agent per domain that edits reviewed code)
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: project
+  healer:                 # fixes failing tests/scripts from a triage report; cannot run against the product
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: project
+
+agents:
+  # ======================= Layer 0 ========================================================================
+  orchestrator-agent:
+    layer: 0
+    spawns: [knowledge-generator, module-explorer, clarification-orchestrator, testcase-orchestrator,
+             playwright-ui-orchestrator, playwright-api-orchestrator, k6-orchestrator, report-generator, pw-repo-owner]
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: restricted
+    shell_allow: ["node scripts/run.mjs *", "node scripts/run-config.mjs *", "node scripts/ledger.mjs list *"]
+    filesystem:
+      read: ["${product_dir}/**", "config/**"]
+      write: ["${state}/notes.md"]
+
+  # ======================= Product level (spawned by the main orchestrator) ================================
+  knowledge-generator:
+    layer: 1
+    spawns: []
+    live_target: { browser: read, http: none, load: none }   # docs/web first; live product only when needed to resolve a gap
+    web_research: allowed
+    shell: none
+    filesystem:
+      read: ["config/**", "${state}/config.resolved.json", "${knowledge}/**", "<requirement docs and references listed in the run-config>"]
+      write: ["${knowledge}/**"]
+
+  module-explorer:
+    layer: 1
+    spawns: []
+    live_target: { browser: mutate, http: none, load: none }   # mutate (ledger-scoped; capped to read in readonly runs)
+    web_research: none
+    shell: none
+    filesystem:
+      read: ["${knowledge}/**", "${modules}/**"]
+      write: ["${modules}/explore/**", "${modules}/clarifications.csv"]
+    # Appends only NEW rows (new ID, Module, Question, Steps, empty Answer/notes, Run ID = this run); never edits
+    # existing rows -- EXCEPT where the incoming requirement changes a behavior already recorded (then the row's
+    # Answer/notes are updated, Run ID kept as the creating run). CSV writes go through a script (ids, dedupe, lock).
+
+  # ======================= Clarification domain ===========================================================
+  clarification-orchestrator:
+    layer: 1
+    profile: orchestrator
+    spawns: [question-writer, clarification-explorer, clarification-writer]
+    filesystem:
+      read: ["${modules}/**"]
+      write: ["${state}/orchestration/clarifications-${module}.json"]
+
+  question-writer:
+    layer: 2
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: none
+    filesystem:
+      read: ["${knowledge}/**", "${modules}/**"]
+      write: ["${modules}/clarifications.csv"]   # rewrites Question + Steps of rows still unanswered
+
+  clarification-explorer:       # one invocation per CSV row, executes the Steps and observes behavior
+    layer: 2
+    live_target: { browser: mutate, http: none, load: none }   # mutate (ledger-scoped); capped to read in readonly runs
+    web_research: none
+    shell: none
+    filesystem:
+      read: ["${modules}/**", "${knowledge}/**"]
+      write: ["${modules}/clarification-evidence/**"]   # observation notes + screenshots, one folder per row ID
+    # Does NOT write the CSV: the clarification-writer records its findings (single writer per cell).
+
+  clarification-writer:
+    layer: 2
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: none
+    filesystem:
+      read: ["${modules}/**"]
+      write: ["${modules}/clarifications.csv", "${modules}/clarifications-summary.md"]
+    # Fills Answer / "Clarification agent notes"; never overwrites a non-empty Answer cell (a human may have written
+    # it) unless the incoming requirement changes the behavior; Run ID (creating run) is never changed.
+
+  # ======================= Test case domain ===============================================================
+  testcase-orchestrator:
+    layer: 1
+    profile: orchestrator
+    spawns: [testcase-writer, testcase-reviewer]
+    filesystem: { read: ["${modules}/**"], write: ["${state}/orchestration/testcases-${module}.json"] }
+
+  testcase-writer:
+    layer: 2
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: none
+    filesystem:
+      read: ["${modules}/**", "${knowledge}/**"]
+      write: ["${modules}/testcases/**"]
+
+  testcase-reviewer:
+    layer: 2
+    profile: reviewer
+    shell: none
+    filesystem: { read: ["${modules}/**"], write: ["${results}/${module}/testcases/review-findings.md"] }
+
+  # ======================= Shared Playwright repo owner (repo: ${pw_project}) =============================
+  pw-repo-owner:                # sole writer of shared repo files (see ownership table in the header)
+    layer: 2
+    profile: code_writer
+    web_research: allowed       # framework best-practice research for the skeleton
+    filesystem:
+      read: ["${pw_project}/**", "${knowledge}/**", "${state}/orchestration/**"]
+      write: ["${pw_project}/package.json", "${pw_project}/package-lock.json", "${pw_project}/playwright.config.ts",
+              "${pw_project}/tsconfig.json", "${pw_project}/.env.example", "${pw_project}/.gitignore",
+              "${pw_project}/README.md", "${pw_project}/utils/shared/**"]
+
+  # ======================= Playwright UI domain (repo: ${pw_project}) =====================================
+  playwright-ui-orchestrator:
+    layer: 1
+    profile: orchestrator
+    spawns: [pw-repo-owner, pw-ui-scaffolder, pw-ui-helper-writer, pw-ui-fixtures-writer, pw-ui-pom-writer, pw-ui-tests-writer,
+             pw-ui-reviewer, pw-ui-feedback-implementor, pw-ui-test-runner-triager, pw-ui-healer]
+    filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-ui/**"], write: ["${state}/orchestration/playwright-ui-${module}.json"] }
+
+  pw-ui-scaffolder:             # UI-specific scaffolding only; shared files belong to pw-repo-owner
+    layer: 2
+    profile: code_writer
+    web_research: allowed
+    filesystem: { read: ["${pw_project}/**", "${knowledge}/**"], write: ["${pw_project}/config/ui/**", "${pw_project}/tests/ui/**"] }
+  pw-ui-helper-writer:
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/helpers/ui/**"] }
+  pw-ui-fixtures-writer:
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/fixtures/ui/**"] }
+  pw-ui-pom-writer:
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/pages/**"] }
+  pw-ui-tests-writer:
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/ui/**"] }
+  pw-ui-reviewer:
+    layer: 2
+    profile: reviewer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-ui/review-findings.md"] }
+  pw-ui-feedback-implementor:
+    layer: 2
+    profile: feedback_implementor
+    filesystem:
+      read: ["${pw_project}/**", "${results}/${module}/playwright-ui/review-findings.md"]
+      write: ["${pw_project}/pages/**", "${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**", "${pw_project}/fixtures/ui/**"]
+  pw-ui-test-runner-triager:
+    layer: 2
+    live_target: { browser: mutate, http: none, load: none }   # runs the ui project; mutating specs only in full-run, ledger-scoped
+    web_research: none
+    shell: project
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-ui/results.json", "${results}/${module}/playwright-ui/triage.md", "${pw_project}/test-results/ui/**"] }
+  pw-ui-healer:
+    layer: 2
+    profile: healer
+    filesystem:
+      read: ["${pw_project}/**", "${results}/${module}/playwright-ui/triage.md"]
+      write: ["${pw_project}/pages/**", "${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**", "${pw_project}/fixtures/ui/**"]
+
+  # ======================= Playwright API domain (same repo: ${pw_project}) ===============================
+  playwright-api-orchestrator:
+    layer: 1
+    profile: orchestrator
+    spawns: [pw-repo-owner, api-discoverer, api-test-planner, pw-api-scaffolder, pw-api-helper-writer, pw-api-fixtures-writer,
+             pw-api-client-writer, pw-api-tests-writer, pw-api-reviewer, pw-api-feedback-implementor,
+             pw-api-test-runner-triager, pw-api-healer]
+    filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-api/**"], write: ["${state}/orchestration/playwright-api-${module}.json"] }
+
+  api-discoverer:
+    layer: 2
+    live_target: { browser: none, http: read, load: none }   # fetch OpenAPI / GET endpoints
+    web_research: allowed     # vendor API docs
+    shell: none
+    filesystem: { read: ["${knowledge}/**", "${modules}/**"], write: ["${modules}/api/discovered-endpoints.json"] }
+  api-test-planner:
+    layer: 2
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: none
+    filesystem: { read: ["${modules}/**"], write: ["${modules}/api/api-test-plan.md", "${modules}/api/plan.json"] }
+  pw-api-scaffolder:            # API-specific scaffolding only; shared files belong to pw-repo-owner
+    layer: 2
+    profile: code_writer
+    web_research: allowed
+    filesystem: { read: ["${pw_project}/**", "${knowledge}/**"], write: ["${pw_project}/config/api/**", "${pw_project}/tests/api/**"] }
+  pw-api-helper-writer:
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/helpers/api/**"] }
+  pw-api-fixtures-writer:
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/fixtures/api/**"] }
+  pw-api-client-writer:        # API equivalent of the POM: typed clients / service objects per resource
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/clients/**"] }
+  pw-api-tests-writer:
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/api/**"] }
+  pw-api-reviewer:
+    layer: 2
+    profile: reviewer
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-api/review-findings.md"] }
+  pw-api-feedback-implementor:
+    layer: 2
+    profile: feedback_implementor
+    filesystem:
+      read: ["${pw_project}/**", "${results}/${module}/playwright-api/review-findings.md"]
+      write: ["${pw_project}/clients/**", "${pw_project}/tests/api/**", "${pw_project}/helpers/api/**", "${pw_project}/fixtures/api/**"]
+  pw-api-test-runner-triager:
+    layer: 2
+    live_target: { browser: none, http: mutate, load: none }   # runs the api project; mutating tests only in full-run, ledger-scoped
+    web_research: none
+    shell: project
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-api/results.json", "${results}/${module}/playwright-api/triage.md", "${pw_project}/test-results/api/**"] }
+  pw-api-healer:
+    layer: 2
+    profile: healer
+    filesystem:
+      read: ["${pw_project}/**", "${results}/${module}/playwright-api/triage.md"]
+      write: ["${pw_project}/clients/**", "${pw_project}/tests/api/**", "${pw_project}/helpers/api/**", "${pw_project}/fixtures/api/**"]
+
+  # ======================= K6 domain (repo: ${k6_project}) ================================================
+  k6-orchestrator:
+    layer: 1
+    profile: orchestrator
+    spawns: [k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-feedback-implementor,
+             k6-runner-triager, k6-healer]
+    filesystem: { read: ["${modules}/**", "${k6_project}/**", "${results}/${module}/k6/**"], write: ["${state}/orchestration/k6-${module}.json"] }
+  k6-workload-designer:
+    layer: 2
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: none
+    filesystem: { read: ["${modules}/**", "${knowledge}/**"], write: ["${modules}/k6/workload.json"] }
+  k6-lib-writer:
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${k6_project}/lib/**"] }
+  k6-script-writer:
+    layer: 2
+    profile: code_writer
+    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${k6_project}/scripts/**"] }
+  k6-reviewer:
+    layer: 2
+    profile: reviewer
+    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${results}/${module}/k6/review-findings.md"] }
+  k6-feedback-implementor:
+    layer: 2
+    profile: feedback_implementor
+    filesystem: { read: ["${k6_project}/**", "${results}/${module}/k6/review-findings.md"], write: ["${k6_project}/**"] }
+  k6-runner-triager:
+    layer: 2
+    live_target: { browser: none, http: none, load: run }   # live load only in full-run; BASE_URL must be on K6_ALLOWED_HOSTS
+    web_research: none
+    shell: project
+    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${results}/${module}/k6/results.json", "${results}/${module}/k6/triage.md", "${k6_project}/results/**"] }
+  k6-healer:
+    layer: 2
+    profile: healer
+    filesystem: { read: ["${k6_project}/**", "${results}/${module}/k6/triage.md"], write: ["${k6_project}/**"] }
+
+  # ======================= Reporting and framework maintenance ===========================================
+  report-generator:
+    layer: 1
+    spawns: []
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: restricted
+    shell_allow: ["node scripts/run.mjs status *", "node scripts/report-data.mjs *"]
+    filesystem: { read: ["${product_dir}/**"], write: ["${results}/report/**"] }
+
+  feedback-implementor-agent:   # existing: fixes agent prompts / framework from feedback/ files (not generated test code)
+    layer: 1
+    spawns: []
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: project
+    filesystem: { read: ["feedback/**", "claude-agents/**", "docs/**", "scripts/**", "config/**"], write: ["claude-agents/**", "docs/**", "scripts/**", "feedback/**"] }
