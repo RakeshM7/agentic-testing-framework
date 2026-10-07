@@ -4,15 +4,16 @@ Brief for any agent working in this repo. It is a pointer, not a copy of the pip
 
 ## What this repo is
 
-A platform-neutral agentic testing pipeline — seven personas (orchestrator, explore, requirements-clarification, testcase-generation, Playwright automation, API testing, feedback-implementation) plus a deterministic scripts layer that owns run state, the artifact contract and the safety guard. Today the personas are implemented for Claude Code only (`claude-agents/`, discovered via the `.claude/agents` symlink). Other runtimes are out of scope for now; if added they must follow the same contract exactly.
+A platform-neutral agentic testing pipeline — 43 small agents in three layers (main orchestrator → domain orchestrators → workers) plus a deterministic scripts layer that owns run state, the artifact contract, the clarifications CSV, the ledger and the safety guard. Today the agents are implemented for Claude Code only, in `.claude/agents/`. Other runtimes are out of scope for now; if added they must follow the same contract exactly.
 
 ## Read first
 
 1. `docs/artifact-contract.md` — layout v2 (product-level), state, stages, clarifications CSV, ledger, safety, scripts.
 2. `docs/agent-architecture.md` — the 43-agent design and which domains are built.
 3. `config/permissions.yaml` — what each agent may do.
-4. `docs/conventions.md` — feedback contract (other sections partly superseded).
-5. `architecture.md` — how the pieces fit.
+4. `docs/agent-handoffs.md`, `docs/playwright-conventions.md`, `docs/k6-conventions.md` — formats and code rules.
+5. `docs/conventions.md` — framework-wide rules and the feedback contract.
+6. `architecture.md` — how the pieces fit.
 
 ## Hard safety rule — do not loosen this
 
@@ -21,7 +22,7 @@ A platform-neutral agentic testing pipeline — seven personas (orchestrator, ex
 ## Working rules
 
 - Deterministic work (run state, next-stage, locks, ledger, clarifications CSV ids/dedupe, permission checks) belongs in `scripts/`, with tests (`npm test`), not in prompts.
-- Never hand-edit a `model:` line in an agent file; edit `config/models.yaml` and run `node scripts/sync-agent-models.mjs` (`npm run check` in CI).
+- Never hand-edit `tools`, `mcpServers` or `model` in an agent file: they are generated from `config/permissions.yaml` and `config/models.yaml` by `node scripts/build-agents.mjs` (`npm run check` verifies).
 - Never put credential values in a prompt, issue or commit; agents get a path to a `.env`-style file only.
 - `artifacts/` is generated and git-ignored.
-- Live browser crawling (`explore-agent`) needs an interactive Playwright MCP session; don't attempt it from a sandboxed environment.
+- Live browser work (`module-explorer`, `clarification-explorer`) needs an interactive Playwright MCP session; don't attempt it from a sandboxed environment.

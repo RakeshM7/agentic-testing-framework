@@ -2,7 +2,9 @@
 
 A hierarchy of small Claude Code subagents that takes a web product from "unknown" to researched, explored, clarified, test-cased, automated (Playwright UI + API) and load-tested (k6), with an HTML slide-deck report — driven by one run-config file and backed by a deterministic scripts layer that owns run state, the clarifications CSV, the created-entity ledger and per-agent permissions.
 
-> **Status:** redesign in progress on `framework-major-redesign`. The foundation (product-level layout, run lifecycle, clarifications CSV, ledger, permissions enforced by the guard) is implemented and tested. Agents are being rebuilt domain by domain; the prompts currently in `claude-agents/` are the old pre-v2 ones. See [`architecture.md`](architecture.md).
+> **Status:** redesign on `framework-major-redesign`. All 43 agents, the scripts layer and the contracts are implemented and the scripts are tested; the pipeline has not yet been run end to end against a real product. See [`architecture.md`](architecture.md).
+
+Start a run in a new Claude Code session: `claude --agent orchestrator-agent`, then give it `config/<product>.yaml`.
 
 ## Read
 
@@ -39,7 +41,7 @@ Unconfirmed clarifications: open `artifacts/<product>/modules/<module>/clarifica
 
 | Path | What |
 |---|---|
-| `claude-agents/` | agent definitions (`.claude/agents` symlinks here) |
+| `.claude/agents/` | the 43 agent definitions (frontmatter generated: `npm run build-agents`) |
 | `scripts/`, `schemas/` | run state machine, clarifications CSV, ledger, permissions, guard, config validation; JSON Schemas; tests |
 | `config/` | run-config example, `permissions.yaml`, `models.yaml` |
 | `docs/` | architecture, contract, conventions |
@@ -48,7 +50,7 @@ Unconfirmed clarifications: open `artifacts/<product>/modules/<module>/clarifica
 
 ## Limitations
 
-- Custom agents load at session start: after editing `claude-agents/`, start a new Claude Code session.
+- Custom agents load at session start: after editing `.claude/agents/`, start a new Claude Code session.
 - Live browser work needs an interactive Playwright MCP session.
 - CAPTCHA/MFA is a reported blocker, never bypassed; authenticated work starts from a session-state file a human produced.
 - `shell: project` agents could in principle reach the network through a script the guard can't parse; generated test projects add a second layer (mutation-guard fixtures, k6 host allow-lists).

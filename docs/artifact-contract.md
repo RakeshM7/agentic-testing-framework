@@ -53,13 +53,15 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 | `playwright-repo` | product | — | `playwright-tests/<product>/package.json`, `playwright.config.ts` |
 | `explore` | module | module-knowledge | `modules/<m>/explore/sitemap.json` (schema), `module-summary.md` |
 | `clarifications` | module | explore | `modules/<m>/clarifications.csv` (check below), `clarifications-summary.md` |
-| `testcases` | module | clarifications | `modules/<m>/testcases/testcases-summary.md` *(provisional)* |
-| `playwright-ui` | module | testcases, playwright-repo | `results/<run>/<m>/playwright-ui/results.json` *(provisional)* |
-| `playwright-api` | module | testcases, playwright-repo | `results/<run>/<m>/playwright-api/results.json` *(provisional)* |
-| `k6` | module | playwright-api | `results/<run>/<m>/k6/results.json` *(provisional)* |
-| `report` | product | every other stage complete or failed | `results/<run>/report/index.html` *(provisional)* |
+| `testcases` | module | clarifications | `modules/<m>/testcases/<m>-testcases.<ext>` + `testcases-summary.md` — `Total test cases: N` must equal the cases in the file |
+| `playwright-ui` | module | testcases, playwright-repo | `results/<run>/<m>/playwright-ui/results.json` (schema `results`, written by `results.mjs`) |
+| `playwright-api` | module | testcases, playwright-repo | `results/<run>/<m>/playwright-api/results.json` (schema `results`) |
+| `k6` | module | playwright-api | `results/<run>/<m>/k6/results.json` (schema `results`; `not-run` in readonly runs) |
+| `report` | product | every other stage complete, exhausted or blocked | `results/<run>/report/report.json` (by `report-data.mjs`) + `index.html` |
 
-A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. *Provisional* outputs are confirmed when that domain is built. Sub-steps inside a domain (writer → reviewer → feedback-implementor, runner-triager → healer) belong to the domain orchestrator, not this table.
+A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. Sub-steps inside a domain (writer → reviewer → feedback-implementor, runner-triager → healer) belong to the domain orchestrator, not this table.
+
+Each stage gets at most **two attempts** per run (`attempts` in `run.json`); a stage that failed twice is *exhausted*, everything depending on it is *blocked*, and `next` no longer offers either — so the report still becomes ready and states what did not run.
 
 ## Knowledge base
 
@@ -115,4 +117,4 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap,sources}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,sources,results}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.

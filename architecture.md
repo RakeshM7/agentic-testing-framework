@@ -27,7 +27,8 @@ flowchart LR
 
 | Layer | Where | Responsibility |
 |---|---|---|
-| Agents (Claude Code) | `claude-agents/*.md` via `.claude/agents` | the 43 roles in `docs/agent-architecture.md` (being built domain by domain) |
+| Agents (Claude Code) | `.claude/agents/*.md` (frontmatter built by `scripts/build-agents.mjs`) | the 43 roles in `docs/agent-architecture.md` |
+| Domain scripts | `scripts/{knowledge,orchestration,results,report-data}.mjs`, `scripts/lib/testcases.mjs` | knowledge registry, loop bounds, normalized results, report numbers, test case checks |
 | Contract + state | `scripts/lib/contract.mjs`, `scripts/run.mjs`, `schemas/` | layout, stage table, output verification, lock, history |
 | Clarifications | `scripts/lib/clarifications.mjs`, `scripts/clarifications.mjs` | the product-level CSV: ids, de-dup, human-answer preservation |
 | Safety | `scripts/lib/{guard,permissions,ledger}.mjs`, `scripts/ledger.mjs`, `.claude/hooks/guard.mjs` | mode cap, per-agent permissions, ledger-scoped deletes |
@@ -37,6 +38,6 @@ flowchart LR
 ## Status
 
 - **Done:** foundation — layout v2, run lifecycle and lock, stage verification, clarifications CSV, ledger, permissions resolution and enforcement, run-config v2 (`npm test`).
-- **Done:** knowledge domain — `knowledge-generator` agent, `scripts/knowledge.mjs` (source registry, citations, glossary merge, reuse plan).
-- **Next, in order:** module-explorer → clarification domain → testcase domain → shared repo owner + Playwright UI → Playwright API → K6 → report.
-- **Then:** per-role models in `config/models.yaml` for the 43 agents, CI running `npm run check`.
+- **Done:** knowledge domain — `knowledge-generator`, `scripts/knowledge.mjs`.
+- **Done:** all other agents bottom-up to `orchestrator-agent`; `scripts/build-agents.mjs` (frontmatter from permissions + models), `orchestration.mjs`, `results.mjs`, `report-data.mjs`; stage attempts and blocked-dependency handling in `run.mjs`.
+- **Next:** a first end-to-end run against a real product, per-role models in `config/models.yaml`, CI running `npm run check`.
