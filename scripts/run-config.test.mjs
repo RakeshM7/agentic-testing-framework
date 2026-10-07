@@ -1,65 +1,36 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateRunConfig, matchAnswer, deriveSlug, FULL_PRODUCT_SLUG } from "./run-config.mjs";
+import { validateRunConfig } from "./run-config.mjs";
 
-test("rejects mode: fullrun", () => {
-  const { errors } = validateRunConfig({ target: { url: "https://a.example.com" }, authorizations: { mode: "fullrun" } });
-  assert.match(errors[0], /authorizations\.mode/);
-});
-test("defaults to readonly and no auto-invoke", () => {
-  const { normalized } = validateRunConfig({ target: { url: "https://a.example.com" } });
-  assert.equal(normalized.authorizations.mode, "readonly");
-  assert.equal(normalized.feedback_loop.auto_invoke_implementor, false);
-});
-test("slug from hostname", () => assert.equal(deriveSlug("https://Eventhub.Rahul.com/x"), "eventhub"));
-test("matcher normalizes punctuation", () => {
-  const a = [{ match: "duplicate-email", answer: "x" }];
-  assert.equal(matchAnswer(a, "What about Duplicate email handling?").answer, "x");
-  assert.equal(matchAnswer(a, "Unrelated"), null);
-});
+const base = { product: "acme", target: { url: "https://app.acme.test" }, modules: [{ slug: "contacts", name: "Contacts", nav_path: ["Contacts"] }] };
 
-const base = { target: { url: "https://a.example.com" } };
-test("full-product slug fills defaults and flags the feature", () => {
-  const { errors, normalized } = validateRunConfig({ ...base, feature: { slug: FULL_PRODUCT_SLUG }, full_product: { per_module: { maxPages: 60 } } });
+test("minimal config normalizes with safe defaults", () => {
+  const { errors, normalized } = validateRunConfig(base);
   assert.deepEqual(errors, []);
-  assert.equal(normalized.feature.full_product, true);
-  assert.equal(normalized.full_product.explore_concurrency, 1);
-  assert.equal(normalized.full_product.per_module.maxPages, 60);
-  assert.equal(normalized.full_product.per_module.maxDepth, 4);
-  assert.deepEqual(normalized.full_product.modules.exclude, []);
-});
-test("full-product defaults apply even with no full_product block", () => {
-  const { normalized } = validateRunConfig({ ...base, feature: { slug: "full-product" } });
-  assert.equal(normalized.full_product.max_parallel_tracks, 4);
-});
-test("ordinary feature slug is not full-product", () => {
-  const { normalized } = validateRunConfig({ ...base, feature: { slug: "checkout" } });
-  assert.equal(normalized.feature.full_product, undefined);
-  assert.equal(normalized.full_product, undefined);
-});
-test("full_product block rejected on a non-full-product slug", () => {
-  const { errors } = validateRunConfig({ ...base, feature: { slug: "checkout" }, full_product: {} });
-  assert.match(errors[0], /only valid when feature\.slug/);
-});
-test("full_product rejects bad values", () => {
-  const { errors } = validateRunConfig({
-    ...base,
-    feature: { slug: "full-product" },
-    full_product: { explore_concurrency: 0, modules: { include: "deals" } },
-  });
-  assert.equal(errors.length, 2);
+  assert.equal(normalized.authorizations.mode, "readonly");
+  assert.equal(normalized.permissions_file, "config/permissions.yaml");
+  assert.equal(normalized.clarifications.unresolved_policy, "stop");
+  assert.deepEqual(normalized.limits, { review_rounds: 3, heal_rounds: 3 });
+  assert.deepEqual(normalized.concurrency, { modules: 1, clarification_rows: 1 });
+  assert.equal(normalized.git.auto_commit, false);
 });
 
-test("target.product defaults to the slug; explicit product wins; must be kebab-case", () => {
-  assert.equal(validateRunConfig({ target: { url: "https://acme-crm.example.com" } }).normalized.target.product, "acme-crm");
-  assert.equal(validateRunConfig({ target: { url: "https://x.example.com", slug: "s" } }).normalized.target.product, "s");
-  assert.equal(validateRunConfig({ target: { url: "https://x.example.com", product: "freshsales" } }).normalized.target.product, "freshsales");
-  assert.match(validateRunConfig({ target: { url: "https://x.example.com", product: "Fresh Sales" } }).errors[0], /target\.product/);
+test("product and an explicit module list are required", () => {
+  const { errors } = validateRunConfig({ target: base.target });
+  assert.ok(errors.some((e) => e.startsWith("product:")));
+  assert.ok(errors.some((e) => e.startsWith("modules:")));
 });
-test("clarification limits default to 5/5 and validate", () => {
-  const ok = validateRunConfig({ ...base, feature: { slug: "full-product" }, full_product: { clarifications: { csv_threshold: 8 } } });
-  assert.deepEqual(ok.normalized.full_product.clarifications, { csv_threshold: 8, max_rounds: 5 });
-  assert.deepEqual(validateRunConfig({ ...base, feature: { slug: "full-product" } }).normalized.full_product.clarifications, { csv_threshold: 5, max_rounds: 5 });
-  const bad = validateRunConfig({ ...base, feature: { slug: "full-product" }, full_product: { clarifications: { max_rounds: 0 } } });
-  assert.match(bad.errors[0], /max_rounds/);
+
+test("module entries need a kebab slug, a name, and a way to reach them; slugs are unique", () => {
+  const { errors } = validateRunConfig({ ...base, modules: [{ slug: "Contacts", name: "C" }, { slug: "deals", name: "D", entry_url: "nope" }, { slug: "deals", name: "D2", nav_path: ["x"] }] });
+  assert.ok(errors.some((e) => /modules\[0\]\.slug/.test(e)));
+  assert.ok(errors.some((e) => /modules\[1\]\.entry_url/.test(e)));
+  assert.ok(errors.some((e) => /duplicate 'deals'/.test(e)));
+});
+
+test("rejects unknown keys and bad enums", () => {
+  const { errors } = validateRunConfig({ ...base, answers: [], authorizations: { mode: "fullrun" }, clarifications: { unresolved_policy: "ask" } });
+  assert.ok(errors.includes("answers: unknown top-level key"));
+  assert.ok(errors.some((e) => e.startsWith("authorizations.mode")));
+  assert.ok(errors.some((e) => e.startsWith("clarifications.unresolved_policy")));
 });

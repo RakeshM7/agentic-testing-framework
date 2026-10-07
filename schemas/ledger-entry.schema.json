@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ledger-entry.schema.json",
+  "title": "One line of artifacts/<product>/state/ledger.jsonl",
+  "description": "Append-only record of entities runs created in the target. An entity is live once a 'created' event exists with no later 'deleted' event for the same type+ref. Destructive actions are allowed only on live entities created by the CURRENT run.",
+  "type": "object",
+  "required": ["ts", "runId", "event", "type", "ref", "module", "stage", "agent"],
+  "additionalProperties": false,
+  "properties": {
+    "ts": { "type": "string" },
+    "runId": { "type": "string" },
+    "event": { "enum": ["created", "deleted"] },
+    "type": { "type": "string", "minLength": 1, "description": "Entity kind, e.g. account, contact, booking." },
+    "ref": { "type": "string", "minLength": 1, "description": "Stable identifier the target knows it by (record id, or unique name when no id exists)." },
+    "label": { "type": "string" },
+    "url": { "type": "string" },
+    "module": { "type": "string" },
+    "stage": { "type": "string" },
+    "agent": { "type": "string" },
+    "note": { "type": "string" }
+  }
+}
