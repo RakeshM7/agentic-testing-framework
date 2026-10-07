@@ -1,26 +1,27 @@
 # AGENTS.md
 
-Instructions for GitHub Copilot's cloud coding agent (and any other AGENTS.md-aware agent) working in this repo. This is a condensed, repo-wide brief — the authoritative, per-persona detail lives in `.github/agents/*.agent.md` (symlinked from `copilot-agents/`) and `docs/conventions.md`.
+Brief for any agent working in this repo. It is a pointer, not a copy of the pipeline logic.
 
 ## What this repo is
 
-Seven testing-pipeline personas (explore, requirements-clarification, testcase-generation, Playwright automation, API testing, feedback-implementation, plus an orchestrator) defined twice: once for Claude Code (`claude-agents/`, discovered via the `.claude/agents` symlink) and once for GitHub Copilot (`copilot-agents/`, discovered via the `.github/agents` symlink). Both flavors read and write the exact same shared artifact tree — see `docs/conventions.md` for the full contract. Don't duplicate pipeline logic into this file; it's a pointer, not a third copy.
+A platform-neutral agentic testing pipeline — seven personas (orchestrator, explore, requirements-clarification, testcase-generation, Playwright automation, API testing, feedback-implementation) plus a deterministic scripts layer that owns run state, the artifact contract and the safety guard. Today the personas are implemented for Claude Code only (`claude-agents/`, discovered via the `.claude/agents` symlink). Other runtimes are out of scope for now; if added they must follow the same contract exactly.
 
-## If you're picking up an issue assigned here
+## Read first
 
-1. Read `docs/conventions.md` first — artifact paths, the pipeline stage order, and the feedback-file contract are all defined there and apply regardless of which flavor invoked you.
-2. Check `config/run-config.example.yaml` (or a target-specific config under `config/`) for the run this issue concerns. `authorizations.mode` is the master safety switch — see the rule below before doing anything against a live target.
-3. `.github/agents/orchestrator-agent.agent.md` is the entry point for a full pipeline run if one hasn't started yet; otherwise, invoke the single persona the issue actually calls for.
-4. Live browser crawling (`explore-agent`) needs an interactive Playwright MCP session and is scoped `target: vscode` — it does not run in this sandboxed cloud environment. If an issue needs fresh exploration of a target, ask for it to be run interactively in VS Code first and its artifacts committed, rather than attempting it here.
+1. `docs/artifact-contract.md` — layout v2 (product-level), state, stages, clarifications CSV, ledger, safety, scripts.
+2. `docs/agent-architecture.md` — the 43-agent design and which domains are built.
+3. `config/permissions.yaml` — what each agent may do.
+4. `docs/conventions.md` — feedback contract (other sections partly superseded).
+5. `architecture.md` — how the pieces fit.
 
 ## Hard safety rule — do not loosen this
 
-`authorizations.mode` in a run-config gates every mutating/destructive action across every agent, in both flavors: `readonly` (default) is non-mutating everywhere; `full-run` must be set explicitly, per target, by a human authorized to test that target — never inferred or assumed. Even under `full-run`, destructive actions (delete/cancel/remove) are scoped to entities that run's own agent created (tracked in each stage's `created-entities.json`) — never pre-existing or another user's data. Full detail: `docs/conventions.md`'s "Standing safety guardrails".
+`authorizations.mode` (resolved once into `artifacts/<product>/state/run.json`) caps every agent: `readonly` (default) is non-mutating everywhere, whatever `config/permissions.yaml` says; `full-run` must be set explicitly, per target, by a human authorized to test that target — never inferred — and then each agent gets exactly the ceiling in `config/permissions.yaml`. Even under `full-run`, destructive actions (delete/cancel/remove) are scoped to entities this run created, recorded in `state/ledger.jsonl` (`scripts/ledger.mjs`), never pre-existing or another user's data. The guard (`scripts/lib/guard.mjs`, Claude hook `.claude/hooks/guard.mjs`, keyed on the calling agent) enforces this in code; do not bypass or weaken it.
 
-## Model / provider configuration
+## Working rules
 
-Which model each agent uses, per platform, is controlled centrally by `config/models.yaml` and applied via `node scripts/sync-agent-models.mjs`. Never hand-edit the `model:` frontmatter line in a `claude-agents/*.md` or `copilot-agents/*.agent.md` file directly — the next sync overwrites it.
-
-## Secrets
-
-Never put credential values inline in a prompt, issue, or commit. Every agent that needs to authenticate against a target reads credentials from a `.env`-style file path it's given — only the path is ever passed around.
+- Deterministic work (run state, next-stage, locks, ledger, clarifications CSV ids/dedupe, permission checks) belongs in `scripts/`, with tests (`npm test`), not in prompts.
+- Never hand-edit a `model:` line in an agent file; edit `config/models.yaml` and run `node scripts/sync-agent-models.mjs` (`npm run check` in CI).
+- Never put credential values in a prompt, issue or commit; agents get a path to a `.env`-style file only.
+- `artifacts/` is generated and git-ignored.
+- Live browser crawling (`explore-agent`) needs an interactive Playwright MCP session; don't attempt it from a sandboxed environment.
