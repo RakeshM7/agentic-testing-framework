@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { endRun, initRun, makeRunId, next, setStage, status, validateProduct } from "./run.mjs";
 import { loadJson, paths } from "./lib/contract.mjs";
-import { put, startRun, tempRoot, writeConfig } from "./test-helpers.mjs";
+import { put, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
 
 const SITEMAP = JSON.stringify([{ url: "https://app.acme.test/contacts", slug: "contacts-list", title: "Contacts" }]);
 const CSV_HEADER = "ID,Module,Question,Steps to execute,Answer,Clarification agent notes,Run ID\r\n";
@@ -37,18 +37,19 @@ test("one active run per product: second init refused, --resume returns it, end 
   assert.equal(again.run.runId, "acme-run-1-2", "a reused run id gets a suffix instead of clobbering history");
 });
 
-test("stage graph: knowledge and the shared Playwright repo first, then per-module tracks", async () => {
+test("stage graph: product knowledge and the shared repo first, then per-module knowledge, then exploration", async () => {
   const { root } = startRun();
   assert.deepEqual(await ready("acme", root), ["knowledge", "playwright-repo"]);
-  put(root, "artifacts/acme/knowledge/index.md", "# k");
-  await setStage("acme", "knowledge", undefined, "done", undefined, { root });
-  assert.deepEqual(await ready("acme", root), ["contacts/explore", "deals/explore", "playwright-repo"]);
+  writeProductKnowledge(root);
+  assert.equal((await setStage("acme", "knowledge", undefined, "done", undefined, { root })).status, "done");
+  assert.deepEqual(await ready("acme", root), ["contacts/module-knowledge", "deals/module-knowledge", "playwright-repo"]);
+  writeModuleKnowledge(root, "contacts");
+  assert.equal((await setStage("acme", "module-knowledge", "contacts", "done", undefined, { root })).status, "done");
+  assert.deepEqual(await ready("acme", root), ["contacts/explore", "deals/module-knowledge", "playwright-repo"]);
 });
 
 test("done is refused until declared outputs exist and validate", async () => {
   const { root } = startRun();
-  put(root, "artifacts/acme/knowledge/index.md", "# k");
-  await setStage("acme", "knowledge", undefined, "done", undefined, { root });
   const refused = await setStage("acme", "explore", "contacts", "done", undefined, { root });
   assert.match(refused.errors.join("\n"), /sitemap.json: missing/);
   put(root, "artifacts/acme/modules/contacts/explore/sitemap.json", JSON.stringify([{ url: "x" }]));
@@ -76,9 +77,9 @@ test("clarifications stage: policy stop needs every Answer; continue-flagged nee
 
 test("a done stage whose output later disappears is offered again", async () => {
   const { root } = startRun();
-  put(root, "artifacts/acme/knowledge/index.md", "# k");
+  writeProductKnowledge(root);
   await setStage("acme", "knowledge", undefined, "done", undefined, { root });
-  put(root, "artifacts/acme/knowledge/index.md", "");
+  put(root, "artifacts/acme/knowledge/overview.md", "");
   assert.equal((await status("acme", { root })).stages.find((s) => s.stage === "knowledge").complete, false);
   assert.ok((await ready("acme", root)).includes("knowledge"));
 });

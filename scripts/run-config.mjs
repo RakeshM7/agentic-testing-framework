@@ -52,6 +52,7 @@ export function validateRunConfig(cfg) {
         }
       }
       if (m?.nav_path !== undefined && !strList(m.nav_path)) errors.push(`modules[${i}].nav_path: must be a list of menu labels`);
+      if (m?.references !== undefined && !strList(m.references)) errors.push(`modules[${i}].references: must be a list of URLs/paths`);
     });
   }
 

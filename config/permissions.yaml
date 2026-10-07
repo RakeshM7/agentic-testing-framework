@@ -26,7 +26,8 @@
 # ---- How this combines with authorizations.mode (run-config) ---------------------------------------------
 # DECIDED: the run's authorizations.mode CAPS every agent. In `readonly` runs every `mutate` / `run` below is
 # automatically reduced to `read` / `none` for ALL agents (no per-agent override). In `full-run` runs the values in
-# this file apply as written. effective = min(this file, run mode), computed by the guard.
+# this file apply as written, except the browser: any agent with browser access (read or mutate) gets the FULL
+# browser in full-run (`none` stays none). Computed by the guard (effectiveLiveTarget).
 #
 # ---- Variables (layout v2: everything is product-level, there is no artifacts/<run-id>/ directory) --------
 variables:
@@ -89,7 +90,7 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/run.mjs *", "node scripts/run-config.mjs *", "node scripts/ledger.mjs list *"]
+    shell_allow: ["node scripts/run.mjs *", "node scripts/run-config.mjs *", "node scripts/ledger.mjs list *", "node scripts/knowledge.mjs plan *"]
     filesystem:
       read: ["${product_dir}/**", "config/**"]
       write: ["${state}/notes.md"]
@@ -98,12 +99,16 @@ agents:
   knowledge-generator:
     layer: 1
     spawns: []
-    live_target: { browser: read, http: none, load: none }   # docs/web first; live product only when needed to resolve a gap
+    live_target: { browser: read, http: none, load: none }   # docs/web first; live product only when needed; full browser in full-run runs
     web_research: allowed
-    shell: none
+    shell: restricted           # sources, sources.md, glossary merge and inputs are script-owned
+    shell_allow: ["node scripts/knowledge.mjs add-source *", "node scripts/knowledge.mjs render *",
+                  "node scripts/knowledge.mjs merge-glossary *", "node scripts/knowledge.mjs check *"]
     filesystem:
       read: ["config/**", "${state}/config.resolved.json", "${knowledge}/**", "<requirement docs and references listed in the run-config>"]
-      write: ["${knowledge}/**"]
+      write: ["${knowledge}/overview.md", "${knowledge}/glossary.md",
+              "${knowledge}/modules/${module}/overview.md", "${knowledge}/modules/${module}/glossary.md",
+              "${knowledge}/modules/${module}/notes.md"]
 
   module-explorer:
     layer: 1

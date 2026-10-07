@@ -48,16 +48,36 @@ export function paths(product, root = repoRoot) {
 // PROVISIONAL outputs are placeholders until that domain is designed in detail; they are confirmed or changed
 // when the domain is implemented.
 export const STAGES = {
+  // Product pass: product-wide overview/glossary from the run-config's references and requirement docs.
   knowledge: {
     scope: "product",
     orchestrator: "knowledge-generator",
     needs: [],
-    outputs: [{ path: "artifacts/{product}/knowledge/index.md", provisional: true }],
+    onDone: "record-knowledge-inputs",
+    outputs: [
+      { path: "artifacts/{product}/knowledge/overview.md", check: "knowledge-product" },
+      { path: "artifacts/{product}/knowledge/glossary.md" },
+      { path: "artifacts/{product}/knowledge/sources.md" },
+      { path: "artifacts/{product}/knowledge/sources.json", schema: "sources" },
+    ],
+  },
+  // Module pass: one knowledge-generator invocation per module.
+  "module-knowledge": {
+    scope: "module",
+    orchestrator: "knowledge-generator",
+    needs: ["knowledge"],
+    onDone: "record-knowledge-inputs",
+    outputs: [
+      { path: "artifacts/{product}/knowledge/modules/{m}/overview.md", check: "knowledge-module" },
+      { path: "artifacts/{product}/knowledge/modules/{m}/glossary.md" },
+      { path: "artifacts/{product}/knowledge/modules/{m}/notes.md" },
+      { path: "artifacts/{product}/knowledge/modules/{m}/sources.md" },
+    ],
   },
   explore: {
     scope: "module",
     orchestrator: "module-explorer",
-    needs: ["knowledge"],
+    needs: ["module-knowledge"],
     outputs: [
       { path: "artifacts/{product}/modules/{m}/explore/sitemap.json", schema: "sitemap" },
       { path: "artifacts/{product}/modules/{m}/explore/module-summary.md" },
@@ -143,8 +163,20 @@ export async function validateFile(schema, file) {
 }
 
 // Named content checks for non-JSON outputs. Each returns string[] problems. Registered lazily to avoid cycles.
+const knowledgeLib = async (ctx) => {
+  const k = await import("./knowledge.mjs");
+  return { k, kp: k.knowledgePaths(paths(ctx.product, ctx.root ?? repoRoot).productDir) };
+};
 const CHECKS = {
   clarifications: async (file, ctx) => (await import("./clarifications.mjs")).checkComplete(file, ctx),
+  "knowledge-product": async (_file, ctx) => {
+    const { k, kp } = await knowledgeLib(ctx);
+    return k.checkProduct(kp);
+  },
+  "knowledge-module": async (_file, ctx) => {
+    const { k, kp } = await knowledgeLib(ctx);
+    return k.checkModule(kp, ctx.module);
+  },
 };
 
 export async function verifyOutputs(ctx, stage, module) {
@@ -157,7 +189,7 @@ export async function verifyOutputs(ctx, stage, module) {
       continue;
     }
     if (out.schema) for (const e of await validateFile(out.schema, abs)) problems.push(`${rel}: ${e}`);
-    if (out.check) for (const e of await CHECKS[out.check](abs, ctx)) problems.push(`${rel}: ${e}`);
+    if (out.check) for (const e of await CHECKS[out.check](abs, { ...ctx, module })) problems.push(`${rel}: ${e}`);
   }
   return problems;
 }

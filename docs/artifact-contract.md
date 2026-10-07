@@ -6,7 +6,9 @@ The single definition of where things live, how stages hand off, and how state a
 
 ```
 artifacts/<product>/                  # git-ignored; accumulates across runs
-  knowledge/                          # knowledge-generator: reusable product knowledge
+  knowledge/                          # knowledge-generator: reusable, cited product knowledge (see below)
+    overview.md glossary.md sources.md sources.json inputs.json
+    modules/<module>/{overview,glossary,notes,sources}.md
   modules/<module>/                   # latest working state, overwritten by later runs
     explore/                          # sitemap.json, module-summary.md, pages/, flows/, interactions + network inventory
     clarifications.csv                # product-level clarifications (format below)
@@ -46,9 +48,10 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 
 | Stage | Scope | Needs | Declared outputs (verified on `done`) |
 |---|---|---|---|
-| `knowledge` | product | — | `knowledge/index.md` *(provisional)* |
+| `knowledge` | product | — | `knowledge/{overview,glossary,sources}.md`, `sources.json` (schema) — all citation checks pass |
+| `module-knowledge` | module | knowledge | `knowledge/modules/<m>/{overview,glossary,notes,sources}.md` — citation, glossary-merge and sources checks pass |
 | `playwright-repo` | product | — | `playwright-tests/<product>/package.json`, `playwright.config.ts` |
-| `explore` | module | knowledge | `modules/<m>/explore/sitemap.json` (schema), `module-summary.md` |
+| `explore` | module | module-knowledge | `modules/<m>/explore/sitemap.json` (schema), `module-summary.md` |
 | `clarifications` | module | explore | `modules/<m>/clarifications.csv` (check below), `clarifications-summary.md` |
 | `testcases` | module | clarifications | `modules/<m>/testcases/testcases-summary.md` *(provisional)* |
 | `playwright-ui` | module | testcases, playwright-repo | `results/<run>/<m>/playwright-ui/results.json` *(provisional)* |
@@ -57,6 +60,15 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 | `report` | product | every other stage complete or failed | `results/<run>/report/index.html` *(provisional)* |
 
 A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. *Provisional* outputs are confirmed when that domain is built. Sub-steps inside a domain (writer → reviewer → feedback-implementor, runner-triager → healer) belong to the domain orchestrator, not this table.
+
+## Knowledge base
+
+`artifacts/<product>/knowledge/`, built by `knowledge-generator`: a **product pass** (stage `knowledge`) then one **module pass** per module (stage `module-knowledge`).
+
+- **Sources** — one product-wide registry, `sources.json` (`schemas/sources.schema.json`), written only by `node scripts/knowledge.mjs add-source`; the same (normalized) URL or path always gets the same id `S<n>`. `sources.md` files are rendered from it: the product one lists every source, a module one lists what that module cites.
+- **Citations** — every content line of overview/glossary/notes cites at least one registered source (`[S3]`); lines under `## Open points` are exempt (unconfirmed items, candidates for clarification). Enforced by `knowledge.mjs check` and on stage `done`.
+- **Glossaries** — product: `| Term | Definition | Scope | Sources |`; module: `| Term | Definition | Sources |`, merged into the product glossary with Scope = module slug by `knowledge.mjs merge-glossary`.
+- **Reuse unless inputs changed** — `knowledge.mjs plan <product>` compares fingerprints in `inputs.json` (recorded automatically when a knowledge stage is marked `done`) with the current config: product-wide `knowledge.references` and `feature.requirement_docs` (local files by content) affect the product and every module; a module's own entry (`name`, `entry_url`, `nav_path`, `references`) affects only that module. Unchanged parts with valid files are `reuse` — the orchestrator marks their stage `done` without invoking the agent.
 
 ## `clarifications.csv`
 
@@ -91,16 +103,16 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 ## Safety: mode × permissions, enforced in code
 
-- **Mode** — `authorizations.mode` → `state/run.json`. `readonly` caps every agent at read (browser/http) and none (load), whatever the permissions file says; `full-run` applies `config/permissions.yaml` as written. `AUTHORIZATIONS_MODE=readonly` in the environment can downgrade; nothing can upgrade.
+- **Mode** — `authorizations.mode` → `state/run.json`. `readonly` caps every agent at read (browser/http) and none (load), whatever the permissions file says; `full-run` applies `config/permissions.yaml` as written, and gives every agent that has browser access (`read` or `mutate`) the full browser. `AUTHORIZATIONS_MODE=readonly` in the environment can downgrade; nothing can upgrade.
 - **Per-agent permissions** — the guard (`scripts/lib/guard.mjs`, Claude Code adapter `.claude/hooks/guard.mjs`) identifies the caller from the hook's `agent_type` and applies its row from the frozen permissions:
   - `Agent` — only the agents in `spawns`;
   - `Bash`/`PowerShell` — `shell: none | restricted (shell_allow) | project`, then HTTP/k6 rules by effective `http`/`load`, and any DELETE must reference a live entity of the current run;
   - `Write`/`Edit`/`MultiEdit`/`NotebookEdit` — only inside `filesystem.write` (`${product}`, `${run_id}` expanded; `${module}` = one path segment); nothing outside the repo;
   - `WebFetch`/`WebSearch` — the product's own host needs `http: read`; anything else needs `web_research: allowed`;
-  - Playwright MCP — `browser: none` blocks all; `read` blocks typing, form filling, selects, uploads, drag/drop, key presses, dialogs and script evaluation (clicks stay allowed for navigation).
+  - Playwright MCP — `browser: none` blocks all; effective `read` (i.e. in readonly runs) blocks typing, form filling, selects, uploads, drag/drop, key presses, dialogs and script evaluation (clicks stay allowed for navigation); in full-run runs any browser access is full.
 - **Active runs** are found from `artifacts/*/state/lock.json`. No active run ⇒ readonly shell rules only. Agents not in the permissions file (e.g. a human's own session) get the mode rules only. If the guard itself errors while a run is active, the hook fails closed.
 - **Known limits** — a `shell: project` agent could still write files or call the network through a script the guard can't parse; Playwright `mutationGuard` fixtures and k6 host allow-lists (built in their domains) are the second layer.
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,sources}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.

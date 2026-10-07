@@ -13,6 +13,9 @@
 # or a pinned model id).
 
 agents:
+  knowledge-generator:
+    claude: sonnet
+
   orchestrator-agent:
     claude: sonnet
 

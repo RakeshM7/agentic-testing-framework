@@ -54,7 +54,9 @@ Working files under `modules/` always represent the latest state and are overwri
 ```
 config ──► run.mjs init
 main orchestrator:
-  1 knowledge-generator            -> knowledge/<product>/   (reusable per product; refreshed, cites sources; live product only if needed)
+  1 knowledge-generator, product pass -> artifacts/<product>/knowledge/{overview,glossary,sources}.md   (built)
+    knowledge-generator, one module pass per module -> knowledge/modules/<m>/{overview,glossary,notes,sources}.md
+    (cited sources from a product-wide registry; reused unless inputs changed; live product only if needed)
   2 module-explorer  (per module, in config order; modules come from the run-config)
         -> artifacts/<product>/modules/<m>/explore/{sitemap.json, pages/, flows/, module-summary.md, interactions + network inventory}
         -> artifacts/<product>/modules/<m>/clarifications.csv   (product-level; new rows for unconfirmed behavior)

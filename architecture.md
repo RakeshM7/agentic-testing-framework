@@ -37,5 +37,6 @@ flowchart LR
 ## Status
 
 - **Done:** foundation — layout v2, run lifecycle and lock, stage verification, clarifications CSV, ledger, permissions resolution and enforcement, run-config v2 (`npm test`).
-- **Next, in order:** knowledge-generator → module-explorer → clarification domain → testcase domain → shared repo owner + Playwright UI → Playwright API → K6 → report.
+- **Done:** knowledge domain — `knowledge-generator` agent, `scripts/knowledge.mjs` (source registry, citations, glossary merge, reuse plan).
+- **Next, in order:** module-explorer → clarification domain → testcase domain → shared repo owner + Playwright UI → Playwright API → K6 → report.
 - **Then:** per-role models in `config/models.yaml` for the 43 agents, CI running `npm run check`.

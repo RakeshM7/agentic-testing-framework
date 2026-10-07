@@ -127,6 +127,10 @@ export async function setStage(product, stage, module, action, error, { root = r
     if (problems.length) return { errors: ["cannot mark done; declared outputs are incomplete:", ...problems] };
     ctx.run.stages[key] = { ...prev, status: "done", finishedAt: now() };
     delete ctx.run.stages[key].error;
+    if (STAGES[stage].onDone === "record-knowledge-inputs") {
+      const k = await import("./lib/knowledge.mjs");
+      k.recordInputs(k.knowledgePaths(ctx.p.productDir), loadJson(ctx.p.configFile), root, module);
+    }
   } else return { errors: [`action must be start|done|fail, got '${action}'`] };
   writeJson(ctx.p.runFile, ctx.run);
   return { key, ...ctx.run.stages[key] };

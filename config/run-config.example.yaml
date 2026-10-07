@@ -20,7 +20,9 @@ feature:
     Contact management: create, edit, merge and delete contacts.
   requirement_docs: []          # paths or URLs to requirement documents / mockups
 
-# Sources for the knowledge-generator (vendor docs, knowledge bases, help centers, internal docs).
+# Product-wide sources for the knowledge-generator (vendor docs, knowledge bases, help centers, internal docs).
+# Knowledge is reused across runs unless these, the requirement docs (incl. local file content), a module's own
+# entry below, or its `references` change.
 knowledge:
   references:
     - https://crm.example.com
@@ -31,6 +33,7 @@ modules:
     name: Contacts
     entry_url: https://crm.example.com/contacts
     nav_path: [Contacts]
+    references: []              # optional module-specific sources; a change regenerates only this module's knowledge
   - slug: deals
     name: Deals
     nav_path: [Deals]
