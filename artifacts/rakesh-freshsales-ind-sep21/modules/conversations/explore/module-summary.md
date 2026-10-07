@@ -1,9 +1,0 @@
-# Conversations module summary
-Purpose: email/phone/SMS conversation hub in Freshsales CRM (/crm/sales/conversations/*). Sub-nav groups: Email (Awaiting Response, Team Inbox, Inbox, Sent, Scheduled, Drafts, Trash, Email Templates), Bulk Email (metrics, scheduled, drafts), Email Tracking (Opens, Clicks, Bounces), Phone (All phone calls, Voicemail, Power Dialer List -> /crm/phone), SMS (All SMS, SMS Templates), Chat (Chat Inbox -> /crm/messaging). Tabs: Conversations, Sales Sequences.
-
-Entities: Email conversation (sender, recipients, subject, thread count, Opened/Clicked badges, direction icon Incoming/Outgoing); Email template (name, optional subject, body, tags, visibility Public/Private, stats Sent/Opened/Clicked/Replied/Unsubscribed, created-by); SMS template (name, body); Phone call log (linked deal, 'Manual call log', owner).
-Data seen: Inbox 3 sample emails; Sent 3+; 9 Public system templates created by System Admin; 2 pre-existing manual call logs for AgentTest Deal.
-Rules/validations: email template Name required ('Give a name for your email template.'), subject/body optional; duplicate names are auto-suffixed with a timestamp; new templates are Private and only visible under 'Created by me'; list does not auto-refresh. SMS template name required ('Give a name for your sms template.'); saving with name (+body) failed with 'Template creation failed' (SMS not set up?). Delete asks Confirm Yes/No; bulk Delete via row checkboxes. Composer shows 'Email usage : 0 / 100' and a banner prompting to connect mailbox rakesh16083@cse.ssn.edu.in.
-Permissions: Org Admin; Team Inbox setup in Admin Settings.
-Links: Contacts/Deals (emails linked to contacts, deals), Sales Sequences, Admin Settings Team Inbox / Freshcaller, Phone and Messaging apps.
-Open questions: see open-questions.csv.

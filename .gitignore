@@ -14,10 +14,11 @@ playwright-tests/*/.auth/
 .DS_Store
 
 
-# Authenticated crawl captures may contain tokens/PII -- keep local, never commit
-artifacts/**/network-requests.json
-artifacts/**/network-request.json
-artifacts/**/console-log.txt
+# Pipeline run output is generated and local: artifacts/<run-id>/. Commit a curated, sanitized run under
+# examples/ if you want to share one. Nothing under artifacts/ is tracked except this keep-file.
+artifacts/*
+!artifacts/.gitkeep
 
-# Parallel full-product tracks: per-run lock dir (live k6 serialization)
-artifacts/**/.locks/
+# Stray Playwright output from running tests at the repo root
+/test-results/
+/playwright-report/
