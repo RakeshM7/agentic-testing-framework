@@ -33,7 +33,8 @@ test("readonly caps mutate permissions to read; full-run applies them as written
 
 test("filesystem writes are limited to the agent's allow-list, with ${product}/${module} expanded", () => {
   const w = (agent, rel) => allowed(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, rel) }));
-  assert.equal(w("clarification-writer", "artifacts/acme/modules/contacts/clarifications.csv"), true);
+  assert.equal(w("clarification-writer", "artifacts/acme/modules/contacts/clarifications.csv"), false, "the CSV is script-only");
+  assert.equal(w("clarification-writer", "artifacts/acme/modules/contacts/clarifications-summary.md"), true);
   assert.equal(w("clarification-explorer", "artifacts/acme/modules/contacts/clarifications.csv"), false, "explorer writes evidence only");
   assert.equal(w("clarification-explorer", "artifacts/acme/modules/contacts/clarification-evidence/contacts-1/notes.md"), true);
   assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/pages/contacts.page.ts"), true);

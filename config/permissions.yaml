@@ -63,7 +63,7 @@ profiles:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/run.mjs *", "node scripts/ledger.mjs list *", "node scripts/run-config.mjs *"]
+    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/run.mjs status *", "node scripts/ledger.mjs list *"]
   code_writer:            # writes generated test code only, no product access
     live_target: { browser: none, http: none, load: none }
     web_research: none
@@ -90,9 +90,11 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/run.mjs *", "node scripts/run-config.mjs *", "node scripts/ledger.mjs list *", "node scripts/knowledge.mjs plan *"]
+    shell_allow: ["node scripts/run.mjs *", "node scripts/run-config.mjs *", "node scripts/ledger.mjs list *",
+                  "node scripts/knowledge.mjs plan *", "node scripts/clarifications.mjs status *"]
+    extra_tools: [AskUserQuestion]   # runs as the main session (claude --agent orchestrator-agent), so it can ask the human
     filesystem:
-      read: ["${product_dir}/**", "config/**"]
+      read: ["${product_dir}/**", "config/**", ".mcp.json"]
       write: ["${state}/notes.md"]
 
   # ======================= Product level (spawned by the main orchestrator) ================================
@@ -115,10 +117,13 @@ agents:
     spawns: []
     live_target: { browser: mutate, http: none, load: none }   # mutate (ledger-scoped; capped to read in readonly runs)
     web_research: none
-    shell: none
+    shell: restricted
+    shell_allow: ["node scripts/clarifications.mjs append *", "node scripts/clarifications.mjs list *",
+                  "node scripts/clarifications.mjs record *", "node scripts/ledger.mjs add *",
+                  "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
     filesystem:
-      read: ["${knowledge}/**", "${modules}/**"]
-      write: ["${modules}/explore/**", "${modules}/clarifications.csv"]
+      read: ["${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
+      write: ["${modules}/explore/**"]   # incl. explore/new-questions.json handed to clarifications.mjs append
     # Appends only NEW rows (new ID, Module, Question, Steps, empty Answer/notes, Run ID = this run); never edits
     # existing rows -- EXCEPT where the incoming requirement changes a behavior already recorded (then the row's
     # Answer/notes are updated, Run ID kept as the creating run). CSV writes go through a script (ids, dedupe, lock).
@@ -128,6 +133,7 @@ agents:
     layer: 1
     profile: orchestrator
     spawns: [question-writer, clarification-explorer, clarification-writer]
+    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs status *"]
     filesystem:
       read: ["${modules}/**"]
       write: ["${state}/orchestration/clarifications-${module}.json"]
@@ -136,16 +142,22 @@ agents:
     layer: 2
     live_target: { browser: none, http: none, load: none }
     web_research: none
-    shell: none
+    shell: restricted
+    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs set-steps *"]
     filesystem:
       read: ["${knowledge}/**", "${modules}/**"]
-      write: ["${modules}/clarifications.csv"]   # rewrites Question + Steps of rows still unanswered
+      write: []                     # rewrites Question + Steps of unanswered rows via clarifications.mjs set-steps
+    # The CSV is written ONLY through scripts/clarifications.mjs (ids, de-dup, locking, human-answer protection),
+    # so no agent has Write access to clarifications.csv itself.
+
 
   clarification-explorer:       # one invocation per CSV row, executes the Steps and observes behavior
     layer: 2
     live_target: { browser: mutate, http: none, load: none }   # mutate (ledger-scoped); capped to read in readonly runs
     web_research: none
-    shell: none
+    shell: restricted
+    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/ledger.mjs add *",
+                  "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
     filesystem:
       read: ["${modules}/**", "${knowledge}/**"]
       write: ["${modules}/clarification-evidence/**"]   # observation notes + screenshots, one folder per row ID
@@ -155,10 +167,12 @@ agents:
     layer: 2
     live_target: { browser: none, http: none, load: none }
     web_research: none
-    shell: none
+    shell: restricted
+    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs record *",
+                  "node scripts/clarifications.mjs status *"]
     filesystem:
       read: ["${modules}/**"]
-      write: ["${modules}/clarifications.csv", "${modules}/clarifications-summary.md"]
+      write: ["${modules}/clarifications-summary.md"]   # Answer/notes go through clarifications.mjs record
     # Fills Answer / "Clarification agent notes"; never overwrites a non-empty Answer cell (a human may have written
     # it) unless the incoming requirement changes the behavior; Run ID (creating run) is never changed.
 
@@ -324,11 +338,11 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: none
-    filesystem: { read: ["${modules}/**", "${knowledge}/**"], write: ["${modules}/k6/workload.json"] }
+    filesystem: { read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/playwright-api/**"], write: ["${modules}/k6/workload.json"] }
   k6-lib-writer:
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${k6_project}/lib/**"] }
+    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${k6_project}/lib/**", "${k6_project}/README.md"] }
   k6-script-writer:
     layer: 2
     profile: code_writer
@@ -368,4 +382,10 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: project
-    filesystem: { read: ["feedback/**", "claude-agents/**", "docs/**", "scripts/**", "config/**"], write: ["claude-agents/**", "docs/**", "scripts/**", "feedback/**"] }
+    filesystem:
+      read: ["feedback/**", ".claude/agents/**", "docs/**", "scripts/**", "config/**"]
+      write: [".claude/agents/*.md", "docs/**", "feedback/**", "scripts/*.mjs",
+              "scripts/lib/contract.mjs", "scripts/lib/clarifications.mjs", "scripts/lib/knowledge.mjs",
+              "scripts/lib/testcases.mjs", "scripts/lib/csv.mjs"]
+    # Never the safety code (scripts/lib/{guard,permissions,ledger}.mjs), config/permissions.yaml, config/models.yaml,
+    # .claude/settings.json or .claude/hooks: safety, permissions and models are human-only decisions.
