@@ -32,6 +32,10 @@ export function readRows(file) {
   });
 }
 
+export function ensureCsv(file) {
+  if (!existsSync(file)) writeAtomic(file, serializeCsv([HEADERS]));
+}
+
 const write = (file, rows) => writeAtomic(file, serializeCsv([HEADERS, ...rows.map((r) => KEYS.map((k) => r[k] ?? ""))]));
 
 function nextNumber(rows, module) {

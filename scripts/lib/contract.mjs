@@ -45,8 +45,6 @@ export function paths(product, root = repoRoot) {
 }
 
 // outputs: paths relative to the repo root. Tokens: {product} {m} (module) {run} (run id).
-// PROVISIONAL outputs are placeholders until that domain is designed in detail; they are confirmed or changed
-// when the domain is implemented.
 export const STAGES = {
   // Product pass: product-wide overview/glossary from the run-config's references and requirement docs.
   knowledge: {
@@ -96,7 +94,7 @@ export const STAGES = {
     scope: "module",
     orchestrator: "testcase-orchestrator",
     needs: ["clarifications"],
-    outputs: [{ path: "artifacts/{product}/modules/{m}/testcases/testcases-summary.md", provisional: true }],
+    outputs: [{ path: "artifacts/{product}/modules/{m}/testcases/testcases-summary.md", check: "testcases" }],
   },
   "playwright-repo": {
     scope: "product",
@@ -108,25 +106,25 @@ export const STAGES = {
     scope: "module",
     orchestrator: "playwright-ui-orchestrator",
     needs: ["testcases", "playwright-repo"],
-    outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-ui/results.json", provisional: true }],
+    outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-ui/results.json", schema: "results" }],
   },
   "playwright-api": {
     scope: "module",
     orchestrator: "playwright-api-orchestrator",
     needs: ["testcases", "playwright-repo"],
-    outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-api/results.json", provisional: true }],
+    outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-api/results.json", schema: "results" }],
   },
   k6: {
     scope: "module",
     orchestrator: "k6-orchestrator",
     needs: ["playwright-api"],
-    outputs: [{ path: "artifacts/{product}/results/{run}/{m}/k6/results.json", provisional: true }],
+    outputs: [{ path: "artifacts/{product}/results/{run}/{m}/k6/results.json", schema: "results" }],
   },
   report: {
     scope: "product",
     orchestrator: "report-generator",
     needs: ["*"], // every other stage complete or failed
-    outputs: [{ path: "artifacts/{product}/results/{run}/report/index.html", provisional: true }],
+    outputs: [{ path: "artifacts/{product}/results/{run}/report/report.json" }, { path: "artifacts/{product}/results/{run}/report/index.html" }],
   },
 };
 
@@ -169,6 +167,7 @@ const knowledgeLib = async (ctx) => {
 };
 const CHECKS = {
   clarifications: async (file, ctx) => (await import("./clarifications.mjs")).checkComplete(file, ctx),
+  testcases: async (file, ctx) => (await import("./testcases.mjs")).checkTestcases(file, ctx),
   "knowledge-product": async (_file, ctx) => {
     const { k, kp } = await knowledgeLib(ctx);
     return k.checkProduct(kp);

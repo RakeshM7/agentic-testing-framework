@@ -20,6 +20,7 @@ import yaml from "js-yaml";
 import { validateRunConfig } from "./run-config.mjs";
 import { LAYOUT_VERSION, SLUG_RE, STAGES, loadJson, paths, repoRoot, stageKey, validateData, validateFile, verifyOutputs } from "./lib/contract.mjs";
 import { read as readLedger } from "./lib/ledger.mjs";
+import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
 
 const now = () => new Date().toISOString();
@@ -70,7 +71,10 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot } =
   writeJson(p.configFile, cfg);
   writeJson(p.permissionsFile, perms.resolved);
   mkdirSync(p.results(id), { recursive: true });
-  for (const m of run.modules) mkdirSync(p.module(m), { recursive: true });
+  for (const m of run.modules) {
+    mkdirSync(p.module(m), { recursive: true });
+    ensureCsv(csvPath(p.productDir, m)); // header-only file, so a module with no open questions still has its CSV
+  }
   return { product: cfg.product, run };
 }
 
@@ -79,7 +83,7 @@ function ctxFor(product, root) {
   if (!existsSync(p.runFile)) throw new Error(`no run state for product '${product}' (run.mjs init first)`);
   const run = loadJson(p.runFile);
   const cfg = existsSync(p.configFile) ? loadJson(p.configFile) : {};
-  return { p, run, root, product, runId: run.runId, active: existsSync(p.lockFile), clarificationsPolicy: cfg.clarifications?.unresolved_policy ?? "stop" };
+  return { p, run, root, product, runId: run.runId, active: existsSync(p.lockFile), clarificationsPolicy: cfg.clarifications?.unresolved_policy ?? "stop", testcasesFormat: cfg.testcases?.output_format ?? "gherkin" };
 }
 
 const scopesFor = (run, stage) => (STAGES[stage].scope === "product" ? [null] : run.modules);
@@ -91,24 +95,38 @@ export async function status(product, { root = repoRoot } = {}) {
     for (const module of scopesFor(ctx.run, stage)) {
       const rec = ctx.run.stages[stageKey(stage, module)] ?? { status: "pending" };
       const problems = rec.status === "done" ? await verifyOutputs(ctx, stage, module) : [];
-      rows.push({ stage, module, orchestrator: STAGES[stage].orchestrator, status: rec.status, complete: rec.status === "done" && !problems.length, problems, error: rec.error });
+      const attempts = rec.attempts ?? 0;
+      rows.push({
+        stage, module, orchestrator: STAGES[stage].orchestrator, status: rec.status, attempts,
+        complete: rec.status === "done" && !problems.length,
+        exhausted: rec.status === "failed" && attempts >= MAX_ATTEMPTS,
+        problems, error: rec.error,
+      });
     }
+  // A stage is blocked when something it depends on is exhausted (failed MAX_ATTEMPTS times) or itself blocked.
+  // STAGES is declared in dependency order, so one pass suffices.
+  const depRows = (row, dep) => rows.filter((r) => r.stage === dep && (STAGES[dep].scope === "product" || r.module === row.module));
+  for (const row of rows) {
+    const needs = STAGES[row.stage].needs.filter((d) => d !== "*");
+    row.blocked = !row.complete && needs.some((d) => depRows(row, d).some((r) => r.exhausted || r.blocked));
+  }
   return { product, runId: ctx.runId, active: ctx.active, mode: ctx.run.mode, modules: ctx.run.modules, stages: rows };
 }
+
+export const MAX_ATTEMPTS = 2;
 
 export async function next(product, { root = repoRoot } = {}) {
   const st = await status(product, { root });
   if (!st.active) return [];
   const complete = (stage, module) =>
     st.stages.filter((r) => r.stage === stage && (STAGES[stage].scope === "product" || r.module === module)).every((r) => r.complete);
+  const settled = (r) => r.complete || r.exhausted || r.blocked;
   const ready = [];
   for (const row of st.stages) {
-    if (row.complete || row.status === "running") continue;
+    if (settled(row) || row.status === "running") continue;
     const needs = STAGES[row.stage].needs;
-    const ok = needs.includes("*")
-      ? st.stages.every((r) => r.stage === row.stage || r.complete || r.status === "failed")
-      : needs.every((dep) => complete(dep, row.module));
-    if (ok) ready.push({ stage: row.stage, module: row.module, orchestrator: row.orchestrator, retry: row.status !== "pending" });
+    const ok = needs.includes("*") ? st.stages.every((r) => r.stage === row.stage || settled(r)) : needs.every((dep) => complete(dep, row.module));
+    if (ok) ready.push({ stage: row.stage, module: row.module, orchestrator: row.orchestrator, attempt: row.attempts + 1, retry: row.status !== "pending" });
   }
   return ready;
 }
@@ -120,7 +138,10 @@ export async function setStage(product, stage, module, action, error, { root = r
   if (STAGES[stage].scope === "module" && !ctx.run.modules.includes(module)) return { errors: [`--module must be one of [${ctx.run.modules.join(", ")}]`] };
   const key = stageKey(stage, module);
   const prev = ctx.run.stages[key] ?? {};
-  if (action === "start") ctx.run.stages[key] = { status: "running", startedAt: now() };
+  if (action === "start") {
+    if (prev.status === "failed" && (prev.attempts ?? 0) >= MAX_ATTEMPTS) return { errors: [`${key} already failed ${MAX_ATTEMPTS} times this run`] };
+    ctx.run.stages[key] = { status: "running", startedAt: now(), attempts: (prev.attempts ?? 0) + 1 };
+  }
   else if (action === "fail") ctx.run.stages[key] = { ...prev, status: "failed", finishedAt: now(), error: error ?? "unspecified" };
   else if (action === "done") {
     const problems = await verifyOutputs(ctx, stage, module);

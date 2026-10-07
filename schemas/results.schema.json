@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "results.schema.json",
+  "title": "Normalized execution results (artifacts/<product>/results/<run-id>/<module>/<framework>/results.json) -- written only by scripts/results.mjs",
+  "type": "object",
+  "required": ["framework", "module", "runId", "mode", "recordedAt", "status", "totals", "durationMs", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "framework": { "enum": ["playwright-ui", "playwright-api", "k6"] },
+    "module": { "type": "string" },
+    "runId": { "type": "string" },
+    "mode": { "enum": ["readonly", "full-run"] },
+    "recordedAt": { "type": "string" },
+    "status": { "enum": ["ran", "not-run"] },
+    "reason": { "type": "string" },
+    "totals": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "flaky", "skipped"],
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "flaky": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "durationMs": { "type": "number", "minimum": 0 },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "status"],
+        "properties": {
+          "title": { "type": "string" },
+          "file": { "type": "string" },
+          "status": { "enum": ["passed", "failed", "flaky", "skipped"] },
+          "durationMs": { "type": "number" },
+          "error": { "type": "string" }
+        }
+      }
+    }
+  }
+}

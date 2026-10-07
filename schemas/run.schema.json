@@ -24,6 +24,7 @@
         "additionalProperties": false,
         "properties": {
           "status": { "enum": ["pending", "running", "done", "failed"] },
+          "attempts": { "type": "integer", "minimum": 0 },
           "startedAt": { "type": "string" },
           "finishedAt": { "type": "string" },
           "error": { "type": "string" }
