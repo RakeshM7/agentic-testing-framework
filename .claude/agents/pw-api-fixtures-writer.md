@@ -2,7 +2,7 @@
 name: pw-api-fixtures-writer
 description: "Writes the API Playwright fixtures (fixtures/api/): the extended test object with API clients, the non-GET mutation guard, and the API auth setup. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: green
 ---
 

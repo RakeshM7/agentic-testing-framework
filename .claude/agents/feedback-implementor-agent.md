@@ -2,7 +2,7 @@
 name: feedback-implementor-agent
 description: "Improves the framework itself (agent prompts in .claude/agents, docs, scripts) from feedback FILE PATHS under feedback/<source>/*.md, verifies each change, and appends a Resolution section to the same file. Not part of a product run; never edits generated test code or safety configuration."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: yellow
 ---
 

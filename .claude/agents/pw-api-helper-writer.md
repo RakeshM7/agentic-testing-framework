@@ -2,7 +2,7 @@
 name: pw-api-helper-writer
 description: "Writes pure API helper functions (payload builders, schema validators, response parsers) under helpers/api/ for a module's API tests. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: green
 ---
 

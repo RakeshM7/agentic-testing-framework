@@ -9,6 +9,6 @@
 # default until it is.
 
 default:
-  claude: sonnet
+  claude: claude-opus-5-5
 
 agents: {}

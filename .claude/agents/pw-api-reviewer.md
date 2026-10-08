@@ -2,7 +2,7 @@
 name: pw-api-reviewer
 description: "Reviews a module's API Playwright code (clients, fixtures, helpers, specs) against the conventions and the API plan, and writes review-findings.md with a verdict. Never edits code. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: cyan
 ---
 

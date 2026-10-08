@@ -2,7 +2,7 @@
 name: pw-api-scaffolder
 description: "Adds the API-specific scaffolding to the product's Playwright repo (config/api/ settings and the tests/api/<module>/ folder), researching API-testing practices when needed. Never touches shared repo files. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch
-model: sonnet
+model: claude-opus-5-5
 color: green
 ---
 

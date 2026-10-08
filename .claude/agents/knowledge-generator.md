@@ -4,7 +4,7 @@ description: "Builds the cited knowledge base for a product under test from the 
 tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_hover, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_wait_for, mcp__playwright__browser_tabs, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests
 mcpServers:
   - playwright
-model: sonnet
+model: claude-opus-5-5
 color: green
 ---
 

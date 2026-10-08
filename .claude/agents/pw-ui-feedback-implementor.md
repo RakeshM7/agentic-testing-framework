@@ -2,7 +2,7 @@
 name: pw-ui-feedback-implementor
 description: "Applies the UI reviewer's findings (review-findings.md) to the module's UI Playwright code, within the UI-owned folders only. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: cyan
 ---
 

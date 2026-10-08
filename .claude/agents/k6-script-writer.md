@@ -2,7 +2,7 @@
 name: k6-script-writer
 description: "Writes one k6 script per workload scenario of a module (k6-tests/<product>/scripts/<module>-<scenario>.js) using the shared lib, with options and thresholds exactly from workload.json. Invoked by k6-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: yellow
 ---
 

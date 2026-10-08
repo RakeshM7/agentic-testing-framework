@@ -1,0 +1,112 @@
+# Agentic Testing Framework -- run configuration (layout v2)
+#
+# Copy this file (e.g. to config/<product>.yaml), fill it in, then:
+#   node scripts/run.mjs init config/<product>.yaml
+# Validate without starting a run:  node scripts/run-config.mjs validate config/<product>.yaml
+#
+# Never put secret VALUES in this file -- only paths to files a human prepared.
+
+# Product slug: the folder name under artifacts/, playwright-tests/ and k6-tests/. All knowledge, clarifications
+# and run state for this product accumulate under artifacts/<product>/ across runs.
+product: freshsales-crm
+
+target:
+  url: https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales
+
+# Optional: the feature / requirement driving this run. An incoming requirement that changes a behavior already
+# recorded in clarifications.csv is the ONLY reason an answered row gets updated.
+feature:
+  description: >
+    Freshsales is an intuitive, AI-powered sales CRM designed primarily for small-to-midsized businesses (SMBs) and mid-market teams. Its primary value proposition lies in combining powerful sales automation, native multi-channel communication, and predictive AI into a single, user-friendly platform.
+
+    Instead of forcing revenue teams to toggle between disconnected tools, Freshsales unifies customer data, streamlines lead management, and leverages Freddy AI to eliminate administrative burden, predict win probabilities, and drive revenue growth.
+
+    Key Strengths Across Strategic Pillars
+    360° Customer Context: Consolidates contacts, communication histories, and activity timelines into a single view, ensuring sales reps never lack context before a call or meeting.
+
+    Streamlined Pipeline & Automation: Visual Kanban boards combined with automated lead routing, follow-up sequences, and trigger-based workflows reduce manual entry and shorten sales cycles.
+
+    Built-in Multi-Channel Communication: Native phone, email, SMS, and chat allow reps to reach prospects directly inside the CRM without third-party integrations or context switching.
+
+    Freddy AI Capabilities: Delivers predictive contact scoring, deal health insights, next-best-action recommendations, and automated forecasting—helping teams focus effort on high-intent deals.
+
+    Flexible Packaging & Ecosystem: Scales from a free tier up to Enterprise plans, seamlessly bridging with the broader Freshworks ecosystem (Freshdesk, Freshmarketer, Freshchat) and standard business tools (Google Workspace, Microsoft 365, Zapier, QuickBooks).
+  
+  requirement_docs: []          # paths or URLs to requirement documents / mockups
+
+# Product-wide sources for the knowledge-generator (vendor docs, knowledge bases, help centers, internal docs).
+# Knowledge is reused across runs unless these, the requirement docs (incl. local file content), a module's own
+# entry below, or its `references` change.
+knowledge:
+  references:
+    # Freshsales Knowledge Base -- core
+    - https://support.freshsales.io/support/home
+    - https://support.freshsales.io/support/solutions
+    - https://support.freshsales.io/support/solutions/161406            # FAQs
+    - https://developers.freshworks.com/crm/api/                         # developer API
+    # Solution folders
+    - https://support.freshsales.io/support/solutions/160486             # Getting Started & Onboarding
+    - https://support.freshsales.io/support/solutions/folders/50000000033  # Deals & Pipeline Management
+    - https://support.freshsales.io/support/solutions/folders/50000000034  # Email Management & Campaigns
+    - https://support.freshsales.io/support/solutions/folders/50000000035  # Phone & Built-in Telephony
+    - https://support.freshsales.io/support/solutions/folders/50000000036  # Workflows & Sales Sequences
+    - https://support.freshsales.io/support/solutions/folders/50000000037  # Freddy AI Features
+    - https://support.freshsales.io/support/solutions/folders/50000000038  # Analytics, Dashboards & Reports
+    - https://support.freshsales.io/support/solutions/folders/50000000039  # Integrations & Marketplace
+
+# Modules to explore, in this order. Required: the knowledge-generator does not decide modules.
+modules:
+  - slug: contacts
+    name: Contacts
+    entry_url: https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts
+    nav_path: [Contacts]
+    references:
+      - https://support.freshsales.io/support/solutions/folders/50000000032  # Leads, Contacts & Accounts
+  - slug: accounts
+    name: Accounts
+    entry_url: https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/accounts
+    nav_path: [Accounts]
+    references:
+      - https://support.freshsales.io/support/solutions/folders/50000000032  # Leads, Contacts & Accounts
+  - slug: deals
+    name: Deals
+    entry_url: https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals
+    nav_path: [Deals]
+    references:
+      - https://support.freshsales.io/support/solutions/folders/50000000033  # Deals & Pipeline Management
+
+authorizations:
+  mode: full-run                # readonly (default) | full-run
+                                # readonly = EVERY agent is capped at read-only, whatever config/permissions.yaml says.
+                                # full-run = config/permissions.yaml applies as written. Set it only for a target you
+                                #            own or are explicitly authorized to test. Even then, deletes are limited to
+                                #            entities the current run created (artifacts/<product>/state/ledger.jsonl).
+  authenticated_crawl: true    # true = browser agents start from session_state_file below
+  credentials_file: null        # e.g. playwright-tests/<product>/.env -- a FILE PATH, never inline values
+  session_state_file: playwright-tests/freshsales-crm/.auth/state.json      # e.g. playwright-tests/<product>/.auth/state.json -- Playwright storageState a human
+                                # produced by logging in (incl. any CAPTCHA/MFA) once, out-of-band
+
+permissions_file: config/permissions.yaml   # per-agent ceilings; frozen into state/ at `run.mjs init`
+
+testcases:
+  output_format: gherkin        # markdown-table | gherkin | csv | testrail
+
+clarifications:
+  unresolved_policy: stop       # stop             = the clarifications stage is not complete until every row has an
+                                #                    Answer (a human fills the Answer column, then re-invoke)
+                                # continue-flagged = unanswered rows (with agent notes) are allowed; downstream
+                                #                    agents treat them as flagged assumptions
+
+limits:
+  review_rounds: 3              # reviewer -> feedback-implementor loops per domain
+  heal_rounds: 3                # runner-triager -> healer loops per domain
+
+concurrency:
+  modules: 1                    # modules explored/processed in parallel (1 = sequential, one browser)
+  clarification_rows: 1         # clarification rows executed in parallel
+
+feedback_loop:
+  auto_invoke_implementor: false
+
+git:
+  auto_commit: false

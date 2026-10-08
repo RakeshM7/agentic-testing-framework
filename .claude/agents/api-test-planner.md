@@ -2,7 +2,7 @@
 name: api-test-planner
 description: "Turns a module's endpoint catalogue and test cases into an API test plan (plan.json + api-test-plan.md): functional, negative, boundary, auth, schema and contract scenarios with traceability. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit
-model: sonnet
+model: claude-opus-5-5
 color: green
 ---
 

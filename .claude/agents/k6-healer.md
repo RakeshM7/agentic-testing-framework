@@ -2,7 +2,7 @@
 name: k6-healer
 description: "Fixes k6 scripts the triager classified as healable (test-bug, flaky, data) in triage.md. Never runs load against the product and never loosens thresholds or changes load to hide product problems. Invoked by k6-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: red
 ---
 

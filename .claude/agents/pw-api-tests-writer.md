@@ -2,7 +2,7 @@
 name: pw-api-tests-writer
 description: "Implements a module's API test plan as Playwright API specs (tests/api/<module>/) using the clients, fixtures and helpers, one test per plan scenario. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: green
 ---
 

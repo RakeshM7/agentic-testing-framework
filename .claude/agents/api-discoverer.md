@@ -2,7 +2,7 @@
 name: api-discoverer
 description: "Builds a module's endpoint catalogue (discovered-endpoints.json) from OpenAPI/Swagger, vendor API docs and the module explorer's network inventory, probing only with GET. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, WebFetch, WebSearch
-model: sonnet
+model: claude-opus-5-5
 color: green
 ---
 

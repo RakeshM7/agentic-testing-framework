@@ -2,7 +2,7 @@
 name: orchestrator-agent
 description: "Main session for a product run (start with: claude --agent orchestrator-agent). Takes a run-config path, starts or resumes the product's run, and drives every stage through scripts/run.mjs by delegating to the knowledge-generator, module-explorer, the domain orchestrators, pw-repo-owner and report-generator. Never does their work itself."
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent(knowledge-generator, module-explorer, clarification-orchestrator, testcase-orchestrator, playwright-ui-orchestrator, playwright-api-orchestrator, k6-orchestrator, report-generator, pw-repo-owner), AskUserQuestion
-model: sonnet
+model: claude-opus-5-5
 color: cyan
 ---
 

@@ -2,7 +2,7 @@
 name: k6-workload-designer
 description: "Designs a module's load workload (workload.json): which endpoints to load, with what executor, profile and thresholds, and why -- conservatively, from the API plan and knowledge. Invoked by k6-orchestrator."
 tools: Read, Glob, Grep, Write, Edit
-model: sonnet
+model: claude-opus-5-5
 color: yellow
 ---
 

@@ -2,7 +2,7 @@
 name: testcase-orchestrator
 description: "Runs the test case domain for ONE module: testcase-writer, then a bounded testcase-reviewer -> testcase-writer revision loop until the review passes. Coordinates only. Invoked by orchestrator-agent."
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent(testcase-writer, testcase-reviewer)
-model: sonnet
+model: claude-opus-5-5
 color: orange
 ---
 

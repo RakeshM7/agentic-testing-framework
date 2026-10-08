@@ -5,7 +5,9 @@
       "args": [
         "-y",
         "@playwright/mcp@0.0.83",
-        "--isolated"
+        "--isolated",
+        "--storage-state",
+        "playwright-tests/freshsales-crm/.auth/state.json"
       ]
     }
   }

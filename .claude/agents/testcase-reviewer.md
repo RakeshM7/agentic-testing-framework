@@ -2,7 +2,7 @@
 name: testcase-reviewer
 description: "Reviews a module's test cases against clarifications, exploration flows and the hand-off format, and writes review-findings.md with a pass/changes-required verdict. Never edits the test cases. Invoked by testcase-orchestrator."
 tools: Read, Glob, Grep, Write, Edit
-model: sonnet
+model: claude-opus-5-5
 color: orange
 ---
 

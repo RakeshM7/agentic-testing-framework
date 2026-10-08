@@ -2,7 +2,7 @@
 name: pw-api-client-writer
 description: "Writes typed API client classes (clients/<module>/) for a module's endpoints -- the API counterpart of page objects. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: green
 ---
 

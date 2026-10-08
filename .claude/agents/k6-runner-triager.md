@@ -2,7 +2,7 @@
 name: k6-runner-triager
 description: "Runs a module's k6 scripts against the product (full-run only), records normalized results via scripts/results.mjs, registers leftover entities in the ledger, and classifies failures in triage.md. Never edits scripts. Invoked by k6-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: red
 ---
 

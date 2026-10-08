@@ -2,7 +2,7 @@
 name: pw-ui-helper-writer
 description: "Writes pure UI helper functions (test-data builders, formatters, parsers) under helpers/ui/ for a module's UI tests. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: blue
 ---
 

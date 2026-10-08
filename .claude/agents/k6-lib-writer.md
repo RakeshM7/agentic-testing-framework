@@ -2,7 +2,7 @@
 name: k6-lib-writer
 description: "Writes the shared k6 library for the product (k6-tests/<product>/lib/: host allow-list config, auth, checks, data, handleSummary) and its README. Invoked by k6-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: yellow
 ---
 

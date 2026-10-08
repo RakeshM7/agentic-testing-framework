@@ -2,7 +2,7 @@
 name: pw-ui-tests-writer
 description: "Implements a module's UI test cases as Playwright specs (tests/ui/<module>/) using the page objects, fixtures and helpers, one test per test case id. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: blue
 ---
 

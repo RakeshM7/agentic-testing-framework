@@ -2,7 +2,7 @@
 name: clarification-orchestrator
 description: "Runs the clarification domain for ONE module: question-writer, then one clarification-explorer per open CSV row, then clarification-writer. Coordinates only; all hand-offs are files. Invoked by orchestrator-agent."
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent(question-writer, clarification-explorer, clarification-writer)
-model: sonnet
+model: claude-opus-5-5
 color: purple
 ---
 

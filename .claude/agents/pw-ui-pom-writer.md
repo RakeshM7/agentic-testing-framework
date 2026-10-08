@@ -2,7 +2,7 @@
 name: pw-ui-pom-writer
 description: "Writes Playwright page objects (pages/<module>/) for a module's screens, with locators grounded verbatim in the exploration DOM snapshots. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
+model: claude-opus-5-5
 color: blue
 ---
 
