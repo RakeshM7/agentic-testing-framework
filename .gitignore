@@ -21,3 +21,14 @@ artifacts/**/console-log.txt
 
 # Parallel full-product tracks: per-run lock dir (live k6 serialization)
 artifacts/**/.locks/
+
+# Playwright MCP session captures (page snapshots / console logs) -- local debug only
+.playwright-mcp/
+
+# Transient Playwright run output: per-track result dirs and the repo-root default
+playwright-tests/test-results/
+playwright-tests/*/test-results-*/
+
+# Throwaway locator/DOM probe scripts and scratch dumps written while authoring specs
+playwright-tests/*/scratch/
+playwright-tests/*/pages/**/probes/
