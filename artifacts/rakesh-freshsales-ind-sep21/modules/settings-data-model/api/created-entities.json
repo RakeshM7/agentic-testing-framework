@@ -1,0 +1,162 @@
+[
+  {
+    "id": 402004911076,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-dup-8480179786",
+    "createdAt": "2026-10-06T11:06:41.981Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911077,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-tag-8480213417",
+    "createdAt": "2026-10-06T11:06:42.375Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911078,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API6",
+    "createdAt": "2026-10-06T11:06:42.624Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911079,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-priv-8480288625",
+    "createdAt": "2026-10-06T11:06:43.032Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911080,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-cnt-8480339615",
+    "createdAt": "2026-10-06T11:06:43.508Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911081,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-dup-848130466",
+    "createdAt": "2026-10-06T11:06:53.284Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911082,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-tag-8481332218",
+    "createdAt": "2026-10-06T11:06:53.596Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911083,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API8",
+    "createdAt": "2026-10-06T11:06:54.202Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911084,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-priv-8481412354",
+    "createdAt": "2026-10-06T11:06:54.282Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911085,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-cnt-8481463350",
+    "createdAt": "2026-10-06T11:06:54.770Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911086,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-dup-8481826087",
+    "createdAt": "2026-10-06T11:06:58.425Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911087,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-tag-8481859069",
+    "createdAt": "2026-10-06T11:06:58.734Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911088,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API9",
+    "createdAt": "2026-10-06T11:06:58.952Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911089,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-priv-8481909288",
+    "createdAt": "2026-10-06T11:06:59.277Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911090,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-cnt-8481961780",
+    "createdAt": "2026-10-06T11:06:59.754Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911092,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-tag-8494449766",
+    "createdAt": "2026-10-06T11:09:04.711Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911093,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-priv-8494537245",
+    "createdAt": "2026-10-06T11:09:05.503Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911094,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-cnt-8494579319",
+    "createdAt": "2026-10-06T11:09:05.921Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911095,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API-dup-849466871",
+    "createdAt": "2026-10-06T11:09:06.796Z",
+    "deleted": true
+  },
+  {
+    "id": 402004911096,
+    "resource": "tag",
+    "endpoint": "/crm/sales/settings/tags",
+    "name": "ZZ-API9",
+    "createdAt": "2026-10-06T11:09:07.369Z",
+    "deleted": true
+  }
+]

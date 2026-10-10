@@ -144,3 +144,7 @@ GET-only ramp (0 to 5 VUs, 70s) over Accounts views/list/detail. Inspect-only va
 ## Sales Sequences track (`rakesh-freshsales-ind-sep21`)
 
 `scripts/sales-sequences-sales-sequences-load-test.js`: read-only `GET /crm/sales/sales_sequences`, ramp 0->3 VUs (20s), hold 40s, down 10s; p95<1500ms, failures <1%. Statically validated only (`k6 inspect -e BASE_URL=... -e K6_ALLOWED_HOSTS=...`). The live load run was blocked by the repo guard hook (AUTHORIZATIONS_MODE was not full-run in the shell), so no live result exists.
+
+## Settings & Data Model track (`rakesh-freshsales-ind-sep21`)
+
+`scripts/settings-data-model-config-load-test.js`: read-only GET of settings fields/forms/lifecycle stages/tags/pipelines, ramp 0->3 VUs (20s), hold 40s, down 10s; p95<1500ms, failures <1%. Statically validated only (`k6 inspect`). The live run was blocked by the repo guard hook (AUTHORIZATIONS_MODE not full-run in the shell); hook not overridden; no result file.

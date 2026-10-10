@@ -1,0 +1,23 @@
+{
+  "base": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales",
+  "discovery": "live probe 2026-10-06 with session state (network-requests.json were placeholders)",
+  "endpoints": [
+    {"method":"GET","path":"/settings/contacts/fields","response":"{fields:[{id,label,name,type,default,choices[],required,visible,...}]} (66 fields)","query":["include=field_group"]},
+    {"method":"GET","path":"/settings/sales_accounts/fields","response":"{fields:[...]}","query":["include=field_group"]},
+    {"method":"GET","path":"/settings/deals/fields","response":"{fields:[...]}"},
+    {"method":"GET","path":"/settings/contacts/field_groups","response":"{field_groups:[{id,name,model,fields[]}]}"},
+    {"method":"GET","path":"/settings/contacts/forms","response":"{forms:[{id,name,active,form_class,fields[],...}],meta}"},
+    {"method":"GET","path":"/settings/contacts/forms/:id","response":"{form:{...}}"},
+    {"method":"GET","path":"/settings/sales_accounts/forms","response":"{forms:[...]}"},
+    {"method":"GET","path":"/settings/lifecycle_stages","response":"{lifecycle_stages[],auto_update_settings[],contact_statuses[]}"},
+    {"method":"GET","path":"/settings/tags","response":"{tags:[{id,name,is_public,is_system_tag,color_code?,created_at}],meta:{total}}","query":["page","per_page"]},
+    {"method":"POST","path":"/settings/tags","request":"{tag:{name,is_public,color_code}}","response":"{tag:{...}}","auth":"session + X-CSRF-Token","mutating":true},
+    {"method":"PUT","path":"/settings/tags/:id","request":"{tag:{name}}","response":"200 but name NOT changed in probe","mutating":true,"tested":false},
+    {"method":"DELETE","path":"/settings/tags/:id","response":"{tag:{...}}","mutating":true},
+    {"method":"GET","path":"/settings/deal_pipelines","response":"{deal_pipelines:[{id,name,is_default,rotting_days,configs[]}]}"},
+    {"method":"GET","path":"/settings/web_forms","response":"{web_forms:[]}"},
+    {"method":"GET","path":"/settings/territories","response":"{territories[],meta}"},
+    {"method":"GET","path":"/settings/currencies","response":"{currencies[]}"}
+  ],
+  "not_found_probed": ["POST /settings/contacts/fields (404)", "/lifecycle_stages", "/tags", "/settings/contact_statuses", "/settings/scoring", "/settings/custom_modules"]
+}
