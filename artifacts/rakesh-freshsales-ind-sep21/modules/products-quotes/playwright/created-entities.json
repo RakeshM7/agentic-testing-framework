@@ -41,5 +41,2487 @@
     "url": "",
     "note": "TC-012 valid template",
     "deletedAt": "2026-10-06T05:03:30.772Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:40:48.483Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221161922",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221161922",
+    "note": "ZZ Contact 91283208 (quote prerequisite) [cleanup failed: page.goto: Test ended.]",
+    "deletedAt": "2026-10-06T10:43:35.181Z"
+  },
+  {
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91283208",
+    "url": "",
+    "createdAt": "2026-10-06T10:40:55Z",
+    "deleted": true,
+    "note": "by-name; earlier cleanup could not locate it (re-registered) [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed]",
+    "deletedAt": "2026-10-06T10:51:05.795Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:46:14.454Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221162290",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221162290",
+    "note": "ZZ Contact 91283524 (quote prerequisite)",
+    "deletedAt": "2026-10-06T10:47:20.874Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:46:24.318Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91283524",
+    "url": "",
+    "note": "by-name; earlier cleanup could not locate it (re-registered) [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed]",
+    "deletedAt": "2026-10-06T10:51:16.539Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:52:21.214Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221162702",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221162702",
+    "note": "ZZ Contact 91283896 (quote prerequisite)",
+    "deletedAt": "2026-10-06T10:53:11.811Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:52:26.125Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91283896",
+    "url": "",
+    "note": "ZZ Test Deal 91283896 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T10:53:06.896Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:54:01.175Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221162825",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221162825",
+    "note": "ZZ Contact 91284001 (quote prerequisite) [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T11:13:14.042Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:54:08.320Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91284001",
+    "url": "",
+    "note": "ZZ Test Deal 91284001 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T10:54:14.387Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:54:14.387Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483478",
+    "url": "/crm/sales/deals/402012483478",
+    "note": "ZZ Test Deal 91284001 (quote prerequisite) [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T11:13:08.620Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:54:19.007Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91284001",
+    "url": "",
+    "note": "quote line-item product [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T11:12:59.733Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:54:38.422Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154518",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154518?dealId=402012483478",
+    "note": "ZZ Test Quote 91284001 (TC quote) [cleanup failed: locator.click: Test ended.] [cleanup failed: locator.click: Test ended.] [cleanup failed: locator.click: Test ended.]",
+    "deletedAt": "2026-10-06T11:12:52.000Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:59:19.917Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221163186",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221163186",
+    "note": "ZZ Contact 91284337 (quote prerequisite) [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T11:13:16.933Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:59:22.595Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91284337",
+    "url": "",
+    "note": "ZZ Test Deal 91284337 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T10:59:25.769Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:59:25.769Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483529",
+    "url": "/crm/sales/deals/402012483529",
+    "note": "ZZ Test Deal 91284337 (quote prerequisite) [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T11:13:11.511Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:59:28.089Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91284337",
+    "url": "",
+    "note": "quote line-item product [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T11:13:05.450Z"
+  },
+  {
+    "createdAt": "2026-10-06T10:59:39.120Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154519",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154519?dealId=402012483529",
+    "note": "ZZ Test Quote 91284337 (TC quote) [cleanup failed: page.goto: Target page, context or browser has been closed] [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T11:12:54.838Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:13:46.993Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221164192",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221164192",
+    "note": "ZZ Contact 91285202 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:15:02.871Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:13:49.373Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91285202",
+    "url": "",
+    "note": "ZZ Test Deal 91285202 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:13:52.456Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:13:52.456Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483678",
+    "url": "/crm/sales/deals/402012483678",
+    "note": "ZZ Test Deal 91285202 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:14:59.477Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:13:54.819Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91285202",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:14:55.972Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:14:07.249Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154520",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154520?dealId=402012483678",
+    "note": "ZZ Test Quote 91285202 (TC quote)",
+    "deletedAt": "2026-10-06T11:14:50.194Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:15:40.596Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221164372",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221164372",
+    "note": "ZZ Contact 91285311 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:17:21.964Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:15:43.746Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91285311",
+    "url": "",
+    "note": "ZZ Test Deal 91285311 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:15:47.987Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:15:47.987Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483702",
+    "url": "/crm/sales/deals/402012483702",
+    "note": "ZZ Test Deal 91285311 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:17:17.287Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:15:51.132Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91285311",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:17:12.390Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:16:07.611Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154521",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154521?dealId=402012483702",
+    "note": "ZZ Test Quote 91285311 (TC quote)",
+    "deletedAt": "2026-10-06T11:17:03.749Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:18:09.352Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221164538",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221164538",
+    "note": "ZZ Contact 91285451 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:20:48.656Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:18:16.928Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91285451",
+    "url": "",
+    "note": "ZZ Test Deal 91285451 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:18:21.847Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:18:21.846Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483732",
+    "url": "/crm/sales/deals/402012483732",
+    "note": "ZZ Test Deal 91285451 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:20:45.366Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:18:25.656Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91285451",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:20:40.123Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:18:44.470Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154522",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154522?dealId=402012483732",
+    "note": "ZZ Test Quote 91285451 (TC quote)",
+    "deletedAt": "2026-10-06T11:20:33.815Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:21:46.136Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221164816",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221164816",
+    "note": "ZZ Contact 91285671 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:23:45.285Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:21:49.904Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91285671",
+    "url": "",
+    "note": "ZZ Test Deal 91285671 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:21:54.451Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:21:54.451Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483774",
+    "url": "/crm/sales/deals/402012483774",
+    "note": "ZZ Test Deal 91285671 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:23:42.145Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:21:57.831Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91285671",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:23:37.917Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:22:10.729Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154525",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154525?dealId=402012483774",
+    "note": "ZZ Test Quote 91285671 (TC quote)",
+    "deletedAt": "2026-10-06T11:23:29.532Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:24:30.674Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221165250",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221165250",
+    "note": "ZZ Contact 91285835 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:28:25.480Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:24:34.958Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91285835",
+    "url": "",
+    "note": "ZZ Test Deal 91285835 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:24:39.347Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:24:39.347Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483805",
+    "url": "/crm/sales/deals/402012483805",
+    "note": "ZZ Test Deal 91285835 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:28:22.536Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:24:41.921Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91285835",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:28:19.582Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:24:57.149Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154528",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154528?dealId=402012483805",
+    "note": "ZZ Test Quote 91285835 (TC quote)",
+    "deletedAt": "2026-10-06T11:28:14.395Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:29:03.567Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221165602",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221165602",
+    "note": "ZZ Contact 91286120 (quote prerequisite) [cleanup failed: locator.click: Test ended.]",
+    "deletedAt": "2026-10-06T11:31:29.617Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:29:06.575Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91286120",
+    "url": "",
+    "note": "ZZ Test Deal 91286120 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:29:10.580Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:29:10.580Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483861",
+    "url": "/crm/sales/deals/402012483861",
+    "note": "ZZ Test Deal 91286120 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:31:08.221Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:29:12.949Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91286120",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:31:03.969Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:29:24.964Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154529",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154529?dealId=402012483861",
+    "note": "ZZ Test Quote 91286120 (TC quote)",
+    "deletedAt": "2026-10-06T11:30:57.763Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:32:24.151Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221165857",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221165857",
+    "note": "ZZ Contact 91286309 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:34:54.183Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:32:29.101Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91286309",
+    "url": "",
+    "note": "ZZ Test Deal 91286309 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:32:35.153Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:32:35.152Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483901",
+    "url": "/crm/sales/deals/402012483901",
+    "note": "ZZ Test Deal 91286309 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:34:50.175Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:32:38.610Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91286309",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:34:45.570Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:32:55.853Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154530",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154530?dealId=402012483901",
+    "note": "ZZ Test Quote 91286309 (TC quote)",
+    "deletedAt": "2026-10-06T11:34:38.562Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:39:43.848Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221166972",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221166972",
+    "note": "ZZ Contact 91286778 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:40:19.396Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:39:46.709Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91286778",
+    "url": "",
+    "note": "ZZ Test Deal 91286778 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:39:49.957Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:39:49.957Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483990",
+    "url": "/crm/sales/deals/402012483990",
+    "note": "ZZ Test Deal 91286778 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:40:17.349Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:39:52.280Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91286778",
+    "url": "",
+    "note": "probe",
+    "deletedAt": "2026-10-06T11:40:14.575Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:40:02.424Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154532",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154532?dealId=402012483990",
+    "note": "ZZ Test Quote 91286778 (TC quote)",
+    "deletedAt": "2026-10-06T11:40:09.750Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:40:35.424Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221167066",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221167066",
+    "note": "ZZ Contact 91286829 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:41:26.674Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:40:37.882Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91286829",
+    "url": "",
+    "note": "ZZ Test Deal 91286829 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:40:41.020Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:40:41.019Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484001",
+    "url": "/crm/sales/deals/402012484001",
+    "note": "ZZ Test Deal 91286829 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:41:24.372Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:40:43.164Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91286829",
+    "url": "",
+    "note": "probe",
+    "deletedAt": "2026-10-06T11:41:21.700Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:40:52.561Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154533",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154533?dealId=402012484001",
+    "note": "ZZ Test Quote 91286829 (TC quote)",
+    "deletedAt": "2026-10-06T11:41:16.728Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:42:04.672Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221167173",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221167173",
+    "note": "ZZ Contact 91286903 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:43:50.306Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:42:07.206Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91286903",
+    "url": "",
+    "note": "ZZ Test Deal 91286903 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:42:10.363Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:42:10.363Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484028",
+    "url": "/crm/sales/deals/402012484028",
+    "note": "ZZ Test Deal 91286903 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:43:47.778Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:42:12.482Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91286903",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:43:45.007Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:42:24.007Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154534",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154534?dealId=402012484028",
+    "note": "ZZ Test Quote 91286903 (TC quote)",
+    "deletedAt": "2026-10-06T11:43:40.057Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:44:23.195Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221167384",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221167384",
+    "note": "ZZ Contact 91287039 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:46:12.009Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:44:28.806Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91287039",
+    "url": "",
+    "note": "ZZ Test Deal 91287039 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:44:32.017Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:44:32.017Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484054",
+    "url": "/crm/sales/deals/402012484054",
+    "note": "ZZ Test Deal 91287039 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:46:09.693Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:44:34.304Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91287039",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:46:06.943Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:44:45.420Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154535",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154535?dealId=402012484054",
+    "note": "ZZ Test Quote 91287039 (TC quote)",
+    "deletedAt": "2026-10-06T11:46:02.167Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:46:43.228Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221167570",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221167570",
+    "note": "ZZ Contact 91287183 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:48:25.533Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:46:45.686Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91287183",
+    "url": "",
+    "note": "ZZ Test Deal 91287183 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:46:48.783Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:46:48.782Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484072",
+    "url": "/crm/sales/deals/402012484072",
+    "note": "ZZ Test Deal 91287183 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:48:23.231Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:46:50.887Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91287183",
+    "url": "",
+    "note": "quote line-item product",
+    "deletedAt": "2026-10-06T11:48:20.488Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:47:02.449Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154536",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154536?dealId=402012484072",
+    "note": "ZZ Test Quote 91287183 (TC quote)",
+    "deletedAt": "2026-10-06T11:48:15.730Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:48:57.702Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221167733",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221167733",
+    "note": "ZZ Contact 91287316 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:51:58.788Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:49:03.231Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91287316",
+    "url": "",
+    "note": "ZZ Test Deal 91287316 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:49:06.370Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:49:06.369Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484093",
+    "url": "/crm/sales/deals/402012484093",
+    "note": "ZZ Test Deal 91287316 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:51:55.671Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:49:08.542Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91287316",
+    "url": "",
+    "note": "STILL IN TENANT (inactive): product was used on a quote, so the tenant refuses deletion (\"cannot be deleted\"), even with the quote in the Recycle Bin",
+    "deletedAt": "2026-10-06T11:59:36.352Z",
+    "leftover": true
+  },
+  {
+    "createdAt": "2026-10-06T11:49:19.761Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154537",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154537?dealId=402012484093",
+    "note": "ZZ Test Quote 91287316 (TC quote)",
+    "deletedAt": "2026-10-06T11:51:12.792Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:52:48.847Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91287563",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T11:53:18.985Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:53:41.286Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221168104",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221168104",
+    "note": "ZZ Contact 91287563 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:56:55.755Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:53:43.708Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91287563",
+    "url": "",
+    "note": "ZZ Test Deal 91287563 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T11:53:46.740Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:53:46.740Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484139",
+    "url": "/crm/sales/deals/402012484139",
+    "note": "ZZ Test Deal 91287563 (quote prerequisite)",
+    "deletedAt": "2026-10-06T11:56:52.910Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:53:48.985Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product 91287563",
+    "url": "",
+    "note": "STILL IN TENANT (inactive): product was used on a quote, so the tenant refuses deletion (\"cannot be deleted\"), even with the quote in the Recycle Bin",
+    "deletedAt": "2026-10-06T11:59:41.019Z",
+    "leftover": true
+  },
+  {
+    "createdAt": "2026-10-06T11:54:00.654Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154538",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154538?dealId=402012484139",
+    "note": "ZZ Test Quote 91287563 (TC quote)",
+    "deletedAt": "2026-10-06T11:56:50.029Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:58:07.887Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91287563",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T11:58:28.175Z"
+  },
+  {
+    "createdAt": "2026-10-06T11:58:17.821Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91287563",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T11:58:24.319Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:01:31.444Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91288086",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T12:02:09.933Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:02:30.986Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221168705",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221168705",
+    "note": "ZZ Contact 91288086 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:05:41.758Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:02:33.308Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91288086",
+    "url": "",
+    "note": "ZZ Test Deal 91288086 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T12:02:36.401Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:02:36.401Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484216",
+    "url": "/crm/sales/deals/402012484216",
+    "note": "ZZ Test Deal 91288086 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:05:39.231Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:02:40.508Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Quote Product (shared fixture)",
+    "url": "",
+    "note": "persistent shared quote line-item fixture (cannot be deleted once quoted)",
+    "deletedAt": "2026-10-06T12:02:42.879Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:02:52.278Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154539",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154539?dealId=402012484216",
+    "note": "ZZ Test Quote 91288086 (TC quote)",
+    "deletedAt": "2026-10-06T12:04:45.891Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:06:57.859Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91288086",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T12:07:19.664Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:07:08.577Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91288086",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T12:07:15.792Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:08:17.762Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91288492",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T12:09:28.706Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:08:46.327Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91288492",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T12:08:54.621Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:08:49.311Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91288492",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T12:08:57.420Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:09:49.210Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221169219",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221169219",
+    "note": "ZZ Contact 91288492 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:14:16.728Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:09:51.562Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91288492",
+    "url": "",
+    "note": "ZZ Test Deal 91288492 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T12:09:54.701Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:09:54.701Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484289",
+    "url": "/crm/sales/deals/402012484289",
+    "note": "ZZ Test Deal 91288492 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:14:13.538Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:10:04.938Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154540",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154540?dealId=402012484289",
+    "note": "ZZ Test Quote 91288492 (TC quote)",
+    "deletedAt": "2026-10-06T12:11:56.987Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:15:42.651Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91288492",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T12:16:05.730Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:15:53.599Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91288492",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T12:16:00.859Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:16:49.955Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91289004",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T12:18:00.633Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:17:20.693Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91289004",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T12:17:30.843Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:17:24.749Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91289004",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T12:17:33.788Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:18:25.638Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221169833",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221169833",
+    "note": "ZZ Contact 91289004 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:21:37.043Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:18:27.951Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91289004",
+    "url": "",
+    "note": "ZZ Test Deal 91289004 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T12:18:31.111Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:18:31.111Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484359",
+    "url": "/crm/sales/deals/402012484359",
+    "note": "ZZ Test Deal 91289004 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:21:33.543Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:18:41.962Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154541",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154541?dealId=402012484359",
+    "note": "ZZ Test Quote 91289004 (TC quote)",
+    "deletedAt": "2026-10-06T12:20:33.000Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:22:54.128Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91289004",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T12:23:16.456Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:23:05.115Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91289004",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T12:23:12.255Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:23:47.494Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91289422",
+    "url": "",
+    "note": "TC-038 duplicate clone attempt",
+    "deletedAt": "2026-10-06T12:25:19.872Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:24:15.245Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91289422",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T12:24:23.377Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:24:18.203Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91289422",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T12:24:26.635Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:24:34.869Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91289422",
+    "url": "",
+    "note": "TC-003 clone of product A",
+    "deletedAt": "2026-10-06T12:25:41.600Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:25:19.872Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91289422 (edited)",
+    "url": "",
+    "note": "TC-004 renamed product A",
+    "deletedAt": "2026-10-06T12:25:32.032Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:26:04.228Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221170549",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221170549",
+    "note": "ZZ Contact 91289422 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:28:42.423Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:26:06.994Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91289422",
+    "url": "",
+    "note": "ZZ Test Deal 91289422 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T12:26:10.287Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:26:10.286Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484412",
+    "url": "/crm/sales/deals/402012484412",
+    "note": "ZZ Test Deal 91289422 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:28:38.942Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:26:23.241Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154542",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154542?dealId=402012484412",
+    "note": "ZZ Test Quote 91289422 (TC quote)",
+    "deletedAt": "2026-10-06T12:28:16.340Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:31:00.246Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91289422",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T12:31:21.019Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:31:10.959Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91289422",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T12:31:17.166Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:31:57.900Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91289912",
+    "url": "",
+    "note": "TC-038 duplicate clone attempt",
+    "deletedAt": "2026-10-06T12:33:30.086Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:32:25.970Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91289912",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T12:32:33.977Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:32:28.832Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91289912",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T12:32:36.751Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:32:44.889Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91289912",
+    "url": "",
+    "note": "TC-003 clone of product A",
+    "deletedAt": "2026-10-06T12:34:49.983Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:33:30.085Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91289912 (edited)",
+    "url": "",
+    "note": "TC-004 renamed product A",
+    "deletedAt": "2026-10-06T12:33:43.111Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:33:53.354Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product R 91289912",
+    "url": "",
+    "note": "TC-006 recycle bin product",
+    "deletedAt": "2026-10-06T12:33:58.668Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:35:11.561Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221171171",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221171171",
+    "note": "ZZ Contact 91289912 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:38:23.392Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:35:14.315Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91289912",
+    "url": "",
+    "note": "ZZ Test Deal 91289912 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T12:35:17.711Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:35:17.711Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484498",
+    "url": "/crm/sales/deals/402012484498",
+    "note": "ZZ Test Deal 91289912 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:38:20.297Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:35:28.441Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154543",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154543?dealId=402012484498",
+    "note": "ZZ Test Quote 91289912 (TC quote)",
+    "deletedAt": "2026-10-06T12:37:25.968Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:39:50.710Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91289912",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T12:40:13.786Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:40:02.150Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91289912",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T12:40:09.446Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:40:55.559Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91290449",
+    "url": "",
+    "note": "TC-037 duplicate attempt [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T12:45:08.550Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:41:28.160Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91290449",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T12:41:37.453Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:41:31.568Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91290449",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T12:41:40.291Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:41:48.766Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91290449",
+    "url": "",
+    "note": "TC-003 clone of product A [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T12:45:13.354Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:43:57.123Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91290631",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T12:45:18.152Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:44:30.815Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91290631",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T12:44:40.356Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:44:34.360Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91290631",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T12:44:43.247Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:45:48.393Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221171914",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221171914",
+    "note": "ZZ Contact 91290631 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:48:45.786Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:45:54.122Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91290631",
+    "url": "",
+    "note": "ZZ Test Deal 91290631 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T12:45:58.483Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:45:58.483Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484586",
+    "url": "/crm/sales/deals/402012484586",
+    "note": "ZZ Test Deal 91290631 (quote prerequisite)",
+    "deletedAt": "2026-10-06T12:48:43.010Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:46:10.542Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154544",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154544?dealId=402012484586",
+    "note": "ZZ Test Quote 91290631 (TC quote)",
+    "deletedAt": "2026-10-06T12:48:14.727Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:50:01.293Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91290631",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T12:50:24.289Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:50:12.541Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91290631",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T12:50:18.909Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:51:22.656Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B2 91290449",
+    "url": "",
+    "note": "TC-039 clone-without-price attempt from stopped run 91290449 (found stray; reconciled)",
+    "deletedAt": "2026-10-06T12:51:32.587Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:51:44.925Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91291098",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T12:53:24.660Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:52:21.731Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91291098",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T12:52:34.894Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:52:26.674Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91291098",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T12:52:39.372Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:52:49.415Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91291098",
+    "url": "",
+    "note": "TC-003 clone of product A",
+    "deletedAt": "2026-10-06T12:53:32.187Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:53:04.234Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B2 91291098",
+    "url": "",
+    "note": "TC-039 clone without price attempt (expected blocked)",
+    "deletedAt": "2026-10-06T12:53:39.652Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:56:38.823Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91291098",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T12:57:09.240Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:56:54.040Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91291098",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T12:57:04.427Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:57:56.033Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91291469",
+    "url": "",
+    "note": "TC-038 duplicate clone attempt",
+    "deletedAt": "2026-10-06T13:00:08.213Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:58:32.588Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91291469",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T12:58:46.334Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:58:38.227Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91291469",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T12:58:50.913Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:59:01.031Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91291469",
+    "url": "",
+    "note": "TC-003 clone of product A",
+    "deletedAt": "2026-10-06T13:01:22.134Z"
+  },
+  {
+    "createdAt": "2026-10-06T12:59:15.479Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B2 91291469",
+    "url": "",
+    "note": "TC-039 clone without price attempt (expected blocked)",
+    "deletedAt": "2026-10-06T12:59:24.606Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:00:08.212Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91291469 (edited)",
+    "url": "",
+    "note": "TC-004 renamed product A",
+    "deletedAt": "2026-10-06T13:00:25.864Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:00:52.605Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product R 91291469",
+    "url": "",
+    "note": "TC-006 recycle bin product",
+    "deletedAt": "2026-10-06T13:01:01.483Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:01:54.489Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221173389",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221173389",
+    "note": "ZZ Contact 91291469 (quote prerequisite)",
+    "deletedAt": "2026-10-06T13:15:12.133Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:01:59.285Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91291469",
+    "url": "",
+    "note": "ZZ Test Deal 91291469 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T13:02:03.827Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:02:03.826Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484730",
+    "url": "/crm/sales/deals/402012484730",
+    "note": "ZZ Test Deal 91291469 (quote prerequisite)",
+    "deletedAt": "2026-10-06T13:15:05.430Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:02:19.027Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154547",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154547?dealId=402012484730",
+    "note": "ZZ Test Quote 91291469 (TC quote)",
+    "deletedAt": "2026-10-06T13:14:56.873Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:17:40.130Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91291469",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T13:18:15.940Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:17:57.853Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91291469",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T13:18:09.852Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:19:12.069Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91292744",
+    "url": "",
+    "note": "TC-038 duplicate clone attempt",
+    "deletedAt": "2026-10-06T13:20:56.258Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:19:45.862Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91292744",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T13:19:54.041Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:19:48.893Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91292744",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T13:19:57.049Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:20:05.648Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91292744",
+    "url": "",
+    "note": "TC-003 clone of product A",
+    "deletedAt": "2026-10-06T13:23:29.933Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:20:16.890Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B2 91292744",
+    "url": "",
+    "note": "TC-039 clone without price attempt (expected blocked)",
+    "deletedAt": "2026-10-06T13:20:21.954Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:20:56.258Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91292744 (edited)",
+    "url": "",
+    "note": "TC-004 renamed product A",
+    "deletedAt": "2026-10-06T13:21:09.725Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:21:25.391Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product R 91292744",
+    "url": "",
+    "note": "TC-006 recycle bin product",
+    "deletedAt": "2026-10-06T13:21:31.207Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:23:58.111Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221175103",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221175103",
+    "note": "ZZ Contact 91292744 (quote prerequisite)",
+    "deletedAt": "2026-10-06T13:26:58.818Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:24:04.300Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91292744",
+    "url": "",
+    "note": "ZZ Test Deal 91292744 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T13:24:07.389Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:24:07.389Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484887",
+    "url": "/crm/sales/deals/402012484887",
+    "note": "ZZ Test Deal 91292744 (quote prerequisite)",
+    "deletedAt": "2026-10-06T13:26:54.507Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:24:22.694Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154548",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154548?dealId=402012484887",
+    "note": "ZZ Test Quote 91292744 (TC quote)",
+    "deletedAt": "2026-10-06T13:26:30.784Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:28:53.024Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91292744",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T13:29:21.016Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:29:08.351Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91292744",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T13:29:15.752Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:29:57.031Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91293389",
+    "url": "",
+    "note": "TC-038 duplicate clone attempt",
+    "deletedAt": "2026-10-06T13:31:58.261Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:30:29.871Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91293389",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T13:30:40.895Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:30:34.443Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91293389",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T13:30:44.380Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:30:52.645Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91293389",
+    "url": "",
+    "note": "TC-003 clone of product A",
+    "deletedAt": "2026-10-06T13:33:12.942Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:31:07.746Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B2 91293389",
+    "url": "",
+    "note": "TC-039 clone without price attempt (expected blocked)",
+    "deletedAt": "2026-10-06T13:31:18.300Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:31:58.260Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91293389 (edited)",
+    "url": "",
+    "note": "TC-004 renamed product A",
+    "deletedAt": "2026-10-06T13:32:16.030Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:32:43.914Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product R 91293389",
+    "url": "",
+    "note": "TC-006 recycle bin product",
+    "deletedAt": "2026-10-06T13:32:54.286Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:33:46.475Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221176372",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221176372",
+    "note": "ZZ Contact 91293389 (quote prerequisite)",
+    "deletedAt": "2026-10-06T13:37:49.544Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:33:50.071Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91293389",
+    "url": "",
+    "note": "ZZ Test Deal 91293389 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T13:33:53.841Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:33:53.841Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012484949",
+    "url": "/crm/sales/deals/402012484949",
+    "note": "ZZ Test Deal 91293389 (quote prerequisite)",
+    "deletedAt": "2026-10-06T13:37:46.714Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:34:09.443Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154549",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154549?dealId=402012484949",
+    "note": "ZZ Test Quote 91293389 (TC quote)",
+    "deletedAt": "2026-10-06T13:36:09.527Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:39:28.703Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91293389",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T13:39:51.241Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:39:39.464Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91293389",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T13:39:47.381Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:40:29.217Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91294023",
+    "url": "",
+    "note": "TC-038 duplicate clone attempt",
+    "deletedAt": "2026-10-06T13:42:17.820Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:40:57.476Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91294023",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T13:41:06.701Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:41:00.581Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91294023",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T13:41:10.249Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:41:19.911Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91294023",
+    "url": "",
+    "note": "TC-003 clone of product A",
+    "deletedAt": "2026-10-06T13:44:16.788Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:41:33.381Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B2 91294023",
+    "url": "",
+    "note": "TC-039 clone without price attempt (expected blocked)",
+    "deletedAt": "2026-10-06T13:41:43.544Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:42:17.819Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91294023 (edited)",
+    "url": "",
+    "note": "TC-004 renamed product A",
+    "deletedAt": "2026-10-06T13:42:32.056Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:42:45.502Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product R 91294023",
+    "url": "",
+    "note": "TC-006 recycle bin product",
+    "deletedAt": "2026-10-06T13:42:53.724Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:42:59.228Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Neg Price 91294023",
+    "url": "",
+    "note": "TC-043 negative price attempt",
+    "deletedAt": "2026-10-06T13:44:24.186Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:43:15.094Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Alpha Price 91294023",
+    "url": "",
+    "note": "TC-044 alpha price attempt",
+    "deletedAt": "2026-10-06T13:44:27.110Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:43:31.091Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ91294023xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "url": "",
+    "note": "TC-045 name-length stray (reconciled)",
+    "deletedAt": "2026-10-06T13:54:30.129Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:43:43.138Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ91294023xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "url": "",
+    "note": "TC-045 name length 256",
+    "deletedAt": "2026-10-06T13:43:46.764Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:43:52.296Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Sub Product 91294023",
+    "url": "",
+    "note": "TC-032 subscription product",
+    "deletedAt": "2026-10-06T13:44:01.026Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:45:05.261Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221177117",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221177117",
+    "note": "ZZ Contact 91294023 (quote prerequisite)",
+    "deletedAt": "2026-10-06T13:51:45.337Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:45:10.057Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91294023",
+    "url": "",
+    "note": "ZZ Test Deal 91294023 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T13:45:14.696Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:45:14.695Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012485011",
+    "url": "/crm/sales/deals/402012485011",
+    "note": "ZZ Test Deal 91294023 (quote prerequisite)",
+    "deletedAt": "2026-10-06T13:51:42.949Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:45:32.966Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154550",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154550?dealId=402012485011",
+    "note": "ZZ Test Quote 91294023 (TC quote)",
+    "deletedAt": "2026-10-06T13:48:08.934Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:53:21.691Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91294023",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T13:53:43.095Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:53:31.653Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91294023",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T13:53:38.881Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:54:41.704Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91294875",
+    "url": "",
+    "note": "TC-002 product A",
+    "deletedAt": "2026-10-06T13:54:54.540Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:55:16.218Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91294910",
+    "url": "",
+    "note": "TC-038 duplicate clone attempt",
+    "deletedAt": "2026-10-06T13:57:22.258Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:55:53.516Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91294910",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T13:56:04.659Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:55:57.708Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91294910",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T13:56:08.611Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:56:17.563Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91294910",
+    "url": "",
+    "note": "TC-003 clone of product A [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed]",
+    "deletedAt": "2026-10-06T14:15:25.115Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:56:32.367Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B2 91294910",
+    "url": "",
+    "note": "TC-039 clone without price attempt (expected blocked)",
+    "deletedAt": "2026-10-06T13:56:40.659Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:57:22.257Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91294910 (edited)",
+    "url": "",
+    "note": "TC-004 renamed product A",
+    "deletedAt": "2026-10-06T13:57:37.854Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:57:48.295Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product R 91294910",
+    "url": "",
+    "note": "TC-006 recycle bin product",
+    "deletedAt": "2026-10-06T13:57:55.462Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:58:06.206Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Neg Price 91294910",
+    "url": "",
+    "note": "TC-043 negative price attempt [cleanup failed: page.goto: net::ERR_ABORTED at https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/products/view/402015942778?per_page=100]",
+    "deletedAt": "2026-10-06T14:15:27.208Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:58:23.384Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Alpha Price 91294910",
+    "url": "",
+    "note": "TC-044 alpha price attempt [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T14:15:29.358Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:58:37.688Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ91294910xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "url": "",
+    "note": "TC-045 name-length stray (reconciled)",
+    "deletedAt": "2026-10-06T14:19:54.169Z"
+  },
+  {
+    "createdAt": "2026-10-06T13:58:47.719Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ91294910xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "url": "",
+    "note": "TC-045 name length 256 [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T14:15:31.270Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:09:21.901Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221179069",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221179069",
+    "note": "ZZ Contact 91294910 (quote prerequisite)",
+    "deletedAt": "2026-10-06T14:15:37.405Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:09:24.403Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91294910",
+    "url": "",
+    "note": "ZZ Test Deal 91294910 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T14:09:27.644Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:09:27.643Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012485141",
+    "url": "/crm/sales/deals/402012485141",
+    "note": "ZZ Test Deal 91294910 (quote prerequisite)",
+    "deletedAt": "2026-10-06T14:15:34.249Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:09:42.619Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154551",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154551?dealId=402012485141",
+    "note": "ZZ Test Quote 91294910 (TC quote)",
+    "deletedAt": "2026-10-06T14:11:52.811Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:17:09.978Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91294910",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T14:17:31.524Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:17:21.072Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91294910",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T14:17:27.588Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:18:13.377Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91296288",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T14:19:22.819Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:18:45.332Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91296288",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T14:18:54.040Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:18:48.275Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91296288",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T14:18:56.938Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:20:11.626Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91296397",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T14:21:54.660Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:20:45.573Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91296397",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T14:21:57.540Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:21:04.620Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221179832",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221179832",
+    "note": "ZZ Contact 91296397 (quote prerequisite)",
+    "deletedAt": "2026-10-06T14:22:04.761Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:21:10.482Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91296397",
+    "url": "",
+    "note": "ZZ Test Deal 91296397 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T14:21:14.598Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:21:12.822Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91296397",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T14:21:36.981Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:21:14.597Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012485205",
+    "url": "/crm/sales/deals/402012485205",
+    "note": "ZZ Test Deal 91296397 (quote prerequisite)",
+    "deletedAt": "2026-10-06T14:22:01.954Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:21:15.490Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91296397",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T14:21:32.535Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:21:24.376Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91296397",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T14:21:36.699Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:21:37.347Z",
+    "deleted": true,
+    "type": "quote",
+    "identifier": "402000154552",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154552?dealId=402012485205",
+    "note": "ZZ Test Quote 91296397 (TC quote)",
+    "deletedAt": "2026-10-06T14:21:45.649Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:24:27.897Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91296652",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T14:25:48.383Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:24:42.280Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91296652",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T14:25:51.906Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:25:04.137Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91296652",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T14:25:27.396Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:25:06.856Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221180145",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221180145",
+    "note": "ZZ Contact 91296652 (quote prerequisite)",
+    "deletedAt": "2026-10-06T14:26:00.726Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:25:11.534Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91296652",
+    "url": "",
+    "note": "ZZ Test Deal 91296652 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T14:25:15.364Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:25:15.363Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012485226",
+    "url": "/crm/sales/deals/402012485226",
+    "note": "ZZ Test Deal 91296652 (quote prerequisite)",
+    "deletedAt": "2026-10-06T14:25:56.385Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:25:38.324Z",
+    "deleted": false,
+    "type": "quote",
+    "identifier": "402000154553",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154553?dealId=402012485226",
+    "note": "ZZ Test Quote 91296652 (TC quote) [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed]"
+  },
+  {
+    "createdAt": "2026-10-06T14:25:40.797Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91296652",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T14:25:54.751Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:25:44.813Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91296652",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T14:26:00.166Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:28:46.812Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91296913",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T14:30:28.995Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:29:16.405Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91296913",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T14:30:41.027Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:29:26.906Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221180401",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221180401",
+    "note": "ZZ Contact 91296913 (quote prerequisite)",
+    "deletedAt": "2026-10-06T14:30:49.742Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:29:32.185Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91296913",
+    "url": "",
+    "note": "ZZ Test Deal 91296913 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T14:29:36.098Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:29:36.098Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012485257",
+    "url": "/crm/sales/deals/402012485257",
+    "note": "ZZ Test Deal 91296913 (quote prerequisite)",
+    "deletedAt": "2026-10-06T14:30:45.041Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:29:40.852Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91296913",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T14:29:58.975Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:29:50.577Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91296913",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T14:29:57.963Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:29:51.139Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91296913",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T14:30:03.653Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:29:59.162Z",
+    "deleted": false,
+    "type": "quote",
+    "identifier": "402000154554",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154554?dealId=402012485257",
+    "note": "ZZ Test Quote 91296913 (TC quote) [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed]"
+  },
+  {
+    "createdAt": "2026-10-06T14:30:18.412Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91296913",
+    "url": "",
+    "note": "TC-003 clone of product A",
+    "deletedAt": "2026-10-06T14:30:37.319Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:33:59.833Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product A 91297225",
+    "url": "",
+    "note": "TC-037 duplicate attempt",
+    "deletedAt": "2026-10-06T14:35:39.508Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:34:21.917Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Blank Type 91297225",
+    "url": "",
+    "note": "TC-051 blank quote type attempt (expected blocked)",
+    "deletedAt": "2026-10-06T14:35:51.643Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:34:46.816Z",
+    "deleted": true,
+    "type": "template",
+    "identifier": "ZZ Test Template 91297225",
+    "url": "",
+    "note": "TC-012 valid template",
+    "deletedAt": "2026-10-06T14:34:55.359Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:34:47.745Z",
+    "deleted": true,
+    "type": "contact",
+    "identifier": "402221180764",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/contacts/402221180764",
+    "note": "ZZ Contact 91297225 (quote prerequisite) [cleanup failed: page.goto: Target page, context or browser has been closed]",
+    "deletedAt": "2026-10-06T14:37:14.432Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:34:54.145Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product C 91297225",
+    "url": "",
+    "note": "TC-046 duplicate code attempt",
+    "deletedAt": "2026-10-06T14:35:09.949Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:34:54.646Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "ZZ Test Deal 91297225",
+    "url": "",
+    "note": "ZZ Test Deal 91297225 (quote prerequisite, by name until id known)",
+    "deletedAt": "2026-10-06T14:34:58.961Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:34:58.098Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product D 91297225",
+    "url": "",
+    "note": "TC-046 duplicate SKU attempt",
+    "deletedAt": "2026-10-06T14:35:13.492Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:34:58.947Z",
+    "deleted": false,
+    "type": "deal",
+    "identifier": "402012485301",
+    "url": "/crm/sales/deals/402012485301",
+    "note": "ZZ Test Deal 91297225 (quote prerequisite) [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed]"
+  },
+  {
+    "createdAt": "2026-10-06T14:35:22.125Z",
+    "deleted": false,
+    "type": "quote",
+    "identifier": "402000154555",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/cpq_documents/402000154555?dealId=402012485301",
+    "note": "ZZ Test Quote 91297225 (TC quote) [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed] [cleanup failed: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed]"
+  },
+  {
+    "createdAt": "2026-10-06T14:35:24.551Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B (clone) 91297225",
+    "url": "",
+    "note": "TC-003 clone of product A",
+    "deletedAt": "2026-10-06T14:35:47.651Z"
+  },
+  {
+    "createdAt": "2026-10-06T14:35:39.813Z",
+    "deleted": true,
+    "type": "product",
+    "identifier": "ZZ Test Product B2 91297225",
+    "url": "",
+    "note": "TC-039 clone without price attempt (expected blocked)",
+    "deletedAt": "2026-10-06T14:35:50.291Z"
   }
 ]

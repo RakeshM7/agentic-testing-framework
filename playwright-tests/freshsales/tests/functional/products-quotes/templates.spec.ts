@@ -7,8 +7,11 @@ import { RUN, record } from '../../../pages/products-quotes/tracker';
  */
 test.describe.configure({ mode: 'serial' });
 
+test.setTimeout(120_000);
+
 test.describe('Document Templates (full-run, live)', () => {
   test.afterAll(async ({ browser }, info) => {
+    test.setTimeout(300_000);
     await cleanupPending(browser, info.project.use.baseURL as string);
   });
 

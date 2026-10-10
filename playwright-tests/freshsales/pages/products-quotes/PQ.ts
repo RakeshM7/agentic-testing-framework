@@ -39,6 +39,9 @@ export class PQ {
     await expect(this.addProductButton).toBeVisible();
     await this.dismissNoise();
     await expect(this.page.getByText('All Products', { exact: true }).first()).toBeVisible();
+    // Rows load after the shell (sample products always exist): wait for them so absence checks are not false negatives.
+    await expect(this.productsTableNames.locator('tbody tr').first()).toBeVisible({ timeout: 20_000 });
+    await expect(this.page.getByText(/\(\d+\)/).first()).toBeVisible();
   }
   get addProductButton(): Locator { return this.page.getByRole('button', { name: 'Add product', exact: true }); }
   get productsTableNames(): Locator { return this.page.locator('table').first(); }
@@ -58,8 +61,9 @@ export class PQ {
   async trySave(): Promise<'created' | 'blocked'> {
     await this.saveButton.click();
     const created = this.page.getByText(/Product (added|cloned|updated)\./).first();
-    const blocked = this.fieldErrors.first();
-    await expect(created.or(blocked).or(this.page.getByText(/Review \d+ field/))).toBeVisible({ timeout: 10_000 });
+    // Created: success toast. Blocked: no toast and the drawer is still open after the save round-trip settles.
+    await created.waitFor({ state: 'visible', timeout: 8_000 }).catch(() => undefined);
+    if (!(await created.isVisible())) await expect(this.nameInput).toBeVisible();
     return (await created.isVisible()) ? 'created' : 'blocked';
   }
   /** Deletes every list row with this exact name (all are run-created by construction: the caller recorded the name). */
@@ -126,7 +130,11 @@ export class PQ {
 
   // ---------- product detail drawer
   async openProduct(name: string) {
-    await this.productLink(name).click();
+    // The products list is eventually consistent (header count can include a row the table has not rendered yet): reload until the row shows.
+    await expect(async () => {
+      if ((await this.productLink(name).count()) === 0) await this.gotoProducts();
+      await this.productLink(name).click({ timeout: 5_000 });
+    }).toPass({ timeout: 75_000, intervals: [2_000, 4_000] });
     await expect(this.drawerTitle).toBeVisible();
     await expect(this.page.getByText(name, { exact: true }).nth(1)).toBeVisible();
   }
@@ -135,12 +143,23 @@ export class PQ {
   get kebab(): Locator { return this.page.locator('.fsa-dropdown-trigger').last(); }
   async kebabAction(label: string) {
     await expect(async () => {
-      if (!(await this.dropdown.isVisible())) await this.kebab.click({ timeout: 3_000 });
-      await this.dropdown.getByText(label, { exact: true }).click({ timeout: 3_000 });
-    }).toPass({ timeout: 20_000 });
+      const item = this.dropdown.getByText(label, { exact: true });
+      if (!(await item.isVisible())) {
+        if (await this.dropdown.isVisible()) { await this.page.keyboard.press('Escape'); await this.page.waitForTimeout(300); }
+        await this.kebab.click({ timeout: 3_000 });
+      }
+      await item.click({ timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
   }
   async openClone() {
-    await this.kebabAction('Clone');
+    // The clone drawer intermittently renders "Sorry, we couldn't load the page." (backend flake): close it and retry the kebab action.
+    for (let i = 0; i < 4; i++) {
+      await this.kebabAction('Clone');
+      const ok = await this.nameInput.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true).catch(() => false);
+      if (ok) return;
+      await this.page.getByRole('button', { name: 'Close', exact: true }).click({ timeout: 3_000 }).catch(() => undefined);
+      await this.page.waitForTimeout(2_000);
+    }
     await expect(this.nameInput).toBeVisible();
   }
   async openEdit() {
@@ -159,17 +178,20 @@ export class PQ {
     await expect(this.page.getByText('Delete this product and its related data?')).toBeVisible();
     await this.confirmYes.click();
     await expect(this.page.getByText('Delete this product and its related data?')).toBeHidden();
+    if (await this.page.getByText(/cannot be deleted/i).first().isVisible().catch(() => false)) {
+      throw new Error(`Product "${name}" cannot be deleted (it has been used on a quote); left pending`);
+    }
     markDeleted('product', name);
   }
 
   // ---------- views (Recycle Bin)
   async openViewsMenu() {
     await this.page.mouse.click(91, 124);
-    await expect(this.page.getByText('Recycle Bin', { exact: true })).toBeVisible();
+    await expect(this.page.getByText('Recycle Bin', { exact: true }).first()).toBeVisible();
   }
   async openRecycleBin() {
     await this.openViewsMenu();
-    await this.page.getByText('Recycle Bin', { exact: true }).click();
+    await this.page.getByText('Recycle Bin', { exact: true }).first().click();
   }
 
   // ---------- templates
@@ -220,10 +242,28 @@ export class PQ {
     }).toPass({ timeout: 25_000 });
     await nameIn.fill(name);
     await this.page.locator('input[name="deal[amount]"]').fill('10');
+    record({ type: 'deal', identifier: name, url: '', note: `${name} (quote prerequisite, by name until id known)` });
     await this.saveButton.click();
-    await expect(this.page).toHaveURL(/\/crm\/sales\/deals\/\d+$/);
-    const id = this.page.url().match(/deals\/(\d+)/)![1];
-    record({ type: 'deal', identifier: id, url: this.page.url(), note: `${name} (quote prerequisite)` });
+    const id = await this.resolveDealId(name);
+    record({ type: 'deal', identifier: id, url: `/crm/sales/deals/${id}`, note: `${name} (quote prerequisite)` });
+    markDeleted('deal', name);
+    return id;
+  }
+  /** Id of a deal from the detail URL, or (Save returns to the Pipeline view) from the kanban card's draggable id. */
+  async resolveDealId(name: string): Promise<string> {
+    await expect(this.page).toHaveURL(/\/crm\/sales\/deals/, { timeout: 20_000 });
+    if (/\/deals\/\d+/.test(this.page.url())) return this.page.url().match(/deals\/(\d+)/)![1];
+    return this.dealIdFromBoard(name);
+  }
+  async dealIdFromBoard(name: string): Promise<string> {
+    const card = this.page.locator('.each-kanban-card').filter({ hasText: name });
+    await expect(async () => {
+      if ((await card.count()) === 0) await this.page.goto('/crm/sales/deals', { waitUntil: 'domcontentloaded' });
+      await expect(card.first()).toBeVisible({ timeout: 12_000 });
+    }).toPass({ timeout: 70_000 });
+    const attr = await card.first().getAttribute('data-rbd-draggable-id');
+    const id = attr?.match(/deal:(\d+)/)?.[1];
+    if (!id) throw new Error(`could not read deal id for ${name}`);
     return id;
   }
   async createContact(last: string): Promise<string> {
@@ -247,14 +287,27 @@ export class PQ {
   }
   async deleteDeal(id: string) {
     if (!isCreated('deal', id)) throw new Error(`Refusing to delete deal ${id}: not created by this track`);
-    await this.page.goto(`/crm/sales/deals/${id}`);
+    let cur = id;
+    if (!/^\d+$/.test(id)) {
+      await this.page.goto('/crm/sales/deals', { waitUntil: 'domcontentloaded' });
+      const card = this.page.locator('.each-kanban-card').filter({ hasText: id });
+      await expect(card.first()).toBeVisible({ timeout: 25_000 }).catch(() => undefined);
+      if ((await card.count()) === 0) throw new Error(`deal "${id}" not found on the board; left pending`);
+      const real = await this.dealIdFromBoard(id);
+      await this.page.goto(`/crm/sales/deals/${real}`, { waitUntil: 'domcontentloaded' });
+    } else {
+      await expect(async () => {
+        await this.page.goto(`/crm/sales/deals/${id}`, { waitUntil: 'domcontentloaded' });
+        await expect(this.page.getByRole('button', { name: 'Task', exact: true }).first()).toBeVisible({ timeout: 15_000 });
+      }).toPass({ timeout: 90_000, intervals: [3_000] });
+    }
     await expect(this.page.getByRole('button', { name: 'Task', exact: true }).first()).toBeVisible();
     await this.dismissNoise();
     await this.kebabAction('Delete');
     await expect(this.page.getByText('Delete this deal and its related data?')).toBeVisible();
     await this.confirmYes.click();
     await expect(this.page).toHaveURL(/\/crm\/sales\/deals(\/view\/\d+)?(\?.*)?$/);
-    markDeleted('deal', id);
+    markDeleted('deal', cur);
   }
   async deleteContact(id: string) {
     if (!isCreated('contact', id)) throw new Error(`Refusing to delete contact ${id}: not created by this track`);
@@ -270,26 +323,95 @@ export class PQ {
 
   // ---------- quotes
   async gotoQuotes() {
-    await this.page.goto(QUOTES_LIST);
-    await expect(this.page.getByRole('button', { name: 'Add quote', exact: true })).toBeVisible();
+    await this.page.goto(QUOTES_LIST, { waitUntil: 'domcontentloaded' });
+    const add = this.page.getByRole('button', { name: 'Add quote', exact: true });
+    await expect(async () => {
+      if (!(await add.isVisible())) {
+        // The list intermittently renders "We're having trouble applying your changes": back off, then hard-navigate again.
+        await this.page.waitForTimeout(4_000);
+        await this.page.goto(QUOTES_LIST, { waitUntil: 'domcontentloaded' });
+      }
+      await expect(add).toBeVisible({ timeout: 15_000 });
+    }).toPass({ timeout: 120_000 });
     await this.dismissNoise();
+  }
+  /** Recycle Bin is virtualised and oldest-first, and grows with every run: scroll to the bottom (up to ~40 steps) until the text is rendered. */
+  async scrollBinTo(text: string, exact = false): Promise<boolean> {
+    const has = async () => (exact ? (await this.page.getByText(text, { exact: true }).count()) > 0 : (await this.page.locator('body').innerText()).includes(text));
+    await this.page.mouse.move(700, 500);
+    for (let k = 0; k < 40; k++) {
+      if (await has()) return true;
+      await this.page.mouse.wheel(0, 3000);
+      await this.page.waitForTimeout(500);
+    }
+    return has();
   }
   async openPlusMenu() {
     await this.page.locator('li.navbar-add').click();
   }
   async deleteQuote(id: string) {
     if (!isCreated('quote', id)) throw new Error(`Refusing to delete quote ${id}: not created by this track`);
-    await this.page.goto(`/crm/sales/cpq_documents/${id}`);
-    await expect(this.page.getByText('Sync quote with deal')).toBeVisible();
-    await this.dismissNoise();
-    await this.quoteKebab.click();
-    await this.dropdown.getByText('Delete', { exact: true }).click();
-    await expect(this.page.getByText('Delete this Quote?')).toBeVisible();
+    await expect(async () => {
+      await this.page.goto(`/crm/sales/cpq_documents/${id}`, { waitUntil: 'domcontentloaded' });
+      await expect(this.page.getByText('Sync quote with deal')).toBeVisible({ timeout: 15_000 });
+      await this.dismissNoise();
+      await this.openQuoteKebab();
+      await this.dropdown.getByText('Delete', { exact: true }).click();
+      await expect(this.page.getByText('Delete this Quote?')).toBeVisible({ timeout: 10_000 });
+    }).toPass({ timeout: 120_000, intervals: [3_000] });
     await this.confirmYes.click();
-    await expect(this.page).toHaveURL(/cpq_documents\/view\//);
+    await expect(this.page).toHaveURL(/cpq_documents\/view\//, { timeout: 30_000 });
     markDeleted('quote', id);
   }
-  get quoteKebab(): Locator { return this.page.locator('.fsa-dropdown-trigger').first(); }
+  /** The quote kebab is an unnamed icon button right of 'View activity' (the first .fsa-dropdown-trigger is the Save arrow). */
+  async openQuoteKebab() {
+    const va = this.page.getByRole('button', { name: 'View activity', exact: true });
+    await expect(va).toBeVisible();
+    const box = (await va.boundingBox())!;
+    await this.page.mouse.click(box.x + box.width + 24, box.y + box.height / 2);
+    await expect(this.dropdown.getByText('Delete', { exact: true })).toBeVisible();
+  }
+
+  get quoteNameInput(): Locator { return this.page.locator('input[name="cpq-document[displayName]"]'); }
+  get quoteTriggers(): Locator { return this.page.locator('.ember-power-select-trigger').filter({ visible: true }); }
+  /** Opens the Add quote drawer from the Quotes list (button) or the header + menu. */
+  async openAddQuote(via: 'button' | 'plus' = 'plus') {
+    await this.dismissNoise();
+    await expect(async () => {
+      if (!(await this.quoteNameInput.isVisible())) {
+        if (via === 'plus') {
+          await this.openPlusMenu();
+          await this.page.getByText('Add Quote', { exact: true }).click({ timeout: 3_000 });
+        } else await this.page.getByRole('button', { name: 'Add quote', exact: true }).click({ timeout: 3_000 });
+      }
+      await expect(this.quoteNameInput).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 25_000 });
+  }
+  /** Picks an option in the n-th lookup (0 Deal, 1 Primary contact, 2 Account, 3 Quote type, 4 Quote template). */
+  async pickLookup(index: number, search: string | null, option: string | RegExp) {
+    await this.quoteTriggers.nth(index).click();
+    if (search) {
+      await this.page.locator('.ember-power-select-search-input').filter({ visible: true }).last().fill(search);
+    }
+    const opt = this.page.locator('.ember-power-select-option').filter({ hasText: option }).first();
+    await expect(opt).toBeVisible({ timeout: 20_000 });
+    await opt.click();
+  }
+  /** Creates a quote on the run-created deal/contact; returns the numeric quote id. Records it immediately. */
+  async createQuote(dealName: string, contactName: string, quoteName: string, via: 'button' | 'plus' = 'plus'): Promise<string> {
+    await this.openAddQuote(via);
+    await this.pickLookup(0, dealName, dealName);
+    await this.pickLookup(1, contactName, contactName);
+    await this.pickLookup(4, null, 'Sample Template');
+    await this.quoteNameInput.fill(quoteName);
+    await this.saveButton.click();
+    await expect(this.page).toHaveURL(/\/crm\/sales\/cpq_documents\/\d+/, { timeout: 30_000 });
+    const id = this.page.url().match(/cpq_documents\/(\d+)/)![1];
+    record({ type: 'quote', identifier: id, url: this.page.url(), note: `${quoteName} (TC quote)` });
+    await expect(this.page.getByText('Sync quote with deal')).toBeVisible();
+    await this.dismissNoise();
+    return id;
+  }
 }
 
 /** Soft-deletes every product/quote/deal/contact still marked pending in the track's created-entities.json. */

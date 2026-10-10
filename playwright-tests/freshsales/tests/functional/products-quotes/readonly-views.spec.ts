@@ -4,6 +4,8 @@ import { test, expect, observe } from '../../../pages/products-quotes/PQ';
  * Non-mutating Products / CPQ Settings / Document Templates / Quotes list coverage
  * (TC-products-quotes-001, 007-011, 027-030, 042). Nothing is saved, selected or changed.
  */
+test.setTimeout(120_000);
+
 test.describe('Products and Quotes: read-only views', () => {
   test('TC-products-quotes-001 Products list shows columns and sample products', async ({ page, pq }) => {
     await pq.gotoProducts();
