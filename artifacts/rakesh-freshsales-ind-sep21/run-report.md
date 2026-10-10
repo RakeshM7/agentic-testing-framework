@@ -59,3 +59,44 @@ Playwright project: `playwright-tests/freshsales/` (tests under `tests/functiona
 
 ## Resume
 Fill `clarifications/answers/answers-003.csv` through `answers-006.csv` (and fix the `answers-001.csv` column order if you want it merged), then re-invoke with the same `configPath`. Held modules go to a second Pass 2, then testcases, Playwright and API; completed tracks are skipped.
+
+---
+
+# Update 2026-10-06 (second resume): answers merged, held modules run
+
+**Overall status: Completed with 2 held modules and 2 incomplete tracks.** Mode unchanged: `full-run`; `explore_concurrency=1`.
+
+## Clarifications
+- Sheets `answers-002`, `-003`, `-004`, `-006` are complete and were merged into `questions.csv` with the script. `answers-001.csv` (82 rows) is fully answered but still rejected by the script (reordered columns); read directly, not merged. `answers-005.csv` (4 rows: settings-teams-territories 1, settings-pipelines-forecasting 3) is **unanswered**, so those two modules stay held.
+- Round-2 Pass 2 ran for deals, conversations, analytics, settings-data-model and products-quotes. Non-answers ("Explore and find out", bare "Yes"/"yes", "Defer ...") were carried as Open questions with flagged defaults, not spec. No new blocking follow-ups; all remaining follow-ups are Nice-to-have.
+
+## Track status (changes since the earlier report)
+
+| Module | Testcases | Playwright | API | Status |
+|---|---|---|---|---|
+| deals | 44 | 44 pass / 0 fail / 2 skip (46 tests) | 47 pass + 1 expected-fail; 10 endpoints | done |
+| conversations | 52 | 36 pass / 0 fail / 4 skip (40 tests) | 54 pass; 12 endpoints discovered, 10 covered | done |
+| settings-data-model | 44 | 35 pass / 2 fail / 7 skip (44 tests); the 2 failures are product deviations left failing on purpose | 75 pass / 0 fail / 2 skip; 15 operations | done |
+| analytics | 34 | 29 pass / 0 fail / 4 skip | **not completed** (agent produced no output; no `api/` folder) | incomplete (API stage) |
+| products-quotes | 58 | **not finalized**: stage was stopped by the user mid-run (its last status: two tenant-timing flakes, product clone kebab and Recycle Bin lag, were being fixed); specs exist under `tests/functional/products-quotes/` | not started | incomplete (Playwright + API) |
+| settings-teams-territories | not started | not started | not started | held: `answers-005.csv` unanswered (blocking: Enable vs Save-as-draft for auto-assignment rules) |
+| settings-pipelines-forecasting | not started | not started | not started | held: `answers-005.csv` unanswered (blocking: quota flow, system field dependencies, Add goal validation) |
+
+The 5 tracks reported earlier (dashboards, contacts, accounts, sales-activities, sales-sequences) are unchanged and complete.
+
+## Created entities
+All `created-entities.json` entries for the finished and resumed tracks are marked deleted (deals Playwright 115, deals API 13, conversations Playwright 17 and API 40, analytics Playwright 25, settings-data-model Playwright 106 and API 20, products-quotes Playwright 147). Test records are soft-deleted (Recycle Bin or Trash); nothing was permanently deleted. Not verified live for products-quotes after the stop.
+
+## Manual items added
+- Three email templates named "ZZ-..." (ids 402001313891, 402001313900, 402001313897) were seen on the tenant by the conversations API agent; they are not in the conversations Playwright log, so their origin is unknown. Not deleted.
+- "ZZ Test Deal 912..." deals were seen by the deals Playwright agent and are not in the deals log; not deleted.
+- Two Email Now messages likely went to the logged-in user (analytics); one report Download occurred.
+- Soft-deleted ZZ deals, products and quotes remain in Recycle Bins (Forget is permanent and was not used).
+- Live k6 never ran for any track (guard hook reads `AUTHORIZATIONS_MODE` from the shell; not overridden). For mutating API tests, `AUTHORIZATIONS_MODE=full-run` must be exported in the Playwright process.
+
+## New feedback files (2026-10-06)
+playwright-automation-agent: conversations-track, analytics-track, settings-data-model-track, deals-track. api-testing-agent: conversations-email-template-api-defects, settings-data-model-track, deals-track.
+
+## Resume
+1. Answer `clarifications/answers/answers-005.csv`.
+2. Re-invoke with the same `configPath`: held modules run Pass 2 round 2, then testcases, Playwright and API; products-quotes (finish and verify Playwright, then API) and analytics (API) are redone; completed tracks are skipped.
