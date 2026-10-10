@@ -79,7 +79,10 @@ test.describe('Deals bulk actions (full-run, ZZ-only selection)', () => {
     await page.getByText('Delete', { exact: true }).first().click();
     await expect(page.getByText(/delete/i).last()).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('bulk-delete-confirm.png') });
-    await page.getByRole('button', { name: /^(Yes|Delete|Confirm)/ }).last().click();
+    // The confirm dialog requires typing a numeric code shown in its own text ("Type 4701 to confirm").
+    const prompt = await page.getByText(/Type \d+ to confirm/).first().innerText();
+    await page.getByPlaceholder('Enter value').fill(prompt.match(/Type (\d+) to confirm/)![1]);
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
     markDeleted(idA, true);
     markDeleted(idB, true);
     await dm.gotoTableAll();

@@ -34,11 +34,13 @@ export class DealsModule {
     for (let i = 0; i < 3 && !/\/view\/402015942744/.test(this.page.url()); i++) {
       const tab = this.page.getByText('All deals', { exact: true });
       if (await tab.count()) await tab.first().click();
+      else if (await this.page.getByText(/^\d+ more\.\.\./).count()) await this.openView('All deals'); // e.g. Recycle Bin is the active tab
       else await this.page.goto('/crm/sales/deals');
       await this.page.waitForLoadState('load');
       await this.page.waitForTimeout(1_500);
     }
-    await expect(this.page).toHaveURL(/\/view\/402015942744/);
+    // After leaving the Recycle Bin the app may land on a sibling view URL labelled 'All deals' (observed 402015942756).
+    await expect(this.page.getByText('All deals', { exact: true }).first()).toBeVisible();
   }
   async gotoList() {
     await this.page.goto('/crm/sales/deals');

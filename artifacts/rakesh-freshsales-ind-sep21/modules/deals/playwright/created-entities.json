@@ -5,11 +5,11 @@
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479451",
     "createdAt": "2026-10-06T03:53:45.488Z",
     "note": "ZZ Probe Deal (probe p1)",
-    "deleted": false
+    "deleted": true
   },
   {
     "createdAt": "2026-10-06T03:58:18.107Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479469",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479469",
@@ -17,7 +17,7 @@
   },
   {
     "createdAt": "2026-10-06T03:58:53.479Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479474",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479474",
@@ -25,7 +25,7 @@
   },
   {
     "createdAt": "2026-10-06T03:59:11.317Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479475",
     "url": "/crm/sales/deals/402012479475",
@@ -41,7 +41,7 @@
   },
   {
     "createdAt": "2026-10-06T04:03:00.104Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479489",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479489",
@@ -49,7 +49,7 @@
   },
   {
     "createdAt": "2026-10-06T04:03:18.915Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479490",
     "url": "/crm/sales/deals/402012479490",
@@ -57,11 +57,11 @@
   },
   {
     "createdAt": "2026-10-06T04:05:17.542Z",
-    "deleted": false,
+    "deleted": true,
     "type": "task",
     "identifier": "ZZ Task 001 259373",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479489?tab=recent-activities.tasks",
-    "note": "on deal 402012479489; removed with parent deal"
+    "note": "on deal 402012479489; removed with parent deal [parent deal deleted in reconcile]"
   },
   {
     "createdAt": "2026-10-06T04:06:18.234Z",
@@ -77,11 +77,11 @@
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479504",
     "createdAt": "2026-10-06T04:10:45.925Z",
     "note": "ZZ Deal 001 259373 clone (TC-021 orphan: recorded after assertion failure)",
-    "deleted": false
+    "deleted": true
   },
   {
     "createdAt": "2026-10-06T04:10:56.815Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479526",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479526",
@@ -89,7 +89,7 @@
   },
   {
     "createdAt": "2026-10-06T04:11:16.203Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479527",
     "url": "/crm/sales/deals/402012479527",
@@ -97,15 +97,15 @@
   },
   {
     "createdAt": "2026-10-06T04:12:54.639Z",
-    "deleted": false,
+    "deleted": true,
     "type": "task",
     "identifier": "ZZ Task 001 259845",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479526?tab=recent-activities.tasks",
-    "note": "on deal 402012479526; removed with parent deal"
+    "note": "on deal 402012479526; removed with parent deal [parent deal deleted in reconcile]"
   },
   {
     "createdAt": "2026-10-06T04:13:42.483Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479539",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479539",
@@ -113,7 +113,7 @@
   },
   {
     "createdAt": "2026-10-06T04:14:01.542Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479541",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479541",
@@ -121,7 +121,7 @@
   },
   {
     "createdAt": "2026-10-06T04:14:10.489Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479542",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479542",
@@ -133,11 +133,11 @@
     "type": "deal",
     "identifier": "402012479547",
     "url": "/crm/sales/deals/402012479547",
-    "note": "ZZ Deal 003 edited 259845 (TC-022)"
+    "note": "ZZ Deal 003 edited 259845 (TC-022) [found live in All deals after TC-024 restore; re-queued for delete]"
   },
   {
     "createdAt": "2026-10-06T04:19:51.300Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479582",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479582",
@@ -145,7 +145,7 @@
   },
   {
     "createdAt": "2026-10-06T04:25:27.519Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479611",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479611",
@@ -153,7 +153,7 @@
   },
   {
     "createdAt": "2026-10-06T04:25:54.867Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479614",
     "url": "/crm/sales/deals/402012479614",
@@ -161,15 +161,15 @@
   },
   {
     "createdAt": "2026-10-06T04:28:16.326Z",
-    "deleted": false,
+    "deleted": true,
     "type": "task",
     "identifier": "ZZ Task 001 260716",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479611?tab=recent-activities.tasks",
-    "note": "on deal 402012479611; removed with parent deal"
+    "note": "on deal 402012479611; removed with parent deal [parent deal deleted in reconcile]"
   },
   {
     "createdAt": "2026-10-06T04:28:52.871Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479631",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479631",
@@ -177,7 +177,7 @@
   },
   {
     "createdAt": "2026-10-06T04:29:15.346Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479633",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479633",
@@ -185,7 +185,7 @@
   },
   {
     "createdAt": "2026-10-06T04:29:28.044Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479640",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479640",
@@ -201,7 +201,7 @@
   },
   {
     "createdAt": "2026-10-06T04:31:58.300Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479669",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479669",
@@ -209,7 +209,7 @@
   },
   {
     "createdAt": "2026-10-06T04:32:22.750Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479672",
     "url": "/crm/sales/deals/402012479672",
@@ -217,15 +217,15 @@
   },
   {
     "createdAt": "2026-10-06T04:34:01.387Z",
-    "deleted": false,
+    "deleted": true,
     "type": "task",
     "identifier": "ZZ Task 001 261108",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479669?tab=recent-activities.tasks",
-    "note": "on deal 402012479669; removed with parent deal"
+    "note": "on deal 402012479669; removed with parent deal [parent deal deleted in reconcile]"
   },
   {
     "createdAt": "2026-10-06T04:35:03.772Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479700",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479700",
@@ -233,7 +233,7 @@
   },
   {
     "createdAt": "2026-10-06T04:35:32.724Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479702",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479702",
@@ -241,7 +241,7 @@
   },
   {
     "createdAt": "2026-10-06T04:35:48.503Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479704",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479704",
@@ -257,7 +257,7 @@
   },
   {
     "createdAt": "2026-10-06T04:39:27.472Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479730",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479730",
@@ -265,7 +265,7 @@
   },
   {
     "createdAt": "2026-10-06T04:39:35.457Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479732",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479732",
@@ -273,7 +273,7 @@
   },
   {
     "createdAt": "2026-10-06T04:39:59.165Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479736",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479736",
@@ -281,7 +281,7 @@
   },
   {
     "createdAt": "2026-10-06T04:40:08.889Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479739",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479739",
@@ -289,7 +289,7 @@
   },
   {
     "createdAt": "2026-10-06T04:40:48.573Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479747",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479747",
@@ -297,7 +297,7 @@
   },
   {
     "createdAt": "2026-10-06T04:40:52.986Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479748",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479748",
@@ -305,7 +305,7 @@
   },
   {
     "createdAt": "2026-10-06T04:40:57.933Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479749",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479749",
@@ -313,7 +313,7 @@
   },
   {
     "createdAt": "2026-10-06T04:41:06.009Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479750",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479750",
@@ -321,7 +321,7 @@
   },
   {
     "createdAt": "2026-10-06T04:41:34.588Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479757",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479757",
@@ -329,7 +329,7 @@
   },
   {
     "createdAt": "2026-10-06T04:42:07.751Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479763",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479763",
@@ -337,7 +337,7 @@
   },
   {
     "createdAt": "2026-10-06T04:42:43.961Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479768",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479768",
@@ -345,7 +345,7 @@
   },
   {
     "createdAt": "2026-10-06T04:43:16.072Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479775",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479775",
@@ -353,7 +353,7 @@
   },
   {
     "createdAt": "2026-10-06T04:44:33.428Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479786",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479786",
@@ -361,7 +361,7 @@
   },
   {
     "createdAt": "2026-10-06T04:44:43.804Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479787",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479787",
@@ -369,7 +369,7 @@
   },
   {
     "createdAt": "2026-10-06T04:44:55.865Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479789",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479789",
@@ -377,7 +377,7 @@
   },
   {
     "createdAt": "2026-10-06T04:45:10.086Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479791",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479791",
@@ -385,7 +385,7 @@
   },
   {
     "createdAt": "2026-10-06T04:45:22.013Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479795",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479795",
@@ -393,7 +393,7 @@
   },
   {
     "createdAt": "2026-10-06T04:45:28.955Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479796",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479796",
@@ -401,7 +401,7 @@
   },
   {
     "createdAt": "2026-10-06T04:45:35.164Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479797",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479797",
@@ -409,7 +409,7 @@
   },
   {
     "createdAt": "2026-10-06T04:45:46.874Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479802",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479802",
@@ -417,7 +417,7 @@
   },
   {
     "createdAt": "2026-10-06T04:45:53.016Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479803",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479803",
@@ -425,7 +425,7 @@
   },
   {
     "createdAt": "2026-10-06T04:45:59.211Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479806",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479806",
@@ -433,7 +433,7 @@
   },
   {
     "createdAt": "2026-10-06T04:46:07.946Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479809",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479809",
@@ -441,18 +441,482 @@
   },
   {
     "createdAt": "2026-10-06T05:01:24.146Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479948",
-    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479948",
-    "note": "ZZ Bulk A 262871 (TC-027 bulk A)"
+    "url": "",
+    "note": "ZZ Bulk A 262871 (TC-027 bulk A) [reconcile: already gone (404), removed by earlier bulk delete]"
   },
   {
     "createdAt": "2026-10-06T05:01:49.018Z",
-    "deleted": false,
+    "deleted": true,
     "type": "deal",
     "identifier": "402012479952",
     "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012479952",
     "note": "ZZ Bulk B 262871 (TC-044 bulk B)"
+  },
+  {
+    "createdAt": "2026-10-06T10:43:46.786Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483335",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483335",
+    "note": "ZZ Bulk A r83414 (TC-027 bulk A)"
+  },
+  {
+    "createdAt": "2026-10-06T10:44:38.426Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483344",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483344",
+    "note": "ZZ Bulk B r83414 (TC-044 bulk B)"
+  },
+  {
+    "createdAt": "2026-10-06T10:45:57.533Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483365",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483365",
+    "note": "ZZ Deal 001 r83414 (TC-007)"
+  },
+  {
+    "createdAt": "2026-10-06T10:46:39.547Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483371",
+    "url": "/crm/sales/deals/402012483371",
+    "note": "ZZ Deal 002 r83414 (TC-008)"
+  },
+  {
+    "createdAt": "2026-10-06T10:49:11.756Z",
+    "deleted": true,
+    "type": "task",
+    "identifier": "ZZ Task 001 r83414",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483365?tab=recent-activities.tasks",
+    "note": "on deal 402012483365; removed with parent deal"
+  },
+  {
+    "createdAt": "2026-10-06T10:49:32.926Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483407",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483407",
+    "note": "ZZ Deal 001 r83414 clone (TC-021 clone of 402012483365)"
+  },
+  {
+    "createdAt": "2026-10-06T10:49:44.211Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483413",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483413",
+    "note": "ZZ Deal 001 r83414 DUPCLONE (TC-040 same-name clone)"
+  },
+  {
+    "createdAt": "2026-10-06T10:49:56.131Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483419",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483419",
+    "note": "ZZ Deal 001 r83414 DUPNAME (TC-039 duplicate name)"
+  },
+  {
+    "createdAt": "2026-10-06T10:50:06.187Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483421",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483421",
+    "note": "ZZ Deal 003 r83414 (TC-015)"
+  },
+  {
+    "createdAt": "2026-10-06T10:52:12.784Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483445",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483445",
+    "note": "ZZ Deal neg r83414 (TC-031 negative value)"
+  },
+  {
+    "createdAt": "2026-10-06T10:52:22.044Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483447",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483447",
+    "note": "ZZ Deal 033 r83414 (TC-033)"
+  },
+  {
+    "createdAt": "2026-10-06T10:52:38.870Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483450",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483450",
+    "note": "ZZ Deal 035 r83414 (TC-035)"
+  },
+  {
+    "createdAt": "2026-10-06T10:52:50.712Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483456",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483456",
+    "note": "ZZ Deal 037 r83414 (TC-037)"
+  },
+  {
+    "createdAt": "2026-10-06T10:53:04.709Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483462",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483462",
+    "note": "ZZx (TC-041 3 chars)"
+  },
+  {
+    "createdAt": "2026-10-06T10:53:11.018Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483463",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483463",
+    "note": "ZZ long name 255 chars (TC-041 255 chars)"
+  },
+  {
+    "createdAt": "2026-10-06T10:53:16.205Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483464",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483464",
+    "note": "ZZ long name 256 chars (TC-041 256 chars)"
+  },
+  {
+    "createdAt": "2026-10-06T10:53:24.103Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483468",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483468",
+    "note": "ZZ Value 0 r83414 (TC-042 value 0)"
+  },
+  {
+    "createdAt": "2026-10-06T10:53:29.792Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483469",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483469",
+    "note": "ZZ Value dec r83414 (TC-042 value 99.99)"
+  },
+  {
+    "createdAt": "2026-10-06T10:53:34.940Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483470",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483470",
+    "note": "ZZ Value big r83414 (TC-042 value 999999999999)"
+  },
+  {
+    "createdAt": "2026-10-06T10:53:45.079Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483472",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483472",
+    "note": "ZZ Deal 043 r83414 (TC-043)"
+  },
+  {
+    "createdAt": "2026-10-06T11:04:04.835Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483579",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483579",
+    "note": "ZZ Bulk A q84638 (TC-027 bulk A)"
+  },
+  {
+    "createdAt": "2026-10-06T11:04:14.300Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483581",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483581",
+    "note": "ZZ Bulk B q84638 (TC-044 bulk B)"
+  },
+  {
+    "createdAt": "2026-10-06T11:05:26.122Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483594",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483594",
+    "note": "ZZ Deal 001 q84638 (TC-007)"
+  },
+  {
+    "createdAt": "2026-10-06T11:05:45.598Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483596",
+    "url": "/crm/sales/deals/402012483596",
+    "note": "ZZ Deal 002 q84638 (TC-008)"
+  },
+  {
+    "createdAt": "2026-10-06T11:06:33.508Z",
+    "deleted": true,
+    "type": "task",
+    "identifier": "ZZ Task 001 q84638",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483594?tab=recent-activities.tasks",
+    "note": "on deal 402012483594; removed with parent deal"
+  },
+  {
+    "createdAt": "2026-10-06T11:06:55.544Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483614",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483614",
+    "note": "ZZ Deal 001 q84638 clone (TC-021 clone of 402012483594)"
+  },
+  {
+    "createdAt": "2026-10-06T11:07:07.451Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483616",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483616",
+    "note": "ZZ Deal 001 q84638 DUPCLONE (TC-040 same-name clone)"
+  },
+  {
+    "createdAt": "2026-10-06T11:07:15.093Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483617",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483617",
+    "note": "ZZ Deal 001 q84638 DUPNAME (TC-039 duplicate name)"
+  },
+  {
+    "createdAt": "2026-10-06T11:07:20.556Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483618",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483618",
+    "note": "ZZ Deal 003 q84638 (TC-015)"
+  },
+  {
+    "createdAt": "2026-10-06T11:14:38.474Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483687",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483687",
+    "note": "ZZ Bulk A s85262 (TC-027 bulk A)"
+  },
+  {
+    "createdAt": "2026-10-06T11:14:49.717Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483689",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483689",
+    "note": "ZZ Bulk B s85262 (TC-044 bulk B)"
+  },
+  {
+    "createdAt": "2026-10-06T11:15:10.889Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483695",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483695",
+    "note": "ZZ Deal 001 s85262 (TC-007)"
+  },
+  {
+    "createdAt": "2026-10-06T11:15:31.784Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483698",
+    "url": "/crm/sales/deals/402012483698",
+    "note": "ZZ Deal 002 s85262 (TC-008)"
+  },
+  {
+    "createdAt": "2026-10-06T11:16:44.529Z",
+    "deleted": true,
+    "type": "task",
+    "identifier": "ZZ Task 001 s85262",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483695?tab=recent-activities.tasks",
+    "note": "on deal 402012483695; removed with parent deal"
+  },
+  {
+    "createdAt": "2026-10-06T11:17:20.536Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483720",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483720",
+    "note": "ZZ Deal 001 s85262 clone (TC-021 clone of 402012483695)"
+  },
+  {
+    "createdAt": "2026-10-06T11:17:35.102Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483724",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483724",
+    "note": "ZZ Deal 001 s85262 DUPCLONE (TC-040 same-name clone)"
+  },
+  {
+    "createdAt": "2026-10-06T11:17:46.400Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483725",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483725",
+    "note": "ZZ Deal 001 s85262 DUPNAME (TC-039 duplicate name)"
+  },
+  {
+    "createdAt": "2026-10-06T11:17:56.652Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483728",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483728",
+    "note": "ZZ Deal 003 s85262 (TC-015)"
+  },
+  {
+    "createdAt": "2026-10-06T11:31:19.975Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483879",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483879",
+    "note": "ZZ Bulk A u86271 (TC-027 bulk A)"
+  },
+  {
+    "createdAt": "2026-10-06T11:31:36.744Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483884",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483884",
+    "note": "ZZ Bulk B u86271 (TC-044 bulk B)"
+  },
+  {
+    "createdAt": "2026-10-06T11:32:06.646Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483892",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483892",
+    "note": "ZZ Deal 001 u86271 (TC-007)"
+  },
+  {
+    "createdAt": "2026-10-06T11:32:31.152Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483895",
+    "url": "/crm/sales/deals/402012483895",
+    "note": "ZZ Deal 002 u86271 (TC-008)"
+  },
+  {
+    "createdAt": "2026-10-06T11:33:42.600Z",
+    "deleted": true,
+    "type": "task",
+    "identifier": "ZZ Task 001 u86271",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483892?tab=recent-activities.tasks",
+    "note": "on deal 402012483892; removed with parent deal"
+  },
+  {
+    "createdAt": "2026-10-06T11:34:15.185Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483920",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483920",
+    "note": "ZZ Deal 001 u86271 clone (TC-021 clone of 402012483892)"
+  },
+  {
+    "createdAt": "2026-10-06T11:34:27.133Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483924",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483924",
+    "note": "ZZ Deal 001 u86271 DUPCLONE (TC-040 same-name clone)"
+  },
+  {
+    "createdAt": "2026-10-06T11:34:34.702Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483926",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483926",
+    "note": "ZZ Deal 001 u86271 DUPNAME (TC-039 duplicate name)"
+  },
+  {
+    "createdAt": "2026-10-06T11:34:45.131Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483930",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483930",
+    "note": "ZZ Deal 003 u86271 (TC-015)"
+  },
+  {
+    "createdAt": "2026-10-06T11:35:57.281Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483940",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483940",
+    "note": "ZZ Deal neg u86271 (TC-031 negative value)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:04.231Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483942",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483942",
+    "note": "ZZ Deal 033 u86271 (TC-033)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:13.708Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483944",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483944",
+    "note": "ZZ Deal 035 u86271 (TC-035)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:22.417Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483947",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483947",
+    "note": "ZZ Deal 037 u86271 (TC-037)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:31.426Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483952",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483952",
+    "note": "ZZx (TC-041 3 chars)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:35.063Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483955",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483955",
+    "note": "ZZ long name 255 chars (TC-041 255 chars)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:38.371Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483956",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483956",
+    "note": "ZZ long name 256 chars (TC-041 256 chars)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:43.526Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483957",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483957",
+    "note": "ZZ Value 0 u86271 (TC-042 value 0)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:47.335Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483959",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483959",
+    "note": "ZZ Value dec u86271 (TC-042 value 99.99)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:50.913Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483960",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483960",
+    "note": "ZZ Value big u86271 (TC-042 value 999999999999)"
+  },
+  {
+    "createdAt": "2026-10-06T11:36:56.705Z",
+    "deleted": true,
+    "type": "deal",
+    "identifier": "402012483962",
+    "url": "https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales/deals/402012483962",
+    "note": "ZZ Deal 043 u86271 (TC-043)"
   }
 ]
