@@ -1,6 +1,6 @@
 # Analytics API test plan (track: analytics)
 
-Analytics has no meaningful tenant-side API beyond read-only GETs. The public Freshworks CRM API documents no analytics endpoints; report builder, schedules, custom attributes/metrics, data exports and favorites/trash are served by the third-party freshreports.com app (out of scope). 3 endpoints discovered (1 shared with dashboards track). mode full-run, but no mutating tests are possible or generated; created-entities.json = [] (nothing created, nothing to delete). Curated reports, schedules and emails untouched.
+Analytics has no meaningful tenant-side API beyond read-only GETs. The public Freshworks CRM API documents no analytics endpoints; report builder, schedules, custom attributes/metrics, data exports and favorites/trash are served by the third-party freshreports.com app (out of scope). 3 endpoints discovered (1 shared with dashboards track). Mode: readonly (GET-only); no mutating tests exist or are generated; created-entities.json = [] (nothing created, nothing to delete). Curated reports, schedules and emails untouched.
 
 | Endpoint | Functional | Negative | Boundary | Auth | Schema | Perf |
 |---|---|---|---|---|---|---|
