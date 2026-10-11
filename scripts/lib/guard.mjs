@@ -1,10 +1,12 @@
-// Platform-neutral safety guard. Inputs: a tool call (tool name, input, calling agent type) and the active runs.
+// Platform-neutral safety guard. Input: a canonical tool call (scripts/lib/tool-call.mjs, produced by a host adapter in
+// scripts/hooks/hosts/) and the active runs. Output: { allowed, rule?, reason? }.
 //
 // Sources of truth (nothing else):
 //   - active runs:  every artifacts/<product>/state/lock.json (one active run per product)
 //   - mode:         that run's state/run.json `mode`, resolved once from the run-config at `run.mjs init`
 //   - permissions:  that run's state/permissions.resolved.json (frozen copy of config/permissions.yaml)
 //   - ownership:    that run's state/ledger.jsonl, entries of the CURRENT run only
+//   - caller:       the call's `agent` (set by the adapter only from a trusted source) and `host`
 // The env var AUTHORIZATIONS_MODE=readonly can only downgrade. No active run => readonly, no per-agent rules.
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
 //
@@ -12,6 +14,7 @@
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { isMutatingBrowserTool } from "./browser-tools.mjs";
 import { live } from "./ledger.mjs";
 import { atLeast, canWrite, effectiveLiveTarget, shellAllowed } from "./permissions.mjs";
 
@@ -62,9 +65,6 @@ const HTTP_MUTATE = [
 ];
 const K6_LIVE = /\bk6(\.exe)?\s+(run|cloud)\b/i;
 const DELETE_RE = /(-X|--request)[\s=]*['"]?DELETE\b|--method[\s=]*['"]?DELETE\b|-Method\s+['"]?Delete\b|method\s*[:=]\s*['"]DELETE['"]|\b(requests|httpx|axios|got|ky)\.delete\b/i;
-// Playwright MCP tools that type, submit or run code. `click` stays allowed under read: navigation needs it.
-const BROWSER_MUTATING = new Set(["type", "fill_form", "select_option", "file_upload", "drag", "drop", "press_key", "handle_dialog", "evaluate", "run_code_unsafe"]);
-const WRITE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const deny = (rule, reason) => ({ allowed: false, rule, reason });
@@ -89,53 +89,63 @@ function checkShell(cmd, run, row) {
   return ALLOW;
 }
 
-function evaluate(input, run) {
-  const tool = String(input.tool_name ?? "");
-  const ti = input.tool_input ?? {};
-  const row = run.permissions?.agents?.[input.agent_type];
-  if (run.broken) return /^(Bash|PowerShell)$/.test(tool) ? checkShell(String(ti.command ?? ""), run, null) : ALLOW;
-
-  if (tool === "Agent") {
-    if (row && !row.spawns.includes(ti.subagent_type)) return deny("spawn", `${input.agent_type} may only spawn [${row.spawns.join(", ")}]`);
-    return ALLOW;
-  }
-  if (tool === "Bash" || tool === "PowerShell") return checkShell(String(ti.command ?? ""), run, row);
-  if (tool === "WebFetch" || tool === "WebSearch") {
-    if (!row) return ALLOW;
-    const host = hostOf(ti.url);
-    if (tool === "WebFetch" && host && host === run.targetHost)
-      return atLeast(effectiveLiveTarget(row, run.mode).http, "read") ? ALLOW : deny("http-none", "this agent has no HTTP access to the product under test");
-    return row.web_research === "allowed" ? ALLOW : deny("web-research", "web research is not allowed for this agent");
-  }
-  if (WRITE_TOOLS.has(tool)) {
-    if (!row) return ALLOW;
-    const abs = path.resolve(run.root, String(ti.file_path ?? ti.notebook_path ?? ""));
-    const rel = path.relative(run.root, abs).replaceAll("\\", "/");
-    if (rel.startsWith("..") || path.isAbsolute(rel)) return deny("fs-write", `writes outside the repo are not allowed (${abs})`);
-    return canWrite(row, rel, run.permissions.variables ?? {}, { product: run.product, run_id: run.runId })
-      ? ALLOW
-      : deny("fs-write", `${rel} is outside this agent's filesystem.write allow-list`);
-  }
-  const m = /^mcp__.*playwright.*__browser_(\w+)$/.exec(tool);
-  if (m) {
-    const level = row ? effectiveLiveTarget(row, run.mode).browser : run.mode === "full-run" ? "mutate" : "read";
-    if (level === "none") return deny("browser-none", "this agent has no browser access");
-    if (level === "read" && BROWSER_MUTATING.has(m[1])) return deny("browser-read", `browser_${m[1]} can change data; this agent is read-only here (mode ${run.mode})`);
-  }
-  return ALLOW;
+function checkWrite(file, run, row) {
+  const abs = path.resolve(run.root, file);
+  const rel = path.relative(run.root, abs).replaceAll("\\", "/");
+  if (rel.startsWith("..") || path.isAbsolute(rel)) return deny("fs-write", `writes outside the repo are not allowed (${abs})`);
+  return canWrite(row, rel, run.permissions.variables ?? {}, { product: run.product, run_id: run.runId })
+    ? ALLOW
+    : deny("fs-write", `${rel} is outside this agent's filesystem.write allow-list`);
 }
 
-// -> { allowed, rule?, reason? }. With several active runs (different products): a write is allowed if ANY run's
-// rules allow it (paths are product-specific); everything else must be allowed by EVERY active run.
-export function checkTool(input, root, env = process.env) {
-  const runs = findActiveRuns(root, env);
-  if (!runs.length) {
-    const tool = String(input.tool_name ?? "");
-    if (tool === "Bash" || tool === "PowerShell")
-      return checkShell(String(input.tool_input?.command ?? ""), { mode: "readonly", ledgerFile: null, runId: null, targetHost: null }, null);
-    return ALLOW;
+function checkFetch(url, run, row) {
+  const host = hostOf(url);
+  if (host && host === run.targetHost)
+    return atLeast(effectiveLiveTarget(row, run.mode).http, "read") ? ALLOW : deny("http-none", "this agent has no HTTP access to the product under test");
+  return row.web_research === "allowed" ? ALLOW : deny("web-research", "web research is not allowed for this agent");
+}
+
+const firstDenied = (verdicts) => verdicts.find((v) => !v.allowed) ?? ALLOW;
+
+function evaluateKind(call, run, row) {
+  switch (call.kind) {
+    case "spawn":
+      return row && !row.spawns.includes(call.subagent) ? deny("spawn", `${call.agent} may only spawn [${row.spawns.join(", ")}]`) : ALLOW;
+    case "shell":
+      return checkShell(call.command ?? "", run, row);
+    case "web_fetch":
+      if (!row) return ALLOW;
+      return call.urls.length ? firstDenied(call.urls.map((u) => checkFetch(u, run, row))) : checkFetch(undefined, run, row);
+    case "web_search":
+      return !row || row.web_research === "allowed" ? ALLOW : deny("web-research", "web research is not allowed for this agent");
+    case "write":
+      if (!row) return ALLOW;
+      if (!call.paths.length) return deny("fs-write", `could not tell which file ${call.tool} writes; refusing for a managed agent`);
+      return firstDenied(call.paths.map((f) => checkWrite(f, run, row)));
+    case "browser": {
+      const level = row ? effectiveLiveTarget(row, run.mode).browser : run.mode === "full-run" ? "mutate" : "read";
+      if (level === "none") return deny("browser-none", "this agent has no browser access");
+      if (level === "read" && isMutatingBrowserTool(call.browserAction))
+        return deny("browser-read", `browser_${call.browserAction} can change data; this agent is read-only here (mode ${run.mode})`);
+      return ALLOW;
+    }
+    default: // read, ask, other, unknown
+      return ALLOW;
   }
-  const verdicts = runs.map((r) => evaluate(input, r));
-  if (WRITE_TOOLS.has(String(input.tool_name))) return verdicts.find((v) => v.allowed) ?? verdicts[0];
-  return verdicts.find((v) => !v.allowed) ?? ALLOW;
+}
+
+function evaluate(call, run) {
+  if (run.broken) return call.kind === "shell" ? checkShell(call.command ?? "", run, null) : ALLOW;
+  const row = call.agent ? run.permissions?.agents?.[call.agent] : undefined;
+  return evaluateKind(call, run, row);
+}
+
+// -> { allowed, rule?, reason? }. With several active runs (different products): a write is allowed if ANY
+// run's rules allow it (paths are product-specific); everything else must be allowed by EVERY active run.
+export function checkTool(call, root, env = process.env) {
+  const runs = findActiveRuns(root, env);
+  if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHost: null }, null) : ALLOW;
+  const verdicts = runs.map((r) => evaluate(call, r));
+  if (call.kind === "write") return verdicts.find((v) => v.allowed) ?? verdicts[0];
+  return firstDenied(verdicts);
 }

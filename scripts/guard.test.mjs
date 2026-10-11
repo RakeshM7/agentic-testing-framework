@@ -2,11 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
+import { normalize } from "./hooks/hosts/claude.mjs";
 import { append } from "./lib/ledger.mjs";
 import { paths } from "./lib/contract.mjs";
 import { startRun, tempRoot } from "./test-helpers.mjs";
 
-const call = (agent, tool_name, tool_input) => ({ agent_type: agent, tool_name, tool_input });
+// Calls as Claude Code's hook sends them, through the Claude adapter (the guard itself only sees canonical calls).
+const call = (agent, tool_name, tool_input) => normalize({ agent_type: agent, tool_name, tool_input }, { env: { CLAUDE_PROJECT_DIR: "/repo" }, host: "claude-code" });
 const sh = (agent, command) => call(agent, "Bash", { command });
 const allowed = (root, input, env = {}) => checkTool(input, root, env).allowed;
 
