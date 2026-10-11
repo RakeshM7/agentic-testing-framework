@@ -42,7 +42,7 @@ function hostCheck(mode, env) {
   const host = detectShellHost(env);
   if (mode !== "full-run") return { host };
   if (host !== "unknown" && !canIdentify(host))
-    return { host, error: `full-run is not available on ${labelOf(host)}: its hooks cannot identify the calling agent, so per-agent permissions cannot be enforced. Run in readonly, or use Claude Code or VS Code (docs/platforms.md).` };
+    return { host, error: `full-run is not available on ${labelOf(host)}: its hooks cannot identify the calling agent, so per-agent permissions cannot be enforced. Run in readonly, or use Claude Code or VS Code's local agent (docs/platforms.md).` };
   return host === "unknown" ? { host, warning: "could not recognize the host; full-run actions will be blocked unless the guard can identify the calling agent (guard-check before the first stage)" } : { host };
 }
 
@@ -248,7 +248,7 @@ async function main() {
       // Reaching this line means no hook blocked the command: the guard is not active in this session.
       if (!SLUG_RE.test(a) || !existsSync(paths(a).state)) out({ errors: [`no run state for product '${a}'`] }, 1);
       markAbsent(a, repoRoot);
-      out({ errors: ["the framework guard did NOT block guard-check: hooks are not active in this session, so nothing enforces the run's mode or permissions. Stop and fix the host's hook setup (docs/platforms.md)."] }, 1);
+      out({ errors: ["the framework guard did NOT block guard-check: hooks are not active in this session, so nothing enforces the run's mode or permissions. Stop and fix the host's hook setup (docs/platforms.md), then run `node scripts/run.mjs guard-check <product>` again."] }, 1);
     } else if (cmd === "status") out(await status(a));
     else if (cmd === "next") out(await next(a));
     else if (cmd === "stage") {

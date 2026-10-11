@@ -1,6 +1,6 @@
 # Platforms and hosts
 
-The pipeline, contracts, scripts and guard are platform-neutral. This doc is the only place for what differs per host. The reasons behind each choice are in [`decisions.md`](decisions.md) (D-018 – D-030).
+The pipeline, contracts, scripts and guard are platform-neutral. This doc is the only place for what differs per host. The reasons behind each choice are in [`decisions.md`](decisions.md) (D-018 – D-033).
 
 ## How one agent becomes every platform's file
 
@@ -21,17 +21,19 @@ To change an agent, edit `agents/<name>.md` (body, `description`, `color`, `user
 
 ## Host matrix
 
-| | Claude Code | VS Code Copilot Chat | Copilot CLI | Copilot cloud coding agent |
-|---|---|---|---|---|
-| Agent files | `.claude/agents/` | `.github/agents/` (`.claude/agents` turned off) | `.github/agents/` | `.github/agents/` |
-| Start a run | `claude --agent orchestrator-agent` | pick **orchestrator-agent** in the agent picker | `copilot --agent orchestrator-agent` | assign an issue (maintenance only) |
-| Nested subagents (3 layers) | yes | yes, with `chat.subagents.allowInvocationsFromSubagents` | not verified | n/a |
-| Hook registration | `.claude/settings.json` | `.vscode/hooks/` + each agent's own hook | `.github/hooks/` | `.github/hooks/` |
-| Guard knows the calling agent | yes (`agent_type`) | yes (build-baked `--agent`) | **no** | **no** |
-| `full-run` | yes | yes | **no: readonly only** | **no: readonly only** |
-| Ask the human | `AskUserQuestion` | `vscode/askQuestions` | `ask_user` | none: stops and reports |
-| Live browser (Playwright MCP) | `.mcp.json` | `.vscode/mcp.json` | register the server from `config/mcp.yaml` in the CLI's MCP config | none |
-| Design-decision confirmation | permission prompt | permission prompt | permission prompt | refused, reported in the PR |
+VS Code Copilot Chat can run a chat on two engines. They behave differently for the guard, so they have separate columns (D-032, D-033).
+
+| | Claude Code | VS Code: local agent | VS Code: Copilot CLI engine | Copilot CLI | Copilot cloud coding agent |
+|---|---|---|---|---|---|
+| Agent files | `.claude/agents/` | `.github/agents/` (`.claude/agents` turned off) | `.github/agents/` | `.github/agents/` | `.github/agents/` |
+| Start a run | `claude --agent orchestrator-agent` | a local agent chat, then pick **orchestrator-agent** | a chat on the Copilot CLI engine (VS Code log: session type `agent-host-copilotcli`) | `copilot --agent orchestrator-agent` | assign an issue (maintenance only) |
+| Nested subagents (3 layers) | yes | yes, with `chat.subagents.allowInvocationsFromSubagents` | not verified | not verified | n/a |
+| Hook registration | `.claude/settings.json` | `.vscode/hooks/` + each agent's own hook | `.github/hooks/` (seen live) | `.github/hooks/` | `.github/hooks/` |
+| Guard knows the calling agent | yes (`agent_type`) | yes (build-baked `--agent`) | **no** | **no** | **no** |
+| `full-run` | yes | yes | **no: readonly only** | **no: readonly only** | **no: readonly only** |
+| Ask the human | `AskUserQuestion` | `vscode/askQuestions` | not verified | `ask_user` | none: stops and reports |
+| Live browser (Playwright MCP) | `.mcp.json` | `.vscode/mcp.json` | starts the Playwright server (seen live) | register the server from `config/mcp.yaml` in the CLI's MCP config | none |
+| Design-decision confirmation | permission prompt | permission prompt | permission prompt | permission prompt | refused, reported in the PR |
 
 ## Setup
 
@@ -48,9 +50,10 @@ To change an agent, edit `agents/<name>.md` (body, `description`, `color`, `user
    - loads hooks from `.vscode/hooks/` but not `.github/hooks/` or `.claude/settings.json`;
    - uses `AGENTS.md`;
    - auto-approves only repo-local, non-mutating commands.
-3. Pick **orchestrator-agent** in the agent picker. Workers are hidden (`user-invocable: false`); the orchestrators start them.
+3. Start a **local agent** chat and pick **orchestrator-agent** in the agent picker. Workers are hidden (`user-invocable: false`); the orchestrators start them.
+   - VS Code 1.141 can also run a chat on its **Copilot CLI engine**: the Copilot CLI runtime that VS Code bundles. That engine doesn't follow `.vscode/settings.json`. It uses `.github/agents/` and `.github/hooks/` like Copilot CLI and runs no custom-agent hooks, so the guard can't tell which agent is calling. Runs there are readonly only: the guard check refuses full-run before the first stage (D-032).
 4. The orchestrator runs `node scripts/run.mjs guard-check <product>` first, and the guard must block it.
-   - On VS Code, each custom agent's own hook names the agent to the guard. That is the Preview "custom agent hooks" feature.
+   - In VS Code's local agent, each custom agent's own hook names the agent to the guard. That is the Preview "custom agent hooks" feature.
    - If those hooks don't run, full-run is refused, and readonly still works.
 
 ### Copilot CLI
@@ -69,7 +72,9 @@ To change an agent, edit `agents/<name>.md` (body, `description`, `color`, `user
   - VS Code: trust the workspace, keep `chat.useHooks` on, keep `.vscode/settings.json` as committed.
   - Claude Code: check `.claude/settings.json`.
   - Then run `run.mjs guard-check <product>` again.
-- **"full-run needs a host where the guard identifies the calling agent"**: use Claude Code or VS Code, or switch the run-config to `readonly`.
+- **"full-run needs a host where the guard identifies the calling agent"**: use Claude Code or VS Code's local agent, or switch the run-config to `readonly`.
+  - The host that blocked the check is in `artifacts/<product>/state/guard-check/`.
+  - In VS Code, a `vscode-agent-host--…` or `copilot-cli--…` record means the chat ran on the Copilot CLI engine. Start a local agent chat instead, then resume the run.
 - **"unmapped tool …"** (during a run): the host has a tool the adapter doesn't know. Add it to `scripts/hooks/hosts/<adapter>.mjs` with a test, then retry.
 
 ## Verified facts (2026-10-11)
@@ -82,7 +87,14 @@ From GitHub's and VS Code's documentation:
 - **Copilot hook payloads.** PascalCase `PreToolUse` sends snake_case fields with Claude tool names. There is no calling-agent field.
 - **Copilot hook outcomes.** Exit 2, or any non-zero exit from a pre-tool hook, denies the call. A timeout fails open. On the cloud agent, `ask` counts as deny.
 
+Seen live in VS Code 1.141 (2026-10-11), on a chat that ran on the Copilot CLI engine:
+- **The engine.** VS Code's `agenthost.log` showed session type `agent-host-copilotcli`, the bundled `copilot-sdk` runtime, and `GITHUB_COPILOT_INTEGRATION_ID=vscode-chat` set for it. The agent's terminal does not have that variable.
+- **Its files.** It used the generated `.github/agents/` file (its tool aliases) and `.github/hooks/framework-guard.json`. Neither `.vscode/hooks/` nor the agent's own hook ran.
+- **Its tools.** The CLI's tool names appeared (`bash`, `view`).
+- **Its model.** The model was `auto`, which resolved to `gpt-6-luna`, the only model offered. The agent's `model:` line was not applied.
+
 Not yet verified on a live session. Each has a fail-safe default, and a mismatch shows up as a denied call or a refused full-run, never as a silent bypass:
+- Whether the hook process receives `GITHUB_COPILOT_INTEGRATION_ID` on the Copilot CLI engine. If it doesn't, that engine is labelled "Copilot CLI", which has the same limits. The next guard check there shows which: the record is named `vscode-agent-host--…` or `copilot-cli--…`.
 - VS Code's exact tool names and argument fields (`scripts/hooks/hosts/copilot.mjs`), and whether `chat.hookFilesLocations` and `chat.agentFilesLocations` behave as configured.
 - Whether a custom agent's own hook runs, with its `--agent`, when that agent runs **as a subagent**. If it doesn't, VS Code full-run is refused by the guard check.
 - Whether Copilot CLI supports three levels of custom-agent subagents. If it doesn't, start the domain orchestrators one by one.

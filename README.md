@@ -35,7 +35,7 @@ Unconfirmed clarifications: open `artifacts/<product>/modules/<module>/clarifica
 ## Safety
 
 - `authorizations.mode: readonly` (default) caps **every** agent at read-only.
-- `full-run` — set explicitly, per target, by a human authorized to test it — applies `config/permissions.yaml` as written, only on hosts where the guard can identify the calling agent (Claude Code, VS Code).
+- `full-run` — set explicitly, per target, by a human authorized to test it — applies `config/permissions.yaml` as written, only on hosts where the guard can identify the calling agent (Claude Code, and VS Code's local agent).
 - Deletes are always limited to entities the current run created (`state/ledger.jsonl`).
 - The guard enforces all of this in code per calling agent: spawns, shell, HTTP/load, browser actions and file writes. The environment can only downgrade the mode. Every run first proves the guard is live (`run.mjs guard-check`).
 - Edits to files a recorded design decision governs need the user's confirmation ([`docs/decisions.md`](docs/decisions.md)).

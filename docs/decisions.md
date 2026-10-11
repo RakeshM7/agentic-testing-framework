@@ -75,16 +75,18 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-019 | Platform syntax is data; agent bodies stay platform-neutral | Accepted | 2026-10-11 |
 | D-020 | One guard, one hook entry, thin host adapters | Accepted | 2026-10-11 |
 | D-021 | Agent identity only from the host payload or a build-baked hook | Accepted | 2026-10-11 |
-| D-022 | full-run only on hosts that can identify the calling agent | Accepted | 2026-10-11 |
+| D-022 | full-run only on hosts that can identify the calling agent | Superseded by D-032 | 2026-10-11 |
 | D-023 | Unknown tools fail closed for managed agents during a run | Accepted | 2026-10-11 |
 | D-024 | The guard is verified live before a run's first stage | Accepted | 2026-10-11 |
 | D-025 | Copilot runs the same Claude model as Claude Code | Accepted | 2026-10-11 |
 | D-026 | Copilot gets web access as one `web` tool; the guard keeps the distinction | Accepted | 2026-10-11 |
 | D-027 | `AGENTS.md` is the single brief for every tool | Accepted | 2026-10-11 |
 | D-028 | MCP servers are defined once | Accepted | 2026-10-11 |
-| D-029 | VS Code loads only the Copilot agent files and its own hook registration | Accepted | 2026-10-11 |
+| D-029 | VS Code loads only the Copilot agent files and its own hook registration | Superseded by D-033 | 2026-10-11 |
 | D-030 | The cloud coding agent does framework maintenance and offline work only | Accepted | 2026-10-11 |
 | D-031 | Design decisions are recorded here; changing a governed file needs the user | Accepted | 2026-10-11 |
+| D-032 | full-run only where the caller is identified; VS Code's Copilot CLI engine is not such a host | Accepted | 2026-10-11 |
+| D-033 | VS Code's settings cover its local agent; its Copilot CLI engine follows the CLI's files | Accepted | 2026-10-11 |
 
 ## Decisions
 
@@ -310,7 +312,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Affects:** `scripts/hooks/hosts/*.mjs`, `scripts/lib/hosts.mjs`
 
 ### D-022 · full-run only on hosts that can identify the calling agent
-- **Status:** Accepted · **Date:** 2026-10-11 · **Source:** conversation with the user, 2026-10-11 ("Refuse full-run there")
+- **Status:** Superseded by D-032 (2026-10-11) · **Date:** 2026-10-11 · **Source:** conversation with the user, 2026-10-11 ("Refuse full-run there")
 - **Decision:**
   - On a host whose identity source is `none`, the guard evaluates every call as readonly, even if the run says full-run. Those hosts are Copilot CLI, the cloud coding agent and any unrecognized host.
   - `run.mjs init` refuses full-run on a host it recognizes as such.
@@ -368,7 +370,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Affects:** `config/mcp.yaml`, `scripts/lib/mcp.mjs`, `.mcp.json`, `.vscode/mcp.json`
 
 ### D-029 · VS Code loads only the Copilot agent files and its own hook registration
-- **Status:** Accepted · **Date:** 2026-10-11 · **Source:** conversation with the user, 2026-10-11; VS Code custom-agent and hooks docs (verified 2026-10-11)
+- **Status:** Superseded by D-033 (2026-10-11) · **Date:** 2026-10-11 · **Source:** conversation with the user, 2026-10-11; VS Code custom-agent and hooks docs (verified 2026-10-11)
 - **Decision:** `.vscode/settings.json`:
   - turns off `.claude/agents`, so each agent is listed once;
   - reads hooks from `.vscode/hooks/` and the agents' own hooks, not `.github/hooks/` (whose unidentified registration would cap full-run) nor `.claude/settings.json`;
@@ -397,3 +399,31 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - `scripts/decisions.test.mjs` keeps the log consistent and every **Affects** path real.
 - **Why:** The user wants intentional design to be changed only with their explicit agreement, and wants every agent to know why things are the way they are before it touches them.
 - **Affects:** `docs/decisions.md`, `scripts/lib/decisions.mjs`, `scripts/decisions.test.mjs`
+
+### D-032 · full-run only where the caller is identified; VS Code's Copilot CLI engine is not such a host
+- **Status:** Accepted · **Date:** 2026-10-11 · **Source:** a full-run started in VS Code 1.141 chat was refused at its first stage (2026-10-11). VS Code's `agenthost.log` showed session type `agent-host-copilotcli`, the Copilot session record showed the CLI's tools and hooks, and the only guard-check record was `copilot-cli--unidentified.json`. Conversation with the user.
+- **Decision:**
+  - On a host whose identity source is `none`, the guard evaluates every call as readonly, even if the run says full-run. Those hosts are Copilot CLI, VS Code chat running on its Copilot CLI engine (host `vscode-agent-host`), the cloud coding agent and any unrecognized host.
+  - VS Code's Copilot CLI engine is the Copilot CLI runtime that VS Code hosts. It reads `.github/agents/` and `.github/hooks/` and runs no custom-agent hooks, so its calls carry no agent identity.
+  - The hook recognizes it by `GITHUB_COPILOT_INTEGRATION_ID=vscode-chat`, which VS Code sets for that runtime. Whether the hook process receives the variable is not yet verified; without it, the engine is labelled Copilot CLI, which has the same limits.
+  - `run.mjs init` refuses full-run on a host it recognizes as such. It can't recognize this engine: the variable does not reach the agent's terminal (seen live). It only warns, and the guard check then refuses full-run before the first stage (D-024).
+  - In VS Code, full-run needs a custom agent started in VS Code's local agent.
+  - Readonly runs work everywhere.
+- **Why:** As for D-022: without the caller's identity, per-agent ceilings (write allow-lists, shell allow-lists, spawn lists, live-target levels) cannot be enforced in code, and loosening the hard safety rule for those hosts is not acceptable. VS Code can run a chat on either engine, so "VS Code" alone does not say whether the caller can be identified.
+- **Affects:** `scripts/lib/hosts.mjs`, `scripts/lib/guard.mjs`, `scripts/run.mjs`
+- **Supersedes:** D-022 · **Confirmed by the user on:** 2026-10-11
+
+### D-033 · VS Code's settings cover its local agent; its Copilot CLI engine follows the CLI's files
+- **Status:** Accepted · **Date:** 2026-10-11 · **Source:** the same VS Code 1.141 session as D-032; conversation with the user
+- **Decision:**
+  - `.vscode/settings.json` is unchanged from D-029:
+    - it turns off `.claude/agents`, so each agent is listed once;
+    - it reads hooks from `.vscode/hooks/` and the agents' own hooks, not `.github/hooks/` nor `.claude/settings.json`;
+    - it enables nested subagents;
+    - it uses `AGENTS.md`.
+  - These settings shape VS Code's local agent.
+  - A chat on VS Code's Copilot CLI engine loads the CLI's files instead: `.github/agents/` and `.github/hooks/framework-guard.json`. In that session, neither `.vscode/hooks/` nor the agents' own hooks ran.
+  - The guard therefore still runs there, as host `vscode-agent-host`, readonly only (D-032).
+- **Why:** As for D-029: without these settings, the local agent would show duplicate agents, run the guard twice under the wrong host, and stop the hierarchy at one level. The engine's behaviour was seen in VS Code 1.141 and cannot be changed from the workspace, so the record states which engine the settings cover.
+- **Affects:** `.vscode/settings.json`
+- **Supersedes:** D-029 · **Confirmed by the user on:** 2026-10-11

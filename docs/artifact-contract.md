@@ -46,7 +46,7 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 - `init` refuses while another run holds the product's lock (`--resume` returns the active run; `end --abandon` releases it).
 - `config/permissions.yaml` is validated and frozen into `state/permissions.resolved.json` at `init`; edits take effect on the next run.
 - `init` refuses `full-run` on a host whose hooks cannot identify the calling agent (Copilot CLI, cloud coding agent), and records `startedOnHost`.
-- Guard liveness: `init` and `--resume` clear `state/guard-check/`; the orchestrator then runs `run.mjs guard-check <product>`, which every working hook blocks — the hook entry records the blocking host/agent there; if the command runs instead, it records `absent.json`. `stage … start` refuses until a record fits the mode (readonly: any hook; full-run: a host that identifies agents, on VS Code via the agent's own hook).
+- Guard liveness: `init` and `--resume` clear `state/guard-check/`; the orchestrator then runs `run.mjs guard-check <product>`, which every working hook blocks — the hook entry records the blocking host/agent there; if the command runs instead, it records `absent.json`. `stage … start` refuses until a record fits the mode (readonly: any hook; full-run: a host that identifies agents, on VS Code's local agent via the agent's own hook).
 
 ### Stages (the main orchestrator's view — one per domain)
 
@@ -110,7 +110,7 @@ Agents record immediately after creating anything, run `owns` before any delete/
 ## Safety: mode × permissions, enforced in code
 
 - **Mode** — `authorizations.mode` → `state/run.json`. `readonly` caps every agent at read (browser/http) and none (load), whatever the permissions file says; `full-run` applies `config/permissions.yaml` as written, and gives every agent that has browser access (`read` or `mutate`) the full browser. `AUTHORIZATIONS_MODE=readonly` in the environment can downgrade; nothing can upgrade.
-- **Hosts** — every host runs `scripts/hooks/pretooluse.mjs`, whose adapter (`scripts/hooks/hosts/`) turns the host's payload into a canonical tool call (`scripts/lib/tool-call.mjs`). The calling agent comes only from a trusted source: Claude Code's `agent_type`, or the `--agent` the build bakes into each generated Copilot agent's own hook (VS Code). On a host that cannot identify agents (Copilot CLI, cloud coding agent, unrecognized) the guard evaluates every call as readonly, whatever the run's mode (`scripts/lib/hosts.mjs`).
+- **Hosts** — every host runs `scripts/hooks/pretooluse.mjs`, whose adapter (`scripts/hooks/hosts/`) turns the host's payload into a canonical tool call (`scripts/lib/tool-call.mjs`). The calling agent comes only from a trusted source: Claude Code's `agent_type`, or the `--agent` the build bakes into each generated Copilot agent's own hook (VS Code). On a host that cannot identify agents (Copilot CLI, VS Code chat on its Copilot CLI engine, cloud coding agent, unrecognized) the guard evaluates every call as readonly, whatever the run's mode (`scripts/lib/hosts.mjs`).
 - **Per-agent permissions** — the guard (`scripts/lib/guard.mjs`) applies the calling agent's row from the frozen permissions (tool names below are the canonical kinds; each adapter maps its host's tools onto them):
   - spawn — only the agents in `spawns`;
   - shell — `shell: none | restricted (shell_allow) | project`, then HTTP/k6 rules by effective `http`/`load`, and any DELETE must reference a live entity of the current run;

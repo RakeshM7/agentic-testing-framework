@@ -29,7 +29,7 @@ Never edit a generated file. Hosts and setup are covered in `docs/platforms.md`.
 - `readonly` (the default) is non-mutating everywhere, whatever `config/permissions.yaml` says.
 - `full-run` must be set explicitly, per target, by a human authorized to test that target, and is never inferred. Then each agent gets exactly the ceiling in `config/permissions.yaml`.
 - Even under `full-run`, destructive actions (delete/cancel/remove) are scoped to entities this run created, recorded in `state/ledger.jsonl` (`scripts/ledger.mjs`). Never pre-existing data, and never another user's.
-- `full-run` is honoured only on hosts where the guard can identify the calling agent (Claude Code, VS Code); everywhere else the guard evaluates every call as readonly.
+- `full-run` is honoured only on hosts where the guard can identify the calling agent (Claude Code, and VS Code's local agent, not its Copilot CLI engine); everywhere else the guard evaluates every call as readonly.
 
 The guard enforces all of this in code, keyed on the calling agent: `scripts/lib/guard.mjs`, reached through the single hook entry `scripts/hooks/pretooluse.mjs` on every host. Do not bypass or weaken it.
 

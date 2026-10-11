@@ -23,6 +23,7 @@ test("the Copilot adapter reads both payload casings and every host's tool names
     [["shell", "ls", "copilot-cli"], ["shell", "ls", "copilot-cli"]]
   );
   assert.equal(copilot.normalize({ toolName: "bash", toolArgs: {} }, { env: { GITHUB_ACTIONS: "true" }, host: "copilot" }).host, "copilot-cloud");
+  assert.equal(copilot.normalize({ toolName: "bash", toolArgs: {} }, { env: { GITHUB_COPILOT_INTEGRATION_ID: "vscode-chat" }, host: "copilot" }).host, "vscode-agent-host");
   assert.deepEqual(vscode("x", { tool_name: "create_file", tool_input: { filePath: "/r/a.md" } }).paths, ["/r/a.md"]);
   assert.deepEqual(vscode("x", { tool_name: "multi_replace_string_in_file", tool_input: { replacements: [{ filePath: "a" }, { filePath: "b" }] } }).paths, ["a", "b"]);
   assert.deepEqual(vscode("x", { tool_name: "apply_patch", tool_input: { input: "*** Begin Patch\n*** Update File: /r/x.ts\n@@\n*** Add File: /r/y.ts\n" } }).paths, ["/r/x.ts", "/r/y.ts"]);
@@ -49,6 +50,19 @@ test("full-run is capped to readonly on hosts that cannot identify the calling a
   assert.equal(allowed(FULL.root, vscode(undefined, { tool_name: "run_in_terminal", tool_input: { command: post } })), true, "VS Code unmanaged: mode rules, as on Claude Code");
 });
 
+test("VS Code chat on its Copilot CLI engine is recognised and treated like Copilot CLI", () => {
+  const env = { GITHUB_COPILOT_INTEGRATION_ID: "vscode-chat" };
+  const engine = (payload) => copilot.normalize(payload, { env, host: "copilot" });
+  const post = engine({ tool_name: "bash", tool_input: { command: "curl -X POST https://app.acme.test/api/contacts -d '{}'" }, agent_type: "orchestrator-agent" });
+  assert.equal(post.agent, undefined, "its payload cannot name the agent");
+  assert.match(checkTool(post, FULL.root, {}).reason, /full-run is not honoured on VS Code chat on its Copilot CLI engine/);
+
+  const { root: r2 } = startRun({ mode: "full-run", verified: false });
+  recordCanary("acme", r2, { host: "vscode-agent-host" });
+  assert.match(guardStatus("acme", "full-run", r2).reason, /VS Code's local agent, not its Copilot CLI engine\); the guard was verified only on: VS Code chat on its Copilot CLI engine\./);
+  assert.equal(guardStatus("acme", "readonly", r2).ready, true);
+});
+
 test("per-agent rules apply on VS Code through the agent's own hook", () => {
   const w = (agent, rel) => allowed(FULL.root, vscode(agent, { tool_name: "create_file", tool_input: { filePath: path.join(FULL.root, rel) } }));
   assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/pages/contacts.page.ts"), true);
@@ -70,6 +84,11 @@ test("liveness canary: always blocked; the session is verified per mode; init an
   const { root } = startRun({ mode: "full-run", verified: false });
   const canary = claude.normalize({ tool_name: "Bash", tool_input: { command: "node scripts/run.mjs guard-check acme" } }, { env: { CLAUDE_PROJECT_DIR: root }, host: "claude-code" });
   assert.deepEqual([checkTool(canary, root, {}).rule, checkTool(canary, root, {}).canary], ["canary", { product: "acme" }]);
+  const shell = (command) => checkTool(cli({ tool_name: "bash", tool_input: { command } }), root, {});
+  for (const c of [`cd ${root} && node scripts/run.mjs guard-check acme`, `node ${root}/scripts/run.mjs guard-check acme 2>&1`, "true; node scripts/run.mjs guard-check acme"])
+    assert.deepEqual(shell(c).canary, { product: "acme" }, `as agents actually write it: ${c}`);
+  assert.equal(shell("echo node scripts/run.mjs guard-check acme").canary, undefined, "only as a command, not as an argument");
+  assert.equal(shell("node scripts/run.mjs guard-check acme-x").canary.product, "acme-x");
   assert.equal(guardStatus("acme", "full-run", root).ready, false);
   recordCanary("acme", root, { host: "copilot-cli" });
   assert.match(guardStatus("acme", "full-run", root).reason, /verified only on: Copilot CLI/);
@@ -124,7 +143,8 @@ test("hook entry: Copilot gets a deny decision on stdout and exit 2", () => {
 });
 
 test("hook entry fails closed on garbage while a run is active, and stays out of the way otherwise", () => {
-  assert.equal(hook(["--host", "copilot"], "not json", {}).status, 0, "no run: cwd has no artifacts/ lock");
+  const idle = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: tempRoot(), encoding: "utf8", env: { PATH: process.env.PATH } });
+  assert.equal(idle.status, 0, "no run: cwd has no artifacts/ lock");
   const r = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: FULL.root, encoding: "utf8" });
   assert.equal(r.status, 2);
   assert.match(r.stderr, /failing closed/);

@@ -46,5 +46,5 @@ export function guardStatus(product, mode, root) {
   const identifying = records.some((r) => identityOf(r.host) === "payload" || (identityOf(r.host) === "agent-hook" && r.agent));
   if (identifying) return { ready: true };
   const seen = [...new Set(records.map((r) => (r.agent ? `${labelOf(r.host)} (${r.agent})` : labelOf(r.host))))].join(", ");
-  return { ready: false, reason: `full-run needs a host where the guard identifies the calling agent (Claude Code, or VS Code with custom-agent hooks); the guard was verified only on: ${seen}. Use one of those, or run in readonly` };
+  return { ready: false, reason: `full-run needs a host where the guard identifies the calling agent (Claude Code, or a custom agent in VS Code's local agent, not its Copilot CLI engine); the guard was verified only on: ${seen}. Use one of those (docs/platforms.md), or run in readonly` };
 }

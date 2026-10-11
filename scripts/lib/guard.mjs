@@ -70,7 +70,8 @@ const K6_LIVE = /\bk6(\.exe)?\s+(run|cloud)\b/i;
 const DELETE_RE = /(-X|--request)[\s=]*['"]?DELETE\b|--method[\s=]*['"]?DELETE\b|-Method\s+['"]?Delete\b|method\s*[:=]\s*['"]DELETE['"]|\b(requests|httpx|axios|got|ky)\.delete\b/i;
 // The liveness canary: an agent runs this before a run's stages; a working hook always blocks it (and the hook entry
 // records which host/agent blocked it). If it ever executes, no guard intercepted it (scripts/run.mjs guard-check).
-const CANARY = /^\s*node\s+scripts\/run\.mjs\s+guard-check\s+([a-z0-9]+(?:-[a-z0-9]+)*)\s*$/;
+// Matched as any command of a compound line and by any path to run.mjs: agents often write `cd <repo> && node …`.
+const CANARY = /(?:^\s*|[;&|(]\s*)node\s+(?:\S*\/)?scripts\/run\.mjs\s+guard-check\s+([a-z0-9]+(?:-[a-z0-9]+)*)(?![\w-])/;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const deny = (rule, reason) => ({ allowed: false, rule, reason });

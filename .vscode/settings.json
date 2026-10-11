@@ -1,5 +1,7 @@
 {
   // VS Code Copilot Chat settings for this framework (docs/platforms.md). Decisions behind them: docs/decisions.md.
+  // They shape VS Code's local agent. A chat on VS Code's Copilot CLI engine does not follow them: it uses
+  // .github/agents and .github/hooks like Copilot CLI, so runs there are readonly only (D-032, D-033).
 
   // Agents: the generated Copilot agents live in .github/agents. VS Code would also list the Claude Code copies in
   // .claude/agents (same names, Claude tool names), so that folder is turned off for VS Code.
