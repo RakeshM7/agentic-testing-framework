@@ -10,22 +10,22 @@ This is a deliberate choice, not a gap:
 - It means the artifacts are useful even if you only ever run one agent — e.g. you can run `explore-agent` alone just to get a sitemap and screenshots, with nothing downstream required.
 - It means the orchestrator adds convenience without adding a second source of truth: it reuses the exact same artifact paths a manual run would, so a run started by hand and finished by the orchestrator (or vice versa) just works.
 
-### Two renderings, one contract
+### One source, two renderings, one contract
 
-This same seven-persona design is now authored twice — once native to Claude Code, once native to GitHub Copilot — sharing everything above unchanged:
+Each of the seven personas is written **once** and generated natively for Claude Code and for GitHub Copilot, sharing everything above unchanged:
 
 ```mermaid
 flowchart LR
     subgraph Shared["Shared contract (docs/conventions.md)"]
         ART[("artifacts/ · playwright-tests/\napi-tests/ · feedback/ · config/")]
     end
-    CA["claude-agents/*.md\n(.claude/agents/ symlink)\nAgent tool · AskUserQuestion"] <--> ART
-    CO["copilot-agents/*.agent.md\n(.github/agents/ symlink)\ntools:['agent']+agents: · no question tool"] <--> ART
-    MODELS[("config/models.yaml\n+ scripts/sync-agent-models.mjs")] -. "model: frontmatter" .-> CA
-    MODELS -. "model: frontmatter" .-> CO
+    SRC[("agents/src/*.md\n+ agents/manifest.yaml\n+ config/models.yaml")] -- "scripts/build-agents.mjs" --> CA
+    SRC -- "scripts/build-agents.mjs" --> CO
+    CA[".claude/agents/*.md (generated)\nAgent tool · AskUserQuestion"] <--> ART
+    CO[".github/agents/*.agent.md (generated)\ntools:['agent']+agents: · askQuestions / ask_user"] <--> ART
 ```
 
-Neither flavor is a copy of the other's file — each is hand-authored for its platform's own tool/frontmatter vocabulary — but both implement the identical seven responsibilities against the identical artifact paths, so a run started in one flavor produces artifacts the other can read. Both flavors drive `explore-agent`'s browser crawl through the same Playwright MCP server, just registered under each platform's own config file (`.mcp.json` for Claude Code, `.vscode/mcp.json` for Copilot) and referenced with each platform's own tool-name syntax (`mcp__playwright__browser_navigate` vs. `playwright/browser_navigate`). See `docs/copilot-setup.md` for what's mechanically different about the Copilot rendering (orchestration mechanism, the missing structured-question tool).
+Neither flavor is hand-maintained. `scripts/build-agents.mjs` renders each persona's single source with that platform's tool names and frontmatter, so both flavors implement the identical seven responsibilities against the identical artifact paths: a behavior change made once reaches both, and a run started in one flavor produces artifacts the other can read. Platform-specific text is limited to genuine tool-surface differences, is marked in the source, and is listed by `--deltas`. CI's `--check` rejects stale or hand-edited generated files. Both flavors drive `explore-agent`'s browser crawl through the same Playwright MCP server, just registered under each platform's own config file (`.mcp.json` for Claude Code, `.vscode/mcp.json` for Copilot) and referenced with each platform's own tool-name syntax (`mcp__playwright-isolated__browser_navigate` vs. `playwright/browser_navigate`). See `docs/copilot-setup.md` for every Claude Code feature and its Copilot alternative.
 
 ## Component / pipeline diagram
 
@@ -121,7 +121,7 @@ sequenceDiagram
 
 ## Hub-and-spoke diagram — orchestrated run
 
-`orchestrator-agent` is the hub; the other six are spokes it calls one at a time — via Claude Code's `Agent` tool in `claude-agents/orchestrator-agent.md`, or via `tools: ['agent']` + an `agents:` whitelist in `copilot-agents/orchestrator-agent.agent.md`. Either way it has no structured way to pause for human input mid-run — the run-config file is what lets it resolve most recurring questions without a human touchpoint. Anything the config doesn't cover still halts the run rather than being guessed. The config's `authorizations.mode` (`readonly` default, or `full-run`) is passed straight through to explore-agent, playwright-automation-agent, and api-testing-agent unchanged — the orchestrator never sets or upgrades it itself.
+`orchestrator-agent` is the hub; the other six are spokes it calls one at a time — via Claude Code's `Agent` tool, or via `tools: ['agent']` + an `agents:` whitelist on Copilot (both rendered from `agents/src/orchestrator-agent.md`). Either way, as a subagent it has no structured way to pause for human input mid-run — the run-config file is what lets it resolve most recurring questions without a human touchpoint. Anything the config doesn't cover still halts the run rather than being guessed. The config's `authorizations.mode` (`readonly` default, or `full-run`) is passed straight through to explore-agent, playwright-automation-agent, and api-testing-agent unchanged — the orchestrator never sets or upgrades it itself.
 
 ```mermaid
 flowchart TD
@@ -152,26 +152,23 @@ agentic-testing-framework/
 │
 ├── AGENTS.md                        # root instructions for GitHub's cloud coding agent
 │
-├── claude-agents/                   # THE FRAMEWORK, Claude Code flavor — 7 agent definitions
-│   ├── orchestrator-agent.md         # the hub — Agent(the other 6), never a script
-│   ├── explore-agent.md
-│   ├── requirements-clarification-agent.md
-│   ├── testcase-generator-agent.md
-│   ├── playwright-automation-agent.md
-│   ├── api-testing-agent.md
-│   └── feedback-implementor-agent.md
-├── .claude/agents -> ../claude-agents           # symlink — Claude Code's required discovery path
-│
-├── copilot-agents/                  # THE FRAMEWORK, GitHub Copilot flavor — same 7 personas
-│   ├── orchestrator-agent.agent.md   # the hub — tools:['agent'] + agents: whitelist
-│   ├── explore-agent.agent.md        # target: vscode only — needs a live Playwright MCP session
-│   ├── requirements-clarification-agent.agent.md
-│   ├── testcase-generator-agent.agent.md
-│   ├── playwright-automation-agent.agent.md
-│   ├── api-testing-agent.agent.md
-│   └── feedback-implementor-agent.agent.md
-├── .github/agents -> ../copilot-agents          # symlink — VS Code's + cloud coding agent's discovery path
-├── .vscode/mcp.json                 # registers the Playwright MCP server explore-agent needs
+├── agents/                          # THE FRAMEWORK — the only place agent behavior is written
+│   ├── src/                          # one file per persona: shared body + marked platform sections
+│   │   ├── orchestrator-agent.md     # the hub — spawns the other 6, never a script
+│   │   ├── explore-agent.md
+│   │   ├── requirements-clarification-agent.md
+│   │   ├── testcase-generator-agent.md
+│   │   ├── playwright-automation-agent.md
+│   │   ├── api-testing-agent.md
+│   │   └── feedback-implementor-agent.md
+│   └── manifest.yaml                 # per-platform tool names, frontmatter, shared terms, MCP server
+├── .claude/agents/*.md              # GENERATED — Claude Code flavor (never edit)
+├── .claude/settings.json            # registers scripts/hooks/guard-shell.mjs for Claude Code
+├── .github/agents/*.agent.md        # GENERATED — Copilot flavor: VS Code, Copilot CLI, cloud agent
+├── .github/hooks/authorization-guard.json   # registers the same guard for Copilot
+├── .github/workflows/               # ci.yml (incl. build-agents --check) + copilot-setup-steps.yml
+├── .mcp.json, .vscode/mcp.json      # GENERATED — Playwright MCP server for each platform
+├── .vscode/settings.json            # VS Code: hide .claude/agents duplicates, hook + approval settings
 │
 ├── config/
 │   ├── run-config.example.yaml      # one target + one feature per file; the orchestrator's only input
@@ -179,7 +176,8 @@ agentic-testing-framework/
 │   └── models.yaml                  # single source of truth for model/provider, per agent, per flavor
 │
 ├── scripts/
-│   └── sync-agent-models.mjs        # patches config/models.yaml into both flavors' `model:` frontmatter
+│   ├── build-agents.mjs             # renders agents/src for both platforms; --check (CI), --deltas (review)
+│   └── hooks/guard-shell.mjs        # authorization guard shared by Claude Code and Copilot
 │
 ├── docs/
 │   ├── conventions.md               # pipeline order + artifact path + feedback file + run-config contract
@@ -222,7 +220,7 @@ flowchart LR
 The point of passing a **file path** rather than feedback text at every arrow above is to avoid re-transmitting the same content through multiple LLM calls — each hop reads the file once from disk instead of re-generating or re-summarizing it, and the file itself (finding + eventual resolution, in one place) is what makes every piece of feedback traceable back to the agent that raised it and auditable after the fact.
 
 Four tiers, four different lifetimes:
-1. **`claude-agents/` / `copilot-agents/`** — the actual product of this repo, in both flavors. Rarely changes; versioned carefully. `config/models.yaml` (model/provider selection) changes somewhat more often but is still a source-of-truth file, not per-engagement data.
+1. **`agents/`** (and its generated `.claude/agents/` / `.github/agents/`) — the actual product of this repo, for both flavors. Rarely changes; versioned carefully. `config/models.yaml` (model/provider selection) changes somewhat more often but is still a source-of-truth file, not per-engagement data.
 2. **`config/`** — one run-config file per target/feature you run repeatedly, worth keeping and refining (each answered question you add is one less halt next time). More stable than `artifacts/`, less stable than the agent definitions.
 3. **`artifacts/<target-slug>/`** — throwaway-ish, per-engagement handoff data. One folder per target app.
 4. **`playwright-tests/` / `api-tests/`** — real, standalone, deployable test projects, meant to be copied into whatever repo actually owns the target product once they're good enough.
@@ -241,6 +239,6 @@ Four independent guardrail layers, each enforced at a different point:
 ## Runtime / deployment model
 
 - **No long-running process, orchestrated or not, in either flavor.** Each agent invocation — including `orchestrator-agent`'s own invocations of its six spokes — is a single request/response call. State lives entirely in the filesystem (`artifacts/`, `playwright-tests/`, `api-tests/`, `feedback/`), not in agent memory. The orchestrator doesn't hold a session open across stages any more than a human clicking through them by hand would; it just doesn't need to be re-prompted between clicks.
-- **Session-scoped agent registration — doubly true for the orchestrator, in both flavors.** Claude Code loads `.claude/agents/*.md` (symlinked from `claude-agents/`) when a session starts; a file added or edited mid-session is not picked up by that session. VS Code's discovery of `.github/agents/*.agent.md` (symlinked from `copilot-agents/`) may be similarly cached per-session — verify against your VS Code version. Either way, `orchestrator-agent` needs all six spoke types *also* registered before it can natively delegate to them — a fresh session/reload is required for the whole set, not just the orchestrator's own file.
-- **The orchestrator cannot escalate to a human mid-run, in either flavor.** Claude Code's `AskUserQuestion` is unavailable to a subagent; Copilot has no such tool at all, for any agent. A run-config file is the only way to pre-resolve what would otherwise be an interactive question; anything left unresolved halts the run rather than the orchestrator finding another channel to ask.
-- **Portable by design.** Copying `claude-agents/` (with a `.claude/agents` symlink) and/or `copilot-agents/` (with a `.github/agents` symlink) into any other repo makes the corresponding flavor available there — nothing in this repo is hardcoded to the `eventhub` example target beyond the `artifacts/eventhub/` example data and `config/run-config.example.yaml`'s sample values.
+- **Session-scoped agent registration — doubly true for the orchestrator, in both flavors.** Claude Code loads `.claude/agents/*.md` when a session starts; a file added or edited mid-session is not picked up by that session. VS Code's discovery of `.github/agents/*.agent.md` may be similarly cached per-session — verify against your VS Code version. Either way, `orchestrator-agent` needs all six spoke types *also* registered before it can natively delegate to them — a fresh session/reload is required for the whole set, not just the orchestrator's own file.
+- **The orchestrator cannot escalate to a human mid-run, in either flavor.** Claude Code's `AskUserQuestion`, VS Code's `vscode/askQuestions` and Copilot CLI's `ask_user` are all unavailable to a subagent, and the Copilot cloud agent has no human in the loop. A run-config file is the only way to pre-resolve what would otherwise be an interactive question; anything left unresolved halts the run rather than the orchestrator finding another channel to ask.
+- **Portable by design.** Copying the generated `.claude/agents/` and/or `.github/agents/` (plus `scripts/hooks/` and the hook registration) into any other repo makes the corresponding flavor available there — nothing in this repo is hardcoded to the `eventhub` example target beyond the `artifacts/eventhub/` example data and `config/run-config.example.yaml`'s sample values.

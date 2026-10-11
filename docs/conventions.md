@@ -4,17 +4,34 @@ This framework has **no orchestrator script** — there is no separate process, 
 
 ## Platform flavors
 
-This framework's seven personas exist in two parallel renderings, sharing everything documented in the rest of this file:
+Each of the seven personas is written **once**, in `agents/src/<agent>.md`, and generated for both platforms by `node scripts/build-agents.mjs`. Both flavors share everything documented in the rest of this file:
 
-| | Claude Code | GitHub Copilot |
+| | Claude Code | GitHub Copilot (VS Code, Copilot CLI, cloud coding agent) |
 |---|---|---|
-| Canonical source | `claude-agents/*.md` | `copilot-agents/*.agent.md` |
-| Discovery path | `.claude/agents/` (symlink to the source dir) | `.github/agents/` (symlink to the source dir) |
-| Subagent invocation | `Agent` tool | `tools: ['agent']` + `agents:` frontmatter |
-| Human-input gap | none (`AskUserQuestion`) | no equivalent — questions land as plain chat text; pre-answer via a run-config's `answers`/`defaults` to avoid a halt |
-| Model config | `model:` field, patched from `config/models.yaml` | `model:` field, patched from `config/models.yaml` |
+| Source (the only file you edit) | `agents/src/<agent>.md` + `agents/manifest.yaml` | same |
+| Generated file (never edit) | `.claude/agents/<agent>.md` | `.github/agents/<agent>.agent.md` |
+| Subagent invocation | `Agent(...)` in `tools` | `'agent'` in `tools` + `agents:` list |
+| Human questions (main session only) | `AskUserQuestion` | `vscode/askQuestions` (VS Code), `ask_user` (Copilot CLI); none on the cloud agent, which halts and reports |
+| Model config | `model:` field, from `config/models.yaml` | `model:` field, from `config/models.yaml` |
+| Authorization hook | `.claude/settings.json` → `scripts/hooks/guard-shell.mjs` | `.github/hooks/authorization-guard.json` → the same script |
 
-Never hand-edit a `model:` frontmatter line directly in either flavor — `config/models.yaml` is the single source of truth; run `node scripts/sync-agent-models.mjs` after changing it. Copilot-specific setup (MCP server for browser automation, the `target:` field, orchestration caveats) is documented separately in `docs/copilot-setup.md` rather than duplicated here — everything below this section applies to both flavors equally.
+Never hand-edit a generated agent file or its `model:` line — the next build overwrites it, and CI (`node scripts/build-agents.mjs --check`) rejects stale or hand-edited output. Copilot-specific setup (MCP server, hooks, cloud-agent environment) is in `docs/copilot-setup.md` — everything below this section applies to both flavors equally.
+
+## Changing an agent's behavior
+
+1. Edit `agents/src/<agent>.md` (the body, plus `name`/`description` frontmatter) — or `agents/manifest.yaml` for tools, platform-only frontmatter or shared wording, or `config/models.yaml` for models.
+2. Run `node scripts/build-agents.mjs`. It regenerates `.claude/agents/`, `.github/agents/`, `.mcp.json` and `.vscode/mcp.json`, and fails on any lint error.
+3. Commit the source and the generated files together. `node scripts/build-agents.mjs --deltas` lists every platform-specific section per agent, which is what a reviewer checks.
+
+**Rule: behavior is always shared.** Steps, mode rules, artifact paths, safety rules and output formats are written once, as plain text in the source. Platform-specific text is only for genuine tool-surface differences (a tool name, a capability one platform lacks), and is marked in the source with:
+
+| Syntax | Renders as |
+|---|---|
+| `{{#claude}}…{{/claude}}`, `{{#copilot}}…{{/copilot}}` | the enclosed text on that platform only. Works inline or around whole paragraphs; a marker alone on its line also removes that line break. Not nestable. |
+| `{{v:<key>}}` | a short per-platform term from `manifest.yaml`'s `vocab` (e.g. `{{v:ask_tool}}`) |
+| `{{browser:<tool>}}` | a Playwright MCP tool name (`mcp__playwright-isolated__<tool>` / `playwright/<tool>`) |
+
+The build's lint fails if one platform's vocabulary (e.g. `AskUserQuestion`, `mcp__` on Copilot; `vscode/`, `ask_user` on Claude Code) shows up in the other platform's file — that means platform text leaked into shared text.
 
 ## Artifact root
 
@@ -38,7 +55,7 @@ All pipeline artifacts for a given target live under `artifacts/<target-slug>/`,
 `requirements-clarification-agent` cannot block mid-run for human input (subagents are single-shot request/response). It self-detects its pass by whether the invocation prompt contains an `Answers:` section:
 
 - **Pass 1** (no `Answers:` section): returns a structured, tagged question list and writes no artifact.
-- Whoever invoked it resolves those questions — a human answering directly in chat (via `AskUserQuestion` on Claude Code; as plain chat text on Copilot, which has no structured equivalent), or `orchestrator-agent` matching them against a run-config file's `answers`/`defaults` (see below).
+- Whoever invoked it resolves those questions — a human answering directly in chat (via `AskUserQuestion` on Claude Code; via `vscode/askQuestions` in VS Code or `ask_user` in Copilot CLI when run as the main session; otherwise as plain chat text), or `orchestrator-agent` matching them against a run-config file's `answers`/`defaults` (see below).
 - **Pass 2** (prompt re-sent with an `Answers:` section appended): writes the final `clarifications.md`.
 
 Any orchestrator invoking this agent must expect two calls, not one.
@@ -49,7 +66,7 @@ Any orchestrator invoking this agent must expect two calls, not one.
 
 ### The constraint that shapes this whole section
 
-`orchestrator-agent` is itself a subagent, so it inherits the same limitation described above: **it cannot reliably pause for a structured human question-and-wait** (Claude Code's `AskUserQuestion`, or its non-existent Copilot equivalent — see `docs/copilot-setup.md`). A run-config file is not a convenience layered on top of an otherwise-interactive orchestrator — it is the *only* channel through which most recurring questions get answered without a human touchpoint. Anything the config doesn't cover still halts the run (see "Halting and resuming" below); the orchestrator never guesses at a `[Blocking]` question regardless of what the config does or doesn't say.
+`orchestrator-agent` is itself a subagent, so it inherits the same limitation described above: **it cannot reliably pause for a structured human question-and-wait** (Claude Code's `AskUserQuestion` and Copilot's `vscode/askQuestions` / `ask_user` are available only to the main session a human is driving, never to a subagent, and the Copilot cloud agent has no human in the loop at all — see `docs/copilot-setup.md`). A run-config file is not a convenience layered on top of an otherwise-interactive orchestrator — it is the *only* channel through which most recurring questions get answered without a human touchpoint. Anything the config doesn't cover still halts the run (see "Halting and resuming" below); the orchestrator never guesses at a `[Blocking]` question regardless of what the config does or doesn't say.
 
 ### Run-config file
 
@@ -125,7 +142,7 @@ Per-module Pass 1 questions that the run-config's `answers`/`defaults` can't res
 - **Navigation column:** written by the clarification agent from the module's `flows/` (`navPath` + flow slug) so a human can reproduce the behavior in the live product before answering.
 - **Loop:** Pass 2 ends with `## Follow-up Questions`; unresolved blocking follow-ups are appended (new rows, new sheet) and the module goes around again. `full_product.clarifications.max_rounds` (default 5; round 1 = the initial questions) caps it -- a module still unresolved afterwards is marked **`uncovered`**: no test cases, Playwright or API stages are produced for it, its latest clarifications file (open questions intact) and questionnaire rows stay, and the run report lists the unresolved questions verbatim.
 - **State:** `artifacts/<target>/clarifications/state.json` -- `{"<module>": {round, status: no-questions|awaiting-user|ready|done|uncovered, open[]}}`. With the questionnaire and sheets it is the resume state: re-invoke with the same `configPath` after answering and fully-answered modules continue.
-- **Interaction:** as the main session (`claude --agent orchestrator-agent`) the orchestrator points the user at the answer sheet, re-checks state on every user message and background-track completion, and -- once the question-free tracks have finished -- can walk through the remaining modules one at a time, recording chat answers. As a subagent (or on Copilot, which has no ask-and-wait tool) it finishes everything that can run, then halts with the sheet path(s) and the resume instruction.
+- **Interaction:** as the main session (`claude --agent orchestrator-agent`, orchestrator-agent picked in VS Code's agent picker, or `copilot --agent orchestrator-agent`) the orchestrator points the user at the answer sheet, re-checks state on every user message and background-track completion, and -- once the question-free tracks have finished -- can walk through the remaining modules one at a time, recording chat answers. As a subagent (or on the Copilot cloud agent, which has no human in the loop) it finishes everything that can run, then halts with the sheet path(s) and the resume instruction.
 
 ## Standing safety guardrails (apply across the whole framework)
 
@@ -171,7 +188,7 @@ source_agent: <name matching the filing agent's own `name:` frontmatter field, e
 date: <YYYY-MM-DD>
 target: <target-slug, or "framework" if not tied to a specific target run>
 related_files:
-  - <path to each file this finding concerns, e.g. claude-agents/playwright-automation-agent.md and/or copilot-agents/playwright-automation-agent.agent.md>
+  - <path to each file this finding concerns, e.g. agents/src/playwright-automation-agent.md (the single source of both platforms' agent files)>
   - <path to a generated artifact/spec file if the bug is IN generated output, not the agent definition>
 severity: <blocking | high | medium | low>
 ---
@@ -194,7 +211,7 @@ severity: <blocking | high | medium | low>
 ### Code-level enforcement of `authorizations.mode`
 
 Prose is not the only guard. A human sets `AUTHORIZATIONS_MODE=full-run` in the environment for a run they are authorized to mutate; without it:
-- `.claude/hooks/guard-bash.mjs` (PreToolUse hook, `.claude/settings.json`) blocks live k6 runs and mutating `curl` from Claude Code.
+- `scripts/hooks/guard-shell.mjs` (a PreToolUse hook registered in `.claude/settings.json` for Claude Code and in `.github/hooks/authorization-guard.json` for VS Code, Copilot CLI and the cloud coding agent) blocks live k6 runs and mutating `curl`. If `AUTHORIZATIONS_CONFIG` names a run-config, that config's `authorizations.mode` must also be `full-run`. **On the Copilot cloud agent** (`GITHUB_ACTIONS=true`) that config is required: a maintainer must set both `AUTHORIZATIONS_MODE=full-run` and `AUTHORIZATIONS_CONFIG` as Copilot environment variables, so the environment and a committed, reviewed run-config have to agree.
 - `playwright-tests/<product>/fixtures/mutationGuard.ts` aborts non-GET browser requests, and `api-tests/playwright-api/fixtures/mutationGuard.ts` throws on non-GET `request.*` calls, for every spec built on the shared fixtures. Auth setup projects are exempt (they must POST a login).
 - k6 scripts have no default host: `BASE_URL` is required and must be in `K6_ALLOWED_HOSTS` (see `api-tests/k6/README.md`).
 
