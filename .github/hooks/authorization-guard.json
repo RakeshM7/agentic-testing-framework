@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "matcher": "Bash",
+        "command": "node scripts/hooks/guard-shell.mjs",
+        "cwd": ".",
+        "timeoutSec": 15
+      }
+    ]
+  }
+}
