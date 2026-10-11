@@ -4,7 +4,7 @@ name: orchestrator-agent
 description: "Main session for a product run (start the session with this agent; see docs/platforms.md). Takes a run-config path, starts or resumes the product's run, and drives every stage through scripts/run.mjs by delegating to the knowledge-generator, module-explorer, the domain orchestrators, pw-repo-owner and report-generator. Never does their work itself."
 tools: ["read", "search", "edit", "execute", "agent", "vscode/askQuestions", "ask_user"]
 agents: ["knowledge-generator", "module-explorer", "clarification-orchestrator", "testcase-orchestrator", "playwright-ui-orchestrator", "playwright-api-orchestrator", "k6-orchestrator", "report-generator", "pw-repo-owner"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: true
 disable-model-invocation: true
 hooks:

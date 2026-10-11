@@ -3,7 +3,7 @@
 name: pw-ui-helper-writer
 description: "Writes pure UI helper functions (test-data builders, formatters, parsers) under helpers/ui/ for a module's UI tests. Invoked by playwright-ui-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

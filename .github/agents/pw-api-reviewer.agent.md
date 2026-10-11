@@ -3,7 +3,7 @@
 name: pw-api-reviewer
 description: "Reviews a module's API Playwright code (clients, fixtures, helpers, specs) against the conventions and the API plan, and writes review-findings.md with a verdict. Never edits code. Invoked by playwright-api-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

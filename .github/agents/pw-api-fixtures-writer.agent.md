@@ -3,7 +3,7 @@
 name: pw-api-fixtures-writer
 description: "Writes the API Playwright fixtures (fixtures/api/): the extended test object with API clients, the non-GET mutation guard, and the API auth setup. Invoked by playwright-api-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

@@ -3,7 +3,7 @@
 name: pw-ui-test-runner-triager
 description: "Runs a module's UI Playwright tests against the product with the run's mode, records normalized results via scripts/results.mjs, and classifies every failure in triage.md. Never edits test code. Invoked by playwright-ui-orchestrator."
 tools: ["read", "search", "edit", "execute", "playwright/browser_navigate", "playwright/browser_navigate_back", "playwright/browser_snapshot", "playwright/browser_click", "playwright/browser_hover", "playwright/browser_take_screenshot", "playwright/browser_wait_for", "playwright/browser_tabs", "playwright/browser_resize", "playwright/browser_console_messages", "playwright/browser_network_requests", "playwright/browser_type", "playwright/browser_fill_form", "playwright/browser_select_option", "playwright/browser_press_key", "playwright/browser_file_upload", "playwright/browser_drag", "playwright/browser_drop", "playwright/browser_handle_dialog", "playwright/browser_evaluate"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

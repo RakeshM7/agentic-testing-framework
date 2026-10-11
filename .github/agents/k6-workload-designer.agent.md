@@ -3,7 +3,7 @@
 name: k6-workload-designer
 description: "Designs a module's load workload (workload.json): which endpoints to load, with what executor, profile and thresholds, and why -- conservatively, from the API plan and knowledge. Invoked by k6-orchestrator."
 tools: ["read", "search", "edit"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

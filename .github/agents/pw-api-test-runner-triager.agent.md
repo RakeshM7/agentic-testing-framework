@@ -3,7 +3,7 @@
 name: pw-api-test-runner-triager
 description: "Runs a module's Playwright API tests against the product with the run's mode, records normalized results via scripts/results.mjs, and classifies every failure in triage.md. Never edits test code. Invoked by playwright-api-orchestrator."
 tools: ["read", "search", "edit", "execute", "web"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

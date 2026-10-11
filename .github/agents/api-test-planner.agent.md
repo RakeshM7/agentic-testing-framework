@@ -3,7 +3,7 @@
 name: api-test-planner
 description: "Turns a module's endpoint catalogue and test cases into an API test plan (plan.json + api-test-plan.md): functional, negative, boundary, auth, schema and contract scenarios with traceability. Invoked by playwright-api-orchestrator."
 tools: ["read", "search", "edit"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

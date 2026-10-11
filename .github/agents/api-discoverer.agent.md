@@ -3,7 +3,7 @@
 name: api-discoverer
 description: "Builds a module's endpoint catalogue (discovered-endpoints.json) from OpenAPI/Swagger, vendor API docs and the module explorer's network inventory, probing only with GET. Invoked by playwright-api-orchestrator."
 tools: ["read", "search", "edit", "web"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

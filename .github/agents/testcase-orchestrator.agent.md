@@ -4,7 +4,7 @@ name: testcase-orchestrator
 description: "Runs the test case domain for ONE module: testcase-writer, then a bounded testcase-reviewer -> testcase-writer revision loop until the review passes. Coordinates only. Invoked by orchestrator-agent."
 tools: ["read", "search", "edit", "execute", "agent"]
 agents: ["testcase-writer", "testcase-reviewer"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

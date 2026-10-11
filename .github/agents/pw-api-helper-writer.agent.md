@@ -3,7 +3,7 @@
 name: pw-api-helper-writer
 description: "Writes pure API helper functions (payload builders, schema validators, response parsers) under helpers/api/ for a module's API tests. Invoked by playwright-api-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

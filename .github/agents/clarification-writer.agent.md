@@ -3,7 +3,7 @@
 name: clarification-writer
 description: "Records the outcome of clarification evidence into a module's clarifications.csv (Answer or agent notes) through scripts/clarifications.mjs, and writes clarifications-summary.md. Invoked by clarification-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

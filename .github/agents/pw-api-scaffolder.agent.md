@@ -3,7 +3,7 @@
 name: pw-api-scaffolder
 description: "Adds the API-specific scaffolding to the product's Playwright repo (config/api/ settings and the tests/api/<module>/ folder), researching API-testing practices when needed. Never touches shared repo files. Invoked by playwright-api-orchestrator."
 tools: ["read", "search", "edit", "execute", "web"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

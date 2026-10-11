@@ -3,7 +3,7 @@
 name: k6-healer
 description: "Fixes k6 scripts the triager classified as healable (test-bug, flaky, data) in triage.md. Never runs load against the product and never loosens thresholds or changes load to hide product problems. Invoked by k6-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

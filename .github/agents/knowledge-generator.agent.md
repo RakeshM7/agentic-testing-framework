@@ -3,7 +3,7 @@
 name: knowledge-generator
 description: "Builds the cited knowledge base for a product under test from the run-config's references, requirement documents and official vendor docs (live product only when needed). Two modes: a product pass (product overview + glossary) and a module pass (one module's overview, glossary and notes). Invoked by orchestrator-agent only."
 tools: ["read", "search", "edit", "execute", "web", "playwright/browser_navigate", "playwright/browser_navigate_back", "playwright/browser_snapshot", "playwright/browser_click", "playwright/browser_hover", "playwright/browser_take_screenshot", "playwright/browser_wait_for", "playwright/browser_tabs", "playwright/browser_resize", "playwright/browser_console_messages", "playwright/browser_network_requests"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

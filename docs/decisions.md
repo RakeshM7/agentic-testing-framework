@@ -78,7 +78,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-022 | full-run only on hosts that can identify the calling agent | Superseded by D-032 | 2026-10-11 |
 | D-023 | Unknown tools fail closed for managed agents during a run | Accepted | 2026-10-11 |
 | D-024 | The guard is verified live before a run's first stage | Accepted | 2026-10-11 |
-| D-025 | Copilot runs the same Claude model as Claude Code | Accepted | 2026-10-11 |
+| D-025 | Copilot runs the same Claude model as Claude Code | Superseded by D-034 | 2026-10-11 |
 | D-026 | Copilot gets web access as one `web` tool; the guard keeps the distinction | Accepted | 2026-10-11 |
 | D-027 | `AGENTS.md` is the single brief for every tool | Accepted | 2026-10-11 |
 | D-028 | MCP servers are defined once | Accepted | 2026-10-11 |
@@ -87,6 +87,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-031 | Design decisions are recorded here; changing a governed file needs the user | Accepted | 2026-10-11 |
 | D-032 | full-run only where the caller is identified; VS Code's Copilot CLI engine is not such a host | Accepted | 2026-10-11 |
 | D-033 | VS Code's settings cover its local agent; its Copilot CLI engine follows the CLI's files | Accepted | 2026-10-11 |
+| D-034 | Copilot runs `gpt-6-luna` for now | Accepted | 2026-10-11 |
 
 ## Decisions
 
@@ -338,7 +339,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Affects:** `scripts/lib/guard-check.mjs`
 
 ### D-025 · Copilot runs the same Claude model as Claude Code
-- **Status:** Accepted · **Date:** 2026-10-11 · **Source:** conversation with the user, 2026-10-11
+- **Status:** Superseded by D-034 (2026-10-11) · **Date:** 2026-10-11 · **Source:** conversation with the user, 2026-10-11
 - **Decision:** `config/models.yaml` `copilot` entries name the same model as the `claude` entries, in Copilot's naming (default `Claude Opus 5.5`).
 - **Why:** The same agents should behave the same on both platforms.
 - **Affects:** `config/models.yaml`
@@ -427,3 +428,14 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Why:** As for D-029: without these settings, the local agent would show duplicate agents, run the guard twice under the wrong host, and stop the hierarchy at one level. The engine's behaviour was seen in VS Code 1.141 and cannot be changed from the workspace, so the record states which engine the settings cover.
 - **Affects:** `.vscode/settings.json`
 - **Supersedes:** D-029 · **Confirmed by the user on:** 2026-10-11
+
+### D-034 · Copilot runs `gpt-6-luna` for now
+- **Status:** Accepted · **Date:** 2026-10-11 · **Source:** conversation with the user, 2026-10-11 ("keep luna for now"), after the user set it in `config/models.yaml`
+- **Decision:**
+  - `config/models.yaml` `default.copilot` is `gpt-6-luna`.
+  - Claude Code agents keep Claude Opus (D-017).
+  - The two platforms therefore run different models, so an agent may behave differently on each.
+  - The user chose this "for now": revisit it rather than treat it as settled.
+- **Why:** The user's choice. In the 2026-10-11 VS Code session, `gpt-6-luna` was the only model the Copilot CLI engine offered, and that engine did not apply the agent's `model:` line anyway. Whether Copilot accepts `gpt-6-luna` as a `model:` name is not yet verified (an unknown name falls back to the surface's default model).
+- **Affects:** `config/models.yaml`
+- **Supersedes:** D-025 · **Confirmed by the user on:** 2026-10-11

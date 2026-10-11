@@ -3,7 +3,7 @@
 name: k6-lib-writer
 description: "Writes the shared k6 library for the product (k6-tests/<product>/lib/: host allow-list config, auth, checks, data, handleSummary) and its README. Invoked by k6-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

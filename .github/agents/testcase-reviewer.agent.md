@@ -3,7 +3,7 @@
 name: testcase-reviewer
 description: "Reviews a module's test cases against clarifications, exploration flows and the hand-off format, and writes review-findings.md with a pass/changes-required verdict. Never edits the test cases. Invoked by testcase-orchestrator."
 tools: ["read", "search", "edit"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

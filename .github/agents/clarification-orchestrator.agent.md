@@ -4,7 +4,7 @@ name: clarification-orchestrator
 description: "Runs the clarification domain for ONE module: question-writer, then one clarification-explorer per open CSV row, then clarification-writer. Coordinates only; all hand-offs are files. Invoked by orchestrator-agent."
 tools: ["read", "search", "edit", "execute", "agent"]
 agents: ["question-writer", "clarification-explorer", "clarification-writer"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

@@ -3,7 +3,7 @@
 name: pw-ui-pom-writer
 description: "Writes Playwright page objects (pages/<module>/) for a module's screens, with locators grounded verbatim in the exploration DOM snapshots. Invoked by playwright-ui-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

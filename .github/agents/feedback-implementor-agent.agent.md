@@ -3,7 +3,7 @@
 name: feedback-implementor-agent
 description: "Improves the framework itself (agent sources in agents/, docs, scripts) from feedback FILE PATHS under feedback/<source>/*.md, verifies each change, and appends a Resolution section to the same file. Not part of a product run; never edits generated test code or safety configuration."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: true
 disable-model-invocation: true
 hooks:

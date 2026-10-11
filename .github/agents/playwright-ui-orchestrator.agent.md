@@ -4,7 +4,7 @@ name: playwright-ui-orchestrator
 description: "Runs the Playwright UI domain for ONE module: scaffold, helpers, page objects, fixtures, tests; a bounded review -> feedback-implementor loop; a bounded run/triage -> heal loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
 tools: ["read", "search", "edit", "execute", "agent"]
 agents: ["pw-repo-owner", "pw-ui-scaffolder", "pw-ui-helper-writer", "pw-ui-fixtures-writer", "pw-ui-pom-writer", "pw-ui-tests-writer", "pw-ui-reviewer", "pw-ui-feedback-implementor", "pw-ui-test-runner-triager", "pw-ui-healer"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

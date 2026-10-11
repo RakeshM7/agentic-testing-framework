@@ -3,7 +3,7 @@
 name: pw-api-feedback-implementor
 description: "Applies the API reviewer's findings (review-findings.md) to the module's API Playwright code, within the API-owned folders only. Invoked by playwright-api-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

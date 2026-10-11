@@ -3,7 +3,7 @@
 name: report-generator
 description: "Produces the run's HTML slide-deck report (results/<run>/report/index.html) from report.json collected by scripts/report-data.mjs: modules explored, clarifications, test cases, Playwright UI/API specs, k6 scripts and execution results. Invoked by orchestrator-agent at the end of a run."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

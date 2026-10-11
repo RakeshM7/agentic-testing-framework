@@ -3,7 +3,7 @@
 name: pw-api-tests-writer
 description: "Implements a module's API test plan as Playwright API specs (tests/api/<module>/) using the clients, fixtures and helpers, one test per plan scenario. Invoked by playwright-api-orchestrator."
 tools: ["read", "search", "edit", "execute"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

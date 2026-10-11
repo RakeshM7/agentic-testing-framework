@@ -3,7 +3,7 @@
 name: pw-repo-owner
 description: "Sole owner of the shared files of the product's Playwright repo (playwright-tests/<product>/): creates the skeleton with both ui and api projects, and applies shared-file change requests relayed by the Playwright orchestrators. Invoked by orchestrator-agent (skeleton) or a Playwright orchestrator (change request)."
 tools: ["read", "search", "edit", "execute", "web"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:

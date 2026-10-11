@@ -3,7 +3,7 @@
 name: pw-ui-scaffolder
 description: "Adds the UI-specific scaffolding to the product's Playwright repo (config/ui/ settings and the tests/ui/<module>/ folder), researching UI best practices when needed. Never touches shared repo files. Invoked by playwright-ui-orchestrator."
 tools: ["read", "search", "edit", "execute", "web"]
-model: "Claude Opus 5.5"
+model: "gpt-6-luna"
 user-invocable: false
 hooks:
   PreToolUse:
