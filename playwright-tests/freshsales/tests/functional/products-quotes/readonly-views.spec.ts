@@ -72,6 +72,8 @@ test.describe('Products and Quotes: read-only views', () => {
     await expect(pq.productLink('CRM - Platinum plan monthly (sample)')).toBeVisible();
     await expect(pq.productLinks('Annual maintenance contract (sample)')).toHaveCount(0);
     // Restore so the persisted toolbar state is not left narrowed.
+    // Stale import notifications on this tenant render a tray over the toolbar; make it click-through.
+    await page.addStyleTag({ content: '.navbar-secondary [class*="notification"], .navbar-secondary [class*="notification"] * { pointer-events: none !important; }' });
     await page.getByRole('button', { name: 'Software' }).first().click();
     await pq.dropdown.getByText('All categories', { exact: true }).click();
     await expect(pq.productLink('Annual maintenance contract (sample)')).toBeVisible();
