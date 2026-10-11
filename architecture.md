@@ -4,7 +4,7 @@
 
 Six single-purpose subagents, each scoped to one stage of the testing lifecycle, connected by **convention** rather than by code: every agent reads and writes fixed, documented file paths (`docs/conventions.md`). A seventh agent, `orchestrator-agent`, is a hub that drives those six in order from a single run-config file — but it is layered *on top of* the same file-based contract, not a different mechanism. Either a human invokes the six spokes directly, or `orchestrator-agent` does, one call at a time, scoped to exactly those six agent types. There is no separate orchestrator *process*, no shared runtime, and no agent-to-agent direct communication outside that one hub relationship — the filesystem is still the integration layer even when the hub is doing the invoking.
 
-This is a deliberate choice, not a gap:
+This is a deliberate choice, not a gap (this and every later design decision, with its reason, is recorded in `docs/decisions.md`; changing one needs the user's confirmation):
 - It keeps each agent's definition small, auditable, and independently testable.
 - It keeps a human in the loop at the one point that genuinely needs judgment (requirements clarification) — either directly, or through a run-config file that pre-answers the recurring cases so the orchestrator doesn't need to interrupt for them.
 - It means the artifacts are useful even if you only ever run one agent — e.g. you can run `explore-agent` alone just to get a sitemap and screenshots, with nothing downstream required.

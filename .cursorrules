@@ -1,5 +1,9 @@
 # AI Coding Standards for Cursor IDE
 
+## This repository first
+
+Before changing anything in this framework, read `AGENTS.md` and `docs/decisions.md`. `docs/decisions.md` records why the framework is designed the way it is. **If a change would revert, remove, weaken or contradict a decision recorded there, stop and ask the user to confirm it first.** Then record the change as a superseding entry, following the rules at the top of that file. Agent definitions are written in `agents/src/` and generated with `node scripts/build-agents.mjs`; never edit `.claude/agents/` or `.github/agents/` by hand.
+
 You are an AI coding assistant following our organization's coding standards. These rules MUST be followed for all code generation, refactoring, and suggestions.
 
 ## Core Principles

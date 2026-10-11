@@ -9,7 +9,7 @@
     "agent-deltas": "node build-agents.mjs --deltas",
     "sync-agent-models": "node build-agents.mjs",
     "generate-k6-report": "node generate-k6-report.mjs",
-    "test": "node --test run-config.test.mjs clarification-csv.test.mjs build-agents.test.mjs hooks/guard-shell.test.mjs"
+    "test": "node --test run-config.test.mjs clarification-csv.test.mjs build-agents.test.mjs decisions.test.mjs hooks/guard-shell.test.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"

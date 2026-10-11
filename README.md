@@ -12,7 +12,7 @@ This framework ships in **two flavors** generated from **one source**. Each agen
 
 Both flavors are controlled from the **same** `config/models.yaml` — see "Configuring which model/provider each agent uses" below — and read/write the **same** `artifacts/`, `playwright-tests/`, `api-tests/`, and `feedback/` trees, so a run started in one flavor produces output the other can pick up.
 
-See [`architecture.md`](architecture.md) for the pipeline diagram and design rationale, [`docs/conventions.md`](docs/conventions.md) for the artifact handoff and feedback contracts (platform-agnostic, shared by both flavors), and [`docs/validation-report.md`](docs/validation-report.md) for a real end-to-end dogfood run of every agent against a live app, with per-agent feedback.
+See [`docs/decisions.md`](docs/decisions.md) for every design decision and why it was made (any AI agent changing the framework reads it first, and must get your confirmation before reverting or changing a recorded decision), [`architecture.md`](architecture.md) for the pipeline diagram and design rationale, [`docs/conventions.md`](docs/conventions.md) for the artifact handoff and feedback contracts (platform-agnostic, shared by both flavors), and [`docs/validation-report.md`](docs/validation-report.md) for a real end-to-end dogfood run of every agent against a live app, with per-agent feedback.
 
 ## What this repo is
 

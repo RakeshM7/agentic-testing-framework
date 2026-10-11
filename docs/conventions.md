@@ -19,6 +19,7 @@ Never hand-edit a generated agent file or its `model:` line — the next build o
 
 ## Changing an agent's behavior
 
+0. Read `docs/decisions.md` first. If the change would revert, remove, weaken or contradict a recorded decision, get the user's explicit confirmation before making it, and record it as a superseding entry; record any new design choice there as well (rules at the top of that file).
 1. Edit `agents/src/<agent>.md` (the body, plus `name`/`description` frontmatter) — or `agents/manifest.yaml` for tools, platform-only frontmatter or shared wording, or `config/models.yaml` for models.
 2. Run `node scripts/build-agents.mjs`. It regenerates `.claude/agents/`, `.github/agents/`, `.mcp.json` and `.vscode/mcp.json`, and fails on any lint error.
 3. Commit the source and the generated files together. `node scripts/build-agents.mjs --deltas` lists every platform-specific section per agent, which is what a reviewer checks.

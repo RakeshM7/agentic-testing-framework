@@ -10,6 +10,10 @@
   // as well would run it twice.
   "chat.useHooks": true,
   "chat.useClaudeHooks": false,
+  // AGENTS.md is the one instruction file for every Copilot surface (it points agents at
+  // docs/decisions.md). CLAUDE.md only imports it for Claude Code, so don't read it twice.
+  "chat.useAgentsMdFile": true,
+  "chat.useClaudeMdFile": false,
   // Auto-approve only non-mutating, repo-local commands. Live load tests and curl always ask
   // (and are blocked by scripts/hooks/guard-shell.mjs unless the run is authorized for full-run).
   "chat.tools.terminal.autoApprove": {
