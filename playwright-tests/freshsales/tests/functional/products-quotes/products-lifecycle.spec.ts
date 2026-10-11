@@ -10,6 +10,7 @@ test.describe.configure({ mode: 'serial' });
 test.setTimeout(120_000);
 
 test.describe('Products lifecycle (full-run, live)', () => {
+  test.skip(process.env.PQ_MODE !== 'full-run', 'mutating flow -- requires authorizations.mode: full-run (set PQ_MODE=full-run)');
   const A = `ZZ Test Product A ${RUN}`;
   const AE = `${A} (edited)`;
   const B = `ZZ Test Product B (clone) ${RUN}`;

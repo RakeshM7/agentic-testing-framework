@@ -19,6 +19,7 @@ test.describe.configure({ mode: 'serial' });
 test.setTimeout(120_000);
 
 test.describe('Quotes (full-run, live)', () => {
+  test.skip(process.env.PQ_MODE !== 'full-run', 'mutating flow -- requires authorizations.mode: full-run (set PQ_MODE=full-run)');
   const DEAL = `ZZ Test Deal ${RUN}`;
   const CONTACT = `Contact ${RUN}`;
   const PROD = 'ZZ Quote Product (shared fixture)'; // see setup: persistent fixture, undeletable once quoted
