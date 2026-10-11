@@ -1,0 +1,19 @@
+{
+ "note": "Captured network-requests.json exists only for products-list; endpoints were additionally live-probed with GET using the handoff session. Third-party hosts (beamer, marketplace, iris, freshcaller) excluded. Mutating UI calls (create/clone/delete product or quote) were not exercised: readonly mode.",
+ "host": "https://rakesh-freshsales-ind-sep21.myfreshworks.com",
+ "auth": "session cookie (_freshsales_session); anonymous -> 401 {login:'failed',message:null}",
+ "endpoints": [
+  {"method":"GET","path":"/crm/sales/cpq/products","query":["page","per_page","sort","sort_type","include=lookup_information","segment_id","category"],"response":"{products:[{id,name,category,custom_field,product_code,sku_number,parent_product,territory_id,valid_till,is_active,owner_id,is_deleted,created_at,updated_at,pricing_type,base_currency_amount,...}],meta:{total_pages,total,lookup_information}}","verified_live":true},
+  {"method":"GET","path":"/crm/sales/cpq/products/:id","response":"{product:{...}}; unknown/non-numeric id -> 404","verified_live":true},
+  {"method":"GET","path":"/crm/sales/cpq/cpq_documents","query":["page","per_page"],"response":"{cpq_documents:[{id,deal_id,contact_id,document_type,stage,document_number,currency_code,...}],meta}","verified_live":true},
+  {"method":"GET","path":"/crm/sales/cpq/cpq_documents/:id","response":"{cpq_document:{...}}; unknown numeric id -> 403, non-numeric -> 404","verified_live":true},
+  {"method":"GET","path":"/crm/sales/cpq/filters/products","query":["type","start","end"],"response":"{filters:[{id,name,model_class_name,is_default,...}],meta:{total}}","verified_live":true},
+  {"method":"GET","path":"/crm/sales/cpq/filters/products/:id","response":"{filter,users,teams,territories}; unknown id -> 500","verified_live":true},
+  {"method":"GET","path":"/crm/sales/cpq/filters/cpq_documents","response":"{filters:[{id,name:'All Documents',model_class_name:'CpqDocument'}]}","verified_live":true},
+  {"method":"GET","path":"/crm/sales/cpq/settings/products/forms","response":"{forms:[{id,name,fields[],...}]}","verified_live":true},
+  {"method":"GET","path":"/crm/sales/cpq/settings/cpq_documents/forms","response":"{forms:[...],meta:{latest_forms_version_data}}","verified_live":true},
+  {"method":"GET","path":"/crm/sales/v2/settings/forms","query":["entities_form_for=products,cpq_documents"],"response":"{forms:[...]}","verified_live":true}
+ ],
+ "not_found_404": ["/crm/sales/cpq_documents (list; UI route only)","/crm/sales/settings/cpq-document-templates (UI route only)","/crm/sales/cpq/document_templates","/crm/sales/settings/cpq_documents/forms"],
+ "mutating_not_tested": ["POST/PUT/DELETE cpq/products","POST/PUT/DELETE cpq/cpq_documents","document templates create"]
+}
