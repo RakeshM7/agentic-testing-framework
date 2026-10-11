@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-ui-pom-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-ui-pom-writer
 description: "Writes Playwright page objects (pages/<module>/) for a module's screens, with locators grounded verbatim in the exploration DOM snapshots. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/k6-feedback-implementor.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: k6-feedback-implementor
 description: "Applies the k6 reviewer's findings (review-findings.md) to the module's k6 scripts and the shared lib. Invoked by k6-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

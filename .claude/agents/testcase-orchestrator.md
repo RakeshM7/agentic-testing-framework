@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/testcase-orchestrator.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: testcase-orchestrator
 description: "Runs the test case domain for ONE module: testcase-writer, then a bounded testcase-reviewer -> testcase-writer revision loop until the review passes. Coordinates only. Invoked by orchestrator-agent."
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent(testcase-writer, testcase-reviewer)

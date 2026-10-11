@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/k6-workload-designer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: k6-workload-designer
 description: "Designs a module's load workload (workload.json): which endpoints to load, with what executor, profile and thresholds, and why -- conservatively, from the API plan and knowledge. Invoked by k6-orchestrator."
 tools: Read, Glob, Grep, Write, Edit

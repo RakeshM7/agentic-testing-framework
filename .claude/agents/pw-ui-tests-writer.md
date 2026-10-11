@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-ui-tests-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-ui-tests-writer
 description: "Implements a module's UI test cases as Playwright specs (tests/ui/<module>/) using the page objects, fixtures and helpers, one test per test case id. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-api-feedback-implementor.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-api-feedback-implementor
 description: "Applies the API reviewer's findings (review-findings.md) to the module's API Playwright code, within the API-owned folders only. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

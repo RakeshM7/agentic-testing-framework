@@ -1,0 +1,19 @@
+# MCP servers, defined once. `node scripts/build-agents.mjs` renders them into every platform's MCP config file (the
+# `mcp_config` of each platform in config/platforms.yaml: .mcp.json for Claude Code, .vscode/mcp.json for VS Code).
+# Never edit those files by hand; `npm run check` fails on drift.
+#
+# `browser_server` is the server whose browser_* tools an agent gets when config/permissions.yaml grants it
+# `live_target.browser`. Keep its --storage-state equal to the run-config's authorizations.session_state_file when
+# authorizations.authenticated_crawl is true (orchestrator-agent checks this before a run).
+
+browser_server: playwright
+
+servers:
+  playwright:
+    command: npx
+    args:
+      - "-y"
+      - "@playwright/mcp@0.0.83"
+      - "--isolated"
+      - "--storage-state"
+      - "playwright-tests/freshsales-crm/.auth/state.json"

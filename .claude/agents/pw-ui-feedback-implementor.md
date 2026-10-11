@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-ui-feedback-implementor.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-ui-feedback-implementor
 description: "Applies the UI reviewer's findings (review-findings.md) to the module's UI Playwright code, within the UI-owned folders only. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

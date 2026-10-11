@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-ui-reviewer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-ui-reviewer
 description: "Reviews a module's UI Playwright code (page objects, fixtures, helpers, specs) against the conventions and the test cases, and writes review-findings.md with a verdict. Never edits code. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

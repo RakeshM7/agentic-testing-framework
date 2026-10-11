@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/k6-orchestrator.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: k6-orchestrator
 description: "Runs the k6 load-testing domain for ONE module after its Playwright API stage: workload design, shared lib, scripts; a bounded review -> feedback-implementor loop; a bounded run/triage -> heal loop (live runs only in full-run). Coordinates only. Invoked by orchestrator-agent."
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent(k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-feedback-implementor, k6-runner-triager, k6-healer)

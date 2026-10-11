@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-api-fixtures-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-api-fixtures-writer
 description: "Writes the API Playwright fixtures (fixtures/api/): the extended test object with API clients, the non-GET mutation guard, and the API auth setup. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

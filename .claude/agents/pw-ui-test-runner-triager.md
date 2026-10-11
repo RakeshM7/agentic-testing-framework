@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-ui-test-runner-triager.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-ui-test-runner-triager
 description: "Runs a module's UI Playwright tests against the product with the run's mode, records normalized results via scripts/results.mjs, and classifies every failure in triage.md. Never edits test code. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_hover, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_wait_for, mcp__playwright__browser_tabs, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_select_option, mcp__playwright__browser_press_key, mcp__playwright__browser_file_upload, mcp__playwright__browser_drag, mcp__playwright__browser_drop, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_evaluate

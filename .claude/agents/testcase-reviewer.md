@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/testcase-reviewer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: testcase-reviewer
 description: "Reviews a module's test cases against clarifications, exploration flows and the hand-off format, and writes review-findings.md with a pass/changes-required verdict. Never edits the test cases. Invoked by testcase-orchestrator."
 tools: Read, Glob, Grep, Write, Edit

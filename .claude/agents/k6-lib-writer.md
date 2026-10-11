@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/k6-lib-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: k6-lib-writer
 description: "Writes the shared k6 library for the product (k6-tests/<product>/lib/: host allow-list config, auth, checks, data, handleSummary) and its README. Invoked by k6-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

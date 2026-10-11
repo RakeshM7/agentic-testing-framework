@@ -8,6 +8,7 @@ const ENUMS = {
   http: ["none", "read", "mutate"],
   load: ["none", "run"],
   web_research: ["none", "allowed"],
+  ask_user: ["none", "allowed"],
   shell: ["none", "restricted", "project"],
 };
 const RANK = { none: 0, read: 1, mutate: 2, run: 1 };
@@ -30,11 +31,12 @@ export function resolvePermissions(doc) {
       shell: a.shell ?? "none",
       shell_allow: a.shell_allow ?? [],
       filesystem: { read: a.filesystem?.read ?? [], write: a.filesystem?.write ?? [] },
-      extra_tools: a.extra_tools ?? [],
+      ask_user: a.ask_user ?? "none",
     };
     if (![0, 1, 2].includes(row.layer)) errors.push(`${name}: layer must be 0, 1 or 2`);
     for (const k of ["browser", "http", "load"]) if (!ENUMS[k].includes(row.live_target[k])) errors.push(`${name}: live_target.${k} '${row.live_target[k]}' not in [${ENUMS[k]}]`);
-    for (const k of ["web_research", "shell"]) if (!ENUMS[k].includes(row[k])) errors.push(`${name}: ${k} '${row[k]}' not in [${ENUMS[k]}]`);
+    if (a.extra_tools) errors.push(`${name}: extra_tools is not supported; grant capabilities (e.g. ask_user: allowed), never platform tool names`);
+    for (const k of ["web_research", "shell", "ask_user"]) if (!ENUMS[k].includes(row[k])) errors.push(`${name}: ${k} '${row[k]}' not in [${ENUMS[k]}]`);
     if (row.shell === "restricted" && !row.shell_allow.length) errors.push(`${name}: shell: restricted needs shell_allow`);
     if (row.layer === 2 && row.spawns.length) errors.push(`${name}: layer-2 workers cannot spawn agents`);
     agents[name] = row;

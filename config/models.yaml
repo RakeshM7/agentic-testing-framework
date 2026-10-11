@@ -1,9 +1,9 @@
-# Which model each agent uses, per platform. Applied by `node scripts/build-agents.mjs` (part of `npm run check`),
-# which writes the `model:` line of every .claude/agents/<name>.md -- never hand-edit that line.
+# Which model each agent uses, per platform (the platform keys of config/platforms.yaml). Applied by
+# `node scripts/build-agents.mjs` (part of `npm run check`), which writes the `model:` line of every generated agent
+# file -- never hand-edit that line.
 #
-# `default` applies to every agent without an entry under `agents`. Claude values: sonnet | opus | haiku, or a
-# pinned model id. Only the `claude` platform is wired up; another platform would add its own key here and in
-# build-agents.mjs.
+# `default` applies to every agent without an entry under `agents`; an entry may override one platform only.
+#   claude:  sonnet | opus | haiku, or a pinned model id.
 #
 # Per-role tiering (e.g. stronger models for planners/reviewers/triagers) is not decided yet: everything uses the
 # default until it is.

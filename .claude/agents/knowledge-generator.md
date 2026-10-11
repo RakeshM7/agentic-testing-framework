@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/knowledge-generator.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: knowledge-generator
 description: "Builds the cited knowledge base for a product under test from the run-config's references, requirement documents and official vendor docs (live product only when needed). Two modes: a product pass (product overview + glossary) and a module pass (one module's overview, glossary and notes). Invoked by orchestrator-agent only."
 tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_hover, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_wait_for, mcp__playwright__browser_tabs, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests

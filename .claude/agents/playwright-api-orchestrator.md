@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/playwright-api-orchestrator.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: playwright-api-orchestrator
 description: "Runs the Playwright API domain for ONE module: endpoint discovery, test plan, scaffold, helpers, clients, fixtures, tests; a bounded review -> feedback-implementor loop; a bounded run/triage -> heal loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent(pw-repo-owner, api-discoverer, api-test-planner, pw-api-scaffolder, pw-api-helper-writer, pw-api-fixtures-writer, pw-api-client-writer, pw-api-tests-writer, pw-api-reviewer, pw-api-feedback-implementor, pw-api-test-runner-triager, pw-api-healer)
