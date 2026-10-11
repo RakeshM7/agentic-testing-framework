@@ -3,6 +3,9 @@
   "hooks": {
     "PreToolUse": [
       { "type": "command", "command": "node scripts/hooks/pretooluse.mjs --host copilot", "cwd": ".", "timeoutSec": 30 }
+    ],
+    "PostToolUse": [
+      { "type": "command", "command": "node scripts/hooks/posttooluse.mjs --host copilot", "cwd": ".", "timeoutSec": 30 }
     ]
   }
 }

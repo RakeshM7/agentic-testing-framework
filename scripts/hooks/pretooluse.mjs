@@ -4,9 +4,10 @@
 //   .vscode/hooks/framework-guard.json   --host vscode                  VS Code Copilot Chat, every chat session
 //   .github/agents/<name>.agent.md       --host vscode --agent <name>   VS Code, while that custom agent runs (generated)
 //   .github/hooks/framework-guard.json   --host copilot                 Copilot CLI and the cloud coding agent
-// Flow: the host's adapter (hosts/<adapter>.mjs) turns the payload into a canonical tool call; the safety guard
-// (scripts/lib/guard.mjs) judges it; the adapter writes the verdict in the host's format. When the guard blocks the
-// liveness canary, the blocking host/agent is recorded (scripts/lib/guard-check.mjs).
+// Flow: the host's adapter (hosts/<adapter>.mjs) turns the payload into a canonical tool call; safety
+// (scripts/lib/guard.mjs) and design-decision governance (scripts/lib/decisions.mjs) each judge it; deny beats ask
+// beats allow; the adapter writes the verdict in the host's format. When the guard blocks the liveness canary, the
+// blocking host/agent is recorded (scripts/lib/guard-check.mjs).
 // Fails closed: if anything here fails while a product run is active, the call is blocked. Everything is imported
 // dynamically inside the try, so even a broken module cannot make the hook fail open.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -34,7 +35,11 @@ try {
     const { recordCanary } = await import("../lib/guard-check.mjs");
     recordCanary(safety.canary.product, root, call);
   }
-  const verdict = safety.allowed ? { decision: "allow" } : { decision: "deny", rule: safety.rule, reason: safety.reason };
+  let verdict = safety.allowed ? { decision: "allow" } : { decision: "deny", rule: safety.rule, reason: safety.reason };
+  if (verdict.decision === "allow") {
+    const { checkDecisions, confirmedIn, loadDecisions } = await import("../lib/decisions.mjs");
+    verdict = checkDecisions(call, root, { ...loadDecisions(root), confirmed: confirmedIn(root, call.sessionId) });
+  }
   process.exit(adapter.emit(verdict));
 } catch (e) {
   if (runActive(root)) {

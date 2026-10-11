@@ -41,7 +41,7 @@ variables:
   pw_project: "playwright-tests/${product}"                   # ONE Playwright repo: tests/ui + tests/api
   k6_project: "k6-tests/${product}"
 #
-# ---- Decision log ----------------------------------------------------------------------------------------
+# ---- Decision log (the reasons and the full log: docs/decisions.md) -------------------------------------
 # Mode caps permissions | knowledge-generator: live product only if needed | module-explorer: mutate
 # scaffolders: web research allowed | api-discoverer: http read | global feedback implementor: as drafted
 # Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
@@ -392,4 +392,4 @@ agents:
     # Never config/ (permissions, models, platforms, MCP servers), the safety code (scripts/lib/{guard,permissions,ledger,
     # hosts,tool-call,browser-tools,guard-check,decisions}.mjs, scripts/hooks/), the hook registrations or editor settings
     # (.claude/settings.json, .github/hooks/, .vscode/) or the generated agent/MCP files (rebuilt from agents/ by
-    # `npm run build-agents` via its shell): safety, permissions, models and platforms are human-only decisions.
+    # `npm run build-agents` via its shell): safety, permissions, models and platforms are human-only decisions (D-013).

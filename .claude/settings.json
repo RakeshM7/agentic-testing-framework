@@ -7,6 +7,14 @@
           { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/pretooluse.mjs\" --host claude-code" }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/posttooluse.mjs\" --host claude-code" }
+        ]
+      }
     ]
   }
 }

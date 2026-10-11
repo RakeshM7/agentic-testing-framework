@@ -139,7 +139,7 @@ test("hook registrations: every host runs the same entry with a valid --host", (
       Object.values(JSON.parse(readFileSync(path.join(repoRoot, f), "utf8")).hooks).flatMap((xs) => xs.map((h) => h.command))
     ),
   ];
-  assert.ok(commands.length >= 3);
+  assert.ok(commands.length >= 6);
   for (const c of commands) assert.match(c, /scripts\/hooks\/(pre|post)tooluse\.mjs"? --host (claude-code|vscode|copilot)$/, c);
   assert.ok(!existsSync(path.join(repoRoot, ".claude", "hooks")), "the old Claude-only hook is gone");
 });
