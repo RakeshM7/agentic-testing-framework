@@ -1,45 +1,49 @@
 # Single source of truth for which model each agent uses, per platform.
 #
-# Do NOT hand-edit the `model:` frontmatter line in claude-agents/*.md or
-# copilot-agents/*.agent.md directly -- the next run of
-# scripts/sync-agent-models.mjs will overwrite it with whatever is here.
+# Do NOT hand-edit the `model:` frontmatter line in .claude/agents/*.md or
+# .github/agents/*.agent.md -- those files are generated, and the next run of
+# scripts/build-agents.mjs overwrites them with whatever is here.
 # Edit this file, then run:
 #
-#   node scripts/sync-agent-models.mjs
+#   node scripts/build-agents.mjs
 #
 # `claude` values must be values Claude Code's own `model:` frontmatter
 # field accepts (an alias -- sonnet | opus | haiku -- or a pinned model id).
-# `copilot` values must be model ids Copilot's `model:` frontmatter field
-# accepts in your organization/subscription (Copilot brokers multiple
-# providers -- GPT, Claude, Gemini, etc.); a list is a prioritized fallback
-# order, not a set Copilot picks from at random. Exact valid ids drift over
-# time -- verify against your Copilot instance before relying on a value.
+# `copilot` values are Copilot model display names as shown in the VS Code
+# model picker (e.g. 'Claude Sonnet 4.5'), in priority order. Policy: list the
+# Claude model of the same tier as the `claude` value first, so both flavors
+# run the same model family and behave the same; a GPT model is the fallback.
+# One .agent.md file serves VS Code, Copilot CLI and the cloud coding agent,
+# and GitHub documents `model` as a single string, so the build emits only the
+# FIRST entry (see platforms.copilot.model_format in agents/manifest.yaml).
+# Which models exist is set by your Copilot plan and org policy and drifts over
+# time -- verify the names against your model picker before relying on them.
 
 agents:
   orchestrator-agent:
     claude: sonnet
-    copilot: [claude-sonnet-4.5, gpt-5]
+    copilot: [Claude Sonnet 4.5, GPT-5]
 
   explore-agent:
     claude: sonnet
-    copilot: [gpt-5]
+    copilot: [Claude Sonnet 4.5, GPT-5]
 
   requirements-clarification-agent:
     claude: sonnet
-    copilot: [claude-sonnet-4.5, gpt-5]
+    copilot: [Claude Sonnet 4.5, GPT-5]
 
   testcase-generator-agent:
     claude: sonnet
-    copilot: [gpt-5]
+    copilot: [Claude Sonnet 4.5, GPT-5]
 
   playwright-automation-agent:
     claude: sonnet
-    copilot: [claude-sonnet-4.5, gpt-5]
+    copilot: [Claude Sonnet 4.5, GPT-5]
 
   api-testing-agent:
     claude: sonnet
-    copilot: [claude-sonnet-4.5, gpt-5]
+    copilot: [Claude Sonnet 4.5, GPT-5]
 
   feedback-implementor-agent:
     claude: sonnet
-    copilot: [claude-sonnet-4.5, gpt-5]
+    copilot: [Claude Sonnet 4.5, GPT-5]

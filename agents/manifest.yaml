@@ -1,0 +1,112 @@
+# Platform manifest for the agent definitions in agents/src/.
+#
+# agents/src/<agent>.md is the ONLY place an agent's behavior is written. This
+# file holds what differs per platform in a structured way: tool names,
+# platform-only frontmatter, a few shared wording terms, and the Playwright MCP
+# server definition. scripts/build-agents.mjs combines the two (plus
+# config/models.yaml for the `model:` line) into:
+#
+#   .claude/agents/<agent>.md          Claude Code
+#   .github/agents/<agent>.agent.md    GitHub Copilot: VS Code, Copilot CLI, cloud coding agent
+#   .mcp.json, .vscode/mcp.json        Playwright MCP server registration for both
+#
+# Never edit those outputs by hand. Edit agents/src/ or this file, then run
+#   node scripts/build-agents.mjs
+# CI runs `node scripts/build-agents.mjs --check` and fails on stale or hand-edited output.
+
+# Capability -> tool names per platform. Each agent lists capabilities (below),
+# in the order its `tools:` line should have them. Copilot names are GitHub's
+# documented primary tool aliases (read, edit, search, execute, web, agent),
+# which VS Code, Copilot CLI and the cloud agent all accept; tool names a
+# surface doesn't know are ignored by that surface.
+tools:
+  read:      { claude: [Read],            copilot: [read] }
+  write:     { claude: [Write],           copilot: [edit] }
+  edit:      { claude: [Edit],            copilot: [edit] }
+  search:    { claude: [Glob, Grep],      copilot: [search] }
+  shell:     { claude: [Bash],            copilot: [execute] }
+  fetch:     { claude: [WebFetch],        copilot: [web] }
+  websearch: { claude: [WebSearch],       copilot: [] }    # Copilot has no web-search tool; research is fetch-only
+  # Human questions: main session only on every platform. VS Code's tool is
+  # vscode/askQuestions, Copilot CLI's is ask_user; the cloud agent has none.
+  ask:       { claude: [AskUserQuestion], copilot: [vscode/askQuestions, ask_user] }
+  # Subagent spawning: rendered from the agent's `subagents:` list --
+  # Claude: Agent(a, b, ...) in tools; Copilot: 'agent' in tools + an `agents:` list.
+  agent:     { claude: "Agent({subagents})", copilot: [agent] }
+  # Browser tools: rendered from the agent's `browser_tools:` list.
+  browser:   { claude: "mcp__playwright-isolated__{tool}", copilot: "playwright/{tool}" }
+
+# Shared wording that differs per platform, used in agent bodies as {{v:<key>}}.
+# Keep these to short terms; whole sentences that differ belong in a
+# {{#claude}}...{{/claude}}{{#copilot}}...{{/copilot}} section in the agent source.
+vocab:
+  ask_tool:
+    claude: "`AskUserQuestion`"
+    copilot: "`vscode/askQuestions` (VS Code) or `ask_user` (Copilot CLI)"
+  shell:
+    claude: Bash
+    copilot: the terminal
+  web_research:
+    claude: WebSearch/WebFetch
+    copilot: "`web/fetch`"
+
+# The Playwright MCP server, registered once here. `claude_inline_name` is the
+# name explore-agent's per-invocation inline server gets in Claude Code (it must
+# differ from the shared `playwright` server, or Claude Code reuses the shared
+# connection). Keep --storage-state equal to authorizations.session_state_file.
+mcp:
+  playwright:
+    claude_inline_name: playwright-isolated
+    command: npx
+    args: ["-y", "@playwright/mcp@0.0.83", "--isolated", "--storage-state", "playwright-tests/freshsales/.auth/freshsales-handoff.json"]
+
+platforms:
+  claude:
+    output: .claude/agents/{name}.md
+  copilot:
+    output: .github/agents/{name}.agent.md
+    # GitHub documents the custom-agent `model` property as a string; VS Code
+    # also accepts a prioritized list. One file serves all three Copilot
+    # surfaces, so emit the first config/models.yaml entry as a string. Switch
+    # to `array` only if every surface you use accepts a list.
+    model_format: string
+    body_limit: 30000   # GitHub's custom-agent prompt limit, in characters
+
+# Words that must never appear in the other platform's rendered file. A hit
+# means platform-specific text leaked into shared text: move it into a
+# platform section or a {{v:...}} term.
+lint:
+  claude: ["vscode/", "playwright/browser_", "runCommands", ".agent.md", "ask_user", "copilot --agent", "Copilot CLI"]
+  copilot: ["AskUserQuestion", "mcp__", "Agent(", "mcpServers", "claude --agent", "Claude Code", "WebSearch"]
+
+agents:
+  orchestrator-agent:
+    tools: [ask, agent, read, write, search, shell]
+    subagents: [explore-agent, requirements-clarification-agent, testcase-generator-agent, playwright-automation-agent, api-testing-agent, feedback-implementor-agent]
+    claude: { color: cyan }
+
+  explore-agent:
+    tools: [read, write, search, shell, browser, websearch, fetch]
+    # Named individually (not the whole server) so browser_run_code_unsafe and browser_evaluate stay excluded.
+    browser_tools: [browser_navigate, browser_snapshot, browser_click, browser_type, browser_network_requests, browser_console_messages, browser_take_screenshot, browser_tabs, browser_fill_form, browser_select_option, browser_press_key, browser_wait_for, browser_navigate_back, browser_close]
+    claude: { color: blue, inline_mcp: playwright }
+
+  requirements-clarification-agent:
+    tools: [read, write, search, fetch]
+    claude: { color: purple }
+
+  testcase-generator-agent:
+    tools: [read, write, search]
+    claude: { color: green }
+
+  playwright-automation-agent:
+    tools: [read, write, edit, search, shell, websearch, fetch]
+    claude: { color: orange }
+
+  api-testing-agent:
+    tools: [read, write, edit, search, shell, fetch, websearch]
+    claude: { color: red }
+
+  feedback-implementor-agent:
+    tools: [read, write, edit, search, shell]
+    claude: { color: yellow }

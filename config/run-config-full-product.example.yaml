@@ -81,7 +81,7 @@ authorizations:
   session_state_file: playwright-tests/freshsales/.auth/freshsales-handoff.json  # pre-authenticated storageState a human
                                 # produced (login + reCAPTCHA done by hand). It expires: if explorers hit the
                                 # login wall, re-capture it. Keep it equal to the --storage-state arg in
-                                # claude-agents/explore-agent.md's mcpServers entry.
+                                # agents/manifest.yaml (mcp.playwright.args); rebuild with node scripts/build-agents.mjs.
 
 testcases:
   output_format: csv            # markdown-table | gherkin | csv | testrail

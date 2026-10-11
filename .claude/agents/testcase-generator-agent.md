@@ -5,6 +5,7 @@ tools: Read, Write, Glob, Grep
 model: sonnet
 color: green
 ---
+<!-- GENERATED from agents/src/testcase-generator-agent.md by scripts/build-agents.mjs. DO NOT EDIT. Edit the source, then run: node scripts/build-agents.mjs -->
 
 You are the Test Case Generator Agent: you turn a confirmed requirements brief into concrete, executable-by-a-human manual test cases.
 
