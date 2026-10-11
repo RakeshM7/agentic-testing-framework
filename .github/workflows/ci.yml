@@ -1,0 +1,50 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: scripts — install, unit tests (run-config, clarification CSV, agent build, authorization guard)
+        working-directory: scripts
+        run: |
+          npm ci
+          npm test
+      - name: agent definitions — Claude Code and Copilot files generated from agents/src and in sync
+        run: node scripts/build-agents.mjs --check
+      - name: agent discovery dirs are real directories, not symlinks
+        run: |
+          for d in .claude/agents .github/agents; do
+            if [ -L "$d" ] || [ ! -d "$d" ]; then echo "$d must be a real directory of generated files"; exit 1; fi
+          done
+      - name: validate shipped run-configs
+        run: |
+          for f in config/run-config*.yaml config/eventhub-app-wide.yaml; do
+            node scripts/run-config.mjs validate "$f" > /dev/null
+          done
+      - name: shipped examples must default to readonly
+        run: "! grep -E '^\\s+mode: full-run' config/run-config*.example.yaml"
+      - name: playwright-tests — typecheck every product project
+        run: |
+          for d in playwright-tests/*/; do
+            [ -f "$d/package.json" ] || continue
+            (cd "$d" && npm ci && npx tsc --noEmit)
+          done
+      - name: api-tests — typecheck
+        working-directory: api-tests/playwright-api
+        run: |
+          npm ci
+          npx tsc --noEmit
+      - name: k6 scripts parse (static, never executed live)
+        uses: grafana/setup-k6-action@v1
+      - run: |
+          for f in api-tests/k6/scripts/*-test.js; do
+            k6 inspect -e BASE_URL=http://localhost:3001 "$f" > /dev/null
+          done
