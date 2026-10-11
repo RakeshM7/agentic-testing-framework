@@ -9,12 +9,15 @@
 //   - caller:       the call's `agent` (set by the adapter only from a trusted source) and `host`
 // The env var AUTHORIZATIONS_MODE=readonly can only downgrade. No active run => readonly, no per-agent rules.
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
+// full-run is honoured only on hosts that can identify the calling agent (scripts/lib/hosts.mjs); on any other host
+// every call is evaluated as readonly.
 //
 // Dependency-free (imported by a PreToolUse hook on every guarded tool call).
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { isMutatingBrowserTool } from "./browser-tools.mjs";
+import { canIdentify, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
 import { atLeast, canWrite, effectiveLiveTarget, shellAllowed } from "./permissions.mjs";
 
@@ -65,6 +68,9 @@ const HTTP_MUTATE = [
 ];
 const K6_LIVE = /\bk6(\.exe)?\s+(run|cloud)\b/i;
 const DELETE_RE = /(-X|--request)[\s=]*['"]?DELETE\b|--method[\s=]*['"]?DELETE\b|-Method\s+['"]?Delete\b|method\s*[:=]\s*['"]DELETE['"]|\b(requests|httpx|axios|got|ky)\.delete\b/i;
+// The liveness canary: an agent runs this before a run's stages; a working hook always blocks it (and the hook entry
+// records which host/agent blocked it). If it ever executes, no guard intercepted it (scripts/run.mjs guard-check).
+const CANARY = /^\s*node\s+scripts\/run\.mjs\s+guard-check\s+([a-z0-9]+(?:-[a-z0-9]+)*)\s*$/;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const deny = (rule, reason) => ({ allowed: false, rule, reason });
@@ -129,7 +135,9 @@ function evaluateKind(call, run, row) {
         return deny("browser-read", `browser_${call.browserAction} can change data; this agent is read-only here (mode ${run.mode})`);
       return ALLOW;
     }
-    default: // read, ask, other, unknown
+    case "unknown":
+      return row ? deny("unmapped-tool", `'${call.tool}' is not a tool the guard knows on ${labelOf(call.host)}; add it to that host's adapter in scripts/hooks/hosts/`) : ALLOW;
+    default: // read, ask, other
       return ALLOW;
   }
 }
@@ -137,12 +145,19 @@ function evaluateKind(call, run, row) {
 function evaluate(call, run) {
   if (run.broken) return call.kind === "shell" ? checkShell(call.command ?? "", run, null) : ALLOW;
   const row = call.agent ? run.permissions?.agents?.[call.agent] : undefined;
-  return evaluateKind(call, run, row);
+  const capped = run.mode === "full-run" && !canIdentify(call.host);
+  const verdict = evaluateKind(call, capped ? { ...run, mode: "readonly" } : run, row);
+  return capped && !verdict.allowed
+    ? { ...verdict, reason: `${verdict.reason} [full-run is not honoured on ${labelOf(call.host)}: it cannot identify the calling agent]` }
+    : verdict;
 }
 
-// -> { allowed, rule?, reason? }. With several active runs (different products): a write is allowed if ANY
+// -> { allowed, rule?, reason?, canary? }. With several active runs (different products): a write is allowed if ANY
 // run's rules allow it (paths are product-specific); everything else must be allowed by EVERY active run.
 export function checkTool(call, root, env = process.env) {
+  const canary = call.kind === "shell" ? CANARY.exec(call.command ?? "") : null;
+  if (canary)
+    return { allowed: false, rule: "canary", reason: `guard is active on ${labelOf(call.host)} (caller: ${call.agent ?? "unidentified"}); this block is expected`, canary: { product: canary[1] } };
   const runs = findActiveRuns(root, env);
   if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHost: null }, null) : ALLOW;
   const verdicts = runs.map((r) => evaluate(call, r));

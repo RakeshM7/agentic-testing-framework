@@ -41,6 +41,31 @@ test("Claude tools follow permissions: workers cannot spawn, read-only browser g
   assert.ok(!tools("question-writer", "claude").includes("Write"));
 });
 
+test("Copilot tools are the same capabilities in Copilot's names", () => {
+  assert.deepEqual(tools("question-writer", "copilot"), ["read", "search", "execute"]);
+  assert.deepEqual(tools("pw-ui-tests-writer", "copilot"), ["read", "search", "edit", "execute"]);
+  assert.ok(tools("knowledge-generator", "copilot").includes("playwright/browser_snapshot"));
+  assert.ok(!tools("knowledge-generator", "copilot").includes("playwright/browser_type"));
+  assert.equal(tools("knowledge-generator", "copilot").filter((t) => t === "web").length, 1, "web is emitted once");
+  assert.ok(tools("orchestrator-agent", "copilot").includes("agent"));
+  assert.ok(!tools("pw-ui-reviewer", "copilot").includes("agent"));
+});
+
+test("Copilot frontmatter: subagent allow-list, entry agents only, identity hook per agent", () => {
+  const orch = generated(".github/agents/orchestrator-agent.agent.md");
+  assert.deepEqual(orch.agents, perms.agents["orchestrator-agent"].spawns);
+  assert.equal(orch["user-invocable"], true);
+  assert.equal(orch["disable-model-invocation"], true);
+  const worker = generated(".github/agents/pw-ui-healer.agent.md");
+  assert.equal(worker["user-invocable"], false);
+  assert.equal(worker.agents, undefined);
+  assert.equal(worker.hooks.PreToolUse[0].command, "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-healer");
+  assert.equal(worker.color, undefined, "color is Claude-only");
+  const claude = generated(".claude/agents/pw-ui-healer.md");
+  assert.equal(claude.hooks, undefined, "Claude Code identifies agents from its own hook payload");
+  for (const name of Object.keys(perms.agents)) assert.equal(generated(`.github/agents/${name}.agent.md`).name, name);
+});
+
 test("a source may not carry platform syntax: generated keys and platform tool names are rejected", () => {
   const root = scratch();
   const file = path.join(root, "agents", "question-writer.md");
@@ -62,8 +87,8 @@ test("missing and stray sources and stray generated files are errors, and nothin
 
   const clean = scratch();
   assert.deepEqual(build({ root: clean }).errors, []);
-  writeFileSync(path.join(clean, ".claude", "agents", "hand-made.md"), "---\nname: hand-made\n---\n");
-  assert.ok(build({ check: true, root: clean }).errors.some((e) => /hand-made\.md: not generated from agents\//.test(e)));
+  writeFileSync(path.join(clean, ".github", "agents", "hand-made.agent.md"), "---\nname: hand-made\n---\n");
+  assert.ok(build({ check: true, root: clean }).errors.some((e) => /hand-made\.agent\.md: not generated from agents\//.test(e)));
 });
 
 test("a hand edit of a generated file is drift", () => {
@@ -74,7 +99,16 @@ test("a hand edit of a generated file is drift", () => {
   assert.deepEqual(build({ check: true, root }).changed, [rel]);
 });
 
+test("a body over the Copilot prompt limit fails the build", () => {
+  const root = scratch();
+  const file = path.join(root, "agents", "question-writer.md");
+  writeFileSync(file, readFileSync(file, "utf8") + "x".repeat(platforms.copilot.body_limit));
+  assert.ok(build({ check: true, root }).errors.some((e) => /over the copilot limit/.test(e)));
+});
+
 test("MCP servers are defined once and rendered for each platform", () => {
   const claude = JSON.parse(readFileSync(path.join(repoRoot, ".mcp.json"), "utf8"));
+  const vscode = JSON.parse(readFileSync(path.join(repoRoot, ".vscode", "mcp.json"), "utf8"));
+  assert.deepEqual(claude.mcpServers, vscode.servers);
   assert.deepEqual(claude.mcpServers, load("config/mcp.yaml").servers);
 });

@@ -2,6 +2,7 @@
 name: feedback-implementor-agent
 description: "Improves the framework itself (agent sources in agents/, docs, scripts) from feedback FILE PATHS under feedback/<source>/*.md, verifies each change, and appends a Resolution section to the same file. Not part of a product run; never edits generated test code or safety configuration."
 color: yellow
+user_invocable: true
 ---
 
 You turn feedback about the framework into verified fixes and keep the feedback file as the record of both problem and resolution.

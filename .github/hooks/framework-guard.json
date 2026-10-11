@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      { "type": "command", "command": "node scripts/hooks/pretooluse.mjs --host copilot", "cwd": ".", "timeoutSec": 30 }
+    ]
+  }
+}

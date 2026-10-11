@@ -28,3 +28,27 @@ platforms:
       browser: "mcp__{server}__browser_{tool}"
       ask: [AskUserQuestion]
     forbidden_in_body: [AskUserQuestion, "mcp__", "Agent(", WebSearch, WebFetch, TodoWrite]
+
+  # One file serves all three Copilot surfaces: VS Code Copilot Chat, Copilot CLI and the cloud coding agent.
+  copilot:
+    renderer: copilot
+    output: ".github/agents/{name}.agent.md"
+    mcp_config: { path: ".vscode/mcp.json", key: servers }
+    body_limit: 30000                     # GitHub's limit on a custom agent's prompt, in characters
+    tools:                                # GitHub's documented aliases; every surface ignores names it does not know
+      read: [read]
+      search: [search]
+      write: [edit]
+      shell: [execute]
+      web_fetch: [web]                    # `web` covers fetch and search: Copilot has no fetch-only grant; the guard
+      web_search: [web]                   # still blocks web research for agents whose permissions say `none`
+      spawn: "agent"                      # the renderer adds the `agents:` allow-list
+      browser: "{server}/browser_{tool}"
+      ask: ["vscode/askQuestions", ask_user]   # VS Code / Copilot CLI; the cloud agent has no ask tool
+    # VS Code runs a custom agent's own `hooks` (Preview) only while that agent is active, so the build bakes the
+    # agent's name into its hook command: that is how the guard learns who is calling (Copilot payloads carry no
+    # agent identity). Rendered into every Copilot agent; {name} = the agent.
+    identity_hook:
+      event: PreToolUse
+      command: "node scripts/hooks/pretooluse.mjs --host vscode --agent {name}"
+    forbidden_in_body: ["vscode/askQuestions", ask_user, "playwright/browser_", runSubagent, run_in_terminal]

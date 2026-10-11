@@ -4,11 +4,15 @@
 #
 # `default` applies to every agent without an entry under `agents`; an entry may override one platform only.
 #   claude:  sonnet | opus | haiku, or a pinned model id.
+#   copilot: the model's name as Copilot lists it. Both platforms run the same model so the agents behave alike;
+#            check the name against the Copilot model picker when changing it (an unknown name falls back to the
+#            surface's default model).
 #
 # Per-role tiering (e.g. stronger models for planners/reviewers/triagers) is not decided yet: everything uses the
 # default until it is.
 
 default:
   claude: claude-opus-5-5
+  copilot: Claude Opus 5.5
 
 agents: {}

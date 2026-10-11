@@ -20,9 +20,10 @@ import { checkBodyLimit, forbiddenIdentifiers, lintBody } from "./lib/agents/lin
 import { loadSources } from "./lib/agents/source.mjs";
 import { renderMcpConfig, validateMcp } from "./lib/mcp.mjs";
 import * as claude from "./lib/agents/renderers/claude.mjs";
+import * as copilot from "./lib/agents/renderers/copilot.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const RENDERERS = { claude };
+const RENDERERS = { claude, copilot };
 const loadYaml = (root, rel) => yaml.load(readFileSync(path.join(root, rel), "utf8"));
 
 export function modelFor(models, name, platformKey) {
