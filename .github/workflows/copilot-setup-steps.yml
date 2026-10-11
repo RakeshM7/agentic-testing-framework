@@ -1,0 +1,50 @@
+# Environment setup for the GitHub Copilot cloud coding agent. GitHub runs the
+# `copilot-setup-steps` job before the agent starts, so the agent can run the
+# framework's scripts, typechecks, specs and static k6 checks.
+#
+# Safety: the agent's shell calls go through .github/hooks/authorization-guard.json
+# (scripts/hooks/guard-shell.mjs). On the cloud agent, live k6 runs and mutating
+# curl are blocked unless BOTH Copilot environment variables are set by a
+# maintainer (Settings -> Environments -> copilot):
+#   AUTHORIZATIONS_MODE=full-run
+#   AUTHORIZATIONS_CONFIG=<path to a committed run-config whose authorizations.mode is full-run>
+# Any live target host must also be allowed in the Copilot firewall settings.
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/copilot-setup-steps.yml]
+  pull_request:
+    paths: [.github/workflows/copilot-setup-steps.yml]
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: scripts (run-config, clarification CSV, agent build, authorization guard)
+        working-directory: scripts
+        run: npm ci
+      - name: playwright-tests — every product project
+        run: |
+          for d in playwright-tests/*/; do
+            [ -f "$d/package-lock.json" ] || continue
+            (cd "$d" && npm ci)
+          done
+      - name: api-tests
+        working-directory: api-tests/playwright-api
+        run: npm ci
+      - name: Playwright browser
+        run: |
+          for d in playwright-tests/*/; do
+            [ -f "$d/package.json" ] || continue
+            (cd "$d" && npx playwright install --with-deps chromium)
+            break
+          done
+      - uses: grafana/setup-k6-action@v1

@@ -1,0 +1,23 @@
+{
+  // Copilot reads the generated .github/agents/*.agent.md files. VS Code would also list the
+  // Claude Code copies in .claude/agents as duplicates with Claude tool names, so hide those.
+  "chat.agentFilesLocations": {
+    ".github/agents": true,
+    ".claude/agents": false,
+    "~/.copilot/agents": true
+  },
+  // The authorization guard is registered once in .github/hooks/; reading .claude/settings.json
+  // as well would run it twice.
+  "chat.useHooks": true,
+  "chat.useClaudeHooks": false,
+  // Auto-approve only non-mutating, repo-local commands. Live load tests and curl always ask
+  // (and are blocked by scripts/hooks/guard-shell.mjs unless the run is authorized for full-run).
+  "chat.tools.terminal.autoApprove": {
+    "/^node scripts\\//": true,
+    "/^npx playwright test( |$)/": true,
+    "/^npx tsc --noEmit( |$)/": true,
+    "/^k6 inspect /": true,
+    "/\\bk6\\s+(run|cloud)\\b/": false,
+    "curl": false
+  }
+}
