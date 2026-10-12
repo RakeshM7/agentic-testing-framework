@@ -93,6 +93,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-037 | The guard is verified live before a run's first stage; any hook proves it, except on VS Code's local agent | Accepted | 2026-10-12 |
 | D-038 | The cloud coding agent does maintenance and offline work, and may run full-run | Accepted | 2026-10-12 |
 | D-039 | VS Code's settings cover its local agent; its Copilot CLI engine gets the combined ceiling | Accepted | 2026-10-12 |
+| D-040 | On VS Code, the guard's verdict is a decision on stdout with exit 0, never an exit code | Accepted | 2026-10-12 |
 
 ## Decisions
 
@@ -532,3 +533,21 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - The engine's behaviour was seen in VS Code 1.141 and can't be changed from the workspace.
 - **Affects:** `.vscode/settings.json`
 - **Supersedes:** D-033 · **Confirmed by the user on:** 2026-10-12
+
+### D-040 · On VS Code, the guard's verdict is a decision on stdout with exit 0, never an exit code
+- **Status:** Accepted · **Date:** 2026-10-12 · **Source:** orchestrator-agent finding, 2026-10-12. A full-run on VS Code's local agent on Windows (`ami-20261012-1006`) stopped at the guard check. VS Code's Hooks log showed every guard deny as `NonBlockingError`, and the tool ran anyway. The cause is in VS Code's hook executor (`extensions/copilot/src/platform/chat/node/hookExecutor.ts` in microsoft/vscode) and Microsoft's `about_PowerShell_exe`. Conversation with the user, 2026-10-12.
+- **Decision:**
+  - The VS Code adapter (`scripts/hooks/hosts/vscode.mjs`, used for `--host vscode`) writes every verdict as a `hookSpecificOutput` decision on stdout and exits 0. A block is `permissionDecision: "deny"`, never an exit code.
+  - It reads payloads and tool names through the Copilot adapter. Only the output differs.
+  - Copilot CLI and the cloud agent (`--host copilot`) keep exit 2 + stderr + the decision on stdout.
+  - If no adapter loads while a run is active, the hook entry still fails closed (D-007) in a form the asserted host honours:
+    - `--host vscode`: a deny decision with exit 0;
+    - every other host: exit 2.
+- **Why:**
+  - VS Code parses a hook's stdout only on exit 0. It blocks on exit 2 and treats any other exit as a non-blocking warning.
+  - On Windows (when `ComSpec` is `cmd.exe`), VS Code runs each hook through `powershell.exe -Command`. That turns a native exit 2 into 1.
+    - So the guard's blocks became warnings, and the guard check's canary ran.
+    - The guard check (D-037) turned this into a stop before the first stage, not a silent bypass.
+  - A deny decision with exit 0 doesn't depend on the shell, and VS Code honours it on every OS.
+  - Recording this makes the confirmation hook ask before anyone switches VS Code back to blocking by exit code.
+- **Affects:** `scripts/hooks/hosts/vscode.mjs`, `scripts/hooks/hosts/index.mjs`, `scripts/hooks/pretooluse.mjs`
