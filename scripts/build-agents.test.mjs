@@ -69,7 +69,7 @@ test("Copilot frontmatter: subagent allow-list, entry agents only, identity hook
 test("a source may not carry platform syntax: generated keys and platform tool names are rejected", () => {
   const root = scratch();
   const file = path.join(root, "agents", "question-writer.md");
-  const text = readFileSync(file, "utf8");
+  const text = readFileSync(file, "utf8").replaceAll("\r\n", "\n"); // core.autocrlf checkouts on Windows
   writeFileSync(file, text.replace("---\n\n", "---\n\nUse AskUserQuestion when unsure.\n"));
   assert.ok(build({ check: true, root }).errors.some((e) => /question-writer\.md: body names platform-specific 'AskUserQuestion'/.test(e)));
   writeFileSync(file, text.replace("name: question-writer\n", "name: question-writer\ntools: Read, Bash\n"));

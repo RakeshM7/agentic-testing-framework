@@ -94,6 +94,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-038 | The cloud coding agent does maintenance and offline work, and may run full-run | Accepted | 2026-10-12 |
 | D-039 | VS Code's settings cover its local agent; its Copilot CLI engine gets the combined ceiling | Accepted | 2026-10-12 |
 | D-040 | On VS Code, the guard's verdict is a decision on stdout with exit 0, never an exit code | Accepted | 2026-10-12 |
+| D-041 | A restricted agent may `cd` into the repo root before an allowed command | Accepted | 2026-10-12 |
 
 ## Decisions
 
@@ -551,3 +552,14 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - A deny decision with exit 0 doesn't depend on the shell, and VS Code honours it on every OS.
   - Recording this makes the confirmation hook ask before anyone switches VS Code back to blocking by exit code.
 - **Affects:** `scripts/hooks/hosts/vscode.mjs`, `scripts/hooks/hosts/index.mjs`, `scripts/hooks/pretooluse.mjs`
+
+### D-041 · A restricted agent may `cd` into the repo root before an allowed command
+- **Status:** Accepted · **Date:** 2026-10-12 · **Source:** run `ami-20261012-1208` on VS Code Copilot Chat. `module-explorer`'s terminal opened outside the repo, so it ran `cd "<repo>" && node scripts/clarifications.mjs append …`. The guard denied that as `shell` (restricted), and the module's 13 questions never reached `clarifications.csv`. Conversation with the user, 2026-10-12. **Confirmed by the user on:** 2026-10-12
+- **Decision:**
+  - Before a `restricted` agent's command is matched against its `shell_allow`, the guard strips one leading `cd <dir> &&|;`, `cd /d <dir> …` or `Set-Location [-Path|-LiteralPath] <dir>;`, but only when `<dir>` is an absolute path equal to the run's repo root (slashes, case, a trailing slash and Git Bash `/c/…` form are normalised).
+  - Nothing else is stripped: a relative path, a subfolder, a second `cd`, or any other prefix still has to match the allow-list as written.
+  - The HTTP, load and delete checks still see the whole command.
+- **Why:**
+  - On hosts with several workspace folders, an agent's terminal can start outside the repo, and the plain allowed command then fails. Changing into the repo root first is the correct recovery, and it grants no new capability: the command that follows must still be in the agent's allow-list.
+  - Without this, agents get stuck, or hand the work to an agent that is not allowed to do it.
+- **Affects:** `scripts/lib/guard.mjs`
