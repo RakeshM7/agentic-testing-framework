@@ -3,8 +3,10 @@
 // the CLI and cloud agent), camelCase events give { sessionId, cwd, toolName, toolArgs } (toolArgs may be a JSON string).
 // The payload never names the calling agent: identity comes ONLY from the `--agent` argument the build bakes into each
 // generated agent's own hook (config/platforms.yaml identity_hook), never from anything the model controls.
-// Output: block = exit 2 + stderr + a deny decision on stdout; confirm = an ask decision on stdout, exit 0 (the cloud
-// agent treats ask as deny). VS Code ignores hook matchers, so every tool call arrives here.
+// Output, for Copilot CLI and the cloud agent: block = exit 2 + stderr + a deny decision on stdout; confirm = an ask
+// decision on stdout, exit 0 (the cloud agent treats ask as deny). VS Code's local agent reads its payloads here too but
+// needs its own output, never an exit code (./vscode.mjs, D-040). VS Code ignores hook matchers, so every tool call
+// arrives here.
 //
 // Tool names: Claude's and the CLI's are documented; VS Code's are from its Local harness and must be re-checked with
 // an audit hook when VS Code changes them (docs/platforms.md). An unmapped tool is `unknown`, which the guard blocks
@@ -76,7 +78,7 @@ export function normalize(payload, { env = process.env, host = "copilot", agent 
 export function emit({ decision, rule, reason }) {
   if (decision === "allow") return 0;
   const message = decision === "deny" ? `Blocked by the framework guard (${rule}): ${reason}` : reason;
-  // Both shapes: top-level for camelCase (Copilot CLI) hooks, hookSpecificOutput for PascalCase (VS Code) hooks.
+  // Both shapes: top-level for camelCase hooks, hookSpecificOutput for PascalCase (Claude-compatible) hooks.
   process.stdout.write(
     JSON.stringify({
       permissionDecision: decision,

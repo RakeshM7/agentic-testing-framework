@@ -1,6 +1,6 @@
 # Platforms and hosts
 
-The pipeline, contracts, scripts and guard are platform-neutral. This doc is the only place for what differs per host. The reasons behind each choice are in [`decisions.md`](decisions.md) (D-018 – D-039).
+The pipeline, contracts, scripts and guard are platform-neutral. This doc is the only place for what differs per host. The reasons behind each choice are in [`decisions.md`](decisions.md) (D-018 – D-040).
 
 ## How one agent becomes every platform's file
 
@@ -76,6 +76,7 @@ VS Code Copilot Chat can run a chat on two engines. They behave differently for 
 - **"the guard did not intercept guard-check"**: hooks are not running in this session.
   - VS Code: trust the workspace, keep `chat.useHooks` on, keep `.vscode/settings.json` as committed.
   - Claude Code: check `.claude/settings.json`.
+  - If the hook ran but didn't block (VS Code's Hooks log shows the guard's deny as `NonBlockingError`), the host didn't receive a block it honours. On VS Code, `scripts/hooks/hosts/index.mjs` must map `vscode` to `vscode.mjs` (D-040). If VS Code also ignores a deny decision on exit 0, its hooks don't enforce in that build: update VS Code, or run the pipeline on Claude Code.
   - Then run `run.mjs guard-check <product>` again.
 - **"full-run on VS Code's local agent needs the custom agents' own hooks"**: the guard check was blocked, but not by an agent's own hook. There, an unidentified call counts as your own session and gets no per-agent limits (D-037).
   - Start the run from **orchestrator-agent** in the agent picker, keep `chat.useHooks` on, then run the guard check again. Or switch the run-config to `readonly`.
@@ -90,13 +91,26 @@ From GitHub's and VS Code's documentation:
 - **Copilot tool aliases.** GitHub custom agents accept the aliases `read`, `edit`, `search`, `execute`, `web`, `agent` and `server/tool` MCP names, and ignore unknown tools. The prompt limit is 30,000 characters.
 - **Copilot hook files.** Copilot CLI reads `.github/hooks/*.json` and also `.claude/settings.json`; the cloud agent reads only `.github/hooks/*.json`.
 - **Copilot hook payloads.** PascalCase `PreToolUse` sends snake_case fields with Claude tool names. There is no calling-agent field.
-- **Copilot hook outcomes.** Exit 2, or any non-zero exit from a pre-tool hook, denies the call. A timeout fails open. On the cloud agent, `ask` counts as deny.
+- **Copilot CLI and cloud agent hook outcomes.** Exit 2, or any non-zero exit from a pre-tool hook, denies the call. A timeout fails open. On the cloud agent, `ask` counts as deny.
+- **VS Code hook outcomes.** These differ from the CLI's:
+  - exit 0: VS Code parses stdout, and a `hookSpecificOutput.permissionDecision` of `deny` blocks the call;
+  - exit 2: blocks, with stderr as the reason;
+  - any other exit: a non-blocking warning (`NonBlockingError` in VS Code's Hooks log), and the call runs.
+
+  So the VS Code adapter always denies with a decision on stdout and exit 0 (D-040).
 
 Seen live in VS Code 1.141 (2026-10-11), on a chat that ran on the Copilot CLI engine:
 - **The engine.** VS Code's `agenthost.log` showed session type `agent-host-copilotcli`, the bundled `copilot-sdk` runtime, and `GITHUB_COPILOT_INTEGRATION_ID=vscode-chat` set for it. The agent's terminal does not have that variable.
 - **Its files.** It used the generated `.github/agents/` file (its tool aliases) and `.github/hooks/framework-guard.json`. Neither `.vscode/hooks/` nor the agent's own hook ran.
 - **Its tools.** The CLI's tool names appeared: `bash`, `view`, `rg`, `read_bash`, `ask_user`, and `task` with the subagent name in `agent_type`. These come from the session records in `~/.copilot/session-state/`.
 - **Its model.** The model was `auto`, which resolved to `gpt-6-luna`, the only model offered. The agent's `model:` line was not applied.
+
+Seen live in VS Code (2026-10-12), on the local agent on Windows:
+- **Both registrations ran.** `.vscode/hooks/` (record `vscode--unidentified`) and orchestrator-agent's own hook (record `vscode--orchestrator-agent`) both judged `run_in_terminal` calls.
+- **Exit 2 did not block.** VS Code's Hooks log showed every guard deny as `NonBlockingError`, and the tool ran anyway.
+  - VS Code's hook executor runs a hook through `powershell.exe -Command` when `ComSpec` is `cmd.exe`. PowerShell turns a native exit 2 into 1.
+  - The guard check caught it: `run.mjs` recorded `absent`, and no stage started.
+  - Since D-040, the VS Code adapter denies with exit 0 and a decision on stdout.
 
 Not yet verified on a live session. Each has a fail-safe default, and a mismatch shows up as a denied call or a refused full-run, never as a silent bypass:
 - Whether the hook process receives `GITHUB_COPILOT_INTEGRATION_ID` on the Copilot CLI engine. If it doesn't, that engine is labelled "Copilot CLI", which has the same limits. The next guard check there shows which: the record is named `vscode-agent-host--…` or `copilot-cli--…`.

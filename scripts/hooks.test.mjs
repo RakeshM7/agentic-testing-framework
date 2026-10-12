@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
 import { guardStatus, markAbsent, recordCanary } from "./lib/guard-check.mjs";
@@ -155,10 +155,23 @@ test("hook entry: Claude Code blocks with exit 2 and records the canary", () => 
   assert.deepEqual(readdirSync(path.join(root, "artifacts/acme/state/guard-check")), ["claude-code--orchestrator-agent.json"]);
 });
 
-test("hook entry: Copilot gets a deny decision on stdout and exit 2", () => {
-  const r = hook(["--host", "vscode", "--agent", "pw-ui-pom-writer"], { cwd: FULL.root, tool_name: "create_file", tool_input: { filePath: path.join(FULL.root, "config/permissions.yaml") } });
+test("hook entry: Copilot CLI gets a deny decision on stdout and exit 2", () => {
+  const r = hook(["--host", "copilot"], { cwd: FULL.root, toolName: "create", toolArgs: { path: path.join(FULL.root, "config/permissions.yaml") } });
   assert.equal(r.status, 2);
-  assert.equal(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, "deny");
+  assert.equal(JSON.parse(r.stdout).permissionDecision, "deny");
+});
+
+test("hook entry: VS Code blocks with a deny decision and exit 0, never by exit code (D-040)", () => {
+  const r = hook(["--host", "vscode", "--agent", "pw-ui-pom-writer"], { cwd: FULL.root, tool_name: "create_file", tool_input: { filePath: path.join(FULL.root, "config/permissions.yaml") } });
+  assert.equal(r.status, 0, "on Windows, VS Code's PowerShell wrapper turns exit 2 into 1, a non-blocking warning");
+  const out = JSON.parse(r.stdout).hookSpecificOutput;
+  assert.deepEqual([out.hookEventName, out.permissionDecision], ["PreToolUse", "deny"]);
+  assert.match(out.permissionDecisionReason, /^Blocked by the framework guard \(fs-write\): /);
+  const { root } = startRun({ mode: "full-run", verified: false });
+  const c = hook(["--host", "vscode", "--agent", "orchestrator-agent"], { cwd: root, tool_name: "run_in_terminal", tool_input: { command: "node scripts/run.mjs guard-check acme" } });
+  assert.deepEqual([c.status, JSON.parse(c.stdout).hookSpecificOutput.permissionDecision], [0, "deny"], "the guard-check canary from orchestrator-agent");
+  assert.deepEqual(readdirSync(path.join(root, "artifacts/acme/state/guard-check")), ["vscode--orchestrator-agent.json"]);
+  assert.equal(guardStatus("acme", "full-run", root).ready, true);
 });
 
 test("hook entry fails closed on garbage while a run is active, and stays out of the way otherwise", () => {
@@ -167,7 +180,22 @@ test("hook entry fails closed on garbage while a run is active, and stays out of
   const r = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: FULL.root, encoding: "utf8" });
   assert.equal(r.status, 2);
   assert.match(r.stderr, /failing closed/);
+  const v = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "vscode"], { input: "not json", cwd: FULL.root, encoding: "utf8" });
+  assert.deepEqual([v.status, JSON.parse(v.stdout).hookSpecificOutput.permissionDecision], [0, "deny"], "VS Code: in its own format");
   assert.equal(hook(["--host", "nonsense"], { cwd: FULL.root, tool_name: "Bash", tool_input: {} }, { CLAUDE_PROJECT_DIR: FULL.root }).status, 2);
+});
+
+test("hook entry fails closed even when no adapter loads, in a form the asserted host honours", () => {
+  const dir = path.join(tempRoot(), "scripts", "hooks");
+  mkdirSync(dir, { recursive: true });
+  const entry = path.join(dir, "pretooluse.mjs");
+  copyFileSync(path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), entry); // no hosts/ beside it
+  const run = (...args) => spawnSync(process.execPath, [entry, ...args], { input: "{}", cwd: FULL.root, encoding: "utf8", env: { PATH: process.env.PATH } });
+  const v = run("--host", "vscode", "--agent", "orchestrator-agent");
+  assert.equal(v.status, 0);
+  assert.match(JSON.parse(v.stdout).hookSpecificOutput.permissionDecisionReason, /failing closed/);
+  assert.equal(run("--host=vscode").status, 0);
+  assert.deepEqual([run("--host", "claude-code").status, run("--host", "copilot").status, run("--host", "vscode-x").status], [2, 2, 2]);
 });
 
 test("hook registrations: every host runs the same entry with a valid --host", () => {
