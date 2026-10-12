@@ -77,8 +77,23 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const deny = (rule, reason) => ({ allowed: false, rule, reason });
 const ALLOW = { allowed: true };
 
+// A leading change into the repo's own root (`cd <root> &&`, `cd /d <root> &&`, `Set-Location <root>;`) does not count
+// against a restricted agent's allow-list: agents add it when their terminal opened elsewhere (D-041). Only an absolute
+// path equal to the run's root is stripped, once; the HTTP/load/delete checks still see the whole command.
+const CD_PREFIX = /^\s*(?:cd(?:\s+\/d)?|Set-Location(?:\s+-(?:Literal)?Path)?)\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|'"]+))\s*(?:&&|;)\s*/i;
+const samePath = (a, b) => {
+  const norm = (p) => p.replaceAll("\\", "/").replace(/^\/([a-z])\//i, "$1:/").replace(/\/+$/, "").toLowerCase();
+  return norm(a) === norm(b);
+};
+function withoutRootCd(cmd, root) {
+  const m = root ? CD_PREFIX.exec(cmd) : null;
+  const dir = m && (m[1] ?? m[2] ?? m[3]);
+  return dir && /^([a-z]:[\\/]|\/)/i.test(dir) && samePath(dir, root) ? cmd.slice(m[0].length) : cmd;
+}
+
 function checkShell(cmd, run, row) {
-  if (row && !shellAllowed(row, cmd)) return deny("shell", `shell is '${row.shell}' for this agent; command not in its allow-list`);
+  if (row && !shellAllowed(row, withoutRootCd(cmd, run.root)))
+    return deny("shell", `shell is '${row.shell}' for this agent; command not in its allow-list`);
   const lt = row ? effectiveLiveTarget(row, run.mode) : null;
   const mutateOk = row ? lt.http === "mutate" : run.mode === "full-run";
   const loadOk = row ? lt.load === "run" : run.mode === "full-run";

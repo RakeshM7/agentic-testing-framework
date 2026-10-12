@@ -65,6 +65,21 @@ test("shell: none / restricted / project", () => {
   assert.equal(allowed(FULL.root, sh("pw-ui-tests-writer", "npx tsc --noEmit")), true);
 });
 
+test("restricted shell: a leading cd into the repo root is ignored, any other prefix is not", () => {
+  const ok = (cmd) => allowed(FULL.root, sh("orchestrator-agent", cmd));
+  const r = FULL.root;
+  const posix = r.replaceAll("\\", "/").replace(/^([a-z]):/i, (_, d) => `/${d.toLowerCase()}`);
+  assert.equal(ok(`cd "${r}" && node scripts/run.mjs next acme`), true);
+  assert.equal(ok(`cd '${r}/' ; node scripts/run.mjs next acme`), true);
+  assert.equal(ok(`cd /d "${r}" && node scripts/run.mjs next acme`), true);
+  assert.equal(ok(`Set-Location -Path "${r}"; node scripts/run.mjs next acme`), true);
+  assert.equal(ok(`cd ${posix} && node scripts/run.mjs next acme`), true, "Git Bash style path");
+  assert.equal(ok(`cd "${path.join(r, "artifacts")}" && node scripts/run.mjs next acme`), false, "a subfolder is not the root");
+  assert.equal(ok(`cd . && node scripts/run.mjs next acme`), false, "relative paths are not stripped");
+  assert.equal(ok(`cd "${r}" && npm test`), false, "the rest must still be in the allow-list");
+  assert.equal(ok(`cd "${r}" && cd "${r}" && node scripts/run.mjs next acme`), false, "stripped once only");
+});
+
 test("HTTP and load follow the agent's effective permission", () => {
   const post = "curl -X POST https://app.acme.test/api/contacts -d '{}'";
   assert.equal(allowed(FULL.root, sh("pw-api-test-runner-triager", post)), true);

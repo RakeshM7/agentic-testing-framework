@@ -22,3 +22,6 @@ artifacts/*
 # Stray Playwright output from running tests at the repo root
 /test-results/
 /playwright-report/
+
+# Saved browser session (credentials); never commit
+auth.json
