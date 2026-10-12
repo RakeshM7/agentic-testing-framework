@@ -9,8 +9,8 @@
 //   - caller:       the call's `agent` (set by the adapter only from a trusted source) and `host`
 // The env var AUTHORIZATIONS_MODE=readonly can only downgrade. No active run => readonly, no per-agent rules.
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
-// full-run is honoured only on hosts that can identify the calling agent (scripts/lib/hosts.mjs); on any other host
-// every call is evaluated as readonly.
+// On a host that cannot name the calling agent (scripts/lib/hosts.mjs), a full-run call gets what at least one of the
+// run's agents may do (runCeiling, D-035): every call there comes from one of the run's agents.
 //
 // Dependency-free (imported by a PreToolUse hook on every guarded tool call).
 
@@ -19,7 +19,7 @@ import path from "node:path";
 import { isMutatingBrowserTool } from "./browser-tools.mjs";
 import { canIdentify, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
-import { atLeast, canWrite, effectiveLiveTarget, shellAllowed } from "./permissions.mjs";
+import { atLeast, canWrite, effectiveLiveTarget, runCeiling, shellAllowed } from "./permissions.mjs";
 
 const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 
@@ -117,7 +117,7 @@ const firstDenied = (verdicts) => verdicts.find((v) => !v.allowed) ?? ALLOW;
 function evaluateKind(call, run, row) {
   switch (call.kind) {
     case "spawn":
-      return row && !row.spawns.includes(call.subagent) ? deny("spawn", `${call.agent} may only spawn [${row.spawns.join(", ")}]`) : ALLOW;
+      return row && !row.spawns.includes(call.subagent) ? deny("spawn", `${call.agent ?? "this caller"} may only spawn [${row.spawns.join(", ")}]`) : ALLOW;
     case "shell":
       return checkShell(call.command ?? "", run, row);
     case "web_fetch":
@@ -145,12 +145,12 @@ function evaluateKind(call, run, row) {
 
 function evaluate(call, run) {
   if (run.broken) return call.kind === "shell" ? checkShell(call.command ?? "", run, null) : ALLOW;
-  const row = call.agent ? run.permissions?.agents?.[call.agent] : undefined;
-  const capped = run.mode === "full-run" && !canIdentify(call.host);
-  const verdict = evaluateKind(call, capped ? { ...run, mode: "readonly" } : run, row);
-  return capped && !verdict.allowed
-    ? { ...verdict, reason: `${verdict.reason} [full-run is not honoured on ${labelOf(call.host)}: it cannot identify the calling agent]` }
-    : verdict;
+  if (call.agent || run.mode !== "full-run" || canIdentify(call.host)) return evaluateKind(call, run, call.agent ? run.permissions?.agents?.[call.agent] : undefined);
+  // full-run on a host that cannot name the caller: the run's combined permissions; readonly if there are none to combine.
+  const ceiling = runCeiling(run.permissions);
+  const verdict = evaluateKind(call, ceiling ? run : { ...run, mode: "readonly" }, ceiling);
+  const why = ceiling ? "so it allows what at least one of this run's agents may do" : "and this run has no permissions to combine, so it is readonly here";
+  return verdict.allowed ? verdict : { ...verdict, reason: `${verdict.reason} [${labelOf(call.host)} cannot tell the guard which agent is calling, ${why}]` };
 }
 
 // -> { allowed, rule?, reason?, canary? }. With several active runs (different products): a write is allowed if ANY

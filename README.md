@@ -35,7 +35,7 @@ Unconfirmed clarifications: open `artifacts/<product>/modules/<module>/clarifica
 ## Safety
 
 - `authorizations.mode: readonly` (default) caps **every** agent at read-only.
-- `full-run` — set explicitly, per target, by a human authorized to test it — applies `config/permissions.yaml` as written, only on hosts where the guard can identify the calling agent (Claude Code, and VS Code's local agent).
+- `full-run` — set explicitly, per target, by a human authorized to test it — applies `config/permissions.yaml` as written. Some hosts can't identify the calling agent: Copilot CLI, VS Code chat on its Copilot CLI engine, and the cloud coding agent. There each call gets what at least one of the run's agents may do.
 - Deletes are always limited to entities the current run created (`state/ledger.jsonl`).
 - The guard enforces all of this in code per calling agent: spawns, shell, HTTP/load, browser actions and file writes. The environment can only downgrade the mode. Every run first proves the guard is live (`run.mjs guard-check`).
 - Edits to files a recorded design decision governs need the user's confirmation ([`docs/decisions.md`](docs/decisions.md)).
@@ -57,7 +57,8 @@ Unconfirmed clarifications: open `artifacts/<product>/modules/<module>/clarifica
 ## Limitations
 
 - Agents load at session start: after `npm run build-agents`, start a new session.
-- Copilot CLI and the cloud coding agent run readonly only (their hooks can't identify the calling agent); the cloud agent does no live browser work.
+- On Copilot CLI, VS Code chat on its Copilot CLI engine and the cloud coding agent, the guard can't tell agents apart. In a full-run there, one agent can do another agent's job, though never more than some agent of the run may do.
+- The cloud agent does no live browser work.
 - Live browser work needs an interactive Playwright MCP session.
 - CAPTCHA/MFA is a reported blocker, never bypassed; authenticated work starts from a session-state file a human produced.
 - `shell: project` agents could in principle reach the network through a script the guard can't parse; generated test projects add a second layer (mutation-guard fixtures, k6 host allow-lists).

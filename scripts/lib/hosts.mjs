@@ -1,6 +1,6 @@
 // The hosts that run the agents, and what each can tell the guard about the calling agent. Per-agent permissions
-// (config/permissions.yaml) can only be enforced where the guard learns who is calling, so `full-run` is honoured only
-// on hosts whose identity source is not `none`; elsewhere every call is capped to readonly (scripts/lib/guard.mjs).
+// (config/permissions.yaml) can only be enforced where the guard learns who is calling. On hosts whose identity source
+// is `none`, a full-run call gets what at least one of the run's agents may do instead (scripts/lib/guard.mjs, D-035).
 //
 //   payload     the hook payload names the agent (Claude Code: `agent_type`)
 //   agent-hook  each generated agent file carries its own hook with `--agent <name>` baked in by the build
@@ -10,7 +10,7 @@
 //
 // VS Code can run a chat on its Agent Host with the Copilot CLI provider (session type `agent-host-copilotcli`) instead
 // of its local agent. That engine is the Copilot CLI runtime bundled in VS Code: it reads .github/hooks/, runs no
-// custom-agent hooks, and VS Code sets GITHUB_COPILOT_INTEGRATION_ID=vscode-chat for it (D-032). That variable does not
+// custom-agent hooks, and VS Code sets GITHUB_COPILOT_INTEGRATION_ID=vscode-chat for it (D-035). That variable does not
 // reach the agent's terminal (seen live), so only a hook can use it; run.mjs init cannot recognize this engine.
 //
 // A hook registration ASSERTS its host with `--host` (each registration file is read by one host family only); env is
@@ -44,8 +44,8 @@ export function resolveHost(asserted, env = process.env) {
   return "unknown";
 }
 
-// Best-effort guess for scripts run from an agent's shell (run.mjs init), where no hook asserts anything. Used only to
-// refuse a full-run early with a clear message; the guard's per-call host cap is the actual control.
+// Best-effort guess for scripts run from an agent's shell (run.mjs init), where no hook asserts anything. Recorded as
+// the run's `startedOnHost`; the guard decides per call from the host its hook asserted.
 export function detectShellHost(env = process.env) {
   if (env.CLAUDECODE === "1") return "claude-code";
   if (env.GITHUB_ACTIONS === "true") return "copilot-cloud";

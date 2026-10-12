@@ -60,6 +60,38 @@ export function effectiveLiveTarget(row, mode) {
 
 export const atLeast = (have, need) => RANK[have] >= RANK[need];
 
+const SHELL_RANK = { none: 0, restricted: 1, project: 2 };
+const highest = (rank, values) => values.reduce((a, b) => (rank[b] > rank[a] ? b : a));
+
+// The ceiling for a call whose agent the host cannot name (D-035): what at least one agent of a product run may do.
+// The run's agents are the layer-0 entry agents and every agent reachable from them through `spawns`, so an agent that
+// is not part of a run (feedback-implementor-agent) adds nothing. Entry agents may be spawned too: a host's own chat
+// starts orchestrator-agent as a subagent. -> a permissions row, or undefined when there is no layer-0 agent.
+export function runCeiling(resolved) {
+  const agents = resolved?.agents ?? {};
+  const entry = Object.keys(agents).filter((n) => agents[n].layer === 0);
+  const inRun = new Set();
+  for (const queue = [...entry]; queue.length; ) {
+    const n = queue.shift();
+    if (inRun.has(n) || !agents[n]) continue;
+    inRun.add(n);
+    queue.push(...agents[n].spawns);
+  }
+  if (!inRun.size) return undefined;
+  const rows = [...inRun].map((n) => agents[n]);
+  const all = (f) => [...new Set(rows.flatMap(f))];
+  const any = (k) => (rows.some((r) => r[k] === "allowed") ? "allowed" : "none");
+  return {
+    spawns: [...new Set([...entry, ...all((r) => r.spawns)])],
+    live_target: Object.fromEntries(["browser", "http", "load"].map((k) => [k, highest(RANK, rows.map((r) => r.live_target[k]))])),
+    web_research: any("web_research"),
+    shell: highest(SHELL_RANK, rows.map((r) => r.shell)),
+    shell_allow: all((r) => r.shell_allow),
+    filesystem: { read: all((r) => r.filesystem.read), write: all((r) => r.filesystem.write) },
+    ask_user: any("ask_user"),
+  };
+}
+
 // Expand ${...} in a glob: first the permissions file's own `variables:` (which may nest, e.g. ${modules} ->
 // artifacts/${product}/modules/${module}), then run values (product, run_id). Anything still unknown
 // (typically ${module}) matches exactly one path segment.

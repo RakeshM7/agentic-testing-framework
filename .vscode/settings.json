@@ -1,7 +1,7 @@
 {
   // VS Code Copilot Chat settings for this framework (docs/platforms.md). Decisions behind them: docs/decisions.md.
   // They shape VS Code's local agent. A chat on VS Code's Copilot CLI engine does not follow them: it uses
-  // .github/agents and .github/hooks like Copilot CLI, so runs there are readonly only (D-032, D-033).
+  // .github/agents and .github/hooks like Copilot CLI, so the guard can't tell its agents apart (D-035, D-039).
 
   // Agents: the generated Copilot agents live in .github/agents. VS Code would also list the Claude Code copies in
   // .claude/agents (same names, Claude tool names), so that folder is turned off for VS Code.
@@ -11,8 +11,8 @@
   "chat.subagents.allowInvocationsFromSubagents": true,
 
   // The guard. VS Code runs .vscode/hooks/ for every chat session and each custom agent's own hook (which names the
-  // agent). It must not ALSO run .github/hooks/ (Copilot CLI / cloud agent: unidentified, caps full-run to readonly)
-  // or .claude/settings.json (Claude Code's).
+  // agent). It must not ALSO run .github/hooks/ (Copilot CLI / cloud agent: every call unidentified) or
+  // .claude/settings.json (Claude Code's).
   "chat.useHooks": true,
   "chat.hookFilesLocations": { ".vscode/hooks": true, ".github/hooks": false },
   "chat.useClaudeHooks": false,

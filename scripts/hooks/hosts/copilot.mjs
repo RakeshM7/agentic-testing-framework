@@ -8,7 +8,8 @@
 //
 // Tool names: Claude's and the CLI's are documented; VS Code's are from its Local harness and must be re-checked with
 // an audit hook when VS Code changes them (docs/platforms.md). An unmapped tool is `unknown`, which the guard blocks
-// for managed agents during a run -- add it here, with a fixture in scripts/fixtures/hooks/.
+// during a run for managed agents and, in full-run, for every call it cannot attribute (D-036) -- add it here, with a
+// fixture in scripts/fixtures/hooks/.
 import { resolveHost } from "../../lib/hosts.mjs";
 import { toolCall } from "../../lib/tool-call.mjs";
 
@@ -20,7 +21,7 @@ const KINDS = {
   AskUserQuestion: "ask", TodoWrite: "other",
   // Copilot CLI / cloud agent native names
   view: "read", glob: "read", grep: "read", create: "write", edit: "write", bash: "shell", powershell: "shell",
-  web_fetch: "web_fetch", task: "spawn", ask_user: "ask",
+  web_fetch: "web_fetch", task: "spawn", ask_user: "ask", rg: "read", read_bash: "read",
   // VS Code Copilot Chat (Local harness)
   read_file: "read", list_dir: "read", file_search: "read", grep_search: "read", semantic_search: "read",
   get_errors: "read", get_changed_files: "read", test_failure: "read", get_terminal_output: "read",
@@ -66,7 +67,7 @@ export function normalize(payload, { env = process.env, host = "copilot", agent 
     command: a.command,
     paths: pathsOf(a),
     urls: [a.url, ...(Array.isArray(a.urls) ? a.urls : [])],
-    subagent: a.subagent_type ?? a.agentName ?? a.agent_name ?? a.agent,
+    subagent: a.subagent_type ?? a.agent_type ?? a.agentName ?? a.agent_name ?? a.agent,
     browserAction: browser?.[1],
     sessionId: payload.session_id ?? payload.sessionId,
   });

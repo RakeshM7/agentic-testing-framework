@@ -1,11 +1,12 @@
 # Environment for the GitHub Copilot cloud coding agent: GitHub runs the `copilot-setup-steps` job before the agent
-# starts. The cloud agent does framework maintenance and offline work only -- no live browser, readonly only
-# (docs/platforms.md) -- so it gets the scripts, the generated test projects' dependencies for typechecks and
-# `--list`, and k6 for `k6 inspect`, but no browsers.
+# starts. The cloud agent does framework maintenance and offline work only -- no live browser (docs/platforms.md) --
+# so it gets the scripts, the generated test projects' dependencies for typechecks and `--list`, and k6 for
+# `k6 inspect`, but no browsers.
 #
 # Safety: its tool calls go through .github/hooks/framework-guard.json -> scripts/hooks/pretooluse.mjs. That host
-# cannot identify the calling agent, so the guard evaluates every call as readonly even if a run says full-run, and
-# design-decision confirmations (ask) are refused: the agent reports them in its PR instead.
+# cannot identify the calling agent, so in a full-run the guard gives every call the run's combined ceiling (what at
+# least one of the run's agents may do, D-035), and design-decision confirmations (ask) are refused: the agent
+# reports them in its PR instead.
 name: Copilot Setup Steps
 
 on:

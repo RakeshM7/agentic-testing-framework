@@ -1,4 +1,4 @@
-// Host adapters, the per-host rules (full-run cap, unknown tools, liveness canary) and the hook entry end to end.
+// Host adapters, the per-host rules (unidentified full-run calls, unknown tools, liveness canary) and the hook entry end to end.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -41,10 +41,30 @@ test("identity comes only from a trusted source: Copilot payloads cannot name th
   assert.deepEqual([viaCli.host, viaCli.agent], ["unknown", undefined], "Copilot CLI reading .claude/settings.json is not Claude Code");
 });
 
-test("full-run is capped to readonly on hosts that cannot identify the calling agent", () => {
+test("full-run on a host that cannot identify the caller: the run's combined permissions", () => {
   const post = "curl -X POST https://app.acme.test/api/contacts -d '{}'";
-  assert.equal(allowed(FULL.root, cli({ tool_name: "Bash", tool_input: { command: post } })), false);
-  assert.match(checkTool(cli({ tool_name: "Bash", tool_input: { command: post } }), FULL.root, {}).reason, /full-run is not honoured on Copilot CLI/);
+  const bash = (command) => cli({ toolName: "bash", toolArgs: { command } });
+  const write = (rel) => cli({ toolName: "create", toolArgs: { path: path.join(FULL.root, rel) } });
+  assert.equal(allowed(FULL.root, bash(post)), true, "some agent of the run may mutate over HTTP");
+  assert.equal(allowed(FULL.root, write("playwright-tests/acme/pages/contacts.page.ts")), true);
+  const outside = checkTool(write("config/permissions.yaml"), FULL.root, {});
+  assert.equal(outside.rule, "fs-write", "no agent of the run may write the framework's own files");
+  assert.match(outside.reason, /Copilot CLI cannot tell the guard which agent is calling, so it allows what at least one of this run's agents may do/);
+  assert.equal(checkTool(bash("curl -X DELETE https://app.acme.test/api/contacts/1"), FULL.root, {}).rule, "delete-not-owned", "deletes stay ledger-scoped");
+  const spawn = (agent_type) => allowed(FULL.root, cli({ toolName: "task", toolArgs: { agent_type, prompt: "x" } }));
+  assert.deepEqual([spawn("orchestrator-agent"), spawn("pw-ui-healer"), spawn("feedback-implementor-agent")], [true, true, false], "the chat may start the entry agent; agents outside a run stay out");
+  assert.equal(checkTool(cli({ toolName: "write_bash", toolArgs: { shellId: "1", input: post } }), FULL.root, {}).rule, "unmapped-tool");
+  assert.equal(allowed(FULL.root, cli({ toolName: "read_bash", toolArgs: { shellId: "1" } })), true);
+  assert.equal(allowed(FULL.root, copilot.normalize({ toolName: "bash", toolArgs: { command: post } }, { env: { GITHUB_ACTIONS: "true" }, host: "copilot" })), true, "the cloud agent too");
+  assert.equal(allowed(FULL.root, claude.normalize({ tool_name: "Bash", tool_input: { command: post } }, { env: {}, host: "claude-code" })), true, "Copilot reading .claude/settings.json (unknown host)");
+
+  const RO = startRun();
+  assert.equal(allowed(RO.root, bash(post)), false, "readonly is unchanged");
+  assert.equal(allowed(RO.root, write("config/permissions.yaml")), true, "readonly unidentified calls keep the mode rules only");
+});
+
+test("per-agent rules still apply wherever the caller is identified", () => {
+  const post = "curl -X POST https://app.acme.test/api/contacts -d '{}'";
   assert.equal(allowed(FULL.root, vscode("pw-api-test-runner-triager", { tool_name: "run_in_terminal", tool_input: { command: post } })), true);
   assert.equal(allowed(FULL.root, vscode("pw-api-tests-writer", { tool_name: "run_in_terminal", tool_input: { command: post } })), false, "per-agent rules on VS Code");
   assert.equal(allowed(FULL.root, vscode(undefined, { tool_name: "run_in_terminal", tool_input: { command: post } })), true, "VS Code unmanaged: mode rules, as on Claude Code");
@@ -53,13 +73,13 @@ test("full-run is capped to readonly on hosts that cannot identify the calling a
 test("VS Code chat on its Copilot CLI engine is recognised and treated like Copilot CLI", () => {
   const env = { GITHUB_COPILOT_INTEGRATION_ID: "vscode-chat" };
   const engine = (payload) => copilot.normalize(payload, { env, host: "copilot" });
-  const post = engine({ tool_name: "bash", tool_input: { command: "curl -X POST https://app.acme.test/api/contacts -d '{}'" }, agent_type: "orchestrator-agent" });
-  assert.equal(post.agent, undefined, "its payload cannot name the agent");
-  assert.match(checkTool(post, FULL.root, {}).reason, /full-run is not honoured on VS Code chat on its Copilot CLI engine/);
+  const write = engine({ tool_name: "create", tool_input: { path: path.join(FULL.root, "config/permissions.yaml") }, agent_type: "orchestrator-agent" });
+  assert.equal(write.agent, undefined, "its payload cannot name the agent");
+  assert.match(checkTool(write, FULL.root, {}).reason, /VS Code chat on its Copilot CLI engine cannot tell the guard which agent is calling/);
 
   const { root: r2 } = startRun({ mode: "full-run", verified: false });
   recordCanary("acme", r2, { host: "vscode-agent-host" });
-  assert.match(guardStatus("acme", "full-run", r2).reason, /VS Code's local agent, not its Copilot CLI engine\); the guard was verified only on: VS Code chat on its Copilot CLI engine\./);
+  assert.equal(guardStatus("acme", "full-run", r2).ready, true);
   assert.equal(guardStatus("acme", "readonly", r2).ready, true);
 });
 
@@ -90,13 +110,14 @@ test("liveness canary: always blocked; the session is verified per mode; init an
   assert.equal(shell("echo node scripts/run.mjs guard-check acme").canary, undefined, "only as a command, not as an argument");
   assert.equal(shell("node scripts/run.mjs guard-check acme-x").canary.product, "acme-x");
   assert.equal(guardStatus("acme", "full-run", root).ready, false);
-  recordCanary("acme", root, { host: "copilot-cli" });
-  assert.match(guardStatus("acme", "full-run", root).reason, /verified only on: Copilot CLI/);
-  assert.equal(guardStatus("acme", "readonly", root).ready, true);
   recordCanary("acme", root, { host: "vscode" });
-  assert.equal(guardStatus("acme", "full-run", root).ready, false, "VS Code without the agent's own hook proves nothing about identity");
+  assert.match(guardStatus("acme", "full-run", root).reason, /full-run on VS Code's local agent needs the custom agents' own hooks/, "there an unidentified caller is unmanaged");
+  assert.equal(guardStatus("acme", "readonly", root).ready, true);
   recordCanary("acme", root, { host: "vscode", agent: "orchestrator-agent" });
   assert.equal(guardStatus("acme", "full-run", root).ready, true);
+  const { root: cliRoot } = startRun({ mode: "full-run", verified: false });
+  recordCanary("acme", cliRoot, { host: "copilot-cli" });
+  assert.equal(guardStatus("acme", "full-run", cliRoot).ready, true, "Copilot CLI: unidentified calls get the combined permissions");
   markAbsent("acme", root);
   assert.equal(guardStatus("acme", "readonly", root).ready, false, "a session where the canary ran is never verified");
   recordCanary("acme", root, { host: "claude-code" });
@@ -113,13 +134,11 @@ test("a stage cannot start until the session's guard is verified", async () => {
   assert.equal((await setStage("acme", "knowledge", undefined, "start", undefined, { root })).errors, undefined, "readonly: any working hook");
 });
 
-test("run.mjs init refuses full-run on a host that cannot identify agents, and warns on an unknown host", () => {
+test("run.mjs init accepts full-run on every host and records where it started", () => {
   const root = tempRoot();
-  const cfg = writeConfig(root, { mode: "full-run" });
-  assert.match(initRun(cfg, { root, env: { GITHUB_ACTIONS: "true" } }).errors[0], /not available on Copilot cloud coding agent/);
-  const r = initRun(cfg, { root, env: {} });
-  assert.equal(r.run.startedOnHost, "unknown");
-  assert.match(r.warnings[0], /could not recognize the host/);
+  const r = initRun(writeConfig(root, { mode: "full-run" }), { root, env: { GITHUB_ACTIONS: "true" } });
+  assert.equal(r.errors, undefined);
+  assert.deepEqual([r.run.mode, r.run.startedOnHost], ["full-run", "copilot-cloud"]);
 });
 
 // ---- the hook entry, as each host runs it ----------------------------------------------------------------------

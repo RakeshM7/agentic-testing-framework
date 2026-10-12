@@ -24,7 +24,7 @@ import { read as readLedger } from "./lib/ledger.mjs";
 import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
 import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs";
-import { canIdentify, detectShellHost, labelOf } from "./lib/hosts.mjs";
+import { detectShellHost } from "./lib/hosts.mjs";
 
 const now = () => new Date().toISOString();
 const writeJson = (file, data) => {
@@ -36,29 +36,16 @@ const rel = (root, p) => path.relative(root, p).replaceAll("\\", "/");
 export const makeRunId = (product, date = new Date()) =>
   `${product}-${date.toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-")}`; // eventhub-20261007-1230
 
-// full-run only where the guard can identify the calling agent (scripts/lib/hosts.mjs). The host is guessed from the
-// shell's environment; an unrecognized host gets a warning, and the guard's per-call cap remains the actual control.
-function hostCheck(mode, env) {
-  const host = detectShellHost(env);
-  if (mode !== "full-run") return { host };
-  if (host !== "unknown" && !canIdentify(host))
-    return { host, error: `full-run is not available on ${labelOf(host)}: its hooks cannot identify the calling agent, so per-agent permissions cannot be enforced. Run in readonly, or use Claude Code or VS Code's local agent (docs/platforms.md).` };
-  return host === "unknown" ? { host, warning: "could not recognize the host; full-run actions will be blocked unless the guard can identify the calling agent (guard-check before the first stage)" } : { host };
-}
-
 export function initRun(configFile, { resume = false, runId, root = repoRoot, env = process.env } = {}) {
   const { errors, normalized: cfg } = validateRunConfig(yaml.load(readFileSync(configFile, "utf8")));
   if (errors?.length) return { errors };
   const p = paths(cfg.product, root);
-  const hc = hostCheck(cfg.authorizations.mode, env);
-  if (hc.error) return { errors: [hc.error] };
-  const warnings = hc.warning ? [hc.warning] : [];
 
   if (existsSync(p.lockFile)) {
     const lock = loadJson(p.lockFile);
     if (resume) {
       clearGuardChecks(cfg.product, root); // a resumed session must verify its own guard
-      return { resumed: true, product: cfg.product, run: loadJson(p.runFile), warnings };
+      return { resumed: true, product: cfg.product, run: loadJson(p.runFile) };
     }
     return { errors: [`run ${lock.runId} is active for product '${cfg.product}' (started ${lock.createdAt}). Use --resume, or end it: run.mjs end ${cfg.product} --abandon`] };
   }
@@ -83,7 +70,7 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
     configPath: rel(root, path.resolve(configFile)),
     permissionsPath: rel(root, permPath),
     modules: cfg.modules.map((m) => m.slug),
-    startedOnHost: hc.host,
+    startedOnHost: detectShellHost(env),
     stages: {},
   };
   clearGuardChecks(cfg.product, root);
@@ -96,7 +83,7 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
     mkdirSync(p.module(m), { recursive: true });
     ensureCsv(csvPath(p.productDir, m)); // header-only file, so a module with no open questions still has its CSV
   }
-  return { product: cfg.product, run, warnings };
+  return { product: cfg.product, run };
 }
 
 function ctxFor(product, root) {
@@ -243,7 +230,7 @@ async function main() {
   try {
     if (cmd === "init") {
       const r = initRun(a, { resume: v.resume, runId: v["run-id"] });
-      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, resumed: !!r.resumed, warnings: r.warnings, next: `node scripts/run.mjs guard-check ${r.product}` }, r.errors ? 1 : 0);
+      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, resumed: !!r.resumed, next: `node scripts/run.mjs guard-check ${r.product}` }, r.errors ? 1 : 0);
     } else if (cmd === "guard-check") {
       // Reaching this line means no hook blocked the command: the guard is not active in this session.
       if (!SLUG_RE.test(a) || !existsSync(paths(a).state)) out({ errors: [`no run state for product '${a}'`] }, 1);

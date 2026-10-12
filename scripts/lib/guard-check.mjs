@@ -4,7 +4,7 @@
 //   - a working hook BLOCKS that command, and the hook entry records which host and agent blocked it here;
 //   - if the command actually runs, no hook intercepted it: run.mjs records `absent`.
 // `run.mjs stage … start` then requires: no `absent` record, and a record that fits the run's mode (readonly: any
-// hook; full-run: a host that identifies the calling agent, and on agent-hook hosts a record that carries the agent).
+// hook; full-run: any hook too, except that on an agent-hook host the record must carry the agent, D-037).
 // `run.mjs init` (also --resume) clears the records, so they always describe the current session. Dependency-free.
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -43,8 +43,10 @@ export function guardStatus(product, mode, root) {
   const records = files.map((f) => JSON.parse(readFileSync(path.join(dir, f), "utf8")));
   if (!records.length) return { ready: false, reason: `the guard has not been verified for this session: ${how}` };
   if (mode !== "full-run") return { ready: true };
-  const identifying = records.some((r) => identityOf(r.host) === "payload" || (identityOf(r.host) === "agent-hook" && r.agent));
-  if (identifying) return { ready: true };
-  const seen = [...new Set(records.map((r) => (r.agent ? `${labelOf(r.host)} (${r.agent})` : labelOf(r.host))))].join(", ");
-  return { ready: false, reason: `full-run needs a host where the guard identifies the calling agent (Claude Code, or a custom agent in VS Code's local agent, not its Copilot CLI engine); the guard was verified only on: ${seen}. Use one of those (docs/platforms.md), or run in readonly` };
+  // On an agent-hook host an unidentified call counts as a human's own session and gets the mode rules only, so a
+  // full-run there needs proof that the agents' own hooks run. Other hosts name the agent, or apply the run's combined
+  // permissions to calls they cannot name (D-035).
+  if (records.some((r) => identityOf(r.host) !== "agent-hook" || r.agent)) return { ready: true };
+  const seen = [...new Set(records.map((r) => labelOf(r.host)))].join(", ");
+  return { ready: false, reason: `full-run on ${seen} needs the custom agents' own hooks, and none blocked guard-check: start the run from orchestrator-agent in the agent picker (docs/platforms.md), then ${how}; or run in readonly` };
 }
