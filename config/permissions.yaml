@@ -93,8 +93,7 @@ agents:
     web_research: none
     shell: restricted
     shell_allow: ["node scripts/run.mjs *", "node scripts/run-config.mjs *", "node scripts/ledger.mjs list *",
-                  "node scripts/knowledge.mjs *", "node scripts/clarifications.mjs status *",
-                  "node scripts/ledger.mjs *"]
+                  "node scripts/knowledge.mjs *", "node scripts/clarifications.mjs status *"]
     ask_user: allowed
     tool_search: allowed       # runs as the main session, so it can ask the human
     filesystem:
