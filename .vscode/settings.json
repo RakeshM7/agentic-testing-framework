@@ -14,7 +14,7 @@
   // agent). It must not ALSO run .github/hooks/ (Copilot CLI / cloud agent: every call unidentified) or
   // .claude/settings.json (Claude Code's).
   "chat.useHooks": true,
-  "chat.hookFilesLocations": { ".vscode/hooks": true, ".github/hooks": false },
+  "chat.hookFilesLocations": { ".vscode/hooks": true, ".github/hooks": false, ".claude/hooks": false },
   "chat.useClaudeHooks": false,
 
   // AGENTS.md is the one brief for every tool.

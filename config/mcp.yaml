@@ -16,4 +16,4 @@ servers:
       - "@playwright/mcp@0.0.83"
       - "--isolated"
       - "--storage-state"
-      - "playwright-tests/freshsales-crm/.auth/state.json"
+      - "playwright-tests/ami/.auth/state.json"
