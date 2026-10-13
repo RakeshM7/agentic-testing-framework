@@ -1,0 +1,15 @@
+{
+  "name": "agentic-testing-framework",
+  "private": true,
+  "type": "module",
+  "description": "Framework scripts: run state, contracts, guard, agent builder. Generated test projects (playwright-tests/, k6-tests/) keep their own dependency trees.",
+  "scripts": {
+    "check": "node scripts/build-agents.mjs --check && npm test",
+    "test": "node --test \"scripts/**/*.test.mjs\"",
+    "build-agents": "node scripts/build-agents.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "js-yaml": "^4.1.0"
+  }
+}

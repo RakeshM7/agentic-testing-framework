@@ -1,6 +1,6 @@
 node_modules/
-playwright-tests/playwright-report/
-playwright-tests/test-results/
+playwright-tests/*/playwright-report/
+playwright-tests/*/test-results/
 api-tests/playwright-api/playwright-report/
 api-tests/playwright-api/test-results/
 api-tests/k6/results/
@@ -9,9 +9,19 @@ api-tests/k6/results/
 !.env.example
 !**/.env.example
 !**/.env.*.example
-playwright-tests/.auth/
+playwright-tests/*/.auth/
 *.log
 .DS_Store
-# Session / cookie files (repo-root .auth/ is where MCP-saved sessions land) and MCP browser traces
-.auth/
-.playwright-mcp/
+
+
+# Pipeline run output is generated and local: artifacts/<run-id>/. Commit a curated, sanitized run under
+# examples/ if you want to share one. Nothing under artifacts/ is tracked except this keep-file.
+artifacts/*
+!artifacts/.gitkeep
+
+# Stray Playwright output from running tests at the repo root
+/test-results/
+/playwright-report/
+
+# Saved browser session (credentials); never commit
+auth.json

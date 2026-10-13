@@ -1,9 +1,0 @@
-[
- {
-  "label": "Save",
-  "role": "button",
-  "kind": "mutates",
-  "resultingUrl": null,
-  "note": "empty: 'Give a name for your sms template.'; name only or name+body: 'Template creation failed'"
- }
-]

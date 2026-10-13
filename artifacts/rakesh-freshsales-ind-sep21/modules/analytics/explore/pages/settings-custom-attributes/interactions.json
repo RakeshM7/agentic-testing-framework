@@ -1,8 +1,0 @@
-[
- {
-  "label": "Create Attribute",
-  "role": "link",
-  "kind": "navigates",
-  "resultingUrl": "/analytics/custom-attributes/new"
- }
-]

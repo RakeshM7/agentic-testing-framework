@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lock.schema.json",
+  "title": "Active-run lock (artifacts/<product>/state/lock.json) -- present only while a run is active",
+  "type": "object",
+  "required": ["runId", "createdAt", "configPath"],
+  "additionalProperties": false,
+  "properties": {
+    "runId": { "type": "string" },
+    "createdAt": { "type": "string" },
+    "configPath": { "type": "string" }
+  }
+}

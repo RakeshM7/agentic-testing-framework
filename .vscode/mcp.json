@@ -6,7 +6,8 @@
         "-y",
         "@playwright/mcp@0.0.83",
         "--isolated",
-        "--storage-state=playwright-tests/.auth/idurar-session.json"
+        "--storage-state",
+        "playwright-tests/ami/.auth/state.json"
       ]
     }
   }

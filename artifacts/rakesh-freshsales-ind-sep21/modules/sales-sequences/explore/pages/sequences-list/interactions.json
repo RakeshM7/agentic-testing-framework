@@ -1,6 +1,0 @@
-[{"label":"Create sales sequence","role":"button","kind":"navigates","resultingUrl":"/crm/sales/sales-sequences/contact/new"},
-{"label":"Template cards (10: Reach out to new leads Low/High touch, Connect with C-level/C-suite execs, Nurture inbound leads Low/High touch, Follow up after event, Re-engage with cold leads, Lead didn't answer call, Lead didn't turn up for meeting, Upsell/cross-sell, Social selling via LinkedIn)","role":"button","kind":"navigates","skipped":true,"reason":"not clicked; likely open wizard prefilled"},
-{"label":"Watch overview video","role":"button","kind":"opens-overlay","skipped":true,"reason":"media"},
-{"label":"Conversations tab","role":"tab","kind":"navigates","resultingUrl":"/crm/sales/conversations/awaiting_response (other module)"},
-{"label":"How to configure a sales sequence / My daily email limits","role":"link","kind":"external"},
-{"label":"Interactive tour","role":"link","kind":"external","resultingUrl":"app.storylane.io"}]
