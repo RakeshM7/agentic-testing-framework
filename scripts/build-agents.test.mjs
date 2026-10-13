@@ -2,7 +2,7 @@
 // config/permissions.yaml only, platform syntax only from config/platforms.yaml.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
@@ -111,4 +111,45 @@ test("MCP servers are defined once and rendered for each platform", () => {
   const vscode = JSON.parse(readFileSync(path.join(repoRoot, ".vscode", "mcp.json"), "utf8"));
   assert.deepEqual(claude.mcpServers, vscode.servers);
   assert.deepEqual(claude.mcpServers, load("config/mcp.yaml").servers);
+});
+
+test("hook registrations: --post-hook sets the PostToolUse mode for every host; the guard is always registered (D-042)", () => {
+  const root = scratch();
+  mkdirSync(path.join(root, ".claude"));
+  writeFileSync(path.join(root, ".claude", "settings.json"), JSON.stringify({ permissions: { allow: ["Bash(ls:*)"] } }));
+  const json = (rel) => JSON.parse(readFileSync(path.join(root, rel), "utf8"));
+  const hosts = () => {
+    const claude = json(".claude/settings.json");
+    return { claude, claudeHooks: claude.hooks, copilot: json(".github/hooks/framework-guard.json").hooks, vscode: json(".vscode/hooks/framework-guard.json").hooks };
+  };
+
+  assert.deepEqual(build({ root, postHook: "async" }).errors, []);
+  let h = hosts();
+  assert.deepEqual(h.claude.permissions, { allow: ["Bash(ls:*)"] }, "other settings keys are kept");
+  assert.equal(h.claudeHooks.PostToolUse[0].hooks[0].async, true);
+  for (const x of [h.copilot, h.vscode]) assert.equal(x.PostToolUse[0].async, undefined, "Copilot and VS Code have no background hooks");
+  assert.match(readFileSync(path.join(root, "config", "hooks.yaml"), "utf8"), /^post_tool_use: async$/m);
+
+  assert.deepEqual(build({ root, postHook: "sync" }).errors, []);
+  h = hosts();
+  assert.equal(h.claudeHooks.PostToolUse[0].hooks[0].async, undefined);
+  assert.deepEqual(build({ check: true, root }).changed, [], "the saved mode is what --check builds");
+
+  assert.deepEqual(build({ root, postHook: "off" }).errors, []);
+  h = hosts();
+  for (const x of [h.claudeHooks, h.copilot, h.vscode]) {
+    assert.equal(x.PostToolUse, undefined);
+    assert.ok(x.PreToolUse.length, "the guard is never configurable away");
+  }
+});
+
+test("hook registrations: a bad mode, or --post-hook with --check, writes nothing", () => {
+  const root = scratch();
+  const config = path.join(root, "config", "hooks.yaml");
+  const before = readFileSync(config, "utf8");
+  assert.ok(build({ root, postHook: "later" }).errors.some((e) => /not in \[async,sync,off\]/.test(e)));
+  assert.ok(build({ root, check: true, postHook: "off" }).errors.some((e) => /cannot be combined with --check/.test(e)));
+  assert.equal(readFileSync(config, "utf8"), before);
+  writeFileSync(config, "post_tool_use: maybe\n");
+  assert.ok(build({ check: true, root }).errors.some((e) => /post_tool_use 'maybe'/.test(e)));
 });

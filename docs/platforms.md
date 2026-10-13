@@ -47,6 +47,14 @@ VS Code Copilot Chat can run a chat on two engines. They behave differently for 
 2. Start the session with `claude --agent orchestrator-agent` and give it `config/<product>.yaml`.
 3. `.claude/settings.json` registers `scripts/hooks/pretooluse.mjs` and `posttooluse.mjs` with `--host claude-code`.
 
+**Hook registrations on every host are generated** from `config/hooks.yaml` by `npm run build-agents` (D-042); never hand-edit them. The PreToolUse guard is always registered and blocking. The PostToolUse hook, which only remembers confirmed design decisions, is set for all hosts with:
+
+```
+npm run build-agents -- --post-hook async   # default: Claude Code runs it in the background; Copilot and VS Code wait for it
+npm run build-agents -- --post-hook sync    # every host waits for it
+npm run build-agents -- --post-hook off     # not registered: faster, but every governed edit asks again
+```
+
 ### VS Code Copilot Chat
 1. Open the repo and **trust the workspace**. VS Code loads hooks and MCP servers only in a trusted workspace. Without hooks, the guard check (step 4) stops every run.
 2. The committed `.vscode/settings.json` does five things:
