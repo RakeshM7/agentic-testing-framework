@@ -1,0 +1,35 @@
+{
+  // VS Code Copilot Chat settings for this framework (docs/platforms.md). Decisions behind them: docs/decisions.md.
+  // They shape VS Code's local agent. A chat on VS Code's Copilot CLI engine does not follow them: it uses
+  // .github/agents and .github/hooks like Copilot CLI, so the guard can't tell its agents apart (D-035, D-039).
+
+  // Agents: the generated Copilot agents live in .github/agents. VS Code would also list the Claude Code copies in
+  // .claude/agents (same names, Claude tool names), so that folder is turned off for VS Code.
+  "chat.agentFilesLocations": { ".github/agents": true, ".claude/agents": false },
+
+  // The pipeline is three layers deep: orchestrator-agent -> domain orchestrator -> worker.
+  "chat.subagents.allowInvocationsFromSubagents": true,
+
+  // The guard. VS Code runs .vscode/hooks/ for every chat session and each custom agent's own hook (which names the
+  // agent). It must not ALSO run .github/hooks/ (Copilot CLI / cloud agent: every call unidentified) or
+  // .claude/settings.json (Claude Code's).
+  "chat.useHooks": true,
+  "chat.hookFilesLocations": { ".vscode/hooks": true, ".github/hooks": false, ".claude/hooks": false },
+  "chat.useClaudeHooks": false,
+
+  // AGENTS.md is the one brief for every tool.
+  "chat.useAgentsMdFile": true,
+  "chat.useClaudeMdFile": false,
+
+  // Auto-approve only repo-local, non-mutating commands. Everything else asks; the guard is the hard gate either way.
+  "chat.tools.terminal.autoApprove": {
+    "/^node scripts\\/[a-z-]+\\.mjs /": true,
+    "/^npm (test|run check|run build-agents)$/": true,
+    "/^npx tsc --noEmit( |$)/": true,
+    "/^npx playwright test .*--list( |$)/": true,
+    "/^k6 inspect /": true,
+    "/\\bk6\\s+(run|cloud)\\b/": false,
+    "curl": false,
+    "wget": false
+  }
+}

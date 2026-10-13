@@ -4,9 +4,10 @@
 // done AND its declared outputs exist and validate.
 //
 //   run.mjs init <config.yaml> [--resume] [--run-id ID]   start a run (or --resume the active one)
+//   run.mjs guard-check <product>                         liveness canary: a working guard BLOCKS this (lib/guard-check.mjs)
 //   run.mjs status <product>                              per-stage status + output verification
 //   run.mjs next <product>                                stages whose dependencies are complete and that still need running
-//   run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]
+//   run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]   (start needs a verified guard)
 //   run.mjs end <product> [--abandon]                     write state/history/<run-id>.json and release the lock
 //   run.mjs validate <product>                            schema-check run.json, ledger, permissions, module outputs
 //
@@ -22,6 +23,8 @@ import { LAYOUT_VERSION, SLUG_RE, STAGES, loadJson, paths, repoRoot, stageKey, v
 import { read as readLedger } from "./lib/ledger.mjs";
 import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
+import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs";
+import { detectShellHost } from "./lib/hosts.mjs";
 
 const now = () => new Date().toISOString();
 const writeJson = (file, data) => {
@@ -33,14 +36,17 @@ const rel = (root, p) => path.relative(root, p).replaceAll("\\", "/");
 export const makeRunId = (product, date = new Date()) =>
   `${product}-${date.toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-")}`; // eventhub-20261007-1230
 
-export function initRun(configFile, { resume = false, runId, root = repoRoot } = {}) {
+export function initRun(configFile, { resume = false, runId, root = repoRoot, env = process.env } = {}) {
   const { errors, normalized: cfg } = validateRunConfig(yaml.load(readFileSync(configFile, "utf8")));
   if (errors?.length) return { errors };
   const p = paths(cfg.product, root);
 
   if (existsSync(p.lockFile)) {
     const lock = loadJson(p.lockFile);
-    if (resume) return { resumed: true, product: cfg.product, run: loadJson(p.runFile) };
+    if (resume) {
+      clearGuardChecks(cfg.product, root); // a resumed session must verify its own guard
+      return { resumed: true, product: cfg.product, run: loadJson(p.runFile) };
+    }
     return { errors: [`run ${lock.runId} is active for product '${cfg.product}' (started ${lock.createdAt}). Use --resume, or end it: run.mjs end ${cfg.product} --abandon`] };
   }
   if (resume) return { errors: [`no active run for product '${cfg.product}' to resume`] };
@@ -64,8 +70,10 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot } =
     configPath: rel(root, path.resolve(configFile)),
     permissionsPath: rel(root, permPath),
     modules: cfg.modules.map((m) => m.slug),
+    startedOnHost: detectShellHost(env),
     stages: {},
   };
+  clearGuardChecks(cfg.product, root);
   writeJson(p.lockFile, { runId: id, createdAt: run.createdAt, configPath: run.configPath });
   writeJson(p.runFile, run);
   writeJson(p.configFile, cfg);
@@ -139,6 +147,8 @@ export async function setStage(product, stage, module, action, error, { root = r
   const key = stageKey(stage, module);
   const prev = ctx.run.stages[key] ?? {};
   if (action === "start") {
+    const guard = guardStatus(product, ctx.run.mode, root);
+    if (!guard.ready) return { errors: [`guard not verified: ${guard.reason}`] };
     if (prev.status === "failed" && (prev.attempts ?? 0) >= MAX_ATTEMPTS) return { errors: [`${key} already failed ${MAX_ATTEMPTS} times this run`] };
     ctx.run.stages[key] = { status: "running", startedAt: now(), attempts: (prev.attempts ?? 0) + 1 };
   }
@@ -214,13 +224,18 @@ async function main() {
     process.exit(code);
   };
   if (!cmd || !a) {
-    console.error("usage: run.mjs init|status|next|stage|end|validate ... (see header comment)");
+    console.error("usage: run.mjs init|guard-check|status|next|stage|end|validate ... (see header comment)");
     process.exit(2);
   }
   try {
     if (cmd === "init") {
       const r = initRun(a, { resume: v.resume, runId: v["run-id"] });
-      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, resumed: !!r.resumed }, r.errors ? 1 : 0);
+      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, resumed: !!r.resumed, next: `node scripts/run.mjs guard-check ${r.product}` }, r.errors ? 1 : 0);
+    } else if (cmd === "guard-check") {
+      // Reaching this line means no hook blocked the command: the guard is not active in this session.
+      if (!SLUG_RE.test(a) || !existsSync(paths(a).state)) out({ errors: [`no run state for product '${a}'`] }, 1);
+      markAbsent(a, repoRoot);
+      out({ errors: ["the framework guard did NOT block guard-check: hooks are not active in this session, so nothing enforces the run's mode or permissions. Stop and fix the host's hook setup (docs/platforms.md), then run `node scripts/run.mjs guard-check <product>` again."] }, 1);
     } else if (cmd === "status") out(await status(a));
     else if (cmd === "next") out(await next(a));
     else if (cmd === "stage") {

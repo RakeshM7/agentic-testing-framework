@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/question-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: question-writer
 description: "Turns raw unconfirmed-behavior rows in a module's clarifications.csv into precise questions with detailed, beginner-followable steps. Edits only unanswered rows, only through scripts/clarifications.mjs. Invoked by clarification-orchestrator."
 tools: Read, Glob, Grep, Bash

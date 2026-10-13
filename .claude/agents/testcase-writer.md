@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/testcase-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: testcase-writer
 description: "Writes a module's manual test cases in the run-config's format (default Gherkin) from clarifications, exploration flows and knowledge, with ids, tags and traceability to clarification rows; applies reviewer findings on later rounds. Invoked by testcase-orchestrator."
 tools: Read, Glob, Grep, Write, Edit

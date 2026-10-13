@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { paths, repoRoot } from "./lib/contract.mjs";
 import { addSource, knowledgePaths, mergeGlossary, render } from "./lib/knowledge.mjs";
+import { recordCanary } from "./lib/guard-check.mjs";
 import { initRun } from "./run.mjs";
 
 export function tempRoot() {
@@ -30,10 +31,12 @@ export function writeConfig(root, { mode = "readonly", policy, product = "acme" 
   return file;
 }
 
+// A started run whose session has passed the guard liveness check (as on Claude Code), unless `verified: false`.
 export function startRun(opts = {}) {
   const root = tempRoot();
-  const r = initRun(writeConfig(root, opts), { root, runId: opts.runId ?? "acme-run-1" });
+  const r = initRun(writeConfig(root, opts), { root, runId: opts.runId ?? "acme-run-1", env: { CLAUDECODE: "1" } });
   if (r.errors) throw new Error(r.errors.join("\n"));
+  if (opts.verified !== false) recordCanary(r.product, root, { host: "claude-code", agent: "orchestrator-agent" });
   return { root, run: r.run, product: r.product };
 }
 

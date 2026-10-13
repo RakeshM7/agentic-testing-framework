@@ -22,6 +22,7 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     config.resolved.json              # the validated run-config the current run started from
     permissions.resolved.json         # frozen copy of config/permissions.yaml for the current run
     orchestration/<domain>-<module>.json   # domain orchestrators' loop counters (review/heal rounds)
+    guard-check/                      # guard liveness records for the current session (run.mjs guard-check)
     history/<run-id>.json             # summary of every ended run
   results/<run-id>/                   # per-run archive: <module>/{testcases,playwright-ui,playwright-api,k6}/..., report/
 playwright-tests/<product>/           # ONE Playwright repo: tests/ui + tests/api
@@ -34,6 +35,7 @@ There is no `artifacts/<run-id>/` directory. Run ids are `<product>-<YYYYMMDD>-<
 
 ```bash
 node scripts/run.mjs init config/<product>.yaml [--resume]   # validate config + permissions, take the lock, write state/
+node scripts/run.mjs guard-check <product>                   # liveness canary: a working guard BLOCKS this
 node scripts/run.mjs next <product>                          # stages ready to run (dependencies complete)
 node scripts/run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]
 node scripts/run.mjs status <product>                        # every stage with output verification
@@ -43,6 +45,8 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 
 - `init` refuses while another run holds the product's lock (`--resume` returns the active run; `end --abandon` releases it).
 - `config/permissions.yaml` is validated and frozen into `state/permissions.resolved.json` at `init`; edits take effect on the next run.
+- `init` records `startedOnHost`.
+- Guard liveness: `init` and `--resume` clear `state/guard-check/`; the orchestrator then runs `run.mjs guard-check <product>`, which every working hook blocks — the hook entry records the blocking host/agent there; if the command runs instead, it records `absent.json`. `stage … start` refuses until a record fits the mode. Any hook's record counts, with one exception: a full-run on VS Code's local agent needs a record from an agent's own hook.
 
 ### Stages (the main orchestrator's view — one per domain)
 
@@ -106,13 +110,17 @@ Agents record immediately after creating anything, run `owns` before any delete/
 ## Safety: mode × permissions, enforced in code
 
 - **Mode** — `authorizations.mode` → `state/run.json`. `readonly` caps every agent at read (browser/http) and none (load), whatever the permissions file says; `full-run` applies `config/permissions.yaml` as written, and gives every agent that has browser access (`read` or `mutate`) the full browser. `AUTHORIZATIONS_MODE=readonly` in the environment can downgrade; nothing can upgrade.
-- **Per-agent permissions** — the guard (`scripts/lib/guard.mjs`, Claude Code adapter `.claude/hooks/guard.mjs`) identifies the caller from the hook's `agent_type` and applies its row from the frozen permissions:
-  - `Agent` — only the agents in `spawns`;
-  - `Bash`/`PowerShell` — `shell: none | restricted (shell_allow) | project`, then HTTP/k6 rules by effective `http`/`load`, and any DELETE must reference a live entity of the current run;
-  - `Write`/`Edit`/`MultiEdit`/`NotebookEdit` — only inside `filesystem.write` (`${product}`, `${run_id}` expanded; `${module}` = one path segment); nothing outside the repo;
-  - `WebFetch`/`WebSearch` — the product's own host needs `http: read`; anything else needs `web_research: allowed`;
+- **Hosts** — every host runs `scripts/hooks/pretooluse.mjs`, whose adapter (`scripts/hooks/hosts/`) turns the host's payload into a canonical tool call (`scripts/lib/tool-call.mjs`). The calling agent comes only from a trusted source: Claude Code's `agent_type`, or the `--agent` the build bakes into each generated Copilot agent's own hook (VS Code). Some hosts cannot identify agents (`scripts/lib/hosts.mjs`): Copilot CLI, VS Code chat on its Copilot CLI engine, the cloud coding agent, and any unrecognized host.
+  - In a full-run, a call there gets the run's combined ceiling: what at least one agent of the run may do (`runCeiling` in `scripts/lib/permissions.mjs`). The run's agents are the layer-0 agents and everything they can spawn.
+  - In a readonly run, a call there gets the mode rules.
+- **Per-agent permissions** — the guard (`scripts/lib/guard.mjs`) applies the calling agent's row from the frozen permissions (tool names below are the canonical kinds; each adapter maps its host's tools onto them):
+  - spawn — only the agents in `spawns`;
+  - shell — `shell: none | restricted (shell_allow) | project`, then HTTP/k6 rules by effective `http`/`load`, and any DELETE must reference a live entity of the current run;
+  - write (every file the call touches) — only inside `filesystem.write` (`${product}`, `${run_id}` expanded; `${module}` = one path segment); nothing outside the repo;
+  - web fetch / web search — the product's own host needs `http: read`; anything else needs `web_research: allowed`;
   - Playwright MCP — `browser: none` blocks all; effective `read` (i.e. in readonly runs) blocks typing, form filling, selects, uploads, drag/drop, key presses, dialogs and script evaluation (clicks stay allowed for navigation); in full-run runs any browser access is full.
-- **Active runs** are found from `artifacts/*/state/lock.json`. No active run ⇒ readonly shell rules only. Agents not in the permissions file (e.g. a human's own session) get the mode rules only. If the guard itself errors while a run is active, the hook fails closed.
+- **Active runs** are found from `artifacts/*/state/lock.json`. No active run ⇒ readonly shell rules only. Agents not in the permissions file (e.g. a human's own session) get the mode rules only. During a run, a tool an adapter cannot classify is denied for a managed agent. If the guard itself errors (or cannot read the hook input) while a run is active, the hook fails closed.
+- **Design decisions** — separately from safety, the same hook asks the user before an edit to a file that an Accepted decision in [`decisions.md`](decisions.md) governs (`scripts/lib/decisions.mjs`); deny beats ask beats allow.
 - **Known limits** — a `shell: project` agent could still write files or call the network through a script the guard can't parse; Playwright `mutationGuard` fixtures and k6 host allow-lists (built in their domains) are the second layer.
 
 ## Schemas

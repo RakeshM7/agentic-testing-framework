@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-api-healer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-api-healer
 description: "Fixes API tests the triager classified as healable (test-bug, flaky, data) in triage.md, within the API-owned folders. Never runs tests against the product and never changes expectations to hide product bugs. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-ui-scaffolder.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-ui-scaffolder
 description: "Adds the UI-specific scaffolding to the product's Playwright repo (config/ui/ settings and the tests/ui/<module>/ folder), researching UI best practices when needed. Never touches shared repo files. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch

@@ -1,15 +1,16 @@
-# Per-agent permissions -- DRAFT FOR HUMAN REVIEW. Nothing reads this file yet.
+# Per-agent permissions: the single, reviewable statement of what each agent may do, on every platform.
 #
-# Purpose: one explicit, reviewable statement of what each agent may do. When implemented, three things are
-# generated/enforced from it (so a prompt can never grant more than this file):
-#   1. the agent's `tools:` / `disallowedTools:` frontmatter (incl. `Agent(<workers>)` for orchestrators),
-#   2. the framework guard (scripts/lib/guard.mjs), which learns who is calling from the PreToolUse hook's
-#      `agent_type` field and applies that agent's row,
-#   3. the filesystem write allow-list (a Write/Edit outside `filesystem.write` is blocked).
+# Two things are derived from it, so a prompt can never grant more than this file:
+#   1. each generated agent file's tool list and subagent allow-list, per platform (scripts/build-agents.mjs with
+#      config/platforms.yaml), and
+#   2. the framework guard (scripts/lib/guard.mjs), which applies the calling agent's row to every guarded tool call:
+#      spawns, shell, HTTP/load, browser actions and the filesystem write allow-list. `run.mjs init` freezes this
+#      file into the run's state/permissions.resolved.json, so a run's permissions cannot change under it.
+# Fields are neutral capabilities, never a platform's tool names.
 #
 # ---- Field meanings --------------------------------------------------------------------------------------
 # layer            0 = main session (orchestrator) | 1 = domain orchestrator or product-level worker | 2 = worker
-# spawns           exact agent names this agent may start (rendered as `Agent(a, b)`); [] = cannot spawn.
+# spawns           exact agent names this agent may start (its subagent allow-list); [] = cannot spawn.
 #                  Workers never spawn: all communication between agents goes through the parent orchestrator,
 #                  using files as the hand-off (no agent talks to a sibling).
 # live_target      what the agent may do against the PRODUCT UNDER TEST (the live app):
@@ -21,6 +22,7 @@
 # web_research     none | allowed -- may fetch pages from the public internet that are NOT the product under test
 # shell            none | restricted (only the commands listed in `shell_allow`) | project (any command that
 #                  passes the guard, e.g. npm/npx/node/k6 inspect)
+# ask_user         none | allowed -- may ask the human questions (main session only; default none)
 # filesystem       read / write glob lists (variables below).
 #
 # ---- How this combines with authorizations.mode (run-config) ---------------------------------------------
@@ -39,7 +41,7 @@ variables:
   pw_project: "playwright-tests/${product}"                   # ONE Playwright repo: tests/ui + tests/api
   k6_project: "k6-tests/${product}"
 #
-# ---- Decision log ----------------------------------------------------------------------------------------
+# ---- Decision log (the reasons and the full log: docs/decisions.md) -------------------------------------
 # Mode caps permissions | knowledge-generator: live product only if needed | module-explorer: mutate
 # scaffolders: web research allowed | api-discoverer: http read | global feedback implementor: as drafted
 # Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
@@ -91,10 +93,11 @@ agents:
     web_research: none
     shell: restricted
     shell_allow: ["node scripts/run.mjs *", "node scripts/run-config.mjs *", "node scripts/ledger.mjs list *",
-                  "node scripts/knowledge.mjs plan *", "node scripts/clarifications.mjs status *"]
-    extra_tools: [AskUserQuestion]   # runs as the main session (claude --agent orchestrator-agent), so it can ask the human
+                  "node scripts/knowledge.mjs *", "node scripts/clarifications.mjs status *"]
+    ask_user: allowed
+    tool_search: allowed       # runs as the main session, so it can ask the human
     filesystem:
-      read: ["${product_dir}/**", "config/**", ".mcp.json"]
+      read: ["${product_dir}/**", "config/**"]
       write: ["${state}/notes.md"]
 
   # ======================= Product level (spawned by the main orchestrator) ================================
@@ -383,9 +386,11 @@ agents:
     web_research: none
     shell: project
     filesystem:
-      read: ["feedback/**", ".claude/agents/**", "docs/**", "scripts/**", "config/**"]
-      write: [".claude/agents/*.md", "docs/**", "feedback/**", "scripts/*.mjs",
+      read: ["feedback/**", "agents/**", "docs/**", "scripts/**", "config/**"]
+      write: ["agents/*.md", "docs/**", "feedback/**", "scripts/*.mjs",
               "scripts/lib/contract.mjs", "scripts/lib/clarifications.mjs", "scripts/lib/knowledge.mjs",
               "scripts/lib/testcases.mjs", "scripts/lib/csv.mjs"]
-    # Never the safety code (scripts/lib/{guard,permissions,ledger}.mjs), config/permissions.yaml, config/models.yaml,
-    # .claude/settings.json or .claude/hooks: safety, permissions and models are human-only decisions.
+    # Never config/ (permissions, models, platforms, MCP servers), the safety code (scripts/lib/{guard,permissions,ledger,
+    # hosts,tool-call,browser-tools,guard-check,decisions}.mjs, scripts/hooks/), the hook registrations or editor settings
+    # (.claude/settings.json, .github/hooks/, .vscode/) or the generated agent/MCP files (rebuilt from agents/ by
+    # `npm run build-agents` via its shell): safety, permissions, models and platforms are human-only decisions (D-013).

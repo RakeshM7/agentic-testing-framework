@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/clarification-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: clarification-writer
 description: "Records the outcome of clarification evidence into a module's clarifications.csv (Answer or agent notes) through scripts/clarifications.mjs, and writes clarifications-summary.md. Invoked by clarification-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

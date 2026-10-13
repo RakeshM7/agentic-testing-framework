@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/clarification-explorer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: clarification-explorer
 description: "Executes the steps of ONE clarifications.csv row in the live product and records exactly what the product did as evidence. Never writes the CSV. Invoked by clarification-orchestrator, one row per invocation."
 tools: Read, Glob, Grep, Write, Edit, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_hover, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_wait_for, mcp__playwright__browser_tabs, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_select_option, mcp__playwright__browser_press_key, mcp__playwright__browser_file_upload, mcp__playwright__browser_drag, mcp__playwright__browser_drop, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_evaluate

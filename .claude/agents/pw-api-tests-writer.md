@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-api-tests-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-api-tests-writer
 description: "Implements a module's API test plan as Playwright API specs (tests/api/<module>/) using the clients, fixtures and helpers, one test per plan scenario. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

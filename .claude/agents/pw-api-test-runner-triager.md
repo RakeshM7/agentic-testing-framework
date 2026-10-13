@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-api-test-runner-triager.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-api-test-runner-triager
 description: "Runs a module's Playwright API tests against the product with the run's mode, records normalized results via scripts/results.mjs, and classifies every failure in triage.md. Never edits test code. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch

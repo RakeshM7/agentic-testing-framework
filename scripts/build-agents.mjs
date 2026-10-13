@@ -1,89 +1,91 @@
 #!/usr/bin/env node
-// Builds the generated part of every agent definition in .claude/agents/<name>.md from:
-//   config/permissions.yaml  -> tools (incl. Agent(<spawns>), shell, web, browser) and mcpServers
-//   config/models.yaml       -> model
-// Hand-written parts are kept: `name`, `description`, `color` and the prompt body. A prompt can therefore never
-// grant an agent a tool its permissions row does not allow.
+// Renders every generated platform file from the single sources:
+//   agents/<name>.md          identity + neutral prompt body          (scripts/lib/agents/source.mjs)
+//   config/permissions.yaml   capabilities -> tools, spawn allow-list (scripts/lib/agents/capabilities.mjs)
+//   config/models.yaml        model per platform
+//   config/platforms.yaml     each platform's tool names, output path, MCP config file, limits
+//   config/mcp.yaml           MCP servers
+// into, per platform, one agent file per agent (renderers/<renderer>.mjs) and its MCP config file (scripts/lib/mcp.mjs).
+// Nothing generated is ever edited by hand: change a source or config, then rebuild.
 //
-//   node scripts/build-agents.mjs           rewrite generated frontmatter
-//   node scripts/build-agents.mjs --check   write nothing; exit 1 on drift, a missing agent file, or a stray one
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+//   node scripts/build-agents.mjs           write every generated file that differs
+//   node scripts/build-agents.mjs --check   write nothing; exit 1 on drift, a missing/stray source, or a stray output
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import { resolvePermissions } from "./lib/permissions.mjs";
+import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
+import { checkBodyLimit, forbiddenIdentifiers, lintBody } from "./lib/agents/lint.mjs";
+import { loadSources } from "./lib/agents/source.mjs";
+import { renderMcpConfig, validateMcp } from "./lib/mcp.mjs";
+import * as claude from "./lib/agents/renderers/claude.mjs";
+import * as copilot from "./lib/agents/renderers/copilot.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const agentsDir = path.join(repoRoot, ".claude", "agents");
+const RENDERERS = { claude, copilot };
+const loadYaml = (root, rel) => yaml.load(readFileSync(path.join(root, rel), "utf8"));
 
-const BROWSER_READ = ["navigate", "navigate_back", "snapshot", "click", "hover", "take_screenshot", "wait_for", "tabs", "resize", "console_messages", "network_requests"];
-const BROWSER_MUTATE = ["type", "fill_form", "select_option", "press_key", "file_upload", "drag", "drop", "handle_dialog", "evaluate"];
-const MCP = "playwright";
-
-export function toolsFor(row) {
-  const t = ["Read", "Glob", "Grep"];
-  if (row.filesystem.write.length) t.push("Write", "Edit");
-  if (row.shell !== "none") t.push("Bash");
-  if (row.web_research === "allowed" || row.live_target.http !== "none") t.push("WebFetch");
-  if (row.web_research === "allowed") t.push("WebSearch");
-  if (row.spawns.length) t.push(`Agent(${row.spawns.join(", ")})`);
-  if (row.live_target.browser !== "none") {
-    const set = row.live_target.browser === "mutate" ? [...BROWSER_READ, ...BROWSER_MUTATE] : BROWSER_READ;
-    t.push(...set.map((n) => `mcp__${MCP}__browser_${n}`));
-  }
-  t.push(...(row.extra_tools ?? []));
-  return t;
+export function modelFor(models, name, platformKey) {
+  return models?.agents?.[name]?.[platformKey] ?? models?.default?.[platformKey];
 }
 
-export function modelFor(models, name) {
-  return models?.agents?.[name]?.claude ?? models?.default?.claude;
+// ".github/agents/{name}.agent.md" -> { dir: ".github/agents", prefix: "", suffix: ".agent.md" }
+function outputPattern(template) {
+  const [before, suffix] = template.split("{name}");
+  return { dir: path.posix.dirname(before + "x"), prefix: path.posix.basename(before + "x").slice(0, -1), suffix };
 }
 
-function splitFrontmatter(text, file) {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
-  if (!m) throw new Error(`${file}: missing YAML frontmatter`);
-  return { fm: yaml.load(m[1]) ?? {}, body: m[2] };
-}
-
-export function render(name, fm, row, model, eol) {
-  if (fm.name !== name) throw new Error(`${name}.md: frontmatter name must be '${name}'`);
-  if (typeof fm.description !== "string" || !fm.description.trim()) throw new Error(`${name}.md: description is required`);
-  const lines = ["---", `name: ${name}`, `description: ${JSON.stringify(fm.description.trim())}`, `tools: ${toolsFor(row).join(", ")}`];
-  if (row.live_target.browser !== "none") lines.push("mcpServers:", `  - ${MCP}`);
-  if (!model) throw new Error(`${name}: no model in config/models.yaml (agents.${name}.claude or default.claude)`);
-  lines.push(`model: ${model}`);
-  if (fm.color) lines.push(`color: ${fm.color}`);
-  lines.push("---");
-  return lines.join(eol) + eol;
-}
-
+// -> { errors, changed: [repo-relative paths that differ (or would, with --check)] }
 export function build({ check = false, root = repoRoot } = {}) {
-  const dir = path.join(root, ".claude", "agents");
-  const perms = resolvePermissions(yaml.load(readFileSync(path.join(root, "config", "permissions.yaml"), "utf8")));
-  if (perms.errors.length) return { errors: perms.errors };
-  const models = yaml.load(readFileSync(path.join(root, "config", "models.yaml"), "utf8"));
-  const errors = [];
-  const changed = [];
+  const perms = resolvePermissions(loadYaml(root, "config/permissions.yaml"));
+  if (perms.errors.length) return { errors: perms.errors.map((e) => `config/permissions.yaml: ${e}`), changed: [] };
+  const models = loadYaml(root, "config/models.yaml");
+  const { platforms } = loadYaml(root, "config/platforms.yaml");
+  const mcp = loadYaml(root, "config/mcp.yaml");
   const names = Object.keys(perms.resolved.agents);
-  for (const f of existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".md")) : [])
-    if (!names.includes(f.slice(0, -3))) errors.push(`.claude/agents/${f}: not in config/permissions.yaml`);
-  for (const name of names) {
-    const file = path.join(dir, `${name}.md`);
-    if (!existsSync(file)) {
-      errors.push(`.claude/agents/${name}.md: missing`);
+  const { sources, errors } = loadSources(root, names);
+  errors.push(...validateMcp(mcp));
+  const forbidden = forbiddenIdentifiers(platforms);
+  for (const [name, s] of Object.entries(sources)) errors.push(...lintBody(name, s.body, forbidden));
+
+  const outputs = new Map(); // repo-relative path -> content
+  for (const [key, platform] of Object.entries(platforms)) {
+    const renderer = RENDERERS[platform.renderer];
+    if (!renderer) {
+      errors.push(`config/platforms.yaml: ${key}: unknown renderer '${platform.renderer}' (have: ${Object.keys(RENDERERS).join(", ")})`);
       continue;
     }
-    try {
-      const text = readFileSync(file, "utf8");
-      const eol = text.includes("\r\n") ? "\r\n" : "\n";
-      const { fm, body } = splitFrontmatter(text, file);
-      const next = render(name, fm, perms.resolved.agents[name], modelFor(models, name), eol) + body;
-      if (next !== text) {
-        changed.push(name);
-        if (!check) writeFileSync(file, next, "utf8");
+    const { dir, prefix, suffix } = outputPattern(platform.output);
+    const expected = new Set();
+    for (const [name, s] of Object.entries(sources)) {
+      const model = modelFor(models, name, key);
+      if (!model) {
+        errors.push(`config/models.yaml: no ${key} model for ${name} (agents.${name}.${key} or default.${key})`);
+        continue;
       }
-    } catch (e) {
-      errors.push(e.message);
+      errors.push(...checkBodyLimit(name, s.body, key, platform));
+      const caps = capabilitiesFor(perms.resolved.agents[name]);
+      const rel = platform.output.replaceAll("{name}", name);
+      expected.add(rel);
+      outputs.set(rel, renderer.render({ name, ...s, caps, tools: toolNames(caps, platform, mcp.browser_server), model, platform, browserServer: mcp.browser_server }));
+    }
+    const abs = path.join(root, dir);
+    for (const f of existsSync(abs) ? readdirSync(abs) : [])
+      if (f.startsWith(prefix) && f.endsWith(suffix) && !expected.has(`${dir}/${f}`))
+        errors.push(`${dir}/${f}: not generated from agents/ (no source or no permissions row); remove it or add agents/<name>.md`);
+    if (platform.mcp_config) outputs.set(platform.mcp_config.path, renderMcpConfig(mcp, platform.mcp_config.key));
+  }
+
+  const changed = [];
+  if (errors.length) return { errors, changed };
+  for (const [rel, content] of outputs) {
+    const file = path.join(root, rel);
+    if (existsSync(file) && readFileSync(file, "utf8") === content) continue;
+    changed.push(rel);
+    if (!check) {
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, content, "utf8");
     }
   }
   return { errors, changed };
@@ -93,7 +95,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const check = process.argv.includes("--check");
   const { errors, changed } = build({ check });
   for (const e of errors) console.error(`error: ${e}`);
-  for (const n of changed ?? []) console.log(`${check ? "drift" : "built"}: .claude/agents/${n}.md`);
-  console.log(`${changed?.length ?? 0} agent file(s) ${check ? "out of date" : "rebuilt"}, ${errors.length} error(s).`);
-  if (errors.length || (check && changed?.length)) process.exit(1);
+  for (const f of changed) console.log(`${check ? "drift" : "built"}: ${f}`);
+  console.log(`${changed.length} generated file(s) ${check ? "out of date" : "written"}, ${errors.length} error(s).`);
+  if (errors.length || (check && changed.length)) process.exit(1);
 }

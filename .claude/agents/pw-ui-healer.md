@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-ui-healer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-ui-healer
 description: "Fixes UI tests the triager classified as healable (test-bug, flaky, data) in triage.md, within the UI-owned folders. Never runs tests against the product and never changes expectations to hide product bugs. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

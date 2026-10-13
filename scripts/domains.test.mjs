@@ -1,48 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import yaml from "js-yaml";
-import { build, toolsFor } from "./build-agents.mjs";
 import { round, show, step } from "./orchestration.mjs";
 import { fromK6, fromPlaywright, record } from "./results.mjs";
 import { collect } from "./report-data.mjs";
 import { next, setStage, status } from "./run.mjs";
 import { checkTestcases } from "./lib/testcases.mjs";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
-import { resolvePermissions } from "./lib/permissions.mjs";
+import { loadJson, paths, validateData } from "./lib/contract.mjs";
 import { append } from "./lib/clarifications.mjs";
 import { put, startRun } from "./test-helpers.mjs";
-
-const perms = resolvePermissions(yaml.load(readFileSync(path.join(repoRoot, "config", "permissions.yaml"), "utf8"))).resolved;
-
-test("every agent in the repo is built from its permissions row and matches (build-agents --check)", () => {
-  const { errors, changed } = build({ check: true });
-  assert.deepEqual(errors, []);
-  assert.deepEqual(changed, []);
-});
-
-test("tools follow permissions: workers cannot spawn, read-only browser gets no typing tools", () => {
-  const w = toolsFor(perms.agents["pw-ui-tests-writer"]);
-  assert.ok(!w.some((t) => t.startsWith("Agent")));
-  assert.ok(!w.some((t) => t.startsWith("mcp__")));
-  const kg = toolsFor(perms.agents["knowledge-generator"]);
-  assert.ok(kg.includes("mcp__playwright__browser_snapshot"));
-  assert.ok(!kg.includes("mcp__playwright__browser_type"));
-  assert.ok(toolsFor(perms.agents["clarification-explorer"]).includes("mcp__playwright__browser_fill_form"));
-  assert.ok(toolsFor(perms.agents["orchestrator-agent"]).includes("AskUserQuestion"));
-  assert.ok(!toolsFor(perms.agents["question-writer"]).includes("Write"), "CSV is script-only");
-});
-
-test("build-agents reports missing and stray agent files", () => {
-  const root = path.join(startRun().root, "b");
-  mkdirSync(path.join(root, ".claude", "agents"), { recursive: true });
-  cpSync(path.join(repoRoot, "config"), path.join(root, "config"), { recursive: true });
-  writeFileSync(path.join(root, ".claude", "agents", "rogue.md"), "---\nname: rogue\ndescription: x\n---\n");
-  const { errors } = build({ check: true, root });
-  assert.ok(errors.some((e) => /rogue\.md: not in config\/permissions\.yaml/.test(e)));
-  assert.ok(errors.some((e) => /orchestrator-agent\.md: missing/.test(e)));
-});
 
 test("orchestration rounds are bounded by the run-config limits and reset for a new run", () => {
   const { root } = startRun();

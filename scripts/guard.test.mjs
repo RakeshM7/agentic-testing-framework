@@ -2,11 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
+import { normalize } from "./hooks/hosts/claude.mjs";
 import { append } from "./lib/ledger.mjs";
 import { paths } from "./lib/contract.mjs";
 import { startRun, tempRoot } from "./test-helpers.mjs";
 
-const call = (agent, tool_name, tool_input) => ({ agent_type: agent, tool_name, tool_input });
+// Calls as Claude Code's hook sends them, through the Claude adapter (the guard itself only sees canonical calls).
+const call = (agent, tool_name, tool_input) => normalize({ agent_type: agent, tool_name, tool_input }, { env: { CLAUDE_PROJECT_DIR: "/repo" }, host: "claude-code" });
 const sh = (agent, command) => call(agent, "Bash", { command });
 const allowed = (root, input, env = {}) => checkTool(input, root, env).allowed;
 
@@ -61,6 +63,21 @@ test("shell: none / restricted / project", () => {
   assert.equal(allowed(FULL.root, sh("orchestrator-agent", "node scripts/run.mjs next acme")), true);
   assert.equal(allowed(FULL.root, sh("orchestrator-agent", "npm test")), false);
   assert.equal(allowed(FULL.root, sh("pw-ui-tests-writer", "npx tsc --noEmit")), true);
+});
+
+test("restricted shell: a leading cd into the repo root is ignored, any other prefix is not", () => {
+  const ok = (cmd) => allowed(FULL.root, sh("orchestrator-agent", cmd));
+  const r = FULL.root;
+  const posix = r.replaceAll("\\", "/").replace(/^([a-z]):/i, (_, d) => `/${d.toLowerCase()}`);
+  assert.equal(ok(`cd "${r}" && node scripts/run.mjs next acme`), true);
+  assert.equal(ok(`cd '${r}/' ; node scripts/run.mjs next acme`), true);
+  assert.equal(ok(`cd /d "${r}" && node scripts/run.mjs next acme`), true);
+  assert.equal(ok(`Set-Location -Path "${r}"; node scripts/run.mjs next acme`), true);
+  assert.equal(ok(`cd ${posix} && node scripts/run.mjs next acme`), true, "Git Bash style path");
+  assert.equal(ok(`cd "${path.join(r, "artifacts")}" && node scripts/run.mjs next acme`), false, "a subfolder is not the root");
+  assert.equal(ok(`cd . && node scripts/run.mjs next acme`), false, "relative paths are not stripped");
+  assert.equal(ok(`cd "${r}" && npm test`), false, "the rest must still be in the allow-list");
+  assert.equal(ok(`cd "${r}" && cd "${r}" && node scripts/run.mjs next acme`), false, "stripped once only");
 });
 
 test("HTTP and load follow the agent's effective permission", () => {

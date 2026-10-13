@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.83",
+        "--isolated",
+        "--storage-state",
+        "playwright-tests/ami/.auth/state.json"
+      ]
+    }
+  }
+}

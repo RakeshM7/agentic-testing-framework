@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-api-helper-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-api-helper-writer
 description: "Writes pure API helper functions (payload builders, schema validators, response parsers) under helpers/api/ for a module's API tests. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

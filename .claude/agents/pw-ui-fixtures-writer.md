@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-ui-fixtures-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-ui-fixtures-writer
 description: "Writes the UI Playwright fixtures (fixtures/ui/): the extended test object with page objects, the mutation guard, and the UI auth setup. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

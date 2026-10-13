@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/report-generator.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: report-generator
 description: "Produces the run's HTML slide-deck report (results/<run>/report/index.html) from report.json collected by scripts/report-data.mjs: modules explored, clarifications, test cases, Playwright UI/API specs, k6 scripts and execution results. Invoked by orchestrator-agent at the end of a run."
 tools: Read, Glob, Grep, Write, Edit, Bash

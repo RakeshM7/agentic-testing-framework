@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-ui-helper-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-ui-helper-writer
 description: "Writes pure UI helper functions (test-data builders, formatters, parsers) under helpers/ui/ for a module's UI tests. Invoked by playwright-ui-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

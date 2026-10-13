@@ -8,6 +8,7 @@ const ENUMS = {
   http: ["none", "read", "mutate"],
   load: ["none", "run"],
   web_research: ["none", "allowed"],
+  ask_user: ["none", "allowed"],
   shell: ["none", "restricted", "project"],
 };
 const RANK = { none: 0, read: 1, mutate: 2, run: 1 };
@@ -30,11 +31,12 @@ export function resolvePermissions(doc) {
       shell: a.shell ?? "none",
       shell_allow: a.shell_allow ?? [],
       filesystem: { read: a.filesystem?.read ?? [], write: a.filesystem?.write ?? [] },
-      extra_tools: a.extra_tools ?? [],
+      ask_user: a.ask_user ?? "none",
     };
     if (![0, 1, 2].includes(row.layer)) errors.push(`${name}: layer must be 0, 1 or 2`);
     for (const k of ["browser", "http", "load"]) if (!ENUMS[k].includes(row.live_target[k])) errors.push(`${name}: live_target.${k} '${row.live_target[k]}' not in [${ENUMS[k]}]`);
-    for (const k of ["web_research", "shell"]) if (!ENUMS[k].includes(row[k])) errors.push(`${name}: ${k} '${row[k]}' not in [${ENUMS[k]}]`);
+    if (a.extra_tools) errors.push(`${name}: extra_tools is not supported; grant capabilities (e.g. ask_user: allowed), never platform tool names`);
+    for (const k of ["web_research", "shell", "ask_user"]) if (!ENUMS[k].includes(row[k])) errors.push(`${name}: ${k} '${row[k]}' not in [${ENUMS[k]}]`);
     if (row.shell === "restricted" && !row.shell_allow.length) errors.push(`${name}: shell: restricted needs shell_allow`);
     if (row.layer === 2 && row.spawns.length) errors.push(`${name}: layer-2 workers cannot spawn agents`);
     agents[name] = row;
@@ -57,6 +59,38 @@ export function effectiveLiveTarget(row, mode) {
 }
 
 export const atLeast = (have, need) => RANK[have] >= RANK[need];
+
+const SHELL_RANK = { none: 0, restricted: 1, project: 2 };
+const highest = (rank, values) => values.reduce((a, b) => (rank[b] > rank[a] ? b : a));
+
+// The ceiling for a call whose agent the host cannot name (D-035): what at least one agent of a product run may do.
+// The run's agents are the layer-0 entry agents and every agent reachable from them through `spawns`, so an agent that
+// is not part of a run (feedback-implementor-agent) adds nothing. Entry agents may be spawned too: a host's own chat
+// starts orchestrator-agent as a subagent. -> a permissions row, or undefined when there is no layer-0 agent.
+export function runCeiling(resolved) {
+  const agents = resolved?.agents ?? {};
+  const entry = Object.keys(agents).filter((n) => agents[n].layer === 0);
+  const inRun = new Set();
+  for (const queue = [...entry]; queue.length; ) {
+    const n = queue.shift();
+    if (inRun.has(n) || !agents[n]) continue;
+    inRun.add(n);
+    queue.push(...agents[n].spawns);
+  }
+  if (!inRun.size) return undefined;
+  const rows = [...inRun].map((n) => agents[n]);
+  const all = (f) => [...new Set(rows.flatMap(f))];
+  const any = (k) => (rows.some((r) => r[k] === "allowed") ? "allowed" : "none");
+  return {
+    spawns: [...new Set([...entry, ...all((r) => r.spawns)])],
+    live_target: Object.fromEntries(["browser", "http", "load"].map((k) => [k, highest(RANK, rows.map((r) => r.live_target[k]))])),
+    web_research: any("web_research"),
+    shell: highest(SHELL_RANK, rows.map((r) => r.shell)),
+    shell_allow: all((r) => r.shell_allow),
+    filesystem: { read: all((r) => r.filesystem.read), write: all((r) => r.filesystem.write) },
+    ask_user: any("ask_user"),
+  };
+}
 
 // Expand ${...} in a glob: first the permissions file's own `variables:` (which may nest, e.g. ${modules} ->
 // artifacts/${product}/modules/${module}), then run values (product, run_id). Anything still unknown

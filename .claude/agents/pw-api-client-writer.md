@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/pw-api-client-writer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: pw-api-client-writer
 description: "Writes typed API client classes (clients/<module>/) for a module's endpoints -- the API counterpart of page objects. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, Bash

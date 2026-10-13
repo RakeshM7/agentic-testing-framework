@@ -1,4 +1,5 @@
 ---
+# GENERATED from agents/api-discoverer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: api-discoverer
 description: "Builds a module's endpoint catalogue (discovered-endpoints.json) from OpenAPI/Swagger, vendor API docs and the module explorer's network inventory, probing only with GET. Invoked by playwright-api-orchestrator."
 tools: Read, Glob, Grep, Write, Edit, WebFetch, WebSearch
