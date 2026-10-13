@@ -5,20 +5,25 @@
 //   config/models.yaml        model per platform
 //   config/platforms.yaml     each platform's tool names, output path, MCP config file, limits
 //   config/mcp.yaml           MCP servers
-// into, per platform, one agent file per agent (renderers/<renderer>.mjs) and its MCP config file (scripts/lib/mcp.mjs).
+//   config/hooks.yaml         whether/how the PostToolUse hook is registered
+// into, per platform, one agent file per agent (renderers/<renderer>.mjs) and its MCP config file (scripts/lib/mcp.mjs),
+// and every host's hook registrations (scripts/lib/hook-registrations.mjs).
 // Nothing generated is ever edited by hand: change a source or config, then rebuild.
 //
 //   node scripts/build-agents.mjs           write every generated file that differs
 //   node scripts/build-agents.mjs --check   write nothing; exit 1 on drift, a missing/stray source, or a stray output
+//   node scripts/build-agents.mjs --post-hook <async|sync|off>   save that mode in config/hooks.yaml, then build
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 import yaml from "js-yaml";
 import { resolvePermissions } from "./lib/permissions.mjs";
 import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { checkBodyLimit, forbiddenIdentifiers, lintBody } from "./lib/agents/lint.mjs";
 import { loadSources } from "./lib/agents/source.mjs";
 import { renderMcpConfig, validateMcp } from "./lib/mcp.mjs";
+import { CLAUDE_SETTINGS, HOOKS_CONFIG, postModeOf, renderHookRegistrations, setPostMode } from "./lib/hook-registrations.mjs";
 import * as claude from "./lib/agents/renderers/claude.mjs";
 import * as copilot from "./lib/agents/renderers/copilot.mjs";
 
@@ -37,15 +42,26 @@ function outputPattern(template) {
 }
 
 // -> { errors, changed: [repo-relative paths that differ (or would, with --check)] }
-export function build({ check = false, root = repoRoot } = {}) {
+export function build({ check = false, postHook, root = repoRoot } = {}) {
+  if (check && postHook) return { errors: ["--post-hook changes config/hooks.yaml; it cannot be combined with --check"], changed: [] };
   const perms = resolvePermissions(loadYaml(root, "config/permissions.yaml"));
   if (perms.errors.length) return { errors: perms.errors.map((e) => `config/permissions.yaml: ${e}`), changed: [] };
+  let hooksText = readFileSync(path.join(root, HOOKS_CONFIG), "utf8");
+  if (postHook) {
+    try {
+      hooksText = setPostMode(hooksText, postHook);
+    } catch (e) {
+      return { errors: [e.message], changed: [] };
+    }
+  }
+  const post = postModeOf(yaml.load(hooksText));
   const models = loadYaml(root, "config/models.yaml");
   const { platforms } = loadYaml(root, "config/platforms.yaml");
   const mcp = loadYaml(root, "config/mcp.yaml");
   const names = Object.keys(perms.resolved.agents);
   const { sources, errors } = loadSources(root, names);
   errors.push(...validateMcp(mcp));
+  if (post.error) errors.push(post.error);
   const forbidden = forbiddenIdentifiers(platforms);
   for (const [name, s] of Object.entries(sources)) errors.push(...lintBody(name, s.body, forbidden));
 
@@ -77,6 +93,16 @@ export function build({ check = false, root = repoRoot } = {}) {
     if (platform.mcp_config) outputs.set(platform.mcp_config.path, renderMcpConfig(mcp, platform.mcp_config.key));
   }
 
+  if (!post.error) {
+    const settingsFile = path.join(root, CLAUDE_SETTINGS);
+    try {
+      for (const [rel, content] of renderHookRegistrations(post.mode, existsSync(settingsFile) ? readFileSync(settingsFile, "utf8") : undefined)) outputs.set(rel, content);
+    } catch (e) {
+      errors.push(`${CLAUDE_SETTINGS}: ${e.message}`);
+    }
+    if (postHook) outputs.set(HOOKS_CONFIG, hooksText);
+  }
+
   const changed = [];
   if (errors.length) return { errors, changed };
   for (const [rel, content] of outputs) {
@@ -92,8 +118,9 @@ export function build({ check = false, root = repoRoot } = {}) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const check = process.argv.includes("--check");
-  const { errors, changed } = build({ check });
+  const { values } = parseArgs({ options: { check: { type: "boolean" }, "post-hook": { type: "string" } } });
+  const check = Boolean(values.check);
+  const { errors, changed } = build({ check, postHook: values["post-hook"] });
   for (const e of errors) console.error(`error: ${e}`);
   for (const f of changed) console.log(`${check ? "drift" : "built"}: ${f}`);
   console.log(`${changed.length} generated file(s) ${check ? "out of date" : "written"}, ${errors.length} error(s).`);
