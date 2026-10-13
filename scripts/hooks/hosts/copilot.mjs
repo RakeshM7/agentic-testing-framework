@@ -25,7 +25,7 @@ const KINDS = {
   view: "read", glob: "read", grep: "read", create: "write", edit: "write", bash: "shell", powershell: "shell",
   web_fetch: "web_fetch", task: "spawn", ask_user: "ask", rg: "read", read_bash: "read",
   // VS Code Copilot Chat (Local harness)
-  read_file: "read", list_dir: "read", file_search: "read", grep_search: "read", semantic_search: "read",
+  read_file: "read", view_image: "read", list_dir: "read", file_search: "read", grep_search: "read", semantic_search: "read",
   get_errors: "read", get_changed_files: "read", test_failure: "read", get_terminal_output: "read",
   terminal_last_command: "read", terminal_selection: "read",
   create_file: "write", create_directory: "write", replace_string_in_file: "write", multi_replace_string_in_file: "write",
