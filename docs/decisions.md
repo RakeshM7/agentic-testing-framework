@@ -95,6 +95,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-039 | VS Code's settings cover its local agent; its Copilot CLI engine gets the combined ceiling | Accepted | 2026-10-12 |
 | D-040 | On VS Code, the guard's verdict is a decision on stdout with exit 0, never an exit code | Accepted | 2026-10-12 |
 | D-041 | A restricted agent may `cd` into the repo root before an allowed command | Accepted | 2026-10-12 |
+| D-042 | Hook registrations are generated; the PostToolUse hook is async, sync or off by one build flag | Accepted | 2026-10-13 |
 
 ## Decisions
 
@@ -563,3 +564,18 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - On hosts with several workspace folders, an agent's terminal can start outside the repo, and the plain allowed command then fails. Changing into the repo root first is the correct recovery, and it grants no new capability: the command that follows must still be in the agent's allow-list.
   - Without this, agents get stuck, or hand the work to an agent that is not allowed to do it.
 - **Affects:** `scripts/lib/guard.mjs`
+
+### D-042 · Hook registrations are generated; the PostToolUse hook is async, sync or off by one build flag
+- **Status:** Accepted · **Date:** 2026-10-13 · **Source:** conversation with the user, 2026-10-13. On a managed Windows machine every hook launch costs about 1–1.5 s of process start-up (the hook's own work is about 0.1 s), so a Bash or Edit call waited about 2 s for its two hooks.
+- **Decision:**
+  - `scripts/build-agents.mjs` renders every host's hook registrations (D-020) from `config/hooks.yaml` via `scripts/lib/hook-registrations.mjs`: `.github/hooks/framework-guard.json`, `.vscode/hooks/framework-guard.json`, and the `hooks` key of `.claude/settings.json` (its other keys are kept). `npm run check` fails on drift as for every generated file (D-018).
+  - `post_tool_use` in `config/hooks.yaml` is one mode for all hosts. `npm run build-agents -- --post-hook <mode>` saves it and rebuilds; with `--check`, or an unknown mode, nothing is written.
+    - `async` (default): Claude Code runs the PostToolUse hook in the background (`async: true`). Copilot CLI and VS Code have no background hooks, so there it stays synchronous.
+    - `sync`: every host waits for it.
+    - `off`: it is not registered, so confirmations are never remembered and every governed edit asks again.
+  - The PreToolUse guard is always registered and always blocking, on every host. It is not configurable.
+- **Why:**
+  - The PostToolUse hook only remembers confirmed decisions; it never blocks. Waiting for it costs a full process start per call for nothing safety-relevant. If it has not finished before the next governed edit, the user is asked once more, which is stricter, not looser.
+  - The user wanted one command-line switch instead of hand-editing three host files. Rendering them from one config keeps them consistent.
+  - A shell wrapper to background the hook on Copilot or VS Code was rejected: it would break the plain `node … --host` registration (D-020), and on Windows those hosts start PowerShell, which takes as long as Node.
+- **Affects:** `config/hooks.yaml`, `scripts/lib/hook-registrations.mjs`
