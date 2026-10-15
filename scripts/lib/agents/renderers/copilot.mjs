@@ -12,6 +12,6 @@ export function render({ name, meta, body, eol, tools, caps, model, platform }) 
   lines.push(`model: ${JSON.stringify(model)}`, `user-invocable: ${entry}`);
   if (entry) lines.push("disable-model-invocation: true");
   const hook = platform.identity_hook;
-  if (hook) lines.push("hooks:", `  ${hook.event}:`, "    - type: command", `      command: ${JSON.stringify(hook.command.replaceAll("{name}", name))}`);
+  if (hook) lines.push("hooks:", `  ${hook.event}:`, "    - type: command", `      command: ${JSON.stringify(hook.command.replaceAll("{name}", name))}`, "      cwd: \".\"");
   return assemble(lines, body, eol);
 }

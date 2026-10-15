@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-pom-writer"
+      cwd: "."
 ---
 
 You model the module's screens as page objects the tests use.

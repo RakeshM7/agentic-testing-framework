@@ -10,6 +10,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent k6-orchestrator"
+      cwd: "."
 ---
 
 You coordinate load testing for one module. You never write workloads, code, findings, triage or results yourself.

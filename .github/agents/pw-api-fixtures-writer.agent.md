@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-api-fixtures-writer"
+      cwd: "."
 ---
 
 You write the fixtures every API test is built on, including its code-level safety.

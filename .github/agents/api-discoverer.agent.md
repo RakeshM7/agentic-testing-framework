@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent api-discoverer"
+      cwd: "."
 ---
 
 You find out which API endpoints the module uses and what they look like.

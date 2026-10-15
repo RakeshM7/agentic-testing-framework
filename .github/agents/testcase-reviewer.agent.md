@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent testcase-reviewer"
+      cwd: "."
 ---
 
 You check that the module's test cases are correct, complete and automatable. You only report.

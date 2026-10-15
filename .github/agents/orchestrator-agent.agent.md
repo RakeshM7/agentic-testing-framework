@@ -11,6 +11,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent orchestrator-agent"
+      cwd: "."
 ---
 
 You drive one product run from start to report. You decide nothing that a script decides, and you do no stage's work yourself: you start stages, delegate, mark them done or failed, and talk to the human.

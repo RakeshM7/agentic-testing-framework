@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent report-generator"
+      cwd: "."
 ---
 
 You present the run's results; every number comes from `report.json`, never from your own counting.

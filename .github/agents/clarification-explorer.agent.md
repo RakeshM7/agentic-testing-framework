@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent clarification-explorer"
+      cwd: "."
 ---
 
 You find out, by doing, how the product behaves for one clarification question.

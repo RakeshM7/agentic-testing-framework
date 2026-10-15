@@ -10,6 +10,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent clarification-orchestrator"
+      cwd: "."
 ---
 
 You coordinate the clarification of one module's open questions. You never write CSV rows, evidence or summaries yourself.

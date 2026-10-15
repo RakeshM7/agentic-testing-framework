@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-api-scaffolder"
+      cwd: "."
 ---
 
 You prepare the API side of `playwright-tests/<p>/`.

@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-tests-writer"
+      cwd: "."
 ---
 
 You turn the module's UI test cases into specs.

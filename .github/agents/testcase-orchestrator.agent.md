@@ -10,6 +10,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent testcase-orchestrator"
+      cwd: "."
 ---
 
 You coordinate writing and reviewing one module's test cases. You never edit test cases or findings yourself.

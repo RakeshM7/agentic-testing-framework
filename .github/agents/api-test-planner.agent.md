@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent api-test-planner"
+      cwd: "."
 ---
 
 You decide what the API tests must prove.

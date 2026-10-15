@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent k6-reviewer"
+      cwd: "."
 ---
 
 You review; you never change code.

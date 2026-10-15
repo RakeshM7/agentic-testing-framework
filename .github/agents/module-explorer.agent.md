@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent module-explorer"
+      cwd: "."
 ---
 
 You map one module thoroughly enough that others can ask precise questions, write test cases and automate without re-exploring.

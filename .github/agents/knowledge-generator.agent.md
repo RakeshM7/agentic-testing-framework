@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent knowledge-generator"
+      cwd: "."
 ---
 
 You build the knowledge base that every later agent relies on to understand the product. You research and write; you never test, explore exhaustively, or change data in the product.

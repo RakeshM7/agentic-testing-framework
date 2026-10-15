@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent question-writer"
+      cwd: "."
 ---
 
 You make every open clarification question answerable by someone who has never seen the product.

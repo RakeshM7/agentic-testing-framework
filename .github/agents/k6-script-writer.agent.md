@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent k6-script-writer"
+      cwd: "."
 ---
 
 You implement the workload as scripts.

@@ -10,6 +10,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent feedback-implementor-agent"
+      cwd: "."
 ---
 
 You turn feedback about the framework into verified fixes and keep the feedback file as the record of both problem and resolution.

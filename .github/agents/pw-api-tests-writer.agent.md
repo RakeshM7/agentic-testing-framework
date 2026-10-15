@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-api-tests-writer"
+      cwd: "."
 ---
 
 You turn the API plan into specs.

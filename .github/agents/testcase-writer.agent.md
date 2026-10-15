@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent testcase-writer"
+      cwd: "."
 ---
 
 You write the module's test cases — the single source the automation agents implement.

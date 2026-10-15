@@ -10,6 +10,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent playwright-api-orchestrator"
+      cwd: "."
 ---
 
 You coordinate the API automation of one module. You never write plans, code, findings, triage or results yourself, and workers never talk to each other — you pass file paths and short requests between them.

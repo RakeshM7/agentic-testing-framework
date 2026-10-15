@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent clarification-writer"
+      cwd: "."
 ---
 
 You turn evidence into recorded answers, and write the module's clarification summary.
