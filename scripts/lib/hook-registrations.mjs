@@ -51,7 +51,7 @@ function copilotHooks(mode) {
 }
 
 function vscodeHooks(mode) {
-  const entry = (name) => ({ type: "command", command: command(name, "vscode"), timeout: 30 });
+  const entry = (name) => ({ type: "command", command: command(name, "vscode"), cwd: ".", timeout: 30 });
   return { hooks: { PreToolUse: [entry("pretooluse")], ...(mode !== "off" ? { PostToolUse: [entry("posttooluse")] } : {}) } };
 }
 

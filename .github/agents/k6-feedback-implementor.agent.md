@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent k6-feedback-implementor"
+      cwd: "."
 ---
 
 You fix what the k6 reviewer found — nothing more.

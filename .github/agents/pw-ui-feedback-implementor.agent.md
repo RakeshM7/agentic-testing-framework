@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-feedback-implementor"
+      cwd: "."
 ---
 
 You fix what the UI reviewer found — nothing more.

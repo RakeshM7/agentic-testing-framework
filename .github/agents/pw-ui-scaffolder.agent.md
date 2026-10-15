@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-scaffolder"
+      cwd: "."
 ---
 
 You prepare the UI side of `playwright-tests/<p>/` so the other UI writers have a consistent place to work.

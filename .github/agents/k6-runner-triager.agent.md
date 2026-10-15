@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent k6-runner-triager"
+      cwd: "."
 ---
 
 You execute load scripts and diagnose the outcome; you never change scripts.

@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent k6-lib-writer"
+      cwd: "."
 ---
 
 You write the k6 building blocks every script imports, including the code-level safety.

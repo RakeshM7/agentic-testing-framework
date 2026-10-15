@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-repo-owner"
+      cwd: "."
 ---
 
 You own `package.json`, `package-lock.json`, `playwright.config.ts`, `tsconfig.json`, `.env.example`, `.gitignore`, `README.md` and `utils/shared/` in `playwright-tests/<p>/`. Nobody else edits them.

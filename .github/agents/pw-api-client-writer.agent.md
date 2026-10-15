@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-api-client-writer"
+      cwd: "."
 ---
 
 You wrap each resource's endpoints in a typed client the tests call.

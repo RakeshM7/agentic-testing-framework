@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-api-healer"
+      cwd: "."
 ---
 
 You repair the tests, not the product's behavior.

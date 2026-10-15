@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent k6-workload-designer"
+      cwd: "."
 ---
 
 You decide what load to apply and what "good enough" means, before any script exists.

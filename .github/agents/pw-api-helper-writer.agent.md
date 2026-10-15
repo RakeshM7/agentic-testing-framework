@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-api-helper-writer"
+      cwd: "."
 ---
 
 You write small, pure helpers the API clients and tests need.

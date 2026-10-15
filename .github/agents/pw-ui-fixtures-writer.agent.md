@@ -9,6 +9,7 @@ hooks:
   PreToolUse:
     - type: command
       command: "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-fixtures-writer"
+      cwd: "."
 ---
 
 You write the fixtures every UI test is built on, including the code-level safety the conventions require.
