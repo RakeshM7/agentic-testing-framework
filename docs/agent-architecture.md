@@ -18,8 +18,8 @@ Status: **implemented** — all 43 agents, written once in `agents/` and generat
 | Clarification | `clarification-orchestrator` | `question-writer`, `clarification-explorer`, `clarification-writer` |
 | Test cases | `testcase-orchestrator` | `testcase-writer`, `testcase-reviewer` |
 | Shared Playwright repo | — (spawned by `orchestrator-agent` for the skeleton, by either Playwright orchestrator for change requests) | `pw-repo-owner` (sole writer of package.json, playwright.config.ts, tsconfig, .env.example, .gitignore, README, utils/shared/) |
-| Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder`, `-helper-writer`, `-fixtures-writer`, `-pom-writer`, `-tests-writer`, `-reviewer`, `-feedback-implementor`, `-test-runner-triager`, `-healer` |
-| Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder`, `-helper-writer`, `-fixtures-writer`, `-client-writer` (the API analogue of the POM), `-tests-writer`, `-reviewer`, `-feedback-implementor`, `-test-runner-triager`, `-healer` |
+| Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder`, `pw-ui-helper-writer`, `pw-ui-fixtures-writer`, `pw-ui-pom-writer`, `pw-ui-tests-writer`, `pw-ui-reviewer`, `pw-ui-feedback-implementor`, `pw-ui-test-runner-triager`, `pw-ui-healer` |
+| Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder`, `pw-api-helper-writer`, `pw-api-fixtures-writer`, `pw-api-client-writer` (the API analogue of the POM), `pw-api-tests-writer`, `pw-api-reviewer`, `pw-api-feedback-implementor`, `pw-api-test-runner-triager`, `pw-api-healer` |
 | K6 | `k6-orchestrator` | `k6-workload-designer`, `k6-lib-writer`, `k6-script-writer`, `k6-reviewer`, `k6-feedback-implementor`, `k6-runner-triager`, `k6-healer` |
 | Framework maintenance | — | `feedback-implementor-agent` (existing; fixes agent prompts/framework from `feedback/`) |
 
