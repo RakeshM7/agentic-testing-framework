@@ -70,6 +70,8 @@ Verdict: pass | changes-required
 ```
 Severity `blocker | major | minor`. `Verdict: pass` exactly when there is no blocker or major finding. Reviewers never edit what they review.
 
+**Gate findings.** At the start of each review round `orchestration.mjs next` runs the gate (`node scripts/gate.mjs <product> <m> <domain>`), which writes `results/<run>/<m>/<domain>/gate-findings.md` in the same format (heading `# Gate -- <domain> / <m>`; the Rule column holds the gate rule id) with the mechanical checks: ids and tags, traceability, `@mutates`, ledger calls, fixed waits, hard-coded URLs, the safety calls, and compile/`--list`/`k6 inspect`. On `changes-required` (exit 1) that file goes to the writer or fixer instead of starting the reviewer; on `pass` the reviewer judges only what a script can't.
+
 ## 7. Triage (every runner-triager → its domain orchestrator → fixer)
 
 `results/<run>/<m>/<framework>/triage.md`:

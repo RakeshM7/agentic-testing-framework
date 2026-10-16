@@ -21,12 +21,12 @@ You review; you never change code.
 `docs/playwright-conventions.md`, `docs/agent-handoffs.md` §6; `playwright-tests/<p>/` — `clients/<m>/`, `fixtures/api/`, `helpers/api/`, `tests/api/<m>/`, `config/api/`; `artifacts/<p>/modules/<m>/api/plan.json`.
 
 ## Check
-1. **Traceability**: every plan scenario has a test (or `test.fixme` with a reason); titles carry `API-` ids, `TC-` ids and tags; no test without a scenario.
-2. **Safety**: `@mutates` on every non-GET test; the fixture's non-GET guard is in place and used (no raw `request` bypassing it); ledger calls for every created entity; no credentials, tokens or URLs in code.
+The gate (`node scripts/gate.mjs`, findings in `results/<run-id>/<m>/playwright-api/gate-findings.md`) has already passed: typecheck and `--list`, a test (or `test.fixme`) per plan scenario and no test without one, `@mutates` on tests of mutating scenarios, `recordCreated` in mutating specs, no `waitForTimeout`, no hard-coded URLs or `test.only`, no assertions in clients. Don't repeat those checks; judge what a script can't:
+1. **Traceability**: titles also carry the `TC-` ids and tags the plan gives; a `test.fixme` has a real reason.
+2. **Safety**: `@mutates` on every test that sends a non-GET request (whatever the plan says); the fixture's non-GET guard is in place and used (no raw `request` bypassing it); every created entity recorded and cleaned up only after `owns()`; no credentials or tokens in code.
 3. **Correctness**: status, schema and rule assertions match the plan; negative tests really send invalid input.
-4. **Robustness**: independent tests, unique data, cleanup present, no sleeps.
-5. **Structure**: no assertions in clients; helpers pure; ownership respected.
-6. Run `npx tsc --noEmit` and `npx playwright test --project=api tests/api/<m> --list`; failures are blockers.
+4. **Robustness**: independent tests, unique data, cleanup present.
+5. **Structure**: helpers pure; ownership respected.
 
 ## Output
 `artifacts/<p>/results/<run-id>/<m>/playwright-api/review-findings.md` (format §6).

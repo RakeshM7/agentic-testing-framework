@@ -23,6 +23,8 @@ README.md     k6-lib-writer      how to run, env vars
 - Auth via `lib/auth.js` using env values only (`K6_USER`, `K6_PASSWORD`, or `K6_TOKEN`); never literals.
 - `k6 inspect scripts/<file>.js` must succeed before handing back.
 
+**Machine-checked** by `scripts/gate.mjs` before every review (findings in `gate-findings.md`): `k6 inspect` on every script, one script per workload scenario (by its `K6-<m>-<n>` id), `assertAllowedHost()` and `requireFullRun()` called, `handleSummary` exported, `lib/config.js` present, no hard-coded URLs. Options and thresholds matching `workload.json`, and everything else here, is the reviewer's to judge.
+
 ## Running (k6-runner-triager only)
 
 ```
