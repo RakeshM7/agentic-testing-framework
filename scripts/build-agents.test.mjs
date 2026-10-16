@@ -17,6 +17,11 @@ const perms = resolvePermissions(load("config/permissions.yaml")).resolved;
 const { platforms } = load("config/platforms.yaml");
 const { browser_server: server } = load("config/mcp.yaml");
 const tools = (agent, platform) => toolNames(capabilitiesFor(perms.agents[agent]), platforms[platform], server);
+// A script-only agent (restricted shell, no file writes), independent of the roster.
+const scriptOnly = resolvePermissions({
+  agents: { probe: { layer: 2, shell: "restricted", shell_allow: ["node scripts/clarifications.mjs list *"], filesystem: { read: ["x/**"], write: [] } } },
+}).resolved.agents.probe;
+const probeTools = (platform) => toolNames(capabilitiesFor(scriptOnly), platforms[platform], server);
 const generated = (rel) => splitFrontmatter(readFileSync(path.join(repoRoot, rel), "utf8"), rel).meta;
 
 // A throwaway repo root with the real config/ and agents/, so tests can break things safely.
@@ -38,11 +43,11 @@ test("Claude tools follow permissions: workers cannot spawn, read-only browser g
   assert.ok(!tools("knowledge-generator", "claude").includes("mcp__playwright__browser_type"));
   assert.ok(tools("clarification-explorer", "claude").includes("mcp__playwright__browser_fill_form"));
   assert.ok(tools("orchestrator-agent", "claude").includes("AskUserQuestion"));
-  assert.ok(!tools("question-writer", "claude").includes("Write"));
+  assert.ok(!probeTools("claude").includes("Write"));
 });
 
 test("Copilot tools are the same capabilities in Copilot's names", () => {
-  assert.deepEqual(tools("question-writer", "copilot"), ["read", "search", "execute"]);
+  assert.deepEqual(probeTools("copilot"), ["read", "search", "execute"]);
   assert.deepEqual(tools("pw-ui-tests-writer", "copilot"), ["read", "search", "edit", "execute"]);
   assert.ok(tools("knowledge-generator", "copilot").includes("playwright/browser_snapshot"));
   assert.ok(!tools("knowledge-generator", "copilot").includes("playwright/browser_type"));
@@ -68,21 +73,21 @@ test("Copilot frontmatter: subagent allow-list, entry agents only, identity hook
 
 test("a source may not carry platform syntax: generated keys and platform tool names are rejected", () => {
   const root = scratch();
-  const file = path.join(root, "agents", "question-writer.md");
+  const file = path.join(root, "agents", "testcase-writer.md");
   const text = readFileSync(file, "utf8").replaceAll("\r\n", "\n"); // core.autocrlf checkouts on Windows
   writeFileSync(file, text.replace("---\n\n", "---\n\nUse AskUserQuestion when unsure.\n"));
-  assert.ok(build({ check: true, root }).errors.some((e) => /question-writer\.md: body names platform-specific 'AskUserQuestion'/.test(e)));
-  writeFileSync(file, text.replace("name: question-writer\n", "name: question-writer\ntools: Read, Bash\n"));
+  assert.ok(build({ check: true, root }).errors.some((e) => /testcase-writer\.md: body names platform-specific 'AskUserQuestion'/.test(e)));
+  writeFileSync(file, text.replace("name: testcase-writer\n", "name: testcase-writer\ntools: Read, Bash\n"));
   assert.ok(build({ check: true, root }).errors.some((e) => /'tools' does not belong in a source/.test(e)));
 });
 
 test("missing and stray sources and stray generated files are errors, and nothing is written on error", () => {
   const root = scratch();
   writeFileSync(path.join(root, "agents", "rogue.md"), "---\nname: rogue\ndescription: x\n---\n");
-  rmSync(path.join(root, "agents", "question-writer.md"));
+  rmSync(path.join(root, "agents", "testcase-writer.md"));
   const { errors, changed } = build({ root });
   assert.ok(errors.some((e) => /agents\/rogue\.md: not in config\/permissions\.yaml/.test(e)));
-  assert.ok(errors.some((e) => /agents\/question-writer\.md: missing/.test(e)));
+  assert.ok(errors.some((e) => /agents\/testcase-writer\.md: missing/.test(e)));
   assert.deepEqual(changed, []);
 
   const clean = scratch();
@@ -101,7 +106,7 @@ test("a hand edit of a generated file is drift", () => {
 
 test("a body over the Copilot prompt limit fails the build", () => {
   const root = scratch();
-  const file = path.join(root, "agents", "question-writer.md");
+  const file = path.join(root, "agents", "testcase-writer.md");
   writeFileSync(file, readFileSync(file, "utf8") + "x".repeat(platforms.copilot.body_limit));
   assert.ok(build({ check: true, root }).errors.some((e) => /over the copilot limit/.test(e)));
 });

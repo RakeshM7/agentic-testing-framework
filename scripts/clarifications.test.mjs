@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { HEADERS, append, readRows, record, setSteps, status } from "./lib/clarifications.mjs";
+import { HEADERS, append, readRows, record, renderSummary, setSteps, status, summaryPath } from "./lib/clarifications.mjs";
 import { parseCsv, serializeCsv } from "./lib/csv.mjs";
 
 const fresh = () => path.join(mkdtempSync(path.join(tmpdir(), "clar-")), "modules", "contacts", "clarifications.csv");
@@ -55,12 +55,43 @@ test("answered rows are trusted as is; only a requirement change may update them
   assert.equal(row.runId, "run-a");
 });
 
-test("question-writer can refine unanswered rows only", () => {
+test("the summary is rendered from the CSV: totals, every row, and a next step for each unanswered row", () => {
+  const empty = fresh();
+  const none = renderSummary(empty, "contacts");
+  assert.deepEqual([none.total, none.unconfirmed], [0, []]);
+  assert.match(readFileSync(summaryPath(empty), "utf8"), /## Needs a human\nNone\./, "written even when the module has no rows");
+
+  const file = fresh();
+  append(file, "contacts", "run-a", items("Is email required?", "Can a contact be merged?", "Is a phone | fax kept?", "Who sees deleted contacts?"));
+  record(file, "contacts-1", { answer: "Yes, creating a contact without an email shows 'Email is required'.", notes: "Confirmed by observation", runId: "run-a" });
+  record(file, "contacts-2", { notes: "Merge needs a full-run.\nNext step: re-run in full-run, or answer from the admin guide.", runId: "run-a" });
+  record(file, "contacts-3", { notes: "Blocked: CAPTCHA on save.", runId: "run-a" });
+  // a human answers contacts-4 in Excel; the summary shows their answer
+  const raw = parseCsv(readFileSync(file, "utf8"));
+  raw[4][4] = "Only admins";
+  writeFileSync(file, serializeCsv(raw));
+
+  const s = renderSummary(file, "contacts");
+  assert.deepEqual([s.total, s.answered], [4, 2]);
+  assert.deepEqual(s.unconfirmed, [
+    { id: "contacts-2", next: "re-run in full-run, or answer from the admin guide." },
+    { id: "contacts-3", next: "Blocked: CAPTCHA on save." },
+  ]);
+  const md = readFileSync(s.file, "utf8");
+  assert.match(md, /Answered: 2 \/ 4 · Unconfirmed: 2/);
+  assert.match(md, /\| contacts-4 \| Who sees deleted contacts\? \| Only admins \|/);
+  assert.match(md, /\| contacts-3 \| Is a phone \\\| fax kept\? \| Unconfirmed \|/, "pipes in cells are escaped");
+  assert.match(md, /- contacts-2: re-run in full-run/);
+});
+
+test("unanswered rows can be refined, answered rows cannot", () => {
   const file = fresh();
   append(file, "contacts", "run-a", items("email req?"));
   setSteps(file, "contacts-1", { question: "Is the Email field required when creating a contact?", steps: "1. Sign in.\n2. Open Contacts." });
   assert.equal(readRows(file)[0].question, "Is the Email field required when creating a contact?");
   assert.throws(() => setSteps(file, "contacts-9", { steps: "x" }), /no such row/);
+  record(file, "contacts-1", { answer: "Yes", runId: "run-a" });
+  assert.throws(() => setSteps(file, "contacts-1", { steps: "1. Sign in." }), /frozen/);
 });
 
 test("a corrupted header or extra filled columns are rejected, not silently misread", () => {

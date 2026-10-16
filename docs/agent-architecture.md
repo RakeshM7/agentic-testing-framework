@@ -1,6 +1,6 @@
 # Agent architecture v2
 
-Status: **implemented** — all 36 agents, written once in `agents/` and generated for Claude Code (`.claude/agents/`) and GitHub Copilot (`.github/agents/`) by `scripts/build-agents.mjs` from `config/` ([`platforms.md`](platforms.md)), the scripts layer and the contracts ([`artifact-contract.md`](artifact-contract.md), [`agent-handoffs.md`](agent-handoffs.md), [`playwright-conventions.md`](playwright-conventions.md), [`k6-conventions.md`](k6-conventions.md)). Not yet exercised end to end against a real product.
+Status: **implemented** — all 34 agents, written once in `agents/` and generated for Claude Code (`.claude/agents/`) and GitHub Copilot (`.github/agents/`) by `scripts/build-agents.mjs` from `config/` ([`platforms.md`](platforms.md)), the scripts layer and the contracts ([`artifact-contract.md`](artifact-contract.md), [`agent-handoffs.md`](agent-handoffs.md), [`playwright-conventions.md`](playwright-conventions.md), [`k6-conventions.md`](k6-conventions.md)). Not yet exercised end to end against a real product.
 
 ## Principles (decided)
 1. One job per agent, with declared inputs and outputs; small prompts; paths in, never pasted content.
@@ -10,12 +10,12 @@ Status: **implemented** — all 36 agents, written once in `agents/` and generat
 5. Single writer per file/cell wherever possible; agents never overwrite human-entered answers.
 6. Concurrency is **sequential by default**, configurable in the run-config.
 
-## Roster (36 agents)
+## Roster (34 agents)
 
 | Domain | Orchestrator | Workers |
 |---|---|---|
 | Product level | `orchestrator-agent` (layer 0) | `knowledge-generator`, `module-explorer`, `report-generator` |
-| Clarification | `clarification-orchestrator` | `question-writer`, `clarification-explorer`, `clarification-writer` |
+| Clarification | `clarification-orchestrator` | `clarification-explorer` |
 | Test cases | `testcase-orchestrator` | `testcase-writer`, `testcase-reviewer` |
 | Shared Playwright repo | — (spawned by `orchestrator-agent` for the skeleton, by either Playwright orchestrator for change requests) | `pw-repo-owner` (sole writer of package.json, playwright.config.ts, tsconfig, .env.example, .gitignore, README, utils/shared/) |
 | Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder` (the UI foundation, once per product), `pw-ui-pom-writer`, `pw-ui-tests-writer`, `pw-ui-reviewer`, `pw-ui-fixer`, `pw-ui-test-runner-triager` |
@@ -61,9 +61,9 @@ main orchestrator:
         -> artifacts/<product>/modules/<m>/explore/{sitemap.json, pages/, flows/, module-summary.md, interactions + network inventory}
         -> artifacts/<product>/modules/<m>/clarifications.csv   (product-level; new rows for unconfirmed behavior)
   3 clarification-orchestrator (per module):
-        question-writer  -> polishes Question + detailed human-readable Steps
-        clarification-explorer (one per row, sequential) -> executes Steps live, writes clarification-evidence/
-        clarification-writer -> Answer / "Clarification agent notes" and Run ID in the CSV + clarifications-summary.md
+        clarification-explorer (one per row, sequential) -> executes Steps live, writes clarification-evidence/,
+                               records its row's Answer / "Clarification agent notes" via clarifications.mjs record
+        clarifications.mjs summary -> clarifications-summary.md, rendered from the CSV
         [gate] unresolved rows: human edits the Answer column, re-invoke resumes
   4 testcase-orchestrator: testcase-writer <-> testcase-reviewer
   5 pw-repo-owner (once per product, any time before step 6): shared repo skeleton for ui + api
@@ -82,11 +82,11 @@ main orchestrator:
 - Columns, in order: `ID`, `Module`, `Question`, `Steps to execute`, `Answer`, `Clarification agent notes`, `Run ID`.
 - `ID` = `<module>-<n>` (e.g. `contacts-7`): module slug plus a per-module sequence number assigned by a script, never reused.
 - `Steps to execute`: detailed, human-readable steps that someone who has never seen the product can follow.
-- `Answer`: filled by the clarification-writer when behavior is confirmed, or by a human; never overwritten once non-empty.
+- `Answer`: filled by the row's clarification-explorer when behavior is confirmed, or by a human; never overwritten once non-empty.
 - `Clarification agent notes`: why a row is still unconfirmed, what was tried, evidence path.
 - `Run ID`: the run that **created** the row (stamped by the CSV script; never changed afterwards).
 - Re-runs: existing rows are **trusted as is**. A row is updated (Answer/notes) only when an incoming requirement changes the recorded behavior; the module-explorer appends only genuinely new questions (script de-duplication).
-- Writers (one per cell): module-explorer appends new rows; question-writer edits Question/Steps of unanswered rows; clarification-writer fills Answer/notes/Run ID; the per-row clarification-explorer writes only under `clarification-evidence/`.
+- Writers (one per cell): module-explorer appends new rows and refines Question/Steps of unanswered rows; the per-row clarification-explorer writes its evidence under `clarification-evidence/` and fills its own row's Answer/notes; the script stamps Run ID and renders `clarifications-summary.md`.
 - A script (not an LLM) will own CSV I/O: ID assignment, de-duplication of new rows against existing ones, quoting, and a file lock so two runs can't corrupt the product-level file.
 
 **Playwright repo**: UI and API share `playwright-tests/<product>/`, separated by `tests/ui` and `tests/api` (two Playwright projects in one config). Two orchestrators and two full agent sets are kept. `pw-repo-owner` is the only writer of shared repo files: it creates the skeleton (stage `playwright-repo`) and applies change requests the Playwright orchestrators hand it. The UI and API scaffolders add only their own side's scaffolding, and every other agent writes only inside its own side's folders (ownership table in `config/permissions.yaml`).

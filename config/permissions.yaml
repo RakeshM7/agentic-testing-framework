@@ -119,62 +119,41 @@ agents:
     web_research: none
     shell: restricted
     shell_allow: ["node scripts/clarifications.mjs append *", "node scripts/clarifications.mjs list *",
-                  "node scripts/clarifications.mjs record *", "node scripts/ledger.mjs add *",
-                  "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
+                  "node scripts/clarifications.mjs set-steps *", "node scripts/clarifications.mjs record *",
+                  "node scripts/ledger.mjs add *", "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
     filesystem:
       read: ["${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
       write: ["${modules}/explore/**"]   # incl. explore/new-questions.json handed to clarifications.mjs append
-    # Appends only NEW rows (new ID, Module, Question, Steps, empty Answer/notes, Run ID = this run); never edits
-    # existing rows -- EXCEPT where the incoming requirement changes a behavior already recorded (then the row's
-    # Answer/notes are updated, Run ID kept as the creating run). CSV writes go through a script (ids, dedupe, lock).
+    # Appends only NEW rows (new ID, Module, Question, Steps, empty Answer/notes, Run ID = this run) and refines the
+    # Question/Steps of still-unanswered rows (set-steps); never edits answered rows -- EXCEPT where the incoming
+    # requirement changes a behavior already recorded (then the row's Answer/notes are updated, Run ID kept as the
+    # creating run). The CSV is written ONLY through scripts/clarifications.mjs (ids, de-dup, locking, human-answer
+    # protection), so no agent has Write access to clarifications.csv itself.
 
   # ======================= Clarification domain ===========================================================
   clarification-orchestrator:
     layer: 1
     profile: orchestrator
-    spawns: [question-writer, clarification-explorer, clarification-writer]
-    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs status *"]
+    spawns: [clarification-explorer]
+    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/clarifications.mjs list *",
+                  "node scripts/clarifications.mjs status *", "node scripts/clarifications.mjs summary *"]
     filesystem:
       read: ["${modules}/**"]
-      write: ["${state}/orchestration/clarifications-${module}.json"]
+      write: ["${state}/orchestration/clarifications-${module}.json"]   # clarifications-summary.md is rendered by the script
 
-  question-writer:
-    layer: 2
-    live_target: { browser: none, http: none, load: none }
-    web_research: none
-    shell: restricted
-    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs set-steps *"]
-    filesystem:
-      read: ["${knowledge}/**", "${modules}/**"]
-      write: []                     # rewrites Question + Steps of unanswered rows via clarifications.mjs set-steps
-    # The CSV is written ONLY through scripts/clarifications.mjs (ids, de-dup, locking, human-answer protection),
-    # so no agent has Write access to clarifications.csv itself.
-
-
-  clarification-explorer:       # one invocation per CSV row, executes the Steps and observes behavior
+  clarification-explorer:       # one invocation per CSV row: executes the Steps, observes, records the row's outcome
     layer: 2
     live_target: { browser: mutate, http: none, load: none }   # mutate (ledger-scoped); capped to read in readonly runs
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/ledger.mjs add *",
-                  "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
+    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs record *",
+                  "node scripts/ledger.mjs add *", "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
     filesystem:
       read: ["${modules}/**", "${knowledge}/**"]
       write: ["${modules}/clarification-evidence/**"]   # observation notes + screenshots, one folder per row ID
-    # Does NOT write the CSV: the clarification-writer records its findings (single writer per cell).
-
-  clarification-writer:
-    layer: 2
-    live_target: { browser: none, http: none, load: none }
-    web_research: none
-    shell: restricted
-    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs record *",
-                  "node scripts/clarifications.mjs status *"]
-    filesystem:
-      read: ["${modules}/**"]
-      write: ["${modules}/clarifications-summary.md"]   # Answer/notes go through clarifications.mjs record
-    # Fills Answer / "Clarification agent notes"; never overwrites a non-empty Answer cell (a human may have written
-    # it) unless the incoming requirement changes the behavior; Run ID (creating run) is never changed.
+    # Fills Answer / "Clarification agent notes" of its own row through clarifications.mjs record (single writer per
+    # cell: one explorer per row); never overwrites a non-empty Answer cell (a human may have written it); Run ID
+    # (creating run) is never changed.
 
   # ======================= Test case domain ===============================================================
   testcase-orchestrator:

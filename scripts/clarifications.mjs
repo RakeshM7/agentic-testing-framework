@@ -6,14 +6,16 @@
 //
 //   clarifications.mjs append    <product> <module> <items.json>   items = [{question, steps}] -> {added: [ids], duplicates}
 //   clarifications.mjs list      <product> <module> [--open]       rows (--open = unanswered only)
-//   clarifications.mjs set-steps <product> <module> <id> [--question Q] [--steps S]   question-writer, unanswered rows only
+//   clarifications.mjs set-steps <product> <module> <id> [--question Q] [--steps S]   unanswered rows only
 //   clarifications.mjs record    <product> <module> <id> [--answer A] [--notes N] [--requirement-change]
 //   clarifications.mjs status    <product> [<module>]              {total, answered, unconfirmed[]} per module
+//   clarifications.mjs summary   <product> <module>                writes clarifications-summary.md from the CSV
+//                                                                  -> {file, total, answered, unconfirmed: [{id, next}]}
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { loadJson, paths } from "./lib/contract.mjs";
-import { append, csvPath, isAnswered, readRows, record, setSteps, status } from "./lib/clarifications.mjs";
+import { append, csvPath, isAnswered, readRows, record, renderSummary, setSteps, status } from "./lib/clarifications.mjs";
 
 const [cmd, product, ...rest] = process.argv.slice(2);
 const { values: v, positionals: pos } = parseArgs({
@@ -26,7 +28,7 @@ const out = (x, code = 0) => {
   process.exit(code);
 };
 if (!cmd || !product) {
-  console.error("usage: clarifications.mjs append|list|set-steps|record|status <product> ... (see header comment)");
+  console.error("usage: clarifications.mjs append|list|set-steps|record|status|summary <product> ... (see header comment)");
   process.exit(2);
 }
 const p = paths(product);
@@ -46,7 +48,11 @@ try {
     const modulesDir = path.join(p.productDir, "modules");
     const mods = module ? [module] : existsSync(modulesDir) ? readdirSync(modulesDir) : [];
     out(Object.fromEntries(mods.filter((m) => existsSync(csvPath(p.productDir, m))).map((m) => [m, status(csvPath(p.productDir, m))])));
-  } else out({ errors: [`unknown command ${cmd}`] }, 2);
+  } else if (cmd === "summary") {
+    if (!module) throw new Error("summary needs <module>");
+    out(renderSummary(file, module));
+  }
+  else out({ errors: [`unknown command ${cmd}`] }, 2);
 } catch (e) {
   out({ errors: [e.message] }, 1);
 }

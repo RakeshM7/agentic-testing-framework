@@ -20,7 +20,7 @@ Every file one agent writes for another. Paths are under `artifacts/<product>/` 
 
 Unconfirmed behavior goes to `clarifications.csv` via `node scripts/clarifications.mjs append <product> <m> modules/<m>/explore/new-questions.json` — never by editing the CSV.
 
-## 2. Clarification evidence (`clarification-explorer` → `clarification-writer`)
+## 2. Clarification evidence (`clarification-explorer` → the CSV, the summary script and humans)
 
 `modules/<m>/clarification-evidence/<ID>/observation.md`:
 
