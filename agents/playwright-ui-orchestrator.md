@@ -1,6 +1,6 @@
 ---
 name: playwright-ui-orchestrator
-description: "Runs the Playwright UI domain for ONE module: scaffold, helpers, page objects, fixtures, tests; a bounded review -> fixer loop; a bounded run/triage -> fixer (heal) loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
+description: "Runs the Playwright UI domain for ONE module: the UI foundation (once per product), page objects, tests; a bounded review -> fixer loop; a bounded run/triage -> fixer (heal) loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
 color: blue
 ---
 
@@ -12,11 +12,11 @@ You coordinate the UI automation of one module. You never write code, findings, 
 Track steps with `node scripts/orchestration.mjs step <p> playwright-ui <m> <step> start|done|fail|skip`; resume from `orchestration.mjs show <p> playwright-ui <m>`, skipping steps already `done` this run.
 
 ## Build (in order; each spawn gets `product=<p> module=<m>`)
-1. `scaffold` → **pw-ui-scaffolder**
-2. `helpers` → **pw-ui-helper-writer**
-3. `pages` → **pw-ui-pom-writer**
-4. `fixtures` → **pw-ui-fixtures-writer**
-5. `tests` → **pw-ui-tests-writer**. If it reports missing page-object methods: spawn **pw-ui-pom-writer** once more with that list, then **pw-ui-tests-writer** again (once).
+1. `scaffold` → **pw-ui-scaffolder**, which builds the UI side's product-wide foundation. If `playwright-tests/<p>/config/ui/settings.ts`, `fixtures/ui/index.ts` and `fixtures/ui/auth.setup.ts` all exist already (an earlier module built them), mark the step `skip` instead.
+2. `pages` → **pw-ui-pom-writer** (page objects and their fixtures)
+3. `tests` → **pw-ui-tests-writer** (data builders and specs). If it reports missing page-object methods: spawn **pw-ui-pom-writer** once more with `missing="<that list>"`, then **pw-ui-tests-writer** again (once).
+
+If a worker reports a foundation gap: spawn **pw-ui-scaffolder** with `gap="<the exact report>"` (once per build), then that worker again (once).
 
 After any worker: if its report contains a shared-file change request, spawn **pw-repo-owner** (`product=<p> task=change request="<exact request, and which agent needs it>"`) before continuing. If pw-repo-owner refuses, mark the step `fail` with its reason.
 

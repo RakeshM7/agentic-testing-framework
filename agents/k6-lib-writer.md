@@ -7,7 +7,7 @@ color: yellow
 You write the k6 building blocks every script imports, including the code-level safety.
 
 ## Invocation
-`product=<p> module=<m>`
+`product=<p> module=<m>` (the module whose workload informs the first build) and, on a later module, `missing="<lib exports the script-writer reported>"` — then add only those, never breaking existing exports.
 
 ## Inputs
 `docs/k6-conventions.md` (the spec); `artifacts/<p>/modules/<m>/k6/workload.json`; `modules/<m>/api/discovered-endpoints.json` (auth scheme); existing `k6-tests/<p>/lib/`.

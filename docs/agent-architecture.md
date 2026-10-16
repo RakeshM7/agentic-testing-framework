@@ -1,6 +1,6 @@
 # Agent architecture v2
 
-Status: **implemented** — all 40 agents, written once in `agents/` and generated for Claude Code (`.claude/agents/`) and GitHub Copilot (`.github/agents/`) by `scripts/build-agents.mjs` from `config/` ([`platforms.md`](platforms.md)), the scripts layer and the contracts ([`artifact-contract.md`](artifact-contract.md), [`agent-handoffs.md`](agent-handoffs.md), [`playwright-conventions.md`](playwright-conventions.md), [`k6-conventions.md`](k6-conventions.md)). Not yet exercised end to end against a real product.
+Status: **implemented** — all 36 agents, written once in `agents/` and generated for Claude Code (`.claude/agents/`) and GitHub Copilot (`.github/agents/`) by `scripts/build-agents.mjs` from `config/` ([`platforms.md`](platforms.md)), the scripts layer and the contracts ([`artifact-contract.md`](artifact-contract.md), [`agent-handoffs.md`](agent-handoffs.md), [`playwright-conventions.md`](playwright-conventions.md), [`k6-conventions.md`](k6-conventions.md)). Not yet exercised end to end against a real product.
 
 ## Principles (decided)
 1. One job per agent, with declared inputs and outputs; small prompts; paths in, never pasted content.
@@ -10,7 +10,7 @@ Status: **implemented** — all 40 agents, written once in `agents/` and generat
 5. Single writer per file/cell wherever possible; agents never overwrite human-entered answers.
 6. Concurrency is **sequential by default**, configurable in the run-config.
 
-## Roster (40 agents)
+## Roster (36 agents)
 
 | Domain | Orchestrator | Workers |
 |---|---|---|
@@ -18,9 +18,9 @@ Status: **implemented** — all 40 agents, written once in `agents/` and generat
 | Clarification | `clarification-orchestrator` | `question-writer`, `clarification-explorer`, `clarification-writer` |
 | Test cases | `testcase-orchestrator` | `testcase-writer`, `testcase-reviewer` |
 | Shared Playwright repo | — (spawned by `orchestrator-agent` for the skeleton, by either Playwright orchestrator for change requests) | `pw-repo-owner` (sole writer of package.json, playwright.config.ts, tsconfig, .env.example, .gitignore, README, utils/shared/) |
-| Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder`, `pw-ui-helper-writer`, `pw-ui-fixtures-writer`, `pw-ui-pom-writer`, `pw-ui-tests-writer`, `pw-ui-reviewer`, `pw-ui-fixer`, `pw-ui-test-runner-triager` |
-| Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder`, `pw-api-helper-writer`, `pw-api-fixtures-writer`, `pw-api-client-writer` (the API analogue of the POM), `pw-api-tests-writer`, `pw-api-reviewer`, `pw-api-fixer`, `pw-api-test-runner-triager` |
-| K6 | `k6-orchestrator` | `k6-workload-designer`, `k6-lib-writer`, `k6-script-writer`, `k6-reviewer`, `k6-fixer`, `k6-runner-triager` |
+| Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder` (the UI foundation, once per product), `pw-ui-pom-writer`, `pw-ui-tests-writer`, `pw-ui-reviewer`, `pw-ui-fixer`, `pw-ui-test-runner-triager` |
+| Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder` (the API foundation, once per product), `pw-api-client-writer` (the API analogue of the POM), `pw-api-tests-writer`, `pw-api-reviewer`, `pw-api-fixer`, `pw-api-test-runner-triager` |
+| K6 | `k6-orchestrator` | `k6-workload-designer`, `k6-lib-writer` (once per product), `k6-script-writer`, `k6-reviewer`, `k6-fixer`, `k6-runner-triager` |
 | Framework maintenance | — | `feedback-implementor-agent` (existing; fixes agent prompts/framework from `feedback/`) |
 
 ## Layout v2 (decided): everything is product-level, no `artifacts/<run-id>/` directory
@@ -68,11 +68,11 @@ main orchestrator:
   4 testcase-orchestrator: testcase-writer <-> testcase-reviewer
   5 pw-repo-owner (once per product, any time before step 6): shared repo skeleton for ui + api
   6 playwright-ui-orchestrator and playwright-api-orchestrator (independent; both need testcases + the repo)
-        build:  scaffolder -> helper / fixtures / pom|client writers -> tests-writer
+        build:  scaffolder (product-wide foundation; skipped once it exists) -> pom|client writer -> tests-writer
         review loop: reviewer -> findings -> fixer (max N rounds, via the orchestrator)
         run loop:    runner-triager -> triage.md -> fixer -> re-run (max N rounds, via the orchestrator)
         API additionally starts with api-discoverer -> api-test-planner
-  7 k6-orchestrator (needs the API plan): workload-designer -> lib-writer -> script-writer -> review loop -> run/fix loop
+  7 k6-orchestrator (needs the API plan): workload-designer -> lib-writer (skipped once the lib exists) -> script-writer -> review loop -> run/fix loop
   8 report-generator -> HTML slide deck
 ```
 

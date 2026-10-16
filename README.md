@@ -2,14 +2,14 @@
 
 A hierarchy of small agents, for Claude Code and GitHub Copilot from one source, that takes a web product from "unknown" to researched, explored, clarified, test-cased, automated (Playwright UI + API) and load-tested (k6), with an HTML slide-deck report — driven by one run-config file and backed by a deterministic scripts layer that owns run state, the clarifications CSV, the created-entity ledger and per-agent permissions.
 
-> **Status:** redesign on `framework-major-redesign`, with Copilot support on `feature/copilot-support`. All 40 agents, the scripts layer and the contracts are implemented and the scripts are tested; the pipeline has not yet been run end to end against a real product. See [`architecture.md`](architecture.md).
+> **Status:** redesign on `framework-major-redesign`, with Copilot support on `feature/copilot-support`. All 36 agents, the scripts layer and the contracts are implemented and the scripts are tested; the pipeline has not yet been run end to end against a real product. See [`architecture.md`](architecture.md).
 
 Start a run with the **orchestrator-agent** as the session's agent (Claude Code: `claude --agent orchestrator-agent`; VS Code Copilot Chat: pick it in the agent picker; Copilot CLI: `copilot --agent orchestrator-agent`), then give it `config/<product>.yaml`. Hosts and setup: [`docs/platforms.md`](docs/platforms.md).
 
 ## Read
 
 - [`docs/decisions.md`](docs/decisions.md) — why things are the way they are; read before changing anything
-- [`docs/agent-architecture.md`](docs/agent-architecture.md) — the 40 agents, layers and flow
+- [`docs/agent-architecture.md`](docs/agent-architecture.md) — the 36 agents, layers and flow
 - [`docs/platforms.md`](docs/platforms.md) — Claude Code, VS Code Copilot Chat, Copilot CLI, cloud coding agent
 - [`docs/artifact-contract.md`](docs/artifact-contract.md) — where everything lives, stages, CSV, ledger, safety
 - [`config/permissions.yaml`](config/permissions.yaml) — what each agent may do
@@ -45,7 +45,7 @@ Unconfirmed clarifications: open `artifacts/<product>/modules/<module>/clarifica
 
 | Path | What |
 |---|---|
-| `agents/` | the 40 agent definitions — the only hand-written copy |
+| `agents/` | the 36 agent definitions — the only hand-written copy |
 | `.claude/agents/`, `.github/agents/`, `.mcp.json`, `.vscode/mcp.json` | generated per platform by `npm run build-agents`; never edit |
 | `scripts/hooks/` | the one hook entry for every host, plus thin host adapters |
 | `scripts/`, `schemas/` | run state machine, clarifications CSV, ledger, permissions, guard, config validation; JSON Schemas; tests |

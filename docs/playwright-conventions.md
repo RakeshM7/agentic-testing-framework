@@ -11,6 +11,8 @@ config/ui/   fixtures/ui/   helpers/ui/   pages/<m>/   tests/ui/<m>/        UI a
 config/api/  fixtures/api/  helpers/api/  clients/<m>/ tests/api/<m>/       API agents
 .auth/ (git-ignored storage state)   test-results/{ui,api}/ (git-ignored)
 ```
+Within a side: the scaffolder builds the product-wide foundation once (`config/<side>/`, the base `fixtures/<side>/index.ts` with the mutation guard, `fixtures/<side>/auth.setup.ts`, generic `helpers/<side>/`); the pom- or client-writer adds one fixture per page object or client to `fixtures/<side>/index.ts` (and the client-writer adds `config/api/schemas/`); the tests-writer writes the specs and the module's data or payload builders in `helpers/<side>/`; the fixer edits any of these to apply findings.
+
 A change to a file you don't own is a request in your report to your orchestrator — never an edit.
 
 ## Projects (`playwright.config.ts`)

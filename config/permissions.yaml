@@ -51,8 +51,8 @@ variables:
 #                      BOTH the `ui` and `api` Playwright projects), tsconfig, .env.example, .gitignore, README,
 #                      utils/shared/. Creates the skeleton (stage `playwright-repo`, spawned by orchestrator-agent)
 #                      and applies change requests later (spawned by either Playwright orchestrator, never both at once).
-#   pw-ui-scaffolder   UI-specific scaffolding only (config/ui/, tests/ui/ skeleton).
-#   pw-api-scaffolder  API-specific scaffolding only (config/api/, tests/api/ skeleton).
+#   pw-ui-scaffolder   the UI side's product-wide foundation, once (config/ui/, base fixtures/ui/, generic helpers/ui/).
+#   pw-api-scaffolder  the API side's product-wide foundation, once (config/api/, base fixtures/api/, helpers/api/schema.ts).
 #   ui side owns:  pages/, tests/ui/, helpers/ui/, fixtures/ui/, config/ui/
 #   api side owns: clients/, tests/api/, helpers/api/, fixtures/api/, config/api/
 #   Nobody edits another side's folders or the shared files; a needed shared change is a request the domain
@@ -213,31 +213,25 @@ agents:
   playwright-ui-orchestrator:
     layer: 1
     profile: orchestrator
-    spawns: [pw-repo-owner, pw-ui-scaffolder, pw-ui-helper-writer, pw-ui-fixtures-writer, pw-ui-pom-writer, pw-ui-tests-writer,
-             pw-ui-reviewer, pw-ui-fixer, pw-ui-test-runner-triager]
+    spawns: [pw-repo-owner, pw-ui-scaffolder, pw-ui-pom-writer, pw-ui-tests-writer, pw-ui-reviewer, pw-ui-fixer,
+             pw-ui-test-runner-triager]
     filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-ui/**"], write: ["${state}/orchestration/playwright-ui-${module}.json"] }
 
-  pw-ui-scaffolder:             # UI-specific scaffolding only; shared files belong to pw-repo-owner
+  pw-ui-scaffolder:             # the UI side's product-wide foundation, once; shared files belong to pw-repo-owner
     layer: 2
     profile: code_writer
     web_research: allowed
-    filesystem: { read: ["${pw_project}/**", "${knowledge}/**"], write: ["${pw_project}/config/ui/**", "${pw_project}/tests/ui/**"] }
-  pw-ui-helper-writer:
+    filesystem:
+      read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
+      write: ["${pw_project}/config/ui/**", "${pw_project}/fixtures/ui/**", "${pw_project}/helpers/ui/**"]
+  pw-ui-pom-writer:             # page objects, plus one fixture per page object in fixtures/ui/index.ts
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/helpers/ui/**"] }
-  pw-ui-fixtures-writer:
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/pages/**", "${pw_project}/fixtures/ui/index.ts"] }
+  pw-ui-tests-writer:           # specs, plus the module's data builders in helpers/ui/
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/fixtures/ui/**"] }
-  pw-ui-pom-writer:
-    layer: 2
-    profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/pages/**"] }
-  pw-ui-tests-writer:
-    layer: 2
-    profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/ui/**"] }
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**"] }
   pw-ui-reviewer:
     layer: 2
     profile: reviewer
@@ -260,8 +254,8 @@ agents:
   playwright-api-orchestrator:
     layer: 1
     profile: orchestrator
-    spawns: [pw-repo-owner, api-discoverer, api-test-planner, pw-api-scaffolder, pw-api-helper-writer, pw-api-fixtures-writer,
-             pw-api-client-writer, pw-api-tests-writer, pw-api-reviewer, pw-api-fixer, pw-api-test-runner-triager]
+    spawns: [pw-repo-owner, api-discoverer, api-test-planner, pw-api-scaffolder, pw-api-client-writer, pw-api-tests-writer,
+             pw-api-reviewer, pw-api-fixer, pw-api-test-runner-triager]
     filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-api/**"], write: ["${state}/orchestration/playwright-api-${module}.json"] }
 
   api-discoverer:
@@ -276,27 +270,23 @@ agents:
     web_research: none
     shell: none
     filesystem: { read: ["${modules}/**"], write: ["${modules}/api/api-test-plan.md", "${modules}/api/plan.json"] }
-  pw-api-scaffolder:            # API-specific scaffolding only; shared files belong to pw-repo-owner
+  pw-api-scaffolder:            # the API side's product-wide foundation, once; shared files belong to pw-repo-owner
     layer: 2
     profile: code_writer
     web_research: allowed
-    filesystem: { read: ["${pw_project}/**", "${knowledge}/**"], write: ["${pw_project}/config/api/**", "${pw_project}/tests/api/**"] }
-  pw-api-helper-writer:
+    filesystem:
+      read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
+      write: ["${pw_project}/config/api/**", "${pw_project}/fixtures/api/**", "${pw_project}/helpers/api/**"]
+  pw-api-client-writer:        # API equivalent of the POM: typed clients per resource, their schemas, one fixture per client
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/helpers/api/**"] }
-  pw-api-fixtures-writer:
+    filesystem:
+      read: ["${pw_project}/**", "${modules}/**"]
+      write: ["${pw_project}/clients/**", "${pw_project}/config/api/schemas/**", "${pw_project}/fixtures/api/index.ts"]
+  pw-api-tests-writer:          # specs, plus the module's payload builders in helpers/api/
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/fixtures/api/**"] }
-  pw-api-client-writer:        # API equivalent of the POM: typed clients / service objects per resource
-    layer: 2
-    profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/clients/**"] }
-  pw-api-tests-writer:
-    layer: 2
-    profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/api/**"] }
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/api/**", "${pw_project}/helpers/api/**"] }
   pw-api-reviewer:
     layer: 2
     profile: reviewer

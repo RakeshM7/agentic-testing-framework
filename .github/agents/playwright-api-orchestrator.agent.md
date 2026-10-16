@@ -1,9 +1,9 @@
 ---
 # GENERATED from agents/playwright-api-orchestrator.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: playwright-api-orchestrator
-description: "Runs the Playwright API domain for ONE module: endpoint discovery, test plan, scaffold, helpers, clients, fixtures, tests; a bounded review -> fixer loop; a bounded run/triage -> fixer (heal) loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
+description: "Runs the Playwright API domain for ONE module: endpoint discovery, test plan, the API foundation (once per product), clients, tests; a bounded review -> fixer loop; a bounded run/triage -> fixer (heal) loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
 tools: ["read", "search", "edit", "execute", "agent"]
-agents: ["pw-repo-owner", "api-discoverer", "api-test-planner", "pw-api-scaffolder", "pw-api-helper-writer", "pw-api-fixtures-writer", "pw-api-client-writer", "pw-api-tests-writer", "pw-api-reviewer", "pw-api-fixer", "pw-api-test-runner-triager"]
+agents: ["pw-repo-owner", "api-discoverer", "api-test-planner", "pw-api-scaffolder", "pw-api-client-writer", "pw-api-tests-writer", "pw-api-reviewer", "pw-api-fixer", "pw-api-test-runner-triager"]
 model: "gpt-6-luna"
 user-invocable: false
 hooks:
@@ -23,11 +23,11 @@ Track steps with `node scripts/orchestration.mjs step <p> playwright-api <m> <st
 ## Build (in order; each spawn gets `product=<p> module=<m>`)
 1. `discover` → **api-discoverer**. If it finds no endpoints at all, mark the remaining build and review steps `skip` and go straight to the run loop: the runner records `not-run` ("no API surface found").
 2. `plan` → **api-test-planner**
-3. `scaffold` → **pw-api-scaffolder**
-4. `helpers` → **pw-api-helper-writer**
-5. `clients` → **pw-api-client-writer**
-6. `fixtures` → **pw-api-fixtures-writer**
-7. `tests` → **pw-api-tests-writer**. If it reports missing client methods: **pw-api-client-writer** once more with that list, then **pw-api-tests-writer** again (once).
+3. `scaffold` → **pw-api-scaffolder**, which builds the API side's product-wide foundation. If `playwright-tests/<p>/config/api/settings.ts`, `fixtures/api/index.ts`, `fixtures/api/auth.setup.ts` and `helpers/api/schema.ts` all exist already (an earlier module built them), mark the step `skip` instead.
+4. `clients` → **pw-api-client-writer** (clients, their schemas and fixtures)
+5. `tests` → **pw-api-tests-writer** (payload builders and specs). If it reports missing client methods: **pw-api-client-writer** once more with `missing="<that list>"`, then **pw-api-tests-writer** again (once).
+
+A foundation gap in a worker's report → **pw-api-scaffolder** with `gap="<the exact report>"` (once per build), then that worker again (once).
 
 After any worker: a shared-file change request in its report → spawn **pw-repo-owner** (`product=<p> task=change request="<exact request, and which agent needs it>"`) before continuing; a refusal marks the step `fail`.
 
