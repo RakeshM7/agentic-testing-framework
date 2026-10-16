@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-coverage.schema.json",
+  "title": "Where every API discovery input went (artifacts/<product>/modules/<m>/api/coverage.json), written only by scripts/endpoints.mjs build",
+  "type": "object",
+  "required": ["module", "status", "inputs", "counts", "sources", "mapped", "excluded", "candidateResources", "retired"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "status": { "enum": ["complete", "partial", "empty", "blocked"], "description": "blocked/partial: discovery could not see everything (blockedReason says why); empty: nothing found." },
+    "blockedReason": { "type": "string" },
+    "inputs": {
+      "type": "object",
+      "required": ["spec", "graphql", "inventory", "docs"],
+      "properties": { "spec": { "type": "integer" }, "graphql": { "type": "integer" }, "inventory": { "type": "integer" }, "docs": { "type": "integer" } }
+    },
+    "counts": { "type": "object" },
+    "sources": { "type": "array", "items": { "type": "object", "required": ["id", "kind", "location"] } },
+    "mapped": {
+      "type": "array",
+      "items": { "type": "object", "required": ["input", "id"], "properties": { "input": { "type": "string" }, "id": { "type": "string" }, "also": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": false }
+    },
+    "excluded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["input", "reason"],
+        "properties": {
+          "input": { "type": "string" },
+          "reason": { "enum": ["third_party", "static_asset", "preflight", "telemetry", "health", "auth_plumbing", "page_navigation", "out_of_module", "duplicate", "deprecated", "not_api"] },
+          "detail": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "candidateResources": {
+      "type": "array",
+      "items": { "type": "object", "required": ["resource", "observedEndpoints"] },
+      "description": "Resources the UI called that are not yet in the module's scope: add them to overlay scope.resources to pull in their documented operations, or leave them as observed-only."
+    },
+    "retired": { "type": "array", "items": { "type": "string" }, "description": "Ids of endpoints no longer found; never reused." }
+  }
+}

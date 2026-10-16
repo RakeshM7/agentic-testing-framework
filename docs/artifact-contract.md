@@ -1,6 +1,6 @@
 # Artifact contract — layout v2 (implemented: foundation)
 
-The single definition of where things live, how stages hand off, and how state and safety work. It is implemented in code — `scripts/lib/{contract,clarifications,ledger,permissions,guard,csv}.mjs` and the CLIs `scripts/{run,clarifications,ledger,run-config}.mjs` — and validated by JSON Schemas in `schemas/`. Agent prompts must never contradict this file; when they differ, this file and the scripts win. The agent roster and responsibilities are in [`agent-architecture.md`](agent-architecture.md).
+The single definition of where things live, how stages hand off, and how state and safety work. It is implemented in code — `scripts/lib/{contract,clarifications,ledger,permissions,guard,csv,endpoints}.mjs` and the CLIs `scripts/{run,clarifications,ledger,run-config,endpoints}.mjs` — and validated by JSON Schemas in `schemas/`. Agent prompts must never contradict this file; when they differ, this file and the scripts win. The agent roster and responsibilities are in [`agent-architecture.md`](agent-architecture.md).
 
 ## Layout: everything is product-level
 
@@ -15,6 +15,8 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     clarification-evidence/<ID>/      # what the clarification-explorer observed per row
     clarifications-summary.md
     testcases/   api/   k6/           # domain working files
+    api/                              # endpoints.mjs: discovered-endpoints.json coverage.json drift.json registry.json sources/;
+                                      # overlay.json is the api-discoverer's (see below)
   state/
     run.json                          # the current (or last) run: id, mode, modules, stage status
     lock.json                         # present only while a run is active -- one active run per product
@@ -107,6 +109,23 @@ node scripts/ledger.mjs list    <product> [--live] [--all-runs]
 
 Agents record immediately after creating anything, run `owns` before any delete/cancel/remove, and record `deleted` after.
 
+## API endpoint catalogue
+
+`node scripts/endpoints.mjs find-spec|introspect|build|probe|check <product> <module>` (`scripts/lib/{endpoints,openapi,graphql,probe,api-discovery}.mjs`) owns `modules/<m>/api/` except `overlay.json`. The format is in [`agent-handoffs.md`](agent-handoffs.md) §4, and the design is decision D-045.
+
+- **Stable ids.** Ids come from `registry.json`: one `EP-<m>-<n>` per endpoint key, never renumbered or reused.
+- **Coverage.** `build` fails unless every input appears exactly once in `coverage.json`, either mapped or excluded with a reason code. The inputs are spec operations, GraphQL root fields, inventory entries and docs endpoints.
+- **Overlay.** The agent's `overlay.json` is schema-validated before `build` uses it.
+- **Network requests** from the script are guarded GETs (`scripts/lib/probe.mjs`):
+  - only to the product's hosts (`target.url` + `target.api_urls`);
+  - no side-effect paths or action parameters;
+  - ids only from list responses already received, never guessed;
+  - a per-module budget, a delay, and `Retry-After` honored;
+  - redirects are not followed;
+  - only shapes are recorded.
+- **Credentials.** The run's `session_state_file` cookies and `api.auth_header` (a variable name in `credentials_file`) are read by path. They are sent only to the product's hosts and never printed or written.
+- **An empty catalogue** says `empty` or `blocked` (with `blockedReason`), and `orchestration.mjs next` reports which.
+
 ## Safety: mode × permissions, enforced in code
 
 - **Mode** — `authorizations.mode` → `state/run.json`. `readonly` caps every agent at read (browser/http) and none (load), whatever the permissions file says; `full-run` applies `config/permissions.yaml` as written, and gives every agent that has browser access (`read` or `mutate`) the full browser. `AUTHORIZATIONS_MODE=readonly` in the environment can downgrade; nothing can upgrade.
@@ -117,7 +136,7 @@ Agents record immediately after creating anything, run `owns` before any delete/
   - spawn — only the agents in `spawns`;
   - shell — `shell: none | restricted (shell_allow) | project`, then HTTP/k6 rules by effective `http`/`load`, and any DELETE must reference a live entity of the current run;
   - write (every file the call touches) — only inside `filesystem.write` (`${product}`, `${run_id}` expanded; `${module}` = one path segment); nothing outside the repo;
-  - web fetch / web search — the product's own host needs `http: read`; anything else needs `web_research: allowed`;
+  - web fetch / web search — the product's own hosts (`target.url` and `target.api_urls`) need `http: read`; anything else needs `web_research: allowed`;
   - Playwright MCP — `browser: none` blocks all; effective `read` (i.e. in readonly runs) blocks typing, form filling, selects, uploads, drag/drop, key presses, dialogs and script evaluation (clicks stay allowed for navigation); in full-run runs any browser access is full.
 - **Active runs** are found from `artifacts/*/state/lock.json`. No active run ⇒ readonly shell rules only. Agents not in the permissions file (e.g. a human's own session) get the mode rules only. During a run, a tool an adapter cannot classify is denied for a managed agent. If the guard itself errors (or cannot read the hook input) while a run is active, the hook fails closed.
 - **Design decisions** — separately from safety, the same hook asks the user before an edit to a file that an Accepted decision in [`decisions.md`](decisions.md) governs (`scripts/lib/decisions.mjs`); deny beats ask beats allow.
@@ -125,4 +144,4 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap,sources,results}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,sources,results,discovered-endpoints,api-coverage,api-overlay}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.

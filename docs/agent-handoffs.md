@@ -13,7 +13,7 @@ Every file one agent writes for another. Paths are under `artifacts/<product>/` 
 | `pages/<slug>/screenshot.png` | When the browser tool can save to this path; otherwise omitted and noted in `module-summary.md`. |
 | `pages/<slug>/console.txt` | Console errors/warnings seen on the page (may be empty). |
 | `interactions.json` | `[{page, element, role, name, kind: button|link|input|select|checkbox|radio|textarea|other, required?, options?[], validation?[], mutates: bool, tried: bool, observed?}]` |
-| `network-inventory.json` | `[{method, pathTemplate, statusCodes[], requestKeys[], responseKeys[], pages[]}]` — endpoint **shapes only**: JSON key names, never values, tokens, cookies or personal data. Ids in paths become `{id}`. |
+| `network-inventory.json` | `[{method, pathTemplate, host?, statusCodes[], requestKeys[], responseKeys[], pages[], graphql?: [{operationType, operationName?, fields[]}]}]` — endpoint **shapes only**: JSON key names, never values, tokens, cookies or personal data. Ids in paths become `{id}`. `host` when the request went to a host other than the target's. `graphql` for GraphQL requests: the operation type and the **root field names** of each operation (`query { contacts {…} }` → `fields: ["contacts"]`). |
 | `flows/<flow-slug>.md` | One user task per file: `# <Task>`, `Preconditions:`, then numbered steps a person who has never seen the product can follow (exact labels in quotes, where to click, what to type), then `Expected result:`. |
 | `module-summary.md` | `## Pages`, `## Key entities`, `## Key actions`, `## Roles observed`, `## Mutations performed` (with ledger refs), `## Not explored` (and why), `## Questions raised` (CSV ids). |
 | `new-questions.json` | Scratch input for `clarifications.mjs append`: `[{question, steps}]`. |
@@ -50,9 +50,69 @@ Screenshots, if any, sit next to it as `step-<n>.png`. `confirmed` requires the 
 
 ## 4. API discovery and plan (`api-discoverer`, `api-test-planner` → API and k6 writers)
 
-`modules/<m>/api/discovered-endpoints.json`: `[{id: "EP-<m>-<n>", method, path, source: openapi|network|docs, auth: none|session|bearer|api-key|unknown, requestSchema?, responseSchema?, statusCodes[], mutates: bool, notes?}]`
+`modules/<m>/api/` is written by `node scripts/endpoints.mjs build` and nothing else, except `overlay.json` (D-045).
 
-`modules/<m>/api/plan.json`: `[{id: "API-<m>-<n>", endpoint: "EP-...", type: functional|negative|boundary|auth|schema|contract, title, request, expect: {status, schema?, rules?[]}, mutates: bool, testcases: ["TC-..."], priority}]` and `api-test-plan.md` explaining coverage and gaps.
+**`discovered-endpoints.json`** (schema `discovered-endpoints`). One entry per operation:
+```
+{id: "EP-<m>-<n>", key, kind: rest|graphql, method, path, server, basePath, operationId?, summary?, tags?,
+ graphql?: {operationType: query|mutation, field, args[], returnType, getSupported},
+ resource, crud: create|list|read|update|delete|action|query|mutation, observed: {ui, probe},
+ source: openapi|graphql|network|docs, sources: [{source: openapi|graphql|network|docs|probe, ref}],
+ auth: none|session|bearer|basic|api-key|oauth2|unknown, security?: {alternatives: [[{scheme, type, in?, name?, scopes[]}]]},
+ params: [{in: path|query|header|cookie, name, required, type?, format?, enum?, source}],
+ contentTypes: {request[], response[]}, requestSchema?, responseSchema?, errorSchemas?: {<status>: schema},
+ requestKeys[], responseKeys[], statusCodes[], statuses: {documented[], observed[]},
+ pagination: {style: page|offset|cursor|link|unknown, params[]} | null, rateLimit: {...} | null,
+ links: [{from: "EP-...", pointer, param, source: inferred|overlay}], mutates, safeMethod, queryLike?, deprecated?, notes?}
+```
+
+What the fields mean:
+- **Ids.** `id` is stable. It is assigned once per `key` in `registry.json` and is never renumbered or reused.
+  - The `key` is the method plus the path with parameter names erased, for example `GET /api/v1/contacts/{}`.
+  - It is host-prefixed when the host is not the target's.
+  - A GraphQL key looks like `GQL query contacts`.
+- **Paths.** `path` is the full path from `server` (it includes `basePath`) and uses the spec's parameter names.
+- **Scope.** The catalogue holds every documented operation on the module's resources, plus everything the UI called.
+  - `observed` says whether the UI called the operation, and whether a GET probe reached it.
+  - Unobserved operations are documented-only.
+- **Schemas** come only from a spec. Traffic gives key names (`requestKeys`, `responseKeys`), never types.
+- **Links** go from producer to consumer: this endpoint's `param` is fed by `pointer` in the response of `from`. Use them for setup and cleanup chains.
+- **Mutation flags.**
+  - `mutates` is always true for a non-GET REST operation and for a GraphQL mutation.
+  - `safeMethod` means readonly runs may send it. For GraphQL that is a query on a server that accepts GET.
+  - `queryLike` is an advisory hint that a POST only reads.
+
+**`coverage.json`** (schema `api-coverage`) accounts for every input:
+- `status` is one of:
+  - `complete`;
+  - `partial`;
+  - `empty`: nothing found;
+  - `blocked`: discovery could not see the API, with `blockedReason`.
+- The inputs are spec operations, GraphQL root fields, inventory entries and docs endpoints. Each one is either in `mapped`, as `{input, id}`, or in `excluded`, as `{input, reason, detail?}`. The possible reasons are:
+  - `third_party`, `static_asset`, `preflight`, `telemetry`, `health`;
+  - `auth_plumbing`, `page_navigation`, `out_of_module`;
+  - `duplicate`, `deprecated`, `not_api`.
+- `candidateResources` lists resources the UI called that are outside the module's scope.
+- `retired` lists ids that are gone.
+
+**`drift.json`** lists documented-vs-observed contract findings for the planner. Each is `[{id, type, endpoint, detail?, evidence?}]`, and `type` is one of:
+- `undocumented_endpoint`, `unobserved_documented_endpoint`;
+- `undocumented_status`;
+- `undocumented_response_key`, `missing_required_key`, `undocumented_request_key`;
+- `auth_mismatch`, `server_mismatch`.
+
+**`overlay.json`** (schema `api-overlay`) is the api-discoverer's judgments, applied by `build`:
+- scope resources, tags, includes and excludes (each exclude with a reason);
+- path literals;
+- docs-only `endpoints[]`, each with a `citation`;
+- `annotations` per EP id or key, each with a `citation`;
+- `links.add` / `links.remove`;
+- `defaults.auth`;
+- `blocked`.
+
+`registry.json` and `sources/`, which holds fetched specs, introspection results, `index.json` and `probes.json`, are script state. Probes record status codes, content types, key names and rate-limit numbers, never values.
+
+`modules/<m>/api/plan.json` (api-test-planner): `[{id: "API-<m>-<n>", endpoint: "EP-...", type: functional|negative|boundary|auth|schema|contract, title, request, expect: {status, schema?, rules?[]}, mutates: bool, testcases: ["TC-..."], priority}]` and `api-test-plan.md` explaining coverage and gaps.
 
 ## 5. Load workload (`k6-workload-designer` → k6 writers)
 

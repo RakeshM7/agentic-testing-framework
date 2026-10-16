@@ -112,6 +112,27 @@ test("web research vs. reading the product under test", () => {
   assert.equal(fetch("testcase-writer", "https://app.acme.test/openapi.json"), false);
 });
 
+test("API hosts in target.api_urls are the product too: no web-research loophole, http rules apply (D-045)", () => {
+  const { root } = startRun({ mode: "full-run", apiUrls: ["https://api.acme.test/v2"] });
+  const fetch = (agent, url) => allowed(root, call(agent, "WebFetch", { url }));
+  assert.equal(fetch("pw-api-scaffolder", "https://api.acme.test/v2/openapi.json"), false, "web research may not reach the product's API host");
+  assert.equal(fetch("pw-api-scaffolder", "https://docs.vendor.test/api"), true);
+  assert.equal(fetch("api-discoverer", "https://api.acme.test/v2/openapi.json"), true, "http: read");
+  assert.equal(allowed(root, sh("pw-api-fixer", "curl -s https://api.acme.test/v2/contacts")), false, "http: none covers every product host");
+});
+
+test("api-discoverer's shell is endpoints.mjs only; it writes only its overlay", () => {
+  const run = (cmd) => allowed(FULL.root, sh("api-discoverer", cmd));
+  assert.equal(run("node scripts/endpoints.mjs build acme contacts"), true);
+  assert.equal(run("node scripts/endpoints.mjs probe acme contacts --budget 20"), true);
+  assert.equal(run("node scripts/run.mjs status acme"), false);
+  assert.equal(run("curl -s https://app.acme.test/api/contacts"), false);
+  const w = (rel) => allowed(FULL.root, call("api-discoverer", "Write", { file_path: path.join(FULL.root, rel) }));
+  assert.equal(w("artifacts/acme/modules/contacts/api/overlay.json"), true);
+  assert.equal(w("artifacts/acme/modules/contacts/api/discovered-endpoints.json"), false, "the catalogue is script-only");
+  assert.equal(w("artifacts/acme/modules/contacts/api/registry.json"), false);
+});
+
 test("unmanaged sessions get mode rules only; env can downgrade but never upgrade", () => {
   assert.equal(allowed(FULL.root, sh(undefined, "curl -X POST https://x/api")), true);
   assert.equal(allowed(FULL.root, sh(undefined, "curl -X POST https://x/api"), { AUTHORIZATIONS_MODE: "readonly" }), false);

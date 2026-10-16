@@ -98,6 +98,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-042 | Hook registrations are generated; the PostToolUse hook is async, sync or off by one build flag | Accepted | 2026-10-13 |
 | D-043 | Three layers of 34 agents: one fixer per domain, foundations built once, the explorer records its row | Accepted | 2026-10-16 |
 | D-044 | A script gate runs before every review, and `orchestration.mjs next` drives each domain's loop | Accepted | 2026-10-16 |
+| D-045 | The endpoint catalogue is script-built: stable ids, full coverage, guarded GET probes, API hosts are the target | Accepted | 2026-10-17 |
 
 ## Decisions
 
@@ -651,3 +652,57 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - A failed gate costs no reviewer start, and a resumed orchestrator cannot lose its place.
   - Loops stay bounded (D-011).
 - **Affects:** `scripts/gate.mjs`, `scripts/lib/gate/*.mjs`, `scripts/lib/domain-flows.mjs`, `scripts/orchestration.mjs`
+
+### D-045 · The endpoint catalogue is script-built: stable ids, full coverage, guarded GET probes, API hosts are the target
+- **Status:** Accepted · **Date:** 2026-10-17 · **Source:** conversation with the user, 2026-10-17. They reviewed `api-discoverer` and stated their expectations in an interview:
+  - scope is spec plus observed, resource-scoped;
+  - a script owns the mechanics;
+  - REST and GraphQL;
+  - authenticated verification of documented GETs;
+  - params, errors, pagination, links and provenance on every endpoint;
+  - stable ids;
+  - noise excluded with a reason.
+
+  They then approved every change below.
+- **Decision:**
+  - **The script owns the catalogue.** `scripts/endpoints.mjs`, with `scripts/lib/{endpoints,openapi,graphql,probe,api-discovery}.mjs`, owns `modules/<m>/api/` except `overlay.json`.
+    - It parses OpenAPI 2.0/3.x (local `$ref`s, cycles cut) and GraphQL introspection.
+    - It normalizes paths.
+    - It merges the spec, introspection, the network inventory, docs endpoints and probes.
+    - It writes `discovered-endpoints.json`, `coverage.json`, `drift.json` and `registry.json`, validated by `schemas/{discovered-endpoints,api-coverage,api-overlay}.schema.json`.
+  - **The agent writes only its judgments.** `api-discoverer` writes them to `overlay.json`, which is schema-validated and in which every fact is cited:
+    - scope;
+    - exclusions with reason codes;
+    - docs-only endpoints;
+    - annotations;
+    - links;
+    - `blocked`.
+  - **Stable ids.**
+    - The key is the method plus the path with parameter names erased.
+    - `EP-<m>-<n>` is assigned once per key, in key order, and is never renumbered or reused.
+    - Endpoints that disappear are kept in the registry as `gone`.
+  - **Scope** is every spec operation on the module's resources, plus everything the UI called in the module:
+    - "the module's resources" means its slug, its name, the overlay's resources and tags, and spec tags;
+    - an observed support call stays in, but does not pull in its siblings;
+    - other modules' resources, third-party hosts, static assets, preflights, telemetry, health checks, auth plumbing and page loads are excluded with a reason;
+    - `build` fails unless every input is mapped or excluded exactly once.
+  - **Probing.** `api-discoverer` gets `shell: restricted`, limited to `node scripts/endpoints.mjs *`, and its own writes shrink to `overlay.json`. The script's network calls are guarded GETs:
+    - only to first-party hosts;
+    - a deny list of side-effect words and action parameters;
+    - ids only from list responses already received;
+    - a budget, a delay and `Retry-After`;
+    - no redirects;
+    - shapes only.
+
+    They authenticate with `session_state_file` cookies and the optional `api.auth_header`, which names a variable in `credentials_file` (D-012).
+  - **Run-config.** It gains optional `target.api_urls` and `api.{specs, graphql, auth_header, discovery_budget, probe_budget, probe_delay_ms}`. `run.json` carries `target.api_urls`.
+  - **The guard** treats every host in `target.url` and `target.api_urls` as the product. A fetch there needs `http: read`, and `http: none` blocks shell commands naming any of them.
+  - **Blocked discovery.** A blocked discovery (`coverage.json` `status: blocked`) skips the rest of the Playwright API flow with "API discovery blocked: <reason>", never "no API surface found".
+- **Why:**
+  - The catalogue is bookkeeping that every API and k6 agent depends on, so it must be identical on every rerun (D-002). Sequential ids that were renumbered every run broke `plan.json`, `workload.json` and the tests' traceability.
+  - An agent merging sources by hand has no coverage proof. The coverage file makes "exhaustive" checkable, and the overlay keeps judgment separate and auditable.
+  - Documented GETs could not be verified with authentication, because a plain fetch carries no session. A script that the guard can't see inside must therefore enforce GET-only and host limits itself.
+  - API subdomains were classed as web research, which let `http: none` agents with web access reach the product's API.
+  - An empty catalogue hid the difference between "no API" and "could not see the API".
+- **Affects:** `scripts/endpoints.mjs`, `scripts/lib/endpoints.mjs`, `scripts/lib/probe.mjs`, `scripts/lib/api-discovery.mjs`, `schemas/discovered-endpoints.schema.json`, `schemas/api-overlay.schema.json`, `agents/api-discoverer.md`
+- **Confirmed by the user on:** 2026-10-17. This extends D-003 (run schema), D-006 and D-013 (permissions), D-020 (guard), D-043 (hand-off formats) and D-044 (domain flow) without superseding them.

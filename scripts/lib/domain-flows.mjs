@@ -7,6 +7,15 @@ import path from "node:path";
 const exists = (dir, ...files) => files.every((f) => existsSync(path.join(dir, f)));
 const json = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null);
 
+// An empty catalogue is either "nothing there" or "could not see" (coverage.json status blocked, D-045); the two must
+// never look the same in the run's notes and results.
+function noApiSurface(c) {
+  const api = path.join(c.productDir, "modules", c.module, "api");
+  if ((json(path.join(api, "discovered-endpoints.json")) ?? []).length) return false;
+  const cov = json(path.join(api, "coverage.json"));
+  return cov?.status === "blocked" ? `API discovery blocked: ${cov.blockedReason ?? "no reason recorded"}` : "no API surface found";
+}
+
 // ctx: {productDir, module, pwProject, k6Project, format}
 export const FLOWS = {
   testcases: {
@@ -25,8 +34,8 @@ export const FLOWS = {
   "playwright-api": {
     build: [
       { step: "discover", agent: "api-discoverer" },
-      // No API surface: nothing to plan, build or review; the runner records not-run.
-      { step: "plan", agent: "api-test-planner", skipRest: (c) => (json(path.join(c.productDir, "modules", c.module, "api", "discovered-endpoints.json")) ?? []).length === 0 && "no API surface found" },
+      // No API surface (or discovery blocked): nothing to plan, build or review; the runner records not-run with the reason.
+      { step: "plan", agent: "api-test-planner", skipRest: noApiSurface },
       { step: "scaffold", agent: "pw-api-scaffolder", skip: (c) => exists(c.pwProject, "config/api/settings.ts", "fixtures/api/index.ts", "fixtures/api/auth.setup.ts", "helpers/api/schema.ts") && "the API foundation exists" },
       { step: "clients", agent: "pw-api-client-writer" },
       { step: "tests", agent: "pw-api-tests-writer" },

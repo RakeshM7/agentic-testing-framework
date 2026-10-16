@@ -11,9 +11,17 @@ import { UNRESOLVED_POLICIES } from "./lib/clarifications.mjs";
 
 const MODES = ["readonly", "full-run"];
 const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
-const KNOWN = ["product", "target", "feature", "knowledge", "modules", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git"];
+const KNOWN = ["product", "target", "feature", "knowledge", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git"];
 const posInt = (v) => Number.isInteger(v) && v > 0;
 const strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
+const httpUrl = (v) => {
+  try {
+    return ["http:", "https:"].includes(new URL(v).protocol);
+  } catch {
+    return false;
+  }
+};
+export const API_DEFAULTS = { specs: [], graphql: [], auth_header: null, discovery_budget: 40, probe_budget: 50, probe_delay_ms: 500 };
 
 export function validateRunConfig(cfg) {
   const errors = [];
@@ -28,6 +36,18 @@ export function validateRunConfig(cfg) {
     } catch {
       errors.push(`target.url: '${cfg.target.url}' is not a valid URL`);
     }
+  }
+  if (cfg.target?.api_urls !== undefined && !(Array.isArray(cfg.target.api_urls) && cfg.target.api_urls.every(httpUrl)))
+    errors.push("target.api_urls: must be a list of http(s) URLs (API hosts of the same product; the guard treats them as the target)");
+  const api = cfg.api ?? {};
+  if (cfg.api !== undefined && (typeof cfg.api !== "object" || Array.isArray(cfg.api))) errors.push("api: must be a mapping");
+  else {
+    for (const k of ["specs", "graphql"]) if (api[k] !== undefined && !strList(api[k])) errors.push(`api.${k}: must be a list of paths/URLs`);
+    if (api.auth_header != null && !(typeof api.auth_header.name === "string" && typeof api.auth_header.env === "string" && (api.auth_header.prefix === undefined || typeof api.auth_header.prefix === "string")))
+      errors.push("api.auth_header: needs {name, env, prefix?} -- the header name and the VARIABLE NAME in credentials_file, never a value");
+    for (const k of ["discovery_budget", "probe_budget"]) if (api[k] !== undefined && !posInt(api[k])) errors.push(`api.${k}: must be a positive integer`);
+    if (api.probe_delay_ms !== undefined && !(Number.isInteger(api.probe_delay_ms) && api.probe_delay_ms >= 0)) errors.push("api.probe_delay_ms: must be a non-negative integer");
+    for (const k of Object.keys(api)) if (!(k in API_DEFAULTS)) errors.push(`api.${k}: unknown key`);
   }
   if (cfg.feature !== undefined) {
     if (cfg.feature.description !== undefined && typeof cfg.feature.description !== "string") errors.push("feature.description: must be a string");
@@ -74,6 +94,8 @@ export function validateRunConfig(cfg) {
     errors,
     normalized: {
       ...cfg,
+      target: { api_urls: [], ...cfg.target },
+      api: { ...API_DEFAULTS, ...cfg.api },
       feature: { description: "", requirement_docs: [], ...cfg.feature },
       knowledge: { references: [], ...cfg.knowledge },
       authorizations: { authenticated_crawl: false, credentials_file: null, session_state_file: null, ...auth, mode: auth.mode ?? "readonly" },

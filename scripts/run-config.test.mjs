@@ -34,3 +34,16 @@ test("rejects unknown keys and bad enums", () => {
   assert.ok(errors.some((e) => e.startsWith("authorizations.mode")));
   assert.ok(errors.some((e) => e.startsWith("clarifications.unresolved_policy")));
 });
+
+test("api discovery settings: API hosts, specs, auth header by variable NAME, budgets; defaults are conservative", () => {
+  const ok = validateRunConfig({ ...base, target: { ...base.target, api_urls: ["https://api.acme.test/v2"] }, api: { specs: ["specs/acme.yaml"], auth_header: { name: "Authorization", env: "ACME_API_TOKEN", prefix: "Bearer " } } });
+  assert.deepEqual(ok.errors, []);
+  assert.deepEqual(ok.normalized.target.api_urls, ["https://api.acme.test/v2"]);
+  assert.equal(ok.normalized.api.probe_budget, 50);
+  assert.deepEqual(validateRunConfig(base).normalized.api.graphql, []);
+  const { errors } = validateRunConfig({ ...base, target: { ...base.target, api_urls: ["ftp://x"] }, api: { auth_header: "Bearer abc", probe_budget: 0, token: "x" } });
+  assert.ok(errors.some((e) => e.startsWith("target.api_urls")));
+  assert.ok(errors.some((e) => e.startsWith("api.auth_header")));
+  assert.ok(errors.some((e) => e.startsWith("api.probe_budget")));
+  assert.ok(errors.includes("api.token: unknown key"));
+});

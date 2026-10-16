@@ -43,7 +43,7 @@ variables:
 #
 # ---- Decision log (the reasons and the full log: docs/decisions.md) -------------------------------------
 # Mode caps permissions | knowledge-generator: live product only if needed | module-explorer: mutate
-# scaffolders: web research allowed | api-discoverer: http read | global feedback implementor: as drafted
+# scaffolders: web research allowed | api-discoverer: http read, shell only endpoints.mjs (D-045) | global feedback implementor: as drafted
 # Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
 #
 # ---- Shared-repo ownership inside ${pw_project} (UI and API agents write into the same repo) -------------
@@ -237,12 +237,13 @@ agents:
              pw-api-reviewer, pw-api-fixer, pw-api-test-runner-triager]
     filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-api/**"], write: ["${state}/orchestration/playwright-api-${module}.json"] }
 
-  api-discoverer:
+  api-discoverer:               # D-045: the catalogue, coverage, drift, ids and probes are script-owned (endpoints.mjs)
     layer: 2
-    live_target: { browser: none, http: read, load: none }   # fetch OpenAPI / GET endpoints
+    live_target: { browser: none, http: read, load: none }   # fetch OpenAPI / GET endpoints; endpoints.mjs probes GET-only
     web_research: allowed     # vendor API docs
-    shell: none
-    filesystem: { read: ["${knowledge}/**", "${modules}/**"], write: ["${modules}/api/discovered-endpoints.json"] }
+    shell: restricted
+    shell_allow: ["node scripts/endpoints.mjs *"]
+    filesystem: { read: ["${knowledge}/**", "${modules}/**"], write: ["${modules}/api/overlay.json"] }
   api-test-planner:
     layer: 2
     live_target: { browser: none, http: none, load: none }

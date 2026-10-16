@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-overlay.schema.json",
+  "title": "The api-discoverer's judgments for one module (artifacts/<product>/modules/<m>/api/overlay.json), applied by scripts/endpoints.mjs build",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resources": { "type": "array", "items": { "type": "string" }, "description": "Extra resource names of this module (e.g. 'persons' for a Contacts module)." },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Extra spec tags of this module." },
+        "include": { "type": "array", "items": { "type": "string" }, "description": "Endpoint keys, EP ids, path prefixes ending in '*', or 'tag:<name>'." },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["match", "reason", "detail"],
+            "additionalProperties": false,
+            "properties": {
+              "match": { "type": "string" },
+              "reason": { "enum": ["third_party", "static_asset", "preflight", "telemetry", "health", "auth_plumbing", "page_navigation", "out_of_module", "duplicate", "deprecated", "not_api"] },
+              "detail": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "pathRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "literals": { "type": "array", "items": { "type": "string" }, "description": "Path segments that look like ids but are names (e.g. '2024' in /reports/2024)." } }
+    },
+    "endpoints": {
+      "type": "array",
+      "description": "Endpoints read from the vendor's API documentation. Each cites the page it came from.",
+      "items": {
+        "type": "object",
+        "required": ["method", "path", "citation"],
+        "additionalProperties": false,
+        "properties": {
+          "method": { "type": "string", "pattern": "^[A-Za-z]+$" },
+          "path": { "type": "string", "pattern": "^/" },
+          "server": { "type": "string", "pattern": "^https?://" },
+          "citation": { "type": "string", "minLength": 1 },
+          "summary": { "type": "string" },
+          "auth": { "enum": ["none", "session", "bearer", "basic", "api-key", "oauth2", "unknown"] },
+          "params": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["in", "name", "required"],
+              "properties": { "in": { "enum": ["path", "query", "header", "cookie"] }, "name": { "type": "string" }, "required": { "type": "boolean" }, "type": { "type": "string" }, "format": { "type": "string" }, "enum": { "type": "array" } },
+              "additionalProperties": false
+            }
+          },
+          "pagination": { "type": "object", "required": ["style"], "properties": { "style": { "enum": ["page", "offset", "cursor", "link", "unknown"] } } },
+          "rateLimit": { "type": "object" },
+          "mutates": { "const": true, "description": "Only to mark a GET with a documented side effect; non-GET methods always mutate." },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "annotations": {
+      "type": "object",
+      "description": "Keyed by EP id or endpoint key. Facts from docs or observation, each with a citation.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["citation"],
+        "additionalProperties": false,
+        "properties": {
+          "citation": { "type": "string", "minLength": 1 },
+          "auth": { "enum": ["none", "session", "bearer", "basic", "api-key", "oauth2", "unknown"] },
+          "pagination": { "type": "object", "required": ["style"], "properties": { "style": { "enum": ["page", "offset", "cursor", "link", "unknown"] } } },
+          "rateLimit": { "type": "object" },
+          "queryLike": { "type": "object", "required": ["evidence"], "properties": { "evidence": { "type": "string", "minLength": 1 } } },
+          "mutates": { "const": true, "description": "Can only raise: non-GET REST operations always mutate." },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "add": { "type": "array", "items": { "type": "object", "required": ["from", "to", "pointer", "param"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "pointer": { "type": "string", "pattern": "^/" }, "param": { "type": "string" } } } },
+        "remove": { "type": "array", "items": { "type": "object", "required": ["from", "to", "param"] } }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "auth": { "enum": ["none", "session", "bearer", "basic", "api-key", "oauth2"] } }
+    },
+    "blocked": { "type": ["string", "null"], "description": "Why discovery could not see the module's API (e.g. 'spec and API require auth; no session_state_file')." }
+  }
+}

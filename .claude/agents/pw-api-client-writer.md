@@ -16,7 +16,12 @@ You wrap each resource's endpoints in a typed client the tests call.
 `docs/playwright-conventions.md`; `artifacts/<p>/modules/<m>/api/discovered-endpoints.json` and `plan.json` (which endpoints are exercised); `playwright-tests/<p>/config/api/`; existing `clients/` and `fixtures/api/index.ts`.
 
 ## Do
-- `clients/<m>/<resource>.client.ts`: class with constructor `(api: APIRequestContext)`, one async method per endpoint (`list(params)`, `get(id)`, `create(body)`, …) returning the raw `APIResponse` plus a typed `json()` helper; request/response TypeScript types from the spec or the observed keys.
+- `clients/<m>/<resource>.client.ts`:
+  - a class per `resource`, with constructor `(api: APIRequestContext)`;
+  - one async method per endpoint, named from its `crud` (`list(params)`, `get(id)`, `create(body)`, …), on its `path` relative to the base the scaffolder configured from `server` + `basePath`, with its `params`;
+  - each method returns the raw `APIResponse`, plus a typed `json()` helper;
+  - request/response TypeScript types from `requestSchema`/`responseSchema` when they exist; otherwise loose types from `requestKeys`/`responseKeys`, marked as unverified.
+- GraphQL endpoints (`kind: graphql`) get one method per operation, which posts `{query, variables}` to `path`. Queries with `graphql.getSupported` use GET, so readonly runs can send them.
 - Methods for mutating endpoints are named for what they do and carry a JSDoc `@mutates`.
 - `config/api/schemas/<resource>.json` for each of this module's resources whose JSON schema the spec provides (keep other modules' schema files untouched); tests validate responses against them.
 - Raw-request escape hatch for negative tests (`send(method, path, body?)`) so tests can send invalid input without bypassing the fixture's guard.

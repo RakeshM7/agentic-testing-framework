@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "discovered-endpoints.schema.json",
+  "title": "A module's endpoint catalogue (artifacts/<product>/modules/<m>/api/discovered-endpoints.json), written only by scripts/endpoints.mjs build",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "key", "kind", "method", "path", "server", "basePath", "crud", "observed", "source", "sources", "auth", "params", "contentTypes", "statusCodes", "statuses", "links", "mutates", "safeMethod"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "pattern": "^EP-[a-z0-9]+(-[a-z0-9]+)*-[0-9]+$", "description": "Stable: assigned once per key in registry.json, never reused." },
+      "key": { "type": "string", "description": "Method + path with parameter names erased (host-prefixed when not the target's), or 'GQL <type> <field>'." },
+      "kind": { "enum": ["rest", "graphql"] },
+      "method": { "type": "string", "pattern": "^[A-Z]+$" },
+      "path": { "type": "string", "pattern": "^/", "description": "Full path from the server origin (includes basePath), spec parameter names where known." },
+      "server": { "type": "string", "pattern": "^https?://" },
+      "basePath": { "type": "string" },
+      "operationId": { "type": "string" },
+      "summary": { "type": "string" },
+      "tags": { "type": "array", "items": { "type": "string" } },
+      "graphql": {
+        "type": "object",
+        "required": ["operationType", "field", "args", "returnType", "getSupported"],
+        "properties": {
+          "operationType": { "enum": ["query", "mutation"] },
+          "field": { "type": "string" },
+          "args": { "type": "array", "items": { "type": "object", "required": ["name", "type", "required"] } },
+          "returnType": { "type": "string" },
+          "getSupported": { "type": "boolean", "description": "Introspection over GET worked, so queries can be sent as GET in readonly runs." }
+        }
+      },
+      "resource": { "type": ["string", "null"] },
+      "crud": { "enum": ["create", "list", "read", "update", "delete", "action", "query", "mutation"] },
+      "observed": { "type": "object", "required": ["ui", "probe"], "properties": { "ui": { "type": "boolean" }, "probe": { "type": "boolean" } }, "additionalProperties": false },
+      "source": { "enum": ["openapi", "graphql", "network", "docs"], "description": "The primary source (spec > introspection > traffic > docs)." },
+      "sources": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "object", "required": ["source", "ref"], "properties": { "source": { "enum": ["openapi", "graphql", "network", "docs", "probe"] }, "ref": { "type": "string", "minLength": 1 } }, "additionalProperties": false }
+      },
+      "auth": { "enum": ["none", "session", "bearer", "basic", "api-key", "oauth2", "unknown"] },
+      "security": {
+        "type": "object",
+        "required": ["alternatives"],
+        "properties": { "alternatives": { "type": "array", "items": { "type": "array", "items": { "type": "object", "required": ["scheme", "type", "scopes"] } } } }
+      },
+      "params": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["in", "name", "required", "source"],
+          "properties": {
+            "in": { "enum": ["path", "query", "header", "cookie"] },
+            "name": { "type": "string" },
+            "required": { "type": "boolean" },
+            "type": { "type": "string" },
+            "format": { "type": "string" },
+            "enum": { "type": "array" },
+            "source": { "enum": ["openapi", "network", "docs"] }
+          }
+        }
+      },
+      "contentTypes": {
+        "type": "object",
+        "required": ["request", "response"],
+        "properties": { "request": { "type": "array", "items": { "type": "string" } }, "response": { "type": "array", "items": { "type": "string" } } },
+        "additionalProperties": false
+      },
+      "requestSchema": { "type": "object" },
+      "responseSchema": { "type": "object" },
+      "errorSchemas": { "type": "object", "additionalProperties": { "type": "object" } },
+      "requestKeys": { "type": "array", "items": { "type": "string" }, "description": "Observed request body key names (no types: traffic records keys only)." },
+      "responseKeys": { "type": "array", "items": { "type": "string" } },
+      "statusCodes": { "type": "array", "items": { "type": "integer" }, "description": "Documented and observed together (backward compatible)." },
+      "statuses": {
+        "type": "object",
+        "required": ["documented", "observed"],
+        "properties": { "documented": { "type": "array", "items": { "type": "string" } }, "observed": { "type": "array", "items": { "type": "integer" } } },
+        "additionalProperties": false
+      },
+      "pagination": {
+        "type": ["object", "null"],
+        "properties": { "style": { "enum": ["page", "offset", "cursor", "link", "unknown"] }, "params": { "type": "array", "items": { "type": "string" } }, "source": { "type": "string" } }
+      },
+      "rateLimit": { "type": ["object", "null"] },
+      "links": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["from", "pointer", "param", "source"],
+          "properties": { "from": { "type": "string", "pattern": "^EP-" }, "pointer": { "type": "string", "pattern": "^/" }, "param": { "type": "string" }, "source": { "enum": ["inferred", "overlay"] } },
+          "additionalProperties": false
+        },
+        "description": "Producer -> consumer: this endpoint's `param` comes from `pointer` in the response of `from`."
+      },
+      "mutates": { "type": "boolean", "description": "May create/change/delete data. Always true for non-GET REST operations." },
+      "safeMethod": { "type": "boolean", "description": "Sent with GET/HEAD/OPTIONS, which readonly runs allow." },
+      "queryLike": { "type": "object", "required": ["evidence", "source"], "properties": { "evidence": { "type": "string" }, "source": { "enum": ["name", "overlay"] } }, "description": "Advisory: a POST that reads (search/filter). Never lowers mutates." },
+      "deprecated": { "type": "boolean" },
+      "notes": { "type": "string" }
+    }
+  }
+}
