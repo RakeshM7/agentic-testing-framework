@@ -14,13 +14,14 @@ export function tempRoot() {
   return root;
 }
 
-export function writeConfig(root, { mode = "readonly", policy, product = "acme" } = {}) {
+export function writeConfig(root, { mode = "readonly", policy, product = "acme", apiUrls, extra = [] } = {}) {
   const file = path.join(root, "config", `${product}.yaml`);
   writeFileSync(
     file,
     [
       `product: ${product}`,
-      "target: {url: 'https://app.acme.test'}",
+      apiUrls ? `target: {url: 'https://app.acme.test', api_urls: [${apiUrls.map((u) => `'${u}'`).join(", ")}]}` : "target: {url: 'https://app.acme.test'}",
+      ...extra,
       "modules:",
       "  - {slug: contacts, name: Contacts, entry_url: 'https://app.acme.test/contacts'}",
       "  - {slug: deals, name: Deals, nav_path: [Deals]}",

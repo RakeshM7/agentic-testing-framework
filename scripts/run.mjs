@@ -65,7 +65,7 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
     product: cfg.product,
     runId: id,
     createdAt: now(),
-    target: { url: cfg.target.url },
+    target: { url: cfg.target.url, ...(cfg.target.api_urls?.length ? { api_urls: cfg.target.api_urls } : {}) },
     mode: cfg.authorizations.mode,
     configPath: rel(root, path.resolve(configFile)),
     permissionsPath: rel(root, permPath),

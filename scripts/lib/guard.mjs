@@ -38,13 +38,14 @@ export function findActiveRuns(root, env = process.env) {
         product,
         runId: run.runId,
         mode: env.AUTHORIZATIONS_MODE === "readonly" ? "readonly" : run.mode === "full-run" ? "full-run" : "readonly",
-        targetHost: hostOf(run.target?.url),
+        // The product's hosts: the target URL and its API hosts (D-045). A fetch to any of them touches the product.
+        targetHosts: [...new Set([run.target?.url, ...(run.target?.api_urls ?? [])].map(hostOf).filter(Boolean))],
         ledgerFile: path.join(state, "ledger.jsonl"),
         permissions: existsSync(permFile) ? readJson(permFile) : null,
       });
     } catch {
       // A held lock with an unreadable run.json is treated as an active readonly run with no permissions.
-      runs.push({ root, product, runId: null, mode: "readonly", targetHost: null, ledgerFile: null, permissions: null, broken: true });
+      runs.push({ root, product, runId: null, mode: "readonly", targetHosts: [], ledgerFile: null, permissions: null, broken: true });
     }
   }
   return runs;
@@ -106,7 +107,7 @@ function checkShell(cmd, run, row) {
     if (!owned.some((e) => new RegExp(`(?<![\\w-])${escapeRe(e.ref)}(?![\\w-])`).test(cmd)))
       return deny("delete-not-owned", "destructive request does not reference an entity the CURRENT run created (ledger.mjs list <product> --live)");
   }
-  if (row && run.targetHost && lt.http === "none" && cmd.toLowerCase().includes(run.targetHost))
+  if (row && lt.http === "none" && run.targetHosts.some((h) => cmd.toLowerCase().includes(h)))
     return deny("http-none", "this agent has no HTTP access to the product under test");
   return ALLOW;
 }
@@ -122,7 +123,7 @@ function checkWrite(file, run, row) {
 
 function checkFetch(url, run, row) {
   const host = hostOf(url);
-  if (host && host === run.targetHost)
+  if (host && run.targetHosts.includes(host))
     return atLeast(effectiveLiveTarget(row, run.mode).http, "read") ? ALLOW : deny("http-none", "this agent has no HTTP access to the product under test");
   return row.web_research === "allowed" ? ALLOW : deny("web-research", "web research is not allowed for this agent");
 }
@@ -175,7 +176,7 @@ export function checkTool(call, root, env = process.env) {
   if (canary)
     return { allowed: false, rule: "canary", reason: `guard is active on ${labelOf(call.host)} (caller: ${call.agent ?? "unidentified"}); this block is expected`, canary: { product: canary[1] } };
   const runs = findActiveRuns(root, env);
-  if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHost: null }, null) : ALLOW;
+  if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHosts: [] }, null) : ALLOW;
   const verdicts = runs.map((r) => evaluate(call, r));
   if (call.kind === "write") return verdicts.find((v) => v.allowed) ?? verdicts[0];
   return firstDenied(verdicts);

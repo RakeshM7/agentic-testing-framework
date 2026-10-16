@@ -10,7 +10,14 @@
     "product": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
     "runId": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
     "createdAt": { "type": "string" },
-    "target": { "type": "object", "required": ["url"], "properties": { "url": { "type": "string" } } },
+    "target": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string" },
+        "api_urls": { "type": "array", "items": { "type": "string" }, "description": "API hosts of the same product; the guard treats them as the target (D-045)." }
+      }
+    },
     "mode": { "enum": ["readonly", "full-run"], "description": "Single source of truth for the safety mode; caps every agent's permissions." },
     "configPath": { "type": "string" },
     "permissionsPath": { "type": "string" },

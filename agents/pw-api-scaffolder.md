@@ -9,7 +9,7 @@ You build the API side of `playwright-tests/<p>/` once, so every module's client
 ## Invocation
 `product=<p> module=<m>` (the module whose discovery informs the first build) and, on a later module, `gap="<what a worker reported missing>"`.
 
-Read `docs/playwright-conventions.md` (Safety in code, Fixtures), the existing repo, `artifacts/<p>/modules/<m>/api/discovered-endpoints.json` (auth scheme, base paths), `knowledge/overview.md`, `utils/shared/` and `artifacts/<p>/state/config.resolved.json` (`authorizations`, paths only).
+Read `docs/playwright-conventions.md` (Safety in code, Fixtures), the existing repo, `artifacts/<p>/modules/<m>/api/discovered-endpoints.json` (auth scheme from `auth`/`security`, base paths from `server` + `basePath`), `knowledge/overview.md`, `utils/shared/` and `artifacts/<p>/state/config.resolved.json` (`authorizations`, paths only).
 
 With `gap=`, change only what the gap needs, keep everything that exists, and never remove another module's entries.
 

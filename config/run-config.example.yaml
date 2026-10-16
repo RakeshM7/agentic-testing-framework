@@ -12,6 +12,18 @@ product: acme-crm
 
 target:
   url: https://crm.example.com
+  api_urls: []                  # optional: API hosts of the same product, e.g. https://api.crm.example.com/v2. The guard
+                                # treats them as the target (http rules apply; web research cannot reach them).
+
+# Optional: API discovery (api-discoverer via scripts/endpoints.mjs; every request is a guarded GET).
+api:
+  specs: []                     # OpenAPI/Swagger documents (repo paths or URLs) a human knows of; well-known paths are tried too
+  graphql: []                   # GraphQL endpoints (paths or URLs); introspection is sent over GET only
+  auth_header: null             # e.g. {name: Authorization, env: CRM_API_TOKEN, prefix: "Bearer "} -- the VARIABLE NAME in
+                                # credentials_file, never the value. Probes also send the session_state_file cookies.
+  discovery_budget: 40          # max requests to find specs / introspect, per module
+  probe_budget: 50              # max GET probes of documented endpoints, per module
+  probe_delay_ms: 500           # pause between requests
 
 # Optional: the feature / requirement driving this run. An incoming requirement that changes a behavior already
 # recorded in clarifications.csv is the ONLY reason an answered row gets updated.
