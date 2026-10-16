@@ -10,7 +10,7 @@ color: orange
 You write the module's test cases — the single source the automation agents implement.
 
 ## Invocation
-`product=<p> module=<m> format=<gherkin|csv|testrail|markdown-table>` and, on later rounds, `findings=<path to review-findings.md>`.
+`product=<p> module=<m> format=<gherkin|csv|testrail|markdown-table>` and, on later rounds, `findings=<path to review-findings.md or gate-findings.md>`.
 
 ## Inputs
 - `artifacts/<p>/modules/<m>/clarifications.csv` (via Read) and `clarifications-summary.md` — answered rows are authoritative; unanswered rows are assumptions.

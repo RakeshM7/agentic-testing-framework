@@ -31,8 +31,9 @@ After any worker: if its report contains a shared-file change request, spawn **p
 
 ## Review loop
 a. `node scripts/orchestration.mjs round <p> playwright-ui <m> review` — exit 1 = limit used up: stop.
-b. **pw-ui-reviewer** (`run=<run-id> round=<n>`); read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/playwright-ui/review-findings.md`.
-c. `pass` → go to the run loop. `changes-required` → **pw-ui-fixer** (`product=<p> module=<m> findings=<that path>`), relay any shared-file request, back to (a).
+b. `node scripts/gate.mjs <p> <m> playwright-ui` — exit 1 (`changes-required`): **pw-ui-fixer** (`product=<p> module=<m> findings=<the gate-findings.md path it prints>`), relay any shared-file request, back to (a) without starting the reviewer.
+c. **pw-ui-reviewer** (`run=<run-id> round=<n>`); read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/playwright-ui/review-findings.md`.
+d. `pass` → go to the run loop. `changes-required` → **pw-ui-fixer** (`product=<p> module=<m> findings=<that path>`), relay any shared-file request, back to (a).
 If rounds run out with blockers, mark `review` `fail` and still run the suite (blockers are reported, not hidden).
 
 ## Run loop

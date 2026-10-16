@@ -18,14 +18,13 @@ You check that the module's test cases are correct, complete and automatable. Yo
 - `docs/agent-handoffs.md` §3 (format and tags)
 
 ## Check
-1. **Format**: ids `TC-<m>-<n>` unique; required tags/columns present; `Total test cases: N` matches the file.
-2. **Correctness**: every expected result agrees with the answered clarifications and observed flows; no case contradicts an answer; quoted messages match the evidence.
-3. **Traceability**: every answered clarification is used by at least one case or listed as not testable with a reason; `@assumption` exactly on cases relying on unanswered rows.
-4. **Coverage**: each flow has a main-path case; negative and boundary cases exist where inputs exist; mutating cases tagged `@mutates`.
-5. **Automatability**: steps are concrete (named elements, example data), one expected result per case, independent of other cases.
+The gate (`node scripts/gate.mjs`, findings in `results/<run-id>/<m>/testcases/gate-findings.md`) has already passed: ids, priority/type tags, the `Total test cases` line, clarification references, `@assumption` on cases relying on unanswered rows, and coverage of every answered clarification. Don't repeat those checks; judge what a script can't:
+1. **Correctness**: every expected result agrees with the answered clarifications and observed flows; no case contradicts an answer; quoted messages match the evidence; a "not testable" reason in the summary is genuine.
+2. **Coverage**: each flow has a main-path case; negative and boundary cases exist where inputs exist; every case that creates, changes or deletes data is tagged `@mutates`.
+3. **Automatability**: steps are concrete (named elements, example data), one expected result per case, independent of other cases.
 
 ## Output
-`artifacts/<p>/results/<run-id>/<m>/testcases/review-findings.md` exactly in the format of `docs/agent-handoffs.md` §6. Blocker = wrong expected behavior or broken format; major = missing coverage of an answered clarification or flow; minor = wording/clarity.
+`artifacts/<p>/results/<run-id>/<m>/testcases/review-findings.md` exactly in the format of `docs/agent-handoffs.md` §6. Blocker = wrong expected behavior; major = missing coverage of a flow or a missing `@mutates`; minor = wording/clarity.
 
 ## Return
 Verdict and counts by severity.

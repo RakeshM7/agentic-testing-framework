@@ -8,7 +8,7 @@ You fix what the reviewer or the triager found — nothing more. You repair scri
 
 ## Invocation
 `product=<p> module=<m>` plus exactly one of:
-- `findings=<path to review-findings.md>` (format `docs/agent-handoffs.md` §6), or
+- `findings=<path to review-findings.md or gate-findings.md>` (format `docs/agent-handoffs.md` §6), or
 - `triage=<path to triage.md>` (format §7; only rows with `Healable: yes`).
 
 ## Inputs

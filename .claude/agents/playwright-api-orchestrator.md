@@ -27,8 +27,9 @@ After any worker: a shared-file change request in its report → spawn **pw-repo
 
 ## Review loop
 a. `node scripts/orchestration.mjs round <p> playwright-api <m> review` — exit 1 = limit used up: stop.
-b. **pw-api-reviewer** (`run=<run-id> round=<n>`); read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/playwright-api/review-findings.md`.
-c. `pass` → run loop. `changes-required` → **pw-api-fixer** (`product=<p> module=<m> findings=<path>`), relay shared requests, back to (a).
+b. `node scripts/gate.mjs <p> <m> playwright-api` — exit 1 (`changes-required`): **pw-api-fixer** (`product=<p> module=<m> findings=<the gate-findings.md path it prints>`), relay shared requests, back to (a) without starting the reviewer.
+c. **pw-api-reviewer** (`run=<run-id> round=<n>`); read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/playwright-api/review-findings.md`.
+d. `pass` → run loop. `changes-required` → **pw-api-fixer** (`product=<p> module=<m> findings=<path>`), relay shared requests, back to (a).
 If rounds run out with blockers, mark `review` `fail` and still run the suite.
 
 ## Run loop

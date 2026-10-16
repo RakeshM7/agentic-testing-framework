@@ -27,8 +27,9 @@ Track steps with `node scripts/orchestration.mjs step <p> k6 <m> <step> start|do
 
 ## Review loop
 a. `node scripts/orchestration.mjs round <p> k6 <m> review` — exit 1 = limit used up: stop.
-b. **k6-reviewer** (`run=<run-id> round=<n>`); read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/k6/review-findings.md`.
-c. `pass` → run loop. `changes-required` → **k6-fixer** (`product=<p> module=<m> findings=<path>`), back to (a).
+b. `node scripts/gate.mjs <p> <m> k6` — exit 1 (`changes-required`): **k6-fixer** (`product=<p> module=<m> findings=<the gate-findings.md path it prints>`), back to (a) without starting the reviewer.
+c. **k6-reviewer** (`run=<run-id> round=<n>`); read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/k6/review-findings.md`.
+d. `pass` → run loop. `changes-required` → **k6-fixer** (`product=<p> module=<m> findings=<path>`), back to (a).
 
 ## Run loop
 a. **k6-runner-triager** (`run=<run-id> mode=<mode> round=<n>`). In a readonly run it only validates and records `not-run`; there is nothing to heal — finish.

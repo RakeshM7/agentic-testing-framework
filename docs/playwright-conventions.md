@@ -42,6 +42,8 @@ A change to a file you don't own is a request in your report to your orchestrato
 - Visual checks (`@visual` cases): `toHaveScreenshot()` with masks for dynamic regions; baselines are created by the runner with `--update-snapshots` only when none exist.
 - `npx tsc --noEmit` must pass before handing back.
 
+**Machine-checked** by `scripts/gate.mjs` before every review (findings in `gate-findings.md`): typecheck and `--list`; one test (or `test.fixme`) per test case (ui, all but `@api`) or plan scenario (api), and no test without one; `@mutates` in the title of every test whose case or scenario mutates; `recordCreated` in specs with `@mutates` tests; no `waitForTimeout`; no hard-coded URLs or `test.only`; no assertions in page objects or clients. Everything else in this file is the reviewer's to judge.
+
 ## Running (runner-triagers only)
 
 ```

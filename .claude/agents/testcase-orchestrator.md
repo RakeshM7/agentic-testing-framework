@@ -18,9 +18,10 @@ Track steps with `node scripts/orchestration.mjs step <p> testcases <m> <step> s
 1. Step `write`: spawn **testcase-writer** (`product=<p> module=<m> format=<format>`).
 2. Review loop:
    a. `node scripts/orchestration.mjs round <p> testcases <m> review` — exit 1 means the limit (`limits.review_rounds`) is used up: stop looping.
-   b. Spawn **testcase-reviewer** (`product=<p> module=<m> run=<run-id> round=<n> format=<format>`).
-   c. Read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/testcases/review-findings.md`. `pass` → done.
-   d. `changes-required` → spawn **testcase-writer** with `findings=<that path>`, then back to (a).
+   b. `node scripts/gate.mjs <p> <m> testcases` — exit 1 (`changes-required`): spawn **testcase-writer** with `findings=<the gate-findings.md path it prints>` and go back to (a) without starting the reviewer.
+   c. Spawn **testcase-reviewer** (`product=<p> module=<m> run=<run-id> round=<n> format=<format>`).
+   d. Read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/testcases/review-findings.md`. `pass` → done.
+   e. `changes-required` → spawn **testcase-writer** with `findings=<that path>`, then back to (a).
 3. If the rounds ran out with blockers or majors left, mark step `review` as `fail` with the remaining finding numbers.
 
 ## Return to orchestrator-agent

@@ -65,7 +65,8 @@ profiles:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/run.mjs status *", "node scripts/ledger.mjs list *"]
+    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/run.mjs status *", "node scripts/ledger.mjs list *",
+                  "node scripts/gate.mjs *"]
   code_writer:            # writes generated test code only, no product access
     live_target: { browser: none, http: none, load: none }
     web_research: none
@@ -168,14 +169,15 @@ agents:
     web_research: none
     shell: none
     filesystem:
-      read: ["${modules}/**", "${knowledge}/**"]
+      read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/testcases/review-findings.md",
+             "${results}/${module}/testcases/gate-findings.md"]
       write: ["${modules}/testcases/**"]
 
   testcase-reviewer:
     layer: 2
     profile: reviewer
     shell: none
-    filesystem: { read: ["${modules}/**"], write: ["${results}/${module}/testcases/review-findings.md"] }
+    filesystem: { read: ["${modules}/**", "${results}/${module}/testcases/gate-findings.md"], write: ["${results}/${module}/testcases/review-findings.md"] }
 
   # ======================= Shared Playwright repo owner (repo: ${pw_project}) =============================
   pw-repo-owner:                # sole writer of shared repo files (see ownership table in the header)
@@ -214,13 +216,13 @@ agents:
   pw-ui-reviewer:
     layer: 2
     profile: reviewer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-ui/review-findings.md"] }
+    filesystem: { read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-ui/gate-findings.md"], write: ["${results}/${module}/playwright-ui/review-findings.md"] }
   pw-ui-fixer:                  # review findings or healable triage rows
     layer: 2
     profile: fixer
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-ui/review-findings.md",
-             "${results}/${module}/playwright-ui/triage.md"]
+             "${results}/${module}/playwright-ui/gate-findings.md", "${results}/${module}/playwright-ui/triage.md"]
       write: ["${pw_project}/pages/**", "${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**", "${pw_project}/fixtures/ui/**"]
   pw-ui-test-runner-triager:
     layer: 2
@@ -269,13 +271,13 @@ agents:
   pw-api-reviewer:
     layer: 2
     profile: reviewer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-api/review-findings.md"] }
+    filesystem: { read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-api/gate-findings.md"], write: ["${results}/${module}/playwright-api/review-findings.md"] }
   pw-api-fixer:                 # review findings or healable triage rows
     layer: 2
     profile: fixer
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-api/review-findings.md",
-             "${results}/${module}/playwright-api/triage.md"]
+             "${results}/${module}/playwright-api/gate-findings.md", "${results}/${module}/playwright-api/triage.md"]
       write: ["${pw_project}/clients/**", "${pw_project}/tests/api/**", "${pw_project}/helpers/api/**", "${pw_project}/fixtures/api/**"]
   pw-api-test-runner-triager:
     layer: 2
@@ -307,12 +309,13 @@ agents:
   k6-reviewer:
     layer: 2
     profile: reviewer
-    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${results}/${module}/k6/review-findings.md"] }
+    filesystem: { read: ["${k6_project}/**", "${modules}/**", "${results}/${module}/k6/gate-findings.md"], write: ["${results}/${module}/k6/review-findings.md"] }
   k6-fixer:                     # review findings or healable triage rows
     layer: 2
     profile: fixer
     filesystem:
-      read: ["${k6_project}/**", "${modules}/**", "${results}/${module}/k6/review-findings.md", "${results}/${module}/k6/triage.md"]
+      read: ["${k6_project}/**", "${modules}/**", "${results}/${module}/k6/review-findings.md", "${results}/${module}/k6/gate-findings.md",
+             "${results}/${module}/k6/triage.md"]
       write: ["${k6_project}/**"]
   k6-runner-triager:
     layer: 2
