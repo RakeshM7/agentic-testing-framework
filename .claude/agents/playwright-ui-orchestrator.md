@@ -1,8 +1,8 @@
 ---
 # GENERATED from agents/playwright-ui-orchestrator.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: playwright-ui-orchestrator
-description: "Runs the Playwright UI domain for ONE module: scaffold, helpers, page objects, fixtures, tests; a bounded review -> feedback-implementor loop; a bounded run/triage -> heal loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
-tools: Read, Glob, Grep, Write, Edit, Bash, Agent(pw-repo-owner, pw-ui-scaffolder, pw-ui-helper-writer, pw-ui-fixtures-writer, pw-ui-pom-writer, pw-ui-tests-writer, pw-ui-reviewer, pw-ui-feedback-implementor, pw-ui-test-runner-triager, pw-ui-healer)
+description: "Runs the Playwright UI domain for ONE module: scaffold, helpers, page objects, fixtures, tests; a bounded review -> fixer loop; a bounded run/triage -> fixer (heal) loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
+tools: Read, Glob, Grep, Write, Edit, Bash, Agent(pw-repo-owner, pw-ui-scaffolder, pw-ui-helper-writer, pw-ui-fixtures-writer, pw-ui-pom-writer, pw-ui-tests-writer, pw-ui-reviewer, pw-ui-fixer, pw-ui-test-runner-triager)
 model: claude-opus-5-5
 color: blue
 ---
@@ -26,12 +26,12 @@ After any worker: if its report contains a shared-file change request, spawn **p
 ## Review loop
 a. `node scripts/orchestration.mjs round <p> playwright-ui <m> review` — exit 1 = limit used up: stop.
 b. **pw-ui-reviewer** (`run=<run-id> round=<n>`); read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/playwright-ui/review-findings.md`.
-c. `pass` → go to the run loop. `changes-required` → **pw-ui-feedback-implementor** (`findings=<that path>`), relay any shared-file request, back to (a).
+c. `pass` → go to the run loop. `changes-required` → **pw-ui-fixer** (`product=<p> module=<m> findings=<that path>`), relay any shared-file request, back to (a).
 If rounds run out with blockers, mark `review` `fail` and still run the suite (blockers are reported, not hidden).
 
 ## Run loop
 a. **pw-ui-test-runner-triager** (`run=<run-id> mode=<mode> round=<n>`); it writes `results.json` (via script) and `triage.md`.
-b. If `triage.md` has rows with `Healable: yes`: `node scripts/orchestration.mjs round <p> playwright-ui <m> heal` — exit 1 = stop. Otherwise spawn **pw-ui-healer** (`triage=<path>`), then back to (a).
+b. If `triage.md` has rows with `Healable: yes`: `node scripts/orchestration.mjs round <p> playwright-ui <m> heal` — exit 1 = stop. Otherwise spawn **pw-ui-fixer** (`product=<p> module=<m> triage=<path>`), then back to (a).
 c. Stop when nothing healable remains.
 
 ## Return to orchestrator-agent

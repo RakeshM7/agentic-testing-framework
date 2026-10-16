@@ -56,12 +56,12 @@ test("Copilot frontmatter: subagent allow-list, entry agents only, identity hook
   assert.deepEqual(orch.agents, perms.agents["orchestrator-agent"].spawns);
   assert.equal(orch["user-invocable"], true);
   assert.equal(orch["disable-model-invocation"], true);
-  const worker = generated(".github/agents/pw-ui-healer.agent.md");
+  const worker = generated(".github/agents/pw-ui-fixer.agent.md");
   assert.equal(worker["user-invocable"], false);
   assert.equal(worker.agents, undefined);
-  assert.equal(worker.hooks.PreToolUse[0].command, "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-healer");
+  assert.equal(worker.hooks.PreToolUse[0].command, "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-fixer");
   assert.equal(worker.color, undefined, "color is Claude-only");
-  const claude = generated(".claude/agents/pw-ui-healer.md");
+  const claude = generated(".claude/agents/pw-ui-fixer.md");
   assert.equal(claude.hooks, undefined, "Claude Code identifies agents from its own hook payload");
   for (const name of Object.keys(perms.agents)) assert.equal(generated(`.github/agents/${name}.agent.md`).name, name);
 });
@@ -94,7 +94,7 @@ test("missing and stray sources and stray generated files are errors, and nothin
 test("a hand edit of a generated file is drift", () => {
   const root = scratch();
   build({ root });
-  const rel = ".claude/agents/pw-ui-healer.md";
+  const rel = ".claude/agents/pw-ui-fixer.md";
   writeFileSync(path.join(root, rel), readFileSync(path.join(root, rel), "utf8").replace("tools: ", "tools: WebSearch, "));
   assert.deepEqual(build({ check: true, root }).changed, [rel]);
 });

@@ -1,16 +1,16 @@
 # Agent architecture v2
 
-Status: **implemented** — all 43 agents, written once in `agents/` and generated for Claude Code (`.claude/agents/`) and GitHub Copilot (`.github/agents/`) by `scripts/build-agents.mjs` from `config/` ([`platforms.md`](platforms.md)), the scripts layer and the contracts ([`artifact-contract.md`](artifact-contract.md), [`agent-handoffs.md`](agent-handoffs.md), [`playwright-conventions.md`](playwright-conventions.md), [`k6-conventions.md`](k6-conventions.md)). Not yet exercised end to end against a real product.
+Status: **implemented** — all 40 agents, written once in `agents/` and generated for Claude Code (`.claude/agents/`) and GitHub Copilot (`.github/agents/`) by `scripts/build-agents.mjs` from `config/` ([`platforms.md`](platforms.md)), the scripts layer and the contracts ([`artifact-contract.md`](artifact-contract.md), [`agent-handoffs.md`](agent-handoffs.md), [`playwright-conventions.md`](playwright-conventions.md), [`k6-conventions.md`](k6-conventions.md)). Not yet exercised end to end against a real product.
 
 ## Principles (decided)
 1. One job per agent, with declared inputs and outputs; small prompts; paths in, never pasted content.
 2. **Hierarchy via native nested subagents** (Claude Code: default; VS Code Copilot Chat: `chat.subagents.allowInvocationsFromSubagents`): layer 0 main orchestrator → layer 1 domain orchestrators and product-level workers → layer 2 workers. Workers get no subagent tool.
-3. **No agent talks to a sibling.** Every hand-off goes through the parent orchestrator, using files as the medium (e.g. triager writes `triage.md`; the orchestrator then starts the healer with that path).
+3. **No agent talks to a sibling.** Every hand-off goes through the parent orchestrator, using files as the medium (e.g. triager writes `triage.md`; the orchestrator then starts the fixer with that path).
 4. Permissions per agent live in `config/permissions.yaml` and are enforced in code (generated tool lists and subagent allow-lists per platform; the guard keyed on the calling agent, which each host adapter learns from a trusted source; write allow-list), not only in prompts.
 5. Single writer per file/cell wherever possible; agents never overwrite human-entered answers.
 6. Concurrency is **sequential by default**, configurable in the run-config.
 
-## Roster (43 agents)
+## Roster (40 agents)
 
 | Domain | Orchestrator | Workers |
 |---|---|---|
@@ -18,9 +18,9 @@ Status: **implemented** — all 43 agents, written once in `agents/` and generat
 | Clarification | `clarification-orchestrator` | `question-writer`, `clarification-explorer`, `clarification-writer` |
 | Test cases | `testcase-orchestrator` | `testcase-writer`, `testcase-reviewer` |
 | Shared Playwright repo | — (spawned by `orchestrator-agent` for the skeleton, by either Playwright orchestrator for change requests) | `pw-repo-owner` (sole writer of package.json, playwright.config.ts, tsconfig, .env.example, .gitignore, README, utils/shared/) |
-| Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder`, `pw-ui-helper-writer`, `pw-ui-fixtures-writer`, `pw-ui-pom-writer`, `pw-ui-tests-writer`, `pw-ui-reviewer`, `pw-ui-feedback-implementor`, `pw-ui-test-runner-triager`, `pw-ui-healer` |
-| Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder`, `pw-api-helper-writer`, `pw-api-fixtures-writer`, `pw-api-client-writer` (the API analogue of the POM), `pw-api-tests-writer`, `pw-api-reviewer`, `pw-api-feedback-implementor`, `pw-api-test-runner-triager`, `pw-api-healer` |
-| K6 | `k6-orchestrator` | `k6-workload-designer`, `k6-lib-writer`, `k6-script-writer`, `k6-reviewer`, `k6-feedback-implementor`, `k6-runner-triager`, `k6-healer` |
+| Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder`, `pw-ui-helper-writer`, `pw-ui-fixtures-writer`, `pw-ui-pom-writer`, `pw-ui-tests-writer`, `pw-ui-reviewer`, `pw-ui-fixer`, `pw-ui-test-runner-triager` |
+| Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder`, `pw-api-helper-writer`, `pw-api-fixtures-writer`, `pw-api-client-writer` (the API analogue of the POM), `pw-api-tests-writer`, `pw-api-reviewer`, `pw-api-fixer`, `pw-api-test-runner-triager` |
+| K6 | `k6-orchestrator` | `k6-workload-designer`, `k6-lib-writer`, `k6-script-writer`, `k6-reviewer`, `k6-fixer`, `k6-runner-triager` |
 | Framework maintenance | — | `feedback-implementor-agent` (existing; fixes agent prompts/framework from `feedback/`) |
 
 ## Layout v2 (decided): everything is product-level, no `artifacts/<run-id>/` directory
@@ -69,10 +69,10 @@ main orchestrator:
   5 pw-repo-owner (once per product, any time before step 6): shared repo skeleton for ui + api
   6 playwright-ui-orchestrator and playwright-api-orchestrator (independent; both need testcases + the repo)
         build:  scaffolder -> helper / fixtures / pom|client writers -> tests-writer
-        review loop: reviewer -> findings -> feedback-implementor (max N rounds, via the orchestrator)
-        run loop:    runner-triager -> triage.md -> healer -> re-run (max N rounds, via the orchestrator)
+        review loop: reviewer -> findings -> fixer (max N rounds, via the orchestrator)
+        run loop:    runner-triager -> triage.md -> fixer -> re-run (max N rounds, via the orchestrator)
         API additionally starts with api-discoverer -> api-test-planner
-  7 k6-orchestrator (needs the API plan): workload-designer -> lib-writer -> script-writer -> review loop -> run/heal loop
+  7 k6-orchestrator (needs the API plan): workload-designer -> lib-writer -> script-writer -> review loop -> run/fix loop
   8 report-generator -> HTML slide deck
 ```
 

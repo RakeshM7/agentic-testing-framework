@@ -74,11 +74,8 @@ profiles:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: project
-  feedback_implementor:   # applies reviewer findings to the code (the only agent per domain that edits reviewed code)
-    live_target: { browser: none, http: none, load: none }
-    web_research: none
-    shell: project
-  healer:                 # fixes failing tests/scripts from a triage report; cannot run against the product
+  fixer:                  # applies reviewer findings or healable triage rows to the code (the only agent per domain
+                          # that edits reviewed code); cannot run against the product
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: project
@@ -217,7 +214,7 @@ agents:
     layer: 1
     profile: orchestrator
     spawns: [pw-repo-owner, pw-ui-scaffolder, pw-ui-helper-writer, pw-ui-fixtures-writer, pw-ui-pom-writer, pw-ui-tests-writer,
-             pw-ui-reviewer, pw-ui-feedback-implementor, pw-ui-test-runner-triager, pw-ui-healer]
+             pw-ui-reviewer, pw-ui-fixer, pw-ui-test-runner-triager]
     filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-ui/**"], write: ["${state}/orchestration/playwright-ui-${module}.json"] }
 
   pw-ui-scaffolder:             # UI-specific scaffolding only; shared files belong to pw-repo-owner
@@ -245,11 +242,12 @@ agents:
     layer: 2
     profile: reviewer
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-ui/review-findings.md"] }
-  pw-ui-feedback-implementor:
+  pw-ui-fixer:                  # review findings or healable triage rows
     layer: 2
-    profile: feedback_implementor
+    profile: fixer
     filesystem:
-      read: ["${pw_project}/**", "${results}/${module}/playwright-ui/review-findings.md"]
+      read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-ui/review-findings.md",
+             "${results}/${module}/playwright-ui/triage.md"]
       write: ["${pw_project}/pages/**", "${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**", "${pw_project}/fixtures/ui/**"]
   pw-ui-test-runner-triager:
     layer: 2
@@ -257,20 +255,13 @@ agents:
     web_research: none
     shell: project
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-ui/results.json", "${results}/${module}/playwright-ui/triage.md", "${pw_project}/test-results/ui/**"] }
-  pw-ui-healer:
-    layer: 2
-    profile: healer
-    filesystem:
-      read: ["${pw_project}/**", "${results}/${module}/playwright-ui/triage.md"]
-      write: ["${pw_project}/pages/**", "${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**", "${pw_project}/fixtures/ui/**"]
 
   # ======================= Playwright API domain (same repo: ${pw_project}) ===============================
   playwright-api-orchestrator:
     layer: 1
     profile: orchestrator
     spawns: [pw-repo-owner, api-discoverer, api-test-planner, pw-api-scaffolder, pw-api-helper-writer, pw-api-fixtures-writer,
-             pw-api-client-writer, pw-api-tests-writer, pw-api-reviewer, pw-api-feedback-implementor,
-             pw-api-test-runner-triager, pw-api-healer]
+             pw-api-client-writer, pw-api-tests-writer, pw-api-reviewer, pw-api-fixer, pw-api-test-runner-triager]
     filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-api/**"], write: ["${state}/orchestration/playwright-api-${module}.json"] }
 
   api-discoverer:
@@ -310,11 +301,12 @@ agents:
     layer: 2
     profile: reviewer
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-api/review-findings.md"] }
-  pw-api-feedback-implementor:
+  pw-api-fixer:                 # review findings or healable triage rows
     layer: 2
-    profile: feedback_implementor
+    profile: fixer
     filesystem:
-      read: ["${pw_project}/**", "${results}/${module}/playwright-api/review-findings.md"]
+      read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-api/review-findings.md",
+             "${results}/${module}/playwright-api/triage.md"]
       write: ["${pw_project}/clients/**", "${pw_project}/tests/api/**", "${pw_project}/helpers/api/**", "${pw_project}/fixtures/api/**"]
   pw-api-test-runner-triager:
     layer: 2
@@ -322,19 +314,12 @@ agents:
     web_research: none
     shell: project
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-api/results.json", "${results}/${module}/playwright-api/triage.md", "${pw_project}/test-results/api/**"] }
-  pw-api-healer:
-    layer: 2
-    profile: healer
-    filesystem:
-      read: ["${pw_project}/**", "${results}/${module}/playwright-api/triage.md"]
-      write: ["${pw_project}/clients/**", "${pw_project}/tests/api/**", "${pw_project}/helpers/api/**", "${pw_project}/fixtures/api/**"]
 
   # ======================= K6 domain (repo: ${k6_project}) ================================================
   k6-orchestrator:
     layer: 1
     profile: orchestrator
-    spawns: [k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-feedback-implementor,
-             k6-runner-triager, k6-healer]
+    spawns: [k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-fixer, k6-runner-triager]
     filesystem: { read: ["${modules}/**", "${k6_project}/**", "${results}/${module}/k6/**"], write: ["${state}/orchestration/k6-${module}.json"] }
   k6-workload-designer:
     layer: 2
@@ -354,20 +339,18 @@ agents:
     layer: 2
     profile: reviewer
     filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${results}/${module}/k6/review-findings.md"] }
-  k6-feedback-implementor:
+  k6-fixer:                     # review findings or healable triage rows
     layer: 2
-    profile: feedback_implementor
-    filesystem: { read: ["${k6_project}/**", "${results}/${module}/k6/review-findings.md"], write: ["${k6_project}/**"] }
+    profile: fixer
+    filesystem:
+      read: ["${k6_project}/**", "${modules}/**", "${results}/${module}/k6/review-findings.md", "${results}/${module}/k6/triage.md"]
+      write: ["${k6_project}/**"]
   k6-runner-triager:
     layer: 2
     live_target: { browser: none, http: none, load: run }   # live load only in full-run; BASE_URL must be on K6_ALLOWED_HOSTS
     web_research: none
     shell: project
     filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${results}/${module}/k6/results.json", "${results}/${module}/k6/triage.md", "${k6_project}/results/**"] }
-  k6-healer:
-    layer: 2
-    profile: healer
-    filesystem: { read: ["${k6_project}/**", "${results}/${module}/k6/triage.md"], write: ["${k6_project}/**"] }
 
   # ======================= Reporting and framework maintenance ===========================================
   report-generator:

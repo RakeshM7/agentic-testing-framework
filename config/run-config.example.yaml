@@ -61,8 +61,8 @@ clarifications:
                                 #                    agents treat them as flagged assumptions
 
 limits:
-  review_rounds: 3              # reviewer -> feedback-implementor loops per domain
-  heal_rounds: 3                # runner-triager -> healer loops per domain
+  review_rounds: 3              # reviewer -> fixer loops per domain
+  heal_rounds: 3                # runner-triager -> fixer loops per domain
 
 concurrency:
   modules: 1                    # modules explored/processed in parallel (1 = sequential, one browser)

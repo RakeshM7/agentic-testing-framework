@@ -37,7 +37,7 @@ A further platform or host must behave identically — same stages, artifacts, s
 
 ## Feedback contract (improving the framework itself)
 
-Problems with the framework — an agent prompt, a script, a doc — are recorded as **feedback files** and fixed by `feedback-implementor-agent`. Per-product issues in generated test code are not feedback: each domain's own reviewer/feedback-implementor/healer handles those during the run.
+Problems with the framework — an agent prompt, a script, a doc — are recorded as **feedback files** and fixed by `feedback-implementor-agent`. Per-product issues in generated test code are not feedback: each domain's own reviewer and fixer handle those during the run.
 
 Agents have no write access to `feedback/`; they report problems in their return message, and a human (or a later human-driven review of the run) files them.
 

@@ -58,7 +58,7 @@ Screenshots, if any, sit next to it as `step-<n>.png`. `confirmed` requires the 
 
 `modules/<m>/k6/workload.json`: `[{id: "K6-<m>-<n>", name, endpoints: ["EP-..."], executor, profile: {vus?, duration?, stages?[], rate?}, thresholds: {"http_req_duration": ["p(95)<..."], "http_req_failed": ["rate<..."], ...}, mutates: bool, rationale}]`
 
-## 6. Review findings (every reviewer → its domain orchestrator → feedback implementor)
+## 6. Review findings (every reviewer → its domain orchestrator → fixer)
 
 `results/<run>/<m>/<domain>/review-findings.md` (`<domain>` = `testcases`, `playwright-ui`, `playwright-api`, `k6`):
 
@@ -70,7 +70,7 @@ Verdict: pass | changes-required
 ```
 Severity `blocker | major | minor`. `Verdict: pass` exactly when there is no blocker or major finding. Reviewers never edit what they review.
 
-## 7. Triage (every runner-triager → its domain orchestrator → healer)
+## 7. Triage (every runner-triager → its domain orchestrator → fixer)
 
 `results/<run>/<m>/<framework>/triage.md`:
 

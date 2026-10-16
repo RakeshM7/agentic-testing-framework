@@ -1,9 +1,9 @@
 ---
 # GENERATED from agents/playwright-api-orchestrator.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: playwright-api-orchestrator
-description: "Runs the Playwright API domain for ONE module: endpoint discovery, test plan, scaffold, helpers, clients, fixtures, tests; a bounded review -> feedback-implementor loop; a bounded run/triage -> heal loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
+description: "Runs the Playwright API domain for ONE module: endpoint discovery, test plan, scaffold, helpers, clients, fixtures, tests; a bounded review -> fixer loop; a bounded run/triage -> fixer (heal) loop. Relays shared-repo changes to pw-repo-owner. Coordinates only. Invoked by orchestrator-agent."
 tools: ["read", "search", "edit", "execute", "agent"]
-agents: ["pw-repo-owner", "api-discoverer", "api-test-planner", "pw-api-scaffolder", "pw-api-helper-writer", "pw-api-fixtures-writer", "pw-api-client-writer", "pw-api-tests-writer", "pw-api-reviewer", "pw-api-feedback-implementor", "pw-api-test-runner-triager", "pw-api-healer"]
+agents: ["pw-repo-owner", "api-discoverer", "api-test-planner", "pw-api-scaffolder", "pw-api-helper-writer", "pw-api-fixtures-writer", "pw-api-client-writer", "pw-api-tests-writer", "pw-api-reviewer", "pw-api-fixer", "pw-api-test-runner-triager"]
 model: "gpt-6-luna"
 user-invocable: false
 hooks:
@@ -34,12 +34,12 @@ After any worker: a shared-file change request in its report → spawn **pw-repo
 ## Review loop
 a. `node scripts/orchestration.mjs round <p> playwright-api <m> review` — exit 1 = limit used up: stop.
 b. **pw-api-reviewer** (`run=<run-id> round=<n>`); read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/playwright-api/review-findings.md`.
-c. `pass` → run loop. `changes-required` → **pw-api-feedback-implementor** (`findings=<path>`), relay shared requests, back to (a).
+c. `pass` → run loop. `changes-required` → **pw-api-fixer** (`product=<p> module=<m> findings=<path>`), relay shared requests, back to (a).
 If rounds run out with blockers, mark `review` `fail` and still run the suite.
 
 ## Run loop
 a. **pw-api-test-runner-triager** (`run=<run-id> mode=<mode> round=<n>`).
-b. Rows with `Healable: yes` in `triage.md`: `node scripts/orchestration.mjs round <p> playwright-api <m> heal` — exit 1 = stop; else **pw-api-healer** (`triage=<path>`), back to (a).
+b. Rows with `Healable: yes` in `triage.md`: `node scripts/orchestration.mjs round <p> playwright-api <m> heal` — exit 1 = stop; else **pw-api-fixer** (`product=<p> module=<m> triage=<path>`), back to (a).
 c. Stop when nothing healable remains.
 
 ## Return to orchestrator-agent

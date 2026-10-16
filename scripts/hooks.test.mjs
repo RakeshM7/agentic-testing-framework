@@ -28,7 +28,7 @@ test("the Copilot adapter reads both payload casings and every host's tool names
   assert.deepEqual(vscode("x", { tool_name: "multi_replace_string_in_file", tool_input: { replacements: [{ filePath: "a" }, { filePath: "b" }] } }).paths, ["a", "b"]);
   assert.deepEqual(vscode("x", { tool_name: "apply_patch", tool_input: { input: "*** Begin Patch\n*** Update File: /r/x.ts\n@@\n*** Add File: /r/y.ts\n" } }).paths, ["/r/x.ts", "/r/y.ts"]);
   assert.deepEqual(vscode("x", { tool_name: "fetch_webpage", tool_input: { urls: ["https://a.test", "https://b.test"] } }).urls, ["https://a.test", "https://b.test"]);
-  assert.equal(vscode("x", { tool_name: "runSubagent", tool_input: { agentName: "pw-ui-healer" } }).subagent, "pw-ui-healer");
+  assert.equal(vscode("x", { tool_name: "runSubagent", tool_input: { agentName: "pw-ui-fixer" } }).subagent, "pw-ui-fixer");
   const b = vscode("x", { tool_name: "mcp_playwright_browser_type", tool_input: {} });
   assert.deepEqual([b.kind, b.browserAction], ["browser", "type"]);
   assert.equal(vscode("x", { tool_name: "view_image", tool_input: { filePath: "/r/shot.png" } }).kind, "read");
@@ -37,7 +37,7 @@ test("the Copilot adapter reads both payload casings and every host's tool names
 
 test("identity comes only from a trusted source: Copilot payloads cannot name the agent; Claude's must be Claude's", () => {
   assert.equal(cli({ tool_name: "Bash", tool_input: {}, agent_type: "orchestrator-agent" }).agent, undefined);
-  assert.equal(vscode("pw-ui-healer", { tool_name: "read_file", tool_input: {} }).agent, "pw-ui-healer");
+  assert.equal(vscode("pw-ui-fixer", { tool_name: "read_file", tool_input: {} }).agent, "pw-ui-fixer");
   const viaCli = claude.normalize({ tool_name: "Bash", tool_input: {}, agent_type: "orchestrator-agent" }, { env: {}, host: "claude-code" });
   assert.deepEqual([viaCli.host, viaCli.agent], ["unknown", undefined], "Copilot CLI reading .claude/settings.json is not Claude Code");
 });
@@ -53,7 +53,7 @@ test("full-run on a host that cannot identify the caller: the run's combined per
   assert.match(outside.reason, /Copilot CLI cannot tell the guard which agent is calling, so it allows what at least one of this run's agents may do/);
   assert.equal(checkTool(bash("curl -X DELETE https://app.acme.test/api/contacts/1"), FULL.root, {}).rule, "delete-not-owned", "deletes stay ledger-scoped");
   const spawn = (agent_type) => allowed(FULL.root, cli({ toolName: "task", toolArgs: { agent_type, prompt: "x" } }));
-  assert.deepEqual([spawn("orchestrator-agent"), spawn("pw-ui-healer"), spawn("feedback-implementor-agent")], [true, true, false], "the chat may start the entry agent; agents outside a run stay out");
+  assert.deepEqual([spawn("orchestrator-agent"), spawn("pw-ui-fixer"), spawn("feedback-implementor-agent")], [true, true, false], "the chat may start the entry agent; agents outside a run stay out");
   assert.equal(checkTool(cli({ toolName: "write_bash", toolArgs: { shellId: "1", input: post } }), FULL.root, {}).rule, "unmapped-tool");
   assert.equal(allowed(FULL.root, cli({ toolName: "read_bash", toolArgs: { shellId: "1" } })), true);
   assert.equal(allowed(FULL.root, copilot.normalize({ toolName: "bash", toolArgs: { command: post } }, { env: { GITHUB_ACTIONS: "true" }, host: "copilot" })), true, "the cloud agent too");
@@ -90,16 +90,16 @@ test("per-agent rules apply on VS Code through the agent's own hook", () => {
   assert.equal(w("pw-ui-pom-writer", "config/permissions.yaml"), false);
   const shot = path.join(FULL.root, "artifacts/acme/modules/contacts/explore/screenshots/list.png");
   assert.equal(allowed(FULL.root, vscode("pw-ui-reviewer", { tool_name: "view_image", tool_input: { filePath: shot } })), true, "a read: no longer an unmapped tool during a run");
-  assert.equal(allowed(FULL.root, vscode("pw-ui-healer", { tool_name: "runSubagent", tool_input: { agentName: "pw-ui-reviewer" } })), false);
+  assert.equal(allowed(FULL.root, vscode("pw-ui-fixer", { tool_name: "runSubagent", tool_input: { agentName: "pw-ui-reviewer" } })), false);
   assert.equal(allowed(FULL.root, vscode("pw-ui-reviewer", { tool_name: "mcp_playwright_browser_navigate", tool_input: {} })), false);
 });
 
 test("an unmapped tool fails closed for a managed agent during a run, and only then", () => {
   const unknown = (agent) => vscode(agent, { tool_name: "brand_new_tool", tool_input: {} });
-  assert.equal(checkTool(unknown("pw-ui-healer"), FULL.root, {}).rule, "unmapped-tool");
+  assert.equal(checkTool(unknown("pw-ui-fixer"), FULL.root, {}).rule, "unmapped-tool");
   assert.equal(allowed(FULL.root, unknown(undefined)), true);
-  assert.equal(allowed(tempRoot(), unknown("pw-ui-healer")), true, "no active run");
-  const noPath = vscode("pw-ui-healer", { tool_name: "create_file", tool_input: {} });
+  assert.equal(allowed(tempRoot(), unknown("pw-ui-fixer")), true, "no active run");
+  const noPath = vscode("pw-ui-fixer", { tool_name: "create_file", tool_input: {} });
   assert.equal(checkTool(noPath, FULL.root, {}).rule, "fs-write", "a write whose target is unknown is refused");
 });
 

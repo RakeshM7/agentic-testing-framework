@@ -51,10 +51,10 @@ test("filesystem writes are limited to the agent's allow-list, with ${product}/$
 
 test("orchestrators may only spawn their own workers; workers cannot spawn", () => {
   const spawn = (agent, sub) => allowed(FULL.root, call(agent, "Agent", { subagent_type: sub }));
-  assert.equal(spawn("playwright-ui-orchestrator", "pw-ui-healer"), true);
+  assert.equal(spawn("playwright-ui-orchestrator", "pw-ui-fixer"), true);
   assert.equal(spawn("playwright-ui-orchestrator", "pw-repo-owner"), true);
-  assert.equal(spawn("playwright-ui-orchestrator", "pw-api-healer"), false);
-  assert.equal(spawn("orchestrator-agent", "pw-ui-healer"), false, "layer 0 talks to domain orchestrators, not their workers");
+  assert.equal(spawn("playwright-ui-orchestrator", "pw-api-fixer"), false);
+  assert.equal(spawn("orchestrator-agent", "pw-ui-fixer"), false, "layer 0 talks to domain orchestrators, not their workers");
   assert.equal(spawn("k6-script-writer", "k6-reviewer"), false);
 });
 
