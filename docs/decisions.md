@@ -97,6 +97,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-041 | A restricted agent may `cd` into the repo root before an allowed command | Accepted | 2026-10-12 |
 | D-042 | Hook registrations are generated; the PostToolUse hook is async, sync or off by one build flag | Accepted | 2026-10-13 |
 | D-043 | Three layers of 34 agents: one fixer per domain, foundations built once, the explorer records its row | Accepted | 2026-10-16 |
+| D-044 | A script gate runs before every review, and `orchestration.mjs next` drives each domain's loop | Accepted | 2026-10-16 |
 
 ## Decisions
 
@@ -622,3 +623,31 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - The CSV is still written only through its script (D-009), each cell still has one writer, writes stay inside each side's folders (D-010), and every loop is still bounded (D-011).
 - **Affects:** `docs/agent-architecture.md`, `docs/agent-handoffs.md`, `config/permissions.yaml`, `scripts/roster.test.mjs`
 - **Supersedes:** D-001 · **Confirmed by the user on:** 2026-10-16
+
+### D-044 · A script gate runs before every review, and `orchestration.mjs next` drives each domain's loop
+- **Status:** Accepted · **Date:** 2026-10-16 · **Source:** conversation with the user, 2026-10-16: the same architecture review and approved plan as D-043 (its second part)
+- **Decision:**
+  - `scripts/gate.mjs <product> <module> testcases|playwright-ui|playwright-api|k6` runs the mechanical checks a reviewer used to do by reading (`scripts/lib/gate/`):
+    - ids, tags and traceability;
+    - `@mutates` and ledger calls;
+    - fixed waits, hard-coded URLs and focused tests;
+    - assertions in page objects or clients;
+    - the k6 safety calls;
+    - `tsc`, `--list` and `k6 inspect`.
+
+    It writes `results/<run>/<m>/<domain>/gate-findings.md` in the review-findings format, and never runs anything against the product.
+  - Every review round starts with the gate. If the gate finds a blocker or major, its findings go to the writer or fixer, no reviewer is started, and the round still counts against `limits.review_rounds`. Reviewers judge only what the gate can't.
+  - `node scripts/orchestration.mjs next <product> <domain> <module>` is the only source of a domain's next step, as `run.mjs next` is for stages. The flows are data in `scripts/lib/domain-flows.mjs`. `next`:
+    - skips a step whose work already exists (a side's foundation, the k6 lib) or that has nothing to work on (no API surface, every endpoint excluded);
+    - runs the script steps itself (the gate, the clarification summary);
+    - spends the review and heal rounds through `round()`.
+  - A domain orchestrator calls `next`, starts the returned agent with the returned prompt, marks the step, and repeats. It still relays what only a worker's report shows: shared-file requests, missing methods or lib exports, and foundation gaps.
+- **Why:**
+  - Deterministic work belongs in scripts with tests (D-002). The gate's checks and the loop's bookkeeping were in prompts, and were repeated by every reviewer and orchestrator:
+    - reading a `Verdict:` line;
+    - counting healable rows;
+    - checking round limits;
+    - choosing the next step.
+  - A failed gate costs no reviewer start, and a resumed orchestrator cannot lose its place.
+  - Loops stay bounded (D-011).
+- **Affects:** `scripts/gate.mjs`, `scripts/lib/gate/*.mjs`, `scripts/lib/domain-flows.mjs`, `scripts/orchestration.mjs`

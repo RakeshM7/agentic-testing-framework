@@ -65,14 +65,15 @@ main orchestrator:
   3 clarification-orchestrator (per module):
         clarification-explorer (one per row, sequential) -> executes Steps live, writes clarification-evidence/,
                                records its row's Answer / "Clarification agent notes" via clarifications.mjs record
-        clarifications.mjs summary -> clarifications-summary.md, rendered from the CSV
+        then clarifications-summary.md, rendered from the CSV by the script
         [gate] unresolved rows: human edits the Answer column, re-invoke resumes
-  4 testcase-orchestrator: testcase-writer <-> testcase-reviewer
+  4 testcase-orchestrator: testcase-writer -> gate script | testcase-reviewer -> testcase-writer (max N rounds)
   5 pw-repo-owner (once per product, any time before step 6): shared repo skeleton for ui + api
   6 playwright-ui-orchestrator and playwright-api-orchestrator (independent; both need testcases + the repo)
         build:  scaffolder (product-wide foundation; skipped once it exists) -> pom|client writer -> tests-writer
-        review loop: reviewer -> findings -> fixer (max N rounds, via the orchestrator)
-        run loop:    runner-triager -> triage.md -> fixer -> re-run (max N rounds, via the orchestrator)
+        review loop: gate script -> (fail: gate findings -> fixer) | reviewer -> findings -> fixer (max N rounds)
+        run loop:    runner-triager -> triage.md -> fixer -> re-run (max N rounds)
+        every domain orchestrator follows `orchestration.mjs next`, which holds these flows (scripts/lib/domain-flows.mjs)
         API additionally starts with api-discoverer -> api-test-planner
   7 k6-orchestrator (needs the API plan): workload-designer -> lib-writer (skipped once the lib exists) -> script-writer -> review loop -> run/fix loop
   8 report-generator -> HTML slide deck

@@ -65,8 +65,7 @@ profiles:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/run.mjs status *", "node scripts/ledger.mjs list *",
-                  "node scripts/gate.mjs *"]
+    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/run.mjs status *", "node scripts/ledger.mjs list *"]
   code_writer:            # writes generated test code only, no product access
     live_target: { browser: none, http: none, load: none }
     web_research: none
@@ -136,11 +135,10 @@ agents:
     layer: 1
     profile: orchestrator
     spawns: [clarification-explorer]
-    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/clarifications.mjs list *",
-                  "node scripts/clarifications.mjs status *", "node scripts/clarifications.mjs summary *"]
+    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs status *"]
     filesystem:
       read: ["${modules}/**"]
-      write: ["${state}/orchestration/clarifications-${module}.json"]   # clarifications-summary.md is rendered by the script
+      write: ["${state}/orchestration/clarifications-${module}.json"]   # clarifications-summary.md is rendered by orchestration.mjs next
 
   clarification-explorer:       # one invocation per CSV row: executes the Steps, observes, records the row's outcome
     layer: 2
