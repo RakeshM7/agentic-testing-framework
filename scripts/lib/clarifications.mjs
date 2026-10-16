@@ -79,7 +79,7 @@ function update(file, id, fn) {
   });
 }
 
-// question-writer: rewrite Question/Steps of a row that is still unanswered.
+// module-explorer: rewrite Question/Steps of a row that is still unanswered (labels changed since it was written).
 export function setSteps(file, id, { question, steps }) {
   return update(file, id, (row) => {
     if (isAnswered(row)) throw new Error(`${id} is already answered; Question/Steps are frozen`);
@@ -88,9 +88,9 @@ export function setSteps(file, id, { question, steps }) {
   });
 }
 
-// clarification-writer (and module-explorer for requirement changes): record the outcome of a row.
+// clarification-explorer (and module-explorer for requirement changes): record the outcome of a row.
 //   answer -> confirmed behavior (or leave undefined when still unconfirmed)
-//   notes  -> why still unconfirmed / what was tried / evidence path
+//   notes  -> why still unconfirmed / what was tried / evidence path, with a "Next step: ..." line for a human
 // An answered row is trusted as is: changing it requires requirementChange=true, which is stamped into the notes.
 export function record(file, id, { answer, notes, runId, requirementChange = false }) {
   return update(file, id, (row) => {
@@ -106,6 +106,39 @@ export function status(file) {
   const rows = readRows(file);
   const open = rows.filter((r) => !isAnswered(r));
   return { total: rows.length, answered: rows.length - open.length, unconfirmed: open.map((r) => clean(r.id)) };
+}
+
+export const summaryPath = (file) => path.join(path.dirname(file), "clarifications-summary.md");
+
+// What a human should do next for an unanswered row: its notes' "Next step:" line, else their first line.
+function nextStep(r) {
+  const lines = clean(r.notes).split(/\r?\n/).map(clean).filter(Boolean);
+  const next = lines.find((l) => /^next step:/i.test(l));
+  return next ? clean(next.replace(/^next step:/i, "")) : lines[0] ?? `no notes recorded; see clarification-evidence/${clean(r.id)}/`;
+}
+
+// clarifications-summary.md, rendered from the CSV alone, so it always agrees with it. Written even when the module
+// has no rows: the clarifications stage requires the file.
+export function renderSummary(file, module) {
+  const rows = readRows(file);
+  const { total, answered } = status(file);
+  const cell = (s) => clean(s).replace(/\r?\n+/g, " ").replace(/\|/g, "\\|");
+  const unconfirmed = rows.filter((r) => !isAnswered(r)).map((r) => ({ id: clean(r.id), next: nextStep(r) }));
+  const text = [
+    `# Clarifications -- ${module}`,
+    "",
+    `Answered: ${answered} / ${total} · Unconfirmed: ${total - answered}`,
+    "",
+    "| ID | Question | Answer or status |",
+    "|---|---|---|",
+    ...rows.map((r) => `| ${cell(r.id)} | ${cell(r.question)} | ${isAnswered(r) ? cell(r.answer) : "Unconfirmed"} |`),
+    "",
+    "## Needs a human",
+    ...(unconfirmed.length ? unconfirmed.map((u) => `- ${u.id}: ${cell(u.next)}`) : ["None."]),
+    "",
+  ].join("\n");
+  writeAtomic(summaryPath(file), text);
+  return { file: summaryPath(file), total, answered, unconfirmed };
 }
 
 // Stage-completion check used by run.mjs (contract CHECKS). Policy comes from the run-config.

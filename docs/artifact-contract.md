@@ -63,7 +63,7 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 | `k6` | module | playwright-api | `results/<run>/<m>/k6/results.json` (schema `results`; `not-run` in readonly runs) |
 | `report` | product | every other stage complete, exhausted or blocked | `results/<run>/report/report.json` (by `report-data.mjs`) + `index.html` |
 
-A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. Sub-steps inside a domain (writer → reviewer → feedback-implementor, runner-triager → healer) belong to the domain orchestrator, not this table.
+A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. Sub-steps inside a domain (writer → reviewer → fixer, runner-triager → fixer) belong to the domain orchestrator, not this table.
 
 Each stage gets at most **two attempts** per run (`attempts` in `run.json`); a stage that failed twice is *exhausted*, everything depending on it is *blocked*, and `next` no longer offers either — so the report still becomes ready and states what did not run.
 
@@ -84,13 +84,13 @@ Each stage gets at most **two attempts** per run (`attempts` in `run.json`); a s
 |---|---|---|
 | `ID` | script | `<module>-<n>`, per-module sequence, never reused |
 | `Module` | script | module slug |
-| `Question` | module-explorer (new rows), question-writer (refines unanswered rows) | |
+| `Question` | module-explorer (new rows; refines unanswered rows) | |
 | `Steps to execute` | same | detailed, human-readable, followable by someone who has never seen the product |
-| `Answer` | clarification-writer, or a human directly in the file | never overwritten once non-empty, except for a requirement change |
-| `Clarification agent notes` | clarification-writer | why still unconfirmed, what was tried, evidence path |
+| `Answer` | clarification-explorer (its own row), or a human directly in the file | never overwritten once non-empty, except for a requirement change |
+| `Clarification agent notes` | clarification-explorer (its own row) | why still unconfirmed, what was tried, evidence path, and a final `Next step:` line for a human |
 | `Run ID` | script | the run that **created** the row; never changed |
 
-All agent writes go through `node scripts/clarifications.mjs` (`append`, `set-steps`, `record`, `list`, `status`), which locks the file, de-duplicates new questions against existing ones, preserves human edits (Excel BOM/CRLF are fine) and reports clearly if the file is open in Excel. Answered rows are **trusted as is**; `record --requirement-change` is the only way to change one, and it stamps `[<run-id>] updated: incoming requirement changed this behavior` into the notes.
+All agent writes go through `node scripts/clarifications.mjs` (`append`, `set-steps`, `record`, `list`, `status`, `summary`), which locks the file, de-duplicates new questions against existing ones, preserves human edits (Excel BOM/CRLF are fine) and reports clearly if the file is open in Excel. `summary` renders `clarifications-summary.md` from the CSV alone (totals, every row, and a `## Needs a human` list built from each unanswered row's `Next step:`), so the two never disagree. Answered rows are **trusted as is**; `record --requirement-change` is the only way to change one, and it stamps `[<run-id>] updated: incoming requirement changed this behavior` into the notes.
 
 Stage check: with `clarifications.unresolved_policy: stop` (default) every row needs an Answer — a human fills the remaining ones and re-invokes; with `continue-flagged`, unanswered rows are allowed but must carry agent notes.
 

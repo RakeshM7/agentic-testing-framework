@@ -4,7 +4,7 @@ Brief for any agent working in this repo: Claude Code and every GitHub Copilot s
 
 ## What this repo is
 
-A platform-neutral agentic testing pipeline. It has 43 small agents in three layers: main orchestrator → domain orchestrators → workers. A deterministic scripts layer owns run state, the artifact contract, the clarifications CSV, the ledger and the safety guard.
+A platform-neutral agentic testing pipeline. It has 34 small agents in three layers: main orchestrator → domain orchestrators → workers. A deterministic scripts layer owns run state, the artifact contract, the clarifications CSV, the ledger and the safety guard.
 
 Each agent is written **once**, in `agents/<name>.md`. `npm run build-agents` generates the platform files from those sources and `config/`:
 - `.claude/agents/` for Claude Code;
@@ -17,7 +17,7 @@ Never edit a generated file. Hosts and setup are covered in `docs/platforms.md`.
 
 1. **`docs/decisions.md`: before you change ANY file**, except run output and generated test code (`artifacts/`, `playwright-tests/`, `k6-tests/`, `feedback/`). Follow the rules at its top. If your change would revert, weaken, bypass or contradict a recorded decision, stop and get the user's explicit confirmation first. As a subagent, or without a human to ask, report the conflict instead of making the change. The hook will also ask the user before any edit to a file a decision governs.
 2. `docs/artifact-contract.md`: layout v2 (product-level), state, stages, clarifications CSV, ledger, safety, scripts.
-3. `docs/agent-architecture.md`: the 43-agent design.
+3. `docs/agent-architecture.md`: the 34-agent design.
 4. `config/permissions.yaml`: what each agent may do.
 5. `docs/agent-handoffs.md`, `docs/playwright-conventions.md`, `docs/k6-conventions.md`: formats and code rules.
 6. `docs/conventions.md`: framework-wide rules and the feedback contract.

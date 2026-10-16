@@ -35,8 +35,8 @@ test("readonly caps mutate permissions to read; full-run applies them as written
 
 test("filesystem writes are limited to the agent's allow-list, with ${product}/${module} expanded", () => {
   const w = (agent, rel) => allowed(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, rel) }));
-  assert.equal(w("clarification-writer", "artifacts/acme/modules/contacts/clarifications.csv"), false, "the CSV is script-only");
-  assert.equal(w("clarification-writer", "artifacts/acme/modules/contacts/clarifications-summary.md"), true);
+  assert.equal(w("clarification-orchestrator", "artifacts/acme/modules/contacts/clarifications.csv"), false, "the CSV is script-only");
+  assert.equal(w("clarification-orchestrator", "artifacts/acme/modules/contacts/clarifications-summary.md"), false, "the summary is rendered by its script");
   assert.equal(w("clarification-explorer", "artifacts/acme/modules/contacts/clarifications.csv"), false, "explorer writes evidence only");
   assert.equal(w("clarification-explorer", "artifacts/acme/modules/contacts/clarification-evidence/contacts-1/notes.md"), true);
   assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/pages/contacts.page.ts"), true);
@@ -51,10 +51,10 @@ test("filesystem writes are limited to the agent's allow-list, with ${product}/$
 
 test("orchestrators may only spawn their own workers; workers cannot spawn", () => {
   const spawn = (agent, sub) => allowed(FULL.root, call(agent, "Agent", { subagent_type: sub }));
-  assert.equal(spawn("playwright-ui-orchestrator", "pw-ui-healer"), true);
+  assert.equal(spawn("playwright-ui-orchestrator", "pw-ui-fixer"), true);
   assert.equal(spawn("playwright-ui-orchestrator", "pw-repo-owner"), true);
-  assert.equal(spawn("playwright-ui-orchestrator", "pw-api-healer"), false);
-  assert.equal(spawn("orchestrator-agent", "pw-ui-healer"), false, "layer 0 talks to domain orchestrators, not their workers");
+  assert.equal(spawn("playwright-ui-orchestrator", "pw-api-fixer"), false);
+  assert.equal(spawn("orchestrator-agent", "pw-ui-fixer"), false, "layer 0 talks to domain orchestrators, not their workers");
   assert.equal(spawn("k6-script-writer", "k6-reviewer"), false);
 });
 

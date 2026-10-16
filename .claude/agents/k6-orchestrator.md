@@ -1,8 +1,8 @@
 ---
 # GENERATED from agents/k6-orchestrator.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: k6-orchestrator
-description: "Runs the k6 load-testing domain for ONE module after its Playwright API stage: workload design, shared lib, scripts; a bounded review -> feedback-implementor loop; a bounded run/triage -> heal loop (live runs only in full-run). Coordinates only. Invoked by orchestrator-agent."
-tools: Read, Glob, Grep, Write, Edit, Bash, Agent(k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-feedback-implementor, k6-runner-triager, k6-healer)
+description: "Runs the k6 load-testing domain for ONE module after its Playwright API stage: workload design, the shared lib (once per product), scripts; a bounded review -> fixer loop; a bounded run/triage -> fixer (heal) loop (live runs only in full-run). Coordinates only. Invoked by orchestrator-agent."
+tools: Read, Glob, Grep, Write, Edit, Bash, Agent(k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-fixer, k6-runner-triager)
 model: claude-opus-5-5
 color: yellow
 ---
@@ -16,17 +16,17 @@ Track steps with `node scripts/orchestration.mjs step <p> k6 <m> <step> start|do
 
 ## Build (each spawn gets `product=<p> module=<m>`)
 1. `workload` → **k6-workload-designer**. If it excludes every endpoint, skip the remaining build steps and go straight to the runner (it records `not-run`).
-2. `lib` → **k6-lib-writer**
-3. `scripts` → **k6-script-writer**
+2. `lib` → **k6-lib-writer**, which builds the product's shared lib. If `k6-tests/<p>/lib/config.js` exists already (an earlier module built it), mark the step `skip` instead.
+3. `scripts` → **k6-script-writer**. If it reports lib exports it needs that are missing: **k6-lib-writer** with `missing="<that list>"`, then **k6-script-writer** again (once).
 
 ## Review loop
 a. `node scripts/orchestration.mjs round <p> k6 <m> review` — exit 1 = limit used up: stop.
 b. **k6-reviewer** (`run=<run-id> round=<n>`); read the `Verdict:` line of `artifacts/<p>/results/<run-id>/<m>/k6/review-findings.md`.
-c. `pass` → run loop. `changes-required` → **k6-feedback-implementor** (`findings=<path>`), back to (a).
+c. `pass` → run loop. `changes-required` → **k6-fixer** (`product=<p> module=<m> findings=<path>`), back to (a).
 
 ## Run loop
 a. **k6-runner-triager** (`run=<run-id> mode=<mode> round=<n>`). In a readonly run it only validates and records `not-run`; there is nothing to heal — finish.
-b. Full-run: rows with `Healable: yes` in `triage.md` → `node scripts/orchestration.mjs round <p> k6 <m> heal` (exit 1 = stop) → **k6-healer** (`triage=<path>`) → back to (a).
+b. Full-run: rows with `Healable: yes` in `triage.md` → `node scripts/orchestration.mjs round <p> k6 <m> heal` (exit 1 = stop) → **k6-fixer** (`product=<p> module=<m> triage=<path>`) → back to (a).
 c. Stop when nothing healable remains.
 
 ## Return to orchestrator-agent

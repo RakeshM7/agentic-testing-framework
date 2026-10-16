@@ -21,7 +21,8 @@ You implement the workload as scripts.
 - Requests via `lib/auth.js` headers, checks via `lib/checks.js`, data via `lib/data.js`; `export { handleSummary } from '../lib/summary.js'`.
 - Mutating scenarios delete what they create in the same iteration; anything not deleted goes through `trackLeftover`.
 - No `sleep()` without a think-time comment; no literals for URLs or credentials.
+- If the lib lacks an export a scenario needs (an auth scheme, a check, a data helper), do not copy it into the script: list it in your report (the orchestrator routes it to k6-lib-writer).
 - Verify each script with `k6 inspect scripts/<file>.js` (never `k6 run`).
 
 ## Return
-Scripts written (file → workload id), verification results.
+Scripts written (file → workload id), missing lib exports, verification results.

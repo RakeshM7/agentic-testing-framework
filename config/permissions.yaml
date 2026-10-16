@@ -51,8 +51,8 @@ variables:
 #                      BOTH the `ui` and `api` Playwright projects), tsconfig, .env.example, .gitignore, README,
 #                      utils/shared/. Creates the skeleton (stage `playwright-repo`, spawned by orchestrator-agent)
 #                      and applies change requests later (spawned by either Playwright orchestrator, never both at once).
-#   pw-ui-scaffolder   UI-specific scaffolding only (config/ui/, tests/ui/ skeleton).
-#   pw-api-scaffolder  API-specific scaffolding only (config/api/, tests/api/ skeleton).
+#   pw-ui-scaffolder   the UI side's product-wide foundation, once (config/ui/, base fixtures/ui/, generic helpers/ui/).
+#   pw-api-scaffolder  the API side's product-wide foundation, once (config/api/, base fixtures/api/, helpers/api/schema.ts).
 #   ui side owns:  pages/, tests/ui/, helpers/ui/, fixtures/ui/, config/ui/
 #   api side owns: clients/, tests/api/, helpers/api/, fixtures/api/, config/api/
 #   Nobody edits another side's folders or the shared files; a needed shared change is a request the domain
@@ -74,11 +74,8 @@ profiles:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: project
-  feedback_implementor:   # applies reviewer findings to the code (the only agent per domain that edits reviewed code)
-    live_target: { browser: none, http: none, load: none }
-    web_research: none
-    shell: project
-  healer:                 # fixes failing tests/scripts from a triage report; cannot run against the product
+  fixer:                  # applies reviewer findings or healable triage rows to the code (the only agent per domain
+                          # that edits reviewed code); cannot run against the product
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: project
@@ -122,62 +119,41 @@ agents:
     web_research: none
     shell: restricted
     shell_allow: ["node scripts/clarifications.mjs append *", "node scripts/clarifications.mjs list *",
-                  "node scripts/clarifications.mjs record *", "node scripts/ledger.mjs add *",
-                  "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
+                  "node scripts/clarifications.mjs set-steps *", "node scripts/clarifications.mjs record *",
+                  "node scripts/ledger.mjs add *", "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
     filesystem:
       read: ["${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
       write: ["${modules}/explore/**"]   # incl. explore/new-questions.json handed to clarifications.mjs append
-    # Appends only NEW rows (new ID, Module, Question, Steps, empty Answer/notes, Run ID = this run); never edits
-    # existing rows -- EXCEPT where the incoming requirement changes a behavior already recorded (then the row's
-    # Answer/notes are updated, Run ID kept as the creating run). CSV writes go through a script (ids, dedupe, lock).
+    # Appends only NEW rows (new ID, Module, Question, Steps, empty Answer/notes, Run ID = this run) and refines the
+    # Question/Steps of still-unanswered rows (set-steps); never edits answered rows -- EXCEPT where the incoming
+    # requirement changes a behavior already recorded (then the row's Answer/notes are updated, Run ID kept as the
+    # creating run). The CSV is written ONLY through scripts/clarifications.mjs (ids, de-dup, locking, human-answer
+    # protection), so no agent has Write access to clarifications.csv itself.
 
   # ======================= Clarification domain ===========================================================
   clarification-orchestrator:
     layer: 1
     profile: orchestrator
-    spawns: [question-writer, clarification-explorer, clarification-writer]
-    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs status *"]
+    spawns: [clarification-explorer]
+    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/clarifications.mjs list *",
+                  "node scripts/clarifications.mjs status *", "node scripts/clarifications.mjs summary *"]
     filesystem:
       read: ["${modules}/**"]
-      write: ["${state}/orchestration/clarifications-${module}.json"]
+      write: ["${state}/orchestration/clarifications-${module}.json"]   # clarifications-summary.md is rendered by the script
 
-  question-writer:
-    layer: 2
-    live_target: { browser: none, http: none, load: none }
-    web_research: none
-    shell: restricted
-    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs set-steps *"]
-    filesystem:
-      read: ["${knowledge}/**", "${modules}/**"]
-      write: []                     # rewrites Question + Steps of unanswered rows via clarifications.mjs set-steps
-    # The CSV is written ONLY through scripts/clarifications.mjs (ids, de-dup, locking, human-answer protection),
-    # so no agent has Write access to clarifications.csv itself.
-
-
-  clarification-explorer:       # one invocation per CSV row, executes the Steps and observes behavior
+  clarification-explorer:       # one invocation per CSV row: executes the Steps, observes, records the row's outcome
     layer: 2
     live_target: { browser: mutate, http: none, load: none }   # mutate (ledger-scoped); capped to read in readonly runs
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/ledger.mjs add *",
-                  "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
+    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs record *",
+                  "node scripts/ledger.mjs add *", "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
     filesystem:
       read: ["${modules}/**", "${knowledge}/**"]
       write: ["${modules}/clarification-evidence/**"]   # observation notes + screenshots, one folder per row ID
-    # Does NOT write the CSV: the clarification-writer records its findings (single writer per cell).
-
-  clarification-writer:
-    layer: 2
-    live_target: { browser: none, http: none, load: none }
-    web_research: none
-    shell: restricted
-    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs record *",
-                  "node scripts/clarifications.mjs status *"]
-    filesystem:
-      read: ["${modules}/**"]
-      write: ["${modules}/clarifications-summary.md"]   # Answer/notes go through clarifications.mjs record
-    # Fills Answer / "Clarification agent notes"; never overwrites a non-empty Answer cell (a human may have written
-    # it) unless the incoming requirement changes the behavior; Run ID (creating run) is never changed.
+    # Fills Answer / "Clarification agent notes" of its own row through clarifications.mjs record (single writer per
+    # cell: one explorer per row); never overwrites a non-empty Answer cell (a human may have written it); Run ID
+    # (creating run) is never changed.
 
   # ======================= Test case domain ===============================================================
   testcase-orchestrator:
@@ -216,40 +192,35 @@ agents:
   playwright-ui-orchestrator:
     layer: 1
     profile: orchestrator
-    spawns: [pw-repo-owner, pw-ui-scaffolder, pw-ui-helper-writer, pw-ui-fixtures-writer, pw-ui-pom-writer, pw-ui-tests-writer,
-             pw-ui-reviewer, pw-ui-feedback-implementor, pw-ui-test-runner-triager, pw-ui-healer]
+    spawns: [pw-repo-owner, pw-ui-scaffolder, pw-ui-pom-writer, pw-ui-tests-writer, pw-ui-reviewer, pw-ui-fixer,
+             pw-ui-test-runner-triager]
     filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-ui/**"], write: ["${state}/orchestration/playwright-ui-${module}.json"] }
 
-  pw-ui-scaffolder:             # UI-specific scaffolding only; shared files belong to pw-repo-owner
+  pw-ui-scaffolder:             # the UI side's product-wide foundation, once; shared files belong to pw-repo-owner
     layer: 2
     profile: code_writer
     web_research: allowed
-    filesystem: { read: ["${pw_project}/**", "${knowledge}/**"], write: ["${pw_project}/config/ui/**", "${pw_project}/tests/ui/**"] }
-  pw-ui-helper-writer:
+    filesystem:
+      read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
+      write: ["${pw_project}/config/ui/**", "${pw_project}/fixtures/ui/**", "${pw_project}/helpers/ui/**"]
+  pw-ui-pom-writer:             # page objects, plus one fixture per page object in fixtures/ui/index.ts
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/helpers/ui/**"] }
-  pw-ui-fixtures-writer:
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/pages/**", "${pw_project}/fixtures/ui/index.ts"] }
+  pw-ui-tests-writer:           # specs, plus the module's data builders in helpers/ui/
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/fixtures/ui/**"] }
-  pw-ui-pom-writer:
-    layer: 2
-    profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/pages/**"] }
-  pw-ui-tests-writer:
-    layer: 2
-    profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/ui/**"] }
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**"] }
   pw-ui-reviewer:
     layer: 2
     profile: reviewer
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-ui/review-findings.md"] }
-  pw-ui-feedback-implementor:
+  pw-ui-fixer:                  # review findings or healable triage rows
     layer: 2
-    profile: feedback_implementor
+    profile: fixer
     filesystem:
-      read: ["${pw_project}/**", "${results}/${module}/playwright-ui/review-findings.md"]
+      read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-ui/review-findings.md",
+             "${results}/${module}/playwright-ui/triage.md"]
       write: ["${pw_project}/pages/**", "${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**", "${pw_project}/fixtures/ui/**"]
   pw-ui-test-runner-triager:
     layer: 2
@@ -257,20 +228,13 @@ agents:
     web_research: none
     shell: project
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-ui/results.json", "${results}/${module}/playwright-ui/triage.md", "${pw_project}/test-results/ui/**"] }
-  pw-ui-healer:
-    layer: 2
-    profile: healer
-    filesystem:
-      read: ["${pw_project}/**", "${results}/${module}/playwright-ui/triage.md"]
-      write: ["${pw_project}/pages/**", "${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**", "${pw_project}/fixtures/ui/**"]
 
   # ======================= Playwright API domain (same repo: ${pw_project}) ===============================
   playwright-api-orchestrator:
     layer: 1
     profile: orchestrator
-    spawns: [pw-repo-owner, api-discoverer, api-test-planner, pw-api-scaffolder, pw-api-helper-writer, pw-api-fixtures-writer,
-             pw-api-client-writer, pw-api-tests-writer, pw-api-reviewer, pw-api-feedback-implementor,
-             pw-api-test-runner-triager, pw-api-healer]
+    spawns: [pw-repo-owner, api-discoverer, api-test-planner, pw-api-scaffolder, pw-api-client-writer, pw-api-tests-writer,
+             pw-api-reviewer, pw-api-fixer, pw-api-test-runner-triager]
     filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-api/**"], write: ["${state}/orchestration/playwright-api-${module}.json"] }
 
   api-discoverer:
@@ -285,36 +249,33 @@ agents:
     web_research: none
     shell: none
     filesystem: { read: ["${modules}/**"], write: ["${modules}/api/api-test-plan.md", "${modules}/api/plan.json"] }
-  pw-api-scaffolder:            # API-specific scaffolding only; shared files belong to pw-repo-owner
+  pw-api-scaffolder:            # the API side's product-wide foundation, once; shared files belong to pw-repo-owner
     layer: 2
     profile: code_writer
     web_research: allowed
-    filesystem: { read: ["${pw_project}/**", "${knowledge}/**"], write: ["${pw_project}/config/api/**", "${pw_project}/tests/api/**"] }
-  pw-api-helper-writer:
+    filesystem:
+      read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
+      write: ["${pw_project}/config/api/**", "${pw_project}/fixtures/api/**", "${pw_project}/helpers/api/**"]
+  pw-api-client-writer:        # API equivalent of the POM: typed clients per resource, their schemas, one fixture per client
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/helpers/api/**"] }
-  pw-api-fixtures-writer:
+    filesystem:
+      read: ["${pw_project}/**", "${modules}/**"]
+      write: ["${pw_project}/clients/**", "${pw_project}/config/api/schemas/**", "${pw_project}/fixtures/api/index.ts"]
+  pw-api-tests-writer:          # specs, plus the module's payload builders in helpers/api/
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/fixtures/api/**"] }
-  pw-api-client-writer:        # API equivalent of the POM: typed clients / service objects per resource
-    layer: 2
-    profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/clients/**"] }
-  pw-api-tests-writer:
-    layer: 2
-    profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/api/**"] }
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/api/**", "${pw_project}/helpers/api/**"] }
   pw-api-reviewer:
     layer: 2
     profile: reviewer
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-api/review-findings.md"] }
-  pw-api-feedback-implementor:
+  pw-api-fixer:                 # review findings or healable triage rows
     layer: 2
-    profile: feedback_implementor
+    profile: fixer
     filesystem:
-      read: ["${pw_project}/**", "${results}/${module}/playwright-api/review-findings.md"]
+      read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-api/review-findings.md",
+             "${results}/${module}/playwright-api/triage.md"]
       write: ["${pw_project}/clients/**", "${pw_project}/tests/api/**", "${pw_project}/helpers/api/**", "${pw_project}/fixtures/api/**"]
   pw-api-test-runner-triager:
     layer: 2
@@ -322,19 +283,12 @@ agents:
     web_research: none
     shell: project
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-api/results.json", "${results}/${module}/playwright-api/triage.md", "${pw_project}/test-results/api/**"] }
-  pw-api-healer:
-    layer: 2
-    profile: healer
-    filesystem:
-      read: ["${pw_project}/**", "${results}/${module}/playwright-api/triage.md"]
-      write: ["${pw_project}/clients/**", "${pw_project}/tests/api/**", "${pw_project}/helpers/api/**", "${pw_project}/fixtures/api/**"]
 
   # ======================= K6 domain (repo: ${k6_project}) ================================================
   k6-orchestrator:
     layer: 1
     profile: orchestrator
-    spawns: [k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-feedback-implementor,
-             k6-runner-triager, k6-healer]
+    spawns: [k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-fixer, k6-runner-triager]
     filesystem: { read: ["${modules}/**", "${k6_project}/**", "${results}/${module}/k6/**"], write: ["${state}/orchestration/k6-${module}.json"] }
   k6-workload-designer:
     layer: 2
@@ -354,20 +308,18 @@ agents:
     layer: 2
     profile: reviewer
     filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${results}/${module}/k6/review-findings.md"] }
-  k6-feedback-implementor:
+  k6-fixer:                     # review findings or healable triage rows
     layer: 2
-    profile: feedback_implementor
-    filesystem: { read: ["${k6_project}/**", "${results}/${module}/k6/review-findings.md"], write: ["${k6_project}/**"] }
+    profile: fixer
+    filesystem:
+      read: ["${k6_project}/**", "${modules}/**", "${results}/${module}/k6/review-findings.md", "${results}/${module}/k6/triage.md"]
+      write: ["${k6_project}/**"]
   k6-runner-triager:
     layer: 2
     live_target: { browser: none, http: none, load: run }   # live load only in full-run; BASE_URL must be on K6_ALLOWED_HOSTS
     web_research: none
     shell: project
     filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${results}/${module}/k6/results.json", "${results}/${module}/k6/triage.md", "${k6_project}/results/**"] }
-  k6-healer:
-    layer: 2
-    profile: healer
-    filesystem: { read: ["${k6_project}/**", "${results}/${module}/k6/triage.md"], write: ["${k6_project}/**"] }
 
   # ======================= Reporting and framework maintenance ===========================================
   report-generator:
