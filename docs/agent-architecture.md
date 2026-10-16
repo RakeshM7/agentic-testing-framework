@@ -12,6 +12,8 @@ Status: **implemented** — all 34 agents, written once in `agents/` and generat
 
 ## Roster (34 agents)
 
+Roster v3 ([`decisions.md`](decisions.md) D-043): one fixer per automation domain; each side's foundation built once per product; the clarification-explorer records its own row. `scripts/roster.test.mjs` keeps this table, the counts in the docs and every agent name in the repo in step with `config/permissions.yaml`.
+
 | Domain | Orchestrator | Workers |
 |---|---|---|
 | Product level | `orchestrator-agent` (layer 0) | `knowledge-generator`, `module-explorer`, `report-generator` |
@@ -97,7 +99,7 @@ main orchestrator:
 
 **Run-config additions** (to be implemented): `knowledge.references[]` (URLs, doc paths, KB links), `modules[]` (explicit list: slug, name, entry URL / nav path), `permissions_file`, project roots (`ui_project`, `api_project`, `k6_project`), `testcases.output_format`, `limits.review_rounds`, `limits.heal_rounds`, `concurrency.{modules,clarification_rows}` (default 1).
 
-**Stage table**: grows per domain (knowledge, explore, clarify-{write,explore,finalize}, testcases-{write,review}, pw-ui-*, pw-api-*, k6-*, report). Each stage keeps declared, schema-verified outputs, so `run.mjs next` stays the only source of "what runs next".
+**Stage table**: one stage per domain, defined in `STAGES` in `scripts/lib/contract.mjs` (and described in [`artifact-contract.md`](artifact-contract.md)); the steps inside a domain belong to its orchestrator. Each stage keeps declared, schema-verified outputs, so `run.mjs next` stays the only source of "what runs next".
 
 **Report**: HTML slide deck from `report.json` (modules explored, clarifications answered/unconfirmed, test cases, Playwright UI/API specs, k6 scripts, execution results per framework).
 

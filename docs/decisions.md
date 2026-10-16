@@ -54,7 +54,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 
 | ID | Decision | Status | Date |
 |---|---|---|---|
-| D-001 | Three layers of agents, connected by files | Accepted | 2026-10-07 |
+| D-001 | Three layers of agents, connected by files | Superseded by D-043 | 2026-10-07 |
 | D-002 | Deterministic work lives in scripts with tests | Accepted | 2026-10-07 |
 | D-003 | Product-level artifacts, one active run per product | Accepted | 2026-10-07 |
 | D-004 | `authorizations.mode` caps every agent; readonly by default | Accepted | 2026-10-07 |
@@ -96,11 +96,12 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-040 | On VS Code, the guard's verdict is a decision on stdout with exit 0, never an exit code | Accepted | 2026-10-12 |
 | D-041 | A restricted agent may `cd` into the repo root before an allowed command | Accepted | 2026-10-12 |
 | D-042 | Hook registrations are generated; the PostToolUse hook is async, sync or off by one build flag | Accepted | 2026-10-13 |
+| D-043 | Three layers of 34 agents: one fixer per domain, foundations built once, the explorer records its row | Accepted | 2026-10-16 |
 
 ## Decisions
 
 ### D-001 · Three layers of agents, connected by files
-- **Status:** Accepted · **Date:** 2026-10-07 · **Source:** `0fd9303`; `docs/agent-architecture.md` "Principles (decided)"
+- **Status:** Superseded by D-043 (2026-10-16) · **Date:** 2026-10-07 · **Source:** `0fd9303`; `docs/agent-architecture.md` "Principles (decided)"
 - **Decision:**
   - The 43 agents form three layers: `orchestrator-agent` → domain orchestrators and product-level workers → workers, using native nested subagents.
   - Workers never spawn agents and never talk to a sibling. Every hand-off goes through the parent orchestrator as a file.
@@ -579,3 +580,45 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - The user wanted one command-line switch instead of hand-editing three host files. Rendering them from one config keeps them consistent.
   - A shell wrapper to background the hook on Copilot or VS Code was rejected: it would break the plain `node … --host` registration (D-020), and on Windows those hosts start PowerShell, which takes as long as Node.
 - **Affects:** `config/hooks.yaml`, `scripts/lib/hook-registrations.mjs`
+
+### D-043 · Three layers of 34 agents: one fixer per domain, foundations built once, the explorer records its row
+- **Status:** Accepted · **Date:** 2026-10-16 · **Source:** conversation with the user, 2026-10-16: a review of the agent architecture for overheads and overlaps, and the approved plan that carried it out
+- **Decision:**
+  - The 34 agents form three layers: `orchestrator-agent` → domain orchestrators and product-level workers → workers, using native nested subagents. As in D-001:
+    - workers never spawn agents and never talk to a sibling;
+    - every hand-off goes through the parent orchestrator as a file;
+    - agents pass paths, never pasted content;
+    - each agent's allowed subagents are its `spawns` row in `config/permissions.yaml`.
+  - Each automation domain has one fixer: `pw-ui-fixer`, `pw-api-fixer` and `k6-fixer`, with one `fixer` permission profile.
+    - It applies either a reviewer's findings (`findings=`) or the healable rows of a triage report (`triage=`).
+    - It replaces the per-domain feedback-implementor and healer.
+  - Each Playwright side's scaffolder builds that side's product-wide foundation once:
+    - `config/<side>/`;
+    - the base `fixtures/<side>/index.ts` with the mutation guard, and `auth.setup.ts`;
+    - generic `helpers/<side>/` (`helpers/api/schema.ts` on the API side).
+
+    The domain orchestrator skips it when the foundation exists. A worker reports any foundation gap, and the scaffolder fills only that gap.
+  - The per-module pieces belong to the writers that use them:
+    - the pom- or client-writer registers one fixture per page object or client;
+    - the client-writer writes its module's JSON schemas;
+    - the tests-writer writes the module's data or payload builders.
+
+    There are no separate helper or fixtures writers.
+  - `k6-lib-writer` is skipped once the product's lib exists. The script-writer reports missing lib exports, and they are routed back to the lib-writer.
+  - `module-explorer` writes clarification questions and steps a newcomer can follow, and refines still-open rows with `set-steps`.
+  - Each `clarification-explorer` records its own row's Answer or notes through `clarifications.mjs record`.
+  - `clarifications.mjs summary` renders `clarifications-summary.md` from the CSV. There is no question-writer or clarification-writer.
+  - `scripts/roster.test.mjs` fails when a doc, config, agent body or script names an agent that isn't in `config/permissions.yaml`, or states a different agent count.
+- **Why:**
+  - Every agent start is a cold context that re-reads the conventions and the module's files and re-runs verification. Most of the pipeline's overhead was such starts doing repeated work:
+    - the feedback-implementor and healer had identical profiles and write lists in every domain;
+    - work that is once per product (foundations, the k6 lib) was started again for every module;
+    - two clarification agents re-did the module-explorer's job or a script's.
+  - The minimum number of agent starts per module drops from 32 + N to 23 + N, where N is the number of open clarification rows.
+  - Agents stay separate wherever privileges differ:
+    - the runner-triager has live access and the fixer has none;
+    - the api-discoverer has HTTP and web access and the planner has neither;
+    - the reviewer stays independent of the writer.
+  - The CSV is still written only through its script (D-009), each cell still has one writer, writes stay inside each side's folders (D-010), and every loop is still bounded (D-011).
+- **Affects:** `docs/agent-architecture.md`, `docs/agent-handoffs.md`, `config/permissions.yaml`, `scripts/roster.test.mjs`
+- **Supersedes:** D-001 · **Confirmed by the user on:** 2026-10-16
