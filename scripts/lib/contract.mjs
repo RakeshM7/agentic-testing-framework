@@ -57,6 +57,8 @@ export const STAGES = {
       { path: "artifacts/{product}/knowledge/glossary.md" },
       { path: "artifacts/{product}/knowledge/sources.md" },
       { path: "artifacts/{product}/knowledge/sources.json", schema: "sources" },
+      { path: "artifacts/{product}/knowledge/coverage.json", schema: "knowledge-coverage" },
+      { path: "artifacts/{product}/knowledge/open-points.json", schema: "knowledge-open-points" },
     ],
   },
   // Module pass: one knowledge-generator invocation per module.
@@ -70,6 +72,9 @@ export const STAGES = {
       { path: "artifacts/{product}/knowledge/modules/{m}/glossary.md" },
       { path: "artifacts/{product}/knowledge/modules/{m}/notes.md" },
       { path: "artifacts/{product}/knowledge/modules/{m}/sources.md" },
+      { path: "artifacts/{product}/knowledge/modules/{m}/coverage.json", schema: "knowledge-coverage" },
+      { path: "artifacts/{product}/knowledge/modules/{m}/open-points.json", schema: "knowledge-open-points" },
+      { path: "artifacts/{product}/knowledge/modules/{m}/rule-facts.json", schema: "knowledge-rule-facts" },
     ],
   },
   explore: {
@@ -161,20 +166,22 @@ export async function validateFile(schema, file) {
 }
 
 // Named content checks for non-JSON outputs. Each returns string[] problems. Registered lazily to avoid cycles.
+// The knowledge checks include the verified stamp a passing `knowledge.mjs check` writes (D-051).
 const knowledgeLib = async (ctx) => {
   const k = await import("./knowledge.mjs");
-  return { k, kp: k.knowledgePaths(paths(ctx.product, ctx.root ?? repoRoot).productDir) };
+  const p = paths(ctx.product, ctx.root ?? repoRoot);
+  return { k, kp: k.knowledgePaths(p.productDir), cfg: loadJson(p.configFile) };
 };
 const CHECKS = {
   clarifications: async (file, ctx) => (await import("./clarifications.mjs")).checkComplete(file, ctx),
   testcases: async (file, ctx) => (await import("./testcases.mjs")).checkTestcases(file, ctx),
   "knowledge-product": async (_file, ctx) => {
-    const { k, kp } = await knowledgeLib(ctx);
-    return k.checkProduct(kp);
+    const { k, kp, cfg } = await knowledgeLib(ctx);
+    return k.checkProduct(kp, cfg);
   },
   "knowledge-module": async (_file, ctx) => {
-    const { k, kp } = await knowledgeLib(ctx);
-    return k.checkModule(kp, ctx.module);
+    const { k, kp, cfg } = await knowledgeLib(ctx);
+    return k.checkModule(kp, cfg, ctx.module);
   },
 };
 

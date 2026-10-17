@@ -145,6 +145,18 @@ test("api-test-planner's shell is api-plan.mjs only; it writes only its plan ove
   for (const f of ["plan.json", "plan-coverage.json", "plan-registry.json", "api-test-plan.md"]) assert.equal(w(`artifacts/acme/modules/contacts/api/${f}`), false, `${f} is script-only`);
 });
 
+test("knowledge-generator's shell is knowledge.mjs only; it writes its markdown and captures, never the script-owned files (D-051)", () => {
+  const run = (cmd) => allowed(FULL.root, sh("knowledge-generator", cmd));
+  for (const cmd of ["add-source acme --title T --location https://docs.vendor.test --type vendor-doc", "input acme --module contacts --location docs/prd.md --status failed --reason x", "snapshot acme S3 --from-file captures/contacts.txt", "render acme --module contacts", "check acme --module contacts", "paths acme"])
+    assert.equal(run(`node scripts/knowledge.mjs ${cmd}`), true, cmd);
+  assert.equal(run("node scripts/knowledge.mjs plan acme"), false, "plan is the orchestrator's");
+  assert.equal(run("curl -s https://docs.vendor.test/guide"), false);
+  const w = (rel) => allowed(FULL.root, call("knowledge-generator", "Write", { file_path: path.join(FULL.root, rel) }));
+  for (const f of ["overview.md", "glossary.md", "captures/contacts.txt", "modules/contacts/notes.md"]) assert.equal(w(`artifacts/acme/knowledge/${f}`), true, f);
+  for (const f of ["coverage.json", "open-points.json", "sources.json", "sources/S1.txt", "sources/index.json", "modules/contacts/coverage.json", "modules/contacts/open-points.json", "modules/contacts/rule-facts.json", "modules/contacts/sources.md"])
+    assert.equal(w(`artifacts/acme/knowledge/${f}`), false, `${f} is script-only`);
+});
+
 test("unmanaged sessions get mode rules only; env can downgrade but never upgrade", () => {
   assert.equal(allowed(FULL.root, sh(undefined, "curl -X POST https://x/api")), true);
   assert.equal(allowed(FULL.root, sh(undefined, "curl -X POST https://x/api"), { AUTHORIZATIONS_MODE: "readonly" }), false);

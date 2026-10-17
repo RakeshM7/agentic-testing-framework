@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge-coverage.schema.json",
+  "title": "Input ledger of one knowledge pass (artifacts/<product>/knowledge/coverage.json, or knowledge/modules/<m>/coverage.json), written only by scripts/knowledge.mjs (D-051)",
+  "type": "object",
+  "required": ["pass", "runId", "maxExtraSources", "items", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "pass": { "type": "string", "description": "'product' or the module slug." },
+    "runId": { "type": ["string", "null"], "description": "The run that last rebuilt this pass's ledger." },
+    "maxExtraSources": { "type": "integer", "minimum": 0, "description": "knowledge.max_extra_sources for this pass." },
+    "items": {
+      "type": "array",
+      "description": "Every configured input (requirement_doc, reference, module_reference) and every other source the pass recorded (extra, live-product). A configured input is mapped (read), excluded (reason failed|excluded) or pending; an extra source over the cap is deferred (reason budget).",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "The normalized location (URL or repo path)." },
+          "kind": { "enum": ["requirement_doc", "reference", "module_reference", "extra", "live-product"] },
+          "status": { "enum": ["mapped", "excluded", "pending", "deferred"] },
+          "refs": { "type": "array", "items": { "type": "string", "pattern": "^S[1-9][0-9]*$" } },
+          "reason": { "enum": ["failed", "excluded", "budget"] },
+          "detail": { "type": "string" },
+          "title": { "type": "string" },
+          "type": { "enum": ["vendor-doc", "knowledge-base", "requirement", "web", "live-product"] }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["inputs", "extra", "liveProduct"],
+      "properties": {
+        "inputs": { "type": "object", "required": ["total", "read", "failed", "excluded", "pending"] },
+        "extra": { "type": "object", "required": ["cap", "used", "deferred"] },
+        "liveProduct": { "type": "integer" }
+      }
+    },
+    "verified": {
+      "type": "object",
+      "description": "Stamped by knowledge.mjs check when the pass passed: the sha256 of the pass's files (product: overview, openPoints and glossaryRows, the digest of the product-scope glossary rows; module: overview, glossary, notes, sources, openPoints). The stage's done refuses a missing or stale stamp.",
+      "additionalProperties": { "type": ["string", "null"] }
+    }
+  }
+}

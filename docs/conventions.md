@@ -37,7 +37,8 @@ A further platform or host must behave identically — same stages, artifacts, s
 
 ## Script-built agents
 
-The single reference for turning an agent's bookkeeping into a script (D-002, D-049). `api-discoverer` (D-045), `api-test-planner` (D-046) and `clarification-explorer` (D-047, D-048) follow it. A script owns everything that must be identical on every rerun: enumeration, ids, coverage and the checks. The agent owns only its judgments, and every judgment is cited.
+The single reference for turning an agent's bookkeeping into a script (D-002, D-049). `api-discoverer` (D-045), `api-test-planner` (D-046) and `clarification-explorer` (D-047, D-048) follow it.
+- `knowledge-generator` (D-051) is script-built too: `scripts/knowledge.mjs` owns the input ledger, the source cache, the quote and checklist checks, the open-point ids and the verified stamp. A script owns everything that must be identical on every rerun: enumeration, ids, coverage and the checks. The agent owns only its judgments, and every judgment is cited.
 
 ### Two variants
 

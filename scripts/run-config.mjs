@@ -54,12 +54,15 @@ export function validateRunConfig(cfg) {
     if (cfg.feature.requirement_docs !== undefined && !strList(cfg.feature.requirement_docs)) errors.push("feature.requirement_docs: must be a list of paths/URLs");
   }
   if (cfg.knowledge?.references !== undefined && !strList(cfg.knowledge.references)) errors.push("knowledge.references: must be a list of URLs/paths");
+  if (cfg.knowledge?.max_extra_sources !== undefined && !(Number.isInteger(cfg.knowledge.max_extra_sources) && cfg.knowledge.max_extra_sources >= 0))
+    errors.push("knowledge.max_extra_sources: must be a non-negative integer (extra sources per knowledge pass, D-051)");
 
   if (!Array.isArray(cfg.modules) || !cfg.modules.length) errors.push("modules: required, a non-empty list (modules are explored in this order)");
   else {
     const seen = new Set();
     cfg.modules.forEach((m, i) => {
       if (!m || typeof m.slug !== "string" || !SLUG_RE.test(m.slug)) errors.push(`modules[${i}].slug: required, lowercase kebab-case`);
+      else if (m.slug === "product") errors.push(`modules[${i}].slug: 'product' is reserved (the product pass's open-point ids are KQ-product-<n>, D-051)`);
       else if (seen.has(m.slug)) errors.push(`modules[${i}].slug: duplicate '${m.slug}'`);
       else seen.add(m.slug);
       if (typeof m?.name !== "string" || !m.name) errors.push(`modules[${i}].name: required string`);
@@ -113,7 +116,7 @@ export function validateRunConfig(cfg) {
       target: { api_urls: [], ...cfg.target },
       api: { ...API_DEFAULTS, ...cfg.api },
       feature: { description: "", requirement_docs: [], ...cfg.feature },
-      knowledge: { references: [], ...cfg.knowledge },
+      knowledge: { references: [], max_extra_sources: 20, ...cfg.knowledge },
       authorizations: { authenticated_crawl: false, credentials_file: null, session_state_file: null, identities: [], ...auth, mode: auth.mode ?? "readonly" },
       permissions_file: cfg.permissions_file ?? "config/permissions.yaml",
       testcases: { output_format: "gherkin", ...cfg.testcases },

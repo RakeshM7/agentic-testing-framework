@@ -105,12 +105,14 @@ agents:
     spawns: []
     live_target: { browser: read, http: none, load: none }   # docs/web first; live product only when needed; full browser in full-run runs
     web_research: allowed
-    shell: restricted           # sources, sources.md, glossary merge and inputs are script-owned
-    shell_allow: ["node scripts/knowledge.mjs add-source *", "node scripts/knowledge.mjs render *",
-                  "node scripts/knowledge.mjs merge-glossary *", "node scripts/knowledge.mjs check *"]
+    shell: restricted           # sources, sources.md, glossary merge, inputs, the input ledger, the source cache and open-point ids are script-owned (D-051)
+    shell_allow: ["node scripts/knowledge.mjs add-source *", "node scripts/knowledge.mjs input *",
+                  "node scripts/knowledge.mjs snapshot *", "node scripts/knowledge.mjs render *",
+                  "node scripts/knowledge.mjs merge-glossary *", "node scripts/knowledge.mjs check *",
+                  "node scripts/knowledge.mjs paths *"]
     filesystem:
       read: ["config/**", "${state}/config.resolved.json", "${knowledge}/**", "<requirement docs and references listed in the run-config>"]
-      write: ["${knowledge}/overview.md", "${knowledge}/glossary.md",
+      write: ["${knowledge}/overview.md", "${knowledge}/glossary.md", "${knowledge}/captures/**",
               "${knowledge}/modules/${module}/overview.md", "${knowledge}/modules/${module}/glossary.md",
               "${knowledge}/modules/${module}/notes.md"]
 

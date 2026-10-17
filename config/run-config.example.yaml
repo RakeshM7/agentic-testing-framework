@@ -39,6 +39,9 @@ feature:
 knowledge:
   references:
     - https://crm.example.com
+  max_extra_sources: 20         # per knowledge pass: extra vendor-doc, knowledge-base or web sources beyond the
+                                # configured inputs. Over the cap a source is recorded `deferred: budget`, not used.
+                                # Requirement docs, references and live-product pages never count (D-051).
 
 # Modules to explore, in this order. Required: the knowledge-generator does not decide modules.
 modules:

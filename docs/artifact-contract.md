@@ -7,8 +7,12 @@ The single definition of where things live, how stages hand off, and how state a
 ```
 artifacts/<product>/                  # git-ignored; accumulates across runs
   knowledge/                          # knowledge-generator: reusable, cited product knowledge (see below)
-    overview.md glossary.md sources.md sources.json inputs.json
-    modules/<module>/{overview,glossary,notes,sources}.md
+    overview.md glossary.md           # the agent's (product pass)
+    sources.md sources.json inputs.json coverage.json open-points.json   # knowledge.mjs
+    sources/S<n>.txt sources/index.json   # knowledge.mjs snapshot: cached source text for quote checks
+    captures/                         # the agent's captures of pages the script can't fetch
+    modules/<module>/{overview,glossary,notes}.md                 # the agent's (module pass)
+    modules/<module>/{sources.md,coverage.json,open-points.json,rule-facts.json}   # knowledge.mjs
   modules/<module>/                   # latest working state, overwritten by later runs
     explore/                          # sitemap.json, module-summary.md, pages/, flows/, interactions + network inventory
     clarifications.csv                # product-level clarifications (format below)
@@ -56,8 +60,8 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 
 | Stage | Scope | Needs | Declared outputs (verified on `done`) |
 |---|---|---|---|
-| `knowledge` | product | — | `knowledge/{overview,glossary,sources}.md`, `sources.json` (schema) — all citation checks pass |
-| `module-knowledge` | module | knowledge | `knowledge/modules/<m>/{overview,glossary,notes,sources}.md` — citation, glossary-merge and sources checks pass |
+| `knowledge` | product | — | `knowledge/{overview,glossary,sources}.md`, `sources.json`, `coverage.json`, `open-points.json` (schemas) — every knowledge check passes and the verified stamp is current |
+| `module-knowledge` | module | knowledge | `knowledge/modules/<m>/{overview,glossary,notes,sources}.md`, `coverage.json`, `open-points.json`, `rule-facts.json` (schemas) — every knowledge, glossary-merge and sources check passes and the verified stamp is current |
 | `playwright-repo` | product | — | `playwright-tests/<product>/package.json`, `playwright.config.ts` |
 | `explore` | module | module-knowledge | `modules/<m>/explore/sitemap.json` (schema), `module-summary.md` |
 | `clarifications` | module | explore | `modules/<m>/clarifications.csv` (check below), `clarifications-summary.md` |
@@ -76,7 +80,18 @@ Each stage gets at most **two attempts** per run (`attempts` in `run.json`); a s
 `artifacts/<product>/knowledge/`, built by `knowledge-generator`: a **product pass** (stage `knowledge`) then one **module pass** per module (stage `module-knowledge`).
 
 - **Sources** — one product-wide registry, `sources.json` (`schemas/sources.schema.json`), written only by `node scripts/knowledge.mjs add-source`; the same (normalized) URL or path always gets the same id `S<n>`. `sources.md` files are rendered from it: the product one lists every source, a module one lists what that module cites.
-- **Citations** — every content line of overview/glossary/notes cites at least one registered source (`[S3]`); lines under `## Open points` are exempt (unconfirmed items, candidates for clarification). Enforced by `knowledge.mjs check` and on stage `done`.
+- **Citations** — every content line of overview/glossary/notes cites at least one registered source (`[S3]`, or `[S3 "exact words"]` with a quote); lines under `## Open points` are exempt (unconfirmed items, candidates for clarification). Enforced by `knowledge.mjs check` and on stage `done`.
+- **Verified quotes for rule facts (D-051)** — in a module's `notes.md`, these lines carry a citation with a quote of at least 3 words: every content line under `## Business rules and validations`, `## Roles and permissions` and `## Limits and constraints`, and every line under `## Key entities and fields` that names a constraint (`CONSTRAINT_RE` in `scripts/lib/knowledge.mjs`). `check` finds the quote in `sources/S<n>.txt`, ignoring whitespace, case and curly quotes. `knowledge.mjs snapshot <p> S<n>` fills that cache:
+  - a URL: one plain GET with no credentials, never to a `target.url` or `target.api_urls` host or a subdomain of one, with hosts normalized (case, trailing dot; any port) and redirects checked too. An HTML page with fewer than 20 readable words, or binary content, is a failed fetch;
+  - a repo file: read directly, never a credentials, session or `.env` file;
+  - `--from-file captures/<file>`: the agent's capture, recorded `captured_by: agent` and counted by `check`. It is accepted only for a `live-product` source, or after the script's own fetch of that source failed in this run; the failure is kept in the entry's `fetchError`;
+  - text cached in an earlier run (the entry's `runId`) is fetched again. If that fails, the old text is kept with `status: stale`, and `check` reports the stale count.
+  - **Evidence.** A rule fact whose quotes rest only on an agent capture or on stale text is allowed but weaker. `check` writes `modules/<m>/rule-facts.json` (schema `knowledge-rule-facts`) with each rule fact's `evidence` (`script-fetched`, `agent-capture` or `stale`), and lists the weaker ones under `agentCapturedRuleFacts` and `staleRuleFacts`. The stamp covers the file, and the stage refuses it when it no longer matches the notes and the cache.
+- **Input ledger (D-051)** — `coverage.json` (product pass) and `modules/<m>/coverage.json` (module pass), schema `knowledge-coverage`, built on `scripts/lib/coverage.mjs`. The configured inputs are `feature.requirement_docs` and `knowledge.references`, plus the module's `references` in a module pass. Each becomes read when a source with its normalized location is registered, or is marked `failed` or `excluded` with a reason by `knowledge.mjs input`. `check` fails while one is unaccounted for. A ledger from an earlier run starts over when a later run rebuilds the pass.
+- **Extra-source budget (D-051)** — sources that are neither configured inputs nor `live-product` are capped per pass at `knowledge.max_extra_sources` (default 20). A `live-product` source must be a page on a `target.url` or `target.api_urls` host; `add-source` refuses any other. Over the cap, `add-source` registers nothing, returns `{deferred: true}` and records the source `deferred: budget` in the ledger.
+- **Fact checklist (D-051)** — the product overview has its fixed headings and exactly one `## Main areas` bullet per configured module, matched by name. The module overview and `notes.md` have theirs; `notes.md` adds `## Limits and constraints`. Only the fixed headings are allowed, each once: an extra `##`, a second `#` (or any `#` in `notes.md`), or content outside the `##` sections fails. Each fact category (`entities`, `flows`, `rules`, `roles`, `limits`, `dependencies`) has a cited line in its `notes.md` section or an open point tagged `(<category>)`. Code fences fail, and each open point is a single bullet line.
+- **Open point ids (D-051)** — `render` and `check` write `open-points.json` (schema `knowledge-open-points`): one id per open point from `scripts/lib/registry.mjs`, `KQ-<m>-<n>` or `KQ-product-<n>` (the module slug `product` is reserved), keyed by the normalized text, with its text and category tag. A removed point is kept as `gone`, and ids are never reused. The agent's markdown is never rewritten.
+- **Verified** — a passing `knowledge.mjs check` stamps the pass's files into its `coverage.json` (`scripts/lib/verified.mjs`): the product overview, its open points and the product-scope glossary rows; or the module's overview, glossary, notes, `sources.md` and open points. The stage's `done`, and `plan`'s `reuse`, refuse a missing or stale stamp.
 - **Glossaries** — product: `| Term | Definition | Scope | Sources |`; module: `| Term | Definition | Sources |`, merged into the product glossary with Scope = module slug by `knowledge.mjs merge-glossary`.
 - **Reuse unless inputs changed** — `knowledge.mjs plan <product>` compares fingerprints in `inputs.json` (recorded automatically when a knowledge stage is marked `done`) with the current config: product-wide `knowledge.references` and `feature.requirement_docs` (local files by content) affect the product and every module; a module's own entry (`name`, `entry_url`, `nav_path`, `references`) affects only that module. Unchanged parts with valid files are `reuse` — the orchestrator marks their stage `done` without invoking the agent.
 
@@ -178,4 +193,4 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap,sources,results,discovered-endpoints,api-coverage,api-overlay}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.

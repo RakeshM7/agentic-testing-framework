@@ -242,3 +242,25 @@ Classification: `test-bug` (wrong selector/assertion/wait/data in the test) · `
 ## 8. Results (`runner-triagers` → report)
 
 `results/<run>/<m>/<framework>/results.json` — written only by `node scripts/results.mjs` (schema `results`). Never write it by hand.
+
+## 9. Knowledge base (`knowledge-generator` → everyone)
+
+`knowledge/` for the product pass, `knowledge/modules/<m>/` for a module pass. The layout and the checks are in [`artifact-contract.md`](artifact-contract.md) §"Knowledge base" (D-015, D-051).
+
+| File | Owner | Content |
+|---|---|---|
+| `overview.md`, `glossary.md`; `modules/<m>/{overview,glossary,notes}.md` | knowledge-generator | Cited facts. A rule fact cites with a quote, `[S3 "exact words"]`. Unconfirmed items go under `## Open points`, one bullet each, optionally tagged `(entities)`, `(flows)`, `(rules)`, `(roles)`, `(limits)` or `(dependencies)`. |
+| `captures/<file>.txt` | knowledge-generator | The text the agent observed on a page the script can't fetch; input to `knowledge.mjs snapshot --from-file`. |
+| `sources.json`, `sources.md`, `modules/<m>/sources.md` | `knowledge.mjs` | The source registry (`S<n>`) and its renderings. |
+| `sources/S<n>.txt`, `sources/index.json` | `knowledge.mjs snapshot` | The cached text of a source, which quotes are checked against (schema `knowledge-source-cache`): `status` `fresh`, `stale` or `failed`; `captured_by` `script` or `agent`; the `runId` that cached it; the last `fetchError`. |
+| `coverage.json`, `modules/<m>/coverage.json` | `knowledge.mjs` | The pass's input ledger (schema `knowledge-coverage`): each configured input read, failed or excluded with a reason; extra sources mapped or `deferred: budget`; the `verified` stamp. |
+| `open-points.json`, `modules/<m>/open-points.json` | `knowledge.mjs render` / `check` | `{module, next, points: {<normalized text>: {id, status, text, category, file}}}` (schema `knowledge-open-points`). Ids are `KQ-<m>-<n>` or `KQ-product-<n>`, stable across rebuilds; a removed point stays as `gone`. |
+
+**`modules/<m>/rule-facts.json`** (owner: `knowledge.mjs check`; schema `knowledge-rule-facts`) is a separate file from the ledger because it describes the notes' facts, not the inputs. It lists every rule fact of `notes.md` (the lines that need a quote) with each verified quote and its `evidence`:
+- `script-fetched`: the script fetched or read the text in its run;
+- `agent-capture`: the text is the agent's `--from-file` capture;
+- `stale`: a later re-fetch failed, and the older text was kept.
+
+A fact's `evidence` is its strongest quote's, in that order. `agent-capture` and `stale` facts are allowed but weaker: `check` lists them under `agentCapturedRuleFacts` and `staleRuleFacts` (file, line, source ids), and the test-case side tags cases built on them `@assumption` (not implemented yet).
+
+**Consumers.** Every later agent reads the markdown. **module-explorer consumes `modules/<m>/open-points.json`:** it accounts for every active `KQ-` id of its module. That side is not implemented yet. Citations into the knowledge base from other artifacts use `knowledge:<path>`.

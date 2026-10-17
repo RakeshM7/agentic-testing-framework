@@ -104,6 +104,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-048 | Clarification outcomes are checked by script against their evidence; agent answers are proposals until a human approves them | Accepted | 2026-10-17 |
 | D-049 | Script-built agents share registry, citation, coverage and verified helpers; exhaustive ledger, budgeted work | Accepted | 2026-10-17 |
 | D-050 | API plan budget overflow is deferred, not excluded | Accepted | 2026-10-17 |
+| D-051 | Knowledge is script-checked: input ledger, verified rule quotes, fact checklist, stable open-point ids, budgeted extra sources | Accepted | 2026-10-17 |
 
 ## Decisions
 
@@ -860,3 +861,47 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Why:** an exclusion means "left out on purpose". A budget overflow is work not done yet, so it must stay visible to the next run and the report as deferred, the same as every other ledger built on `scripts/lib/coverage.mjs` (D-049).
 - **Affects:** `scripts/api-plan.mjs`, `scripts/lib/api-plan.mjs`, `schemas/api-plan.schema.json`, `schemas/api-plan-coverage.schema.json`, `schemas/api-plan-overlay.schema.json`, `agents/api-test-planner.md`
 - **Supersedes:** D-046 (the budget rule only) · **Confirmed by the user on:** 2026-10-17
+
+### D-051 · Knowledge is script-checked: input ledger, verified rule quotes, fact checklist, stable open-point ids, budgeted extra sources
+- **Status:** Accepted · **Date:** 2026-10-17 · **Source:** conversation with the user, 2026-10-17. In an interview about `knowledge-generator` they asked for:
+  - verified quotes on rule facts;
+  - every configured input accounted for;
+  - a fixed fact checklist;
+  - stable open-point ids for module-explorer;
+  - the live product only for blocking gaps, with no human sign-off;
+  - a per-pass cap on extra sources, with the overflow deferred.
+- **Decision:** `scripts/knowledge.mjs` and `scripts/lib/knowledge.mjs` follow `docs/conventions.md` "Script-built agents" (D-049).
+  - **Input ledger.** Each pass has `coverage.json` (`knowledge/` or `knowledge/modules/<m>/`, schema `knowledge-coverage`), built on `lib/coverage.mjs`.
+    - The configured inputs are `feature.requirement_docs` and `knowledge.references`, plus the module's `references` in a module pass.
+    - An input is read when a source with its normalized location is registered. The agent marks the others with `knowledge.mjs input --status failed|excluded --reason`.
+    - `check` fails while one is unaccounted for.
+  - **Extra-source budget.** A new run-config value, `knowledge.max_extra_sources` (default 20), caps per pass the sources that are neither configured inputs nor `live-product`. Over the cap, `add-source` registers nothing, returns `{deferred: true}`, and the ledger keeps the source as `deferred: budget`. A `live-product` source must be a page on a `target.url` or `target.api_urls` host, so the type can't be used to dodge the cap.
+  - **Verified quotes.** A citation may carry a quote: `[S<n> "exact words"]`, at least 3 words.
+    - Which lines need one: every content line of `notes.md` under Business rules and validations, Roles and permissions and Limits and constraints, and every line under Key entities and fields that names a constraint (a fixed word list).
+    - `check` finds each quote in the script-owned cache `knowledge/sources/S<n>.txt`, ignoring whitespace, case and curly quotes.
+    - `knowledge.mjs snapshot` fills the cache.
+      - It does one plain GET of a URL with no credentials. It refuses the product's own hosts (`target.url`, `target.api_urls`) and their subdomains, with hosts normalized (case, trailing dot, any port) and redirects checked.
+      - It reads a repo file directly and refuses credentials, session and `.env` files.
+      - It accepts the agent's capture from `knowledge/captures/` (`captured_by: agent`, counted by `check`) only for a `live-product` source, or after the script's own fetch of that source failed in this run. The failure is recorded in the cache entry.
+      - Text cached in an earlier run is fetched again. If that fails, the old text is kept, marked `stale`, and counted by `check`.
+    - A rule-fact quote that rests only on an agent capture or on stale text is allowed but flagged as weaker evidence: `check` lists it, and writes `modules/<m>/rule-facts.json` with `evidence: script-fetched | agent-capture | stale` per fact, so test cases built on a weaker fact can be tagged `@assumption`. The user chose this on 2026-10-17.
+    - The fetch is injected, so tests never touch the network.
+  - **Fact checklist.**
+    - Only fixed headings, each once, for the product overview, the module overview and `notes.md`; `notes.md` gains `## Limits and constraints`. An extra `##` or `#` section, or content outside the `##` sections, fails, so a rule fact can't escape the quote rule.
+    - The product's `## Main areas` has exactly one bullet per configured module, matched by name.
+    - Each of the six categories (`entities`, `flows`, `rules`, `roles`, `limits`, `dependencies`) has a cited line in its `notes.md` section, or an open point tagged `(<category>)`.
+  - **Loopholes closed.** Code fences fail. Each open point is a single bullet line. Uncited prose outside Open points still fails.
+  - **Open-point ids.** `render` and `check` write `open-points.json` per pass (schema `knowledge-open-points`) through `lib/registry.mjs`: `KQ-<m>-<n>` or `KQ-product-<n>`, keyed by the normalized text, with the text and the category tag. A removed point stays `gone`, and its id is never reused. The agent's markdown is never rewritten. The run-config rejects the module slug `product`, so the ids can't collide. module-explorer will account for every id; this decision only produces them.
+  - **Verified stamp.** A passing `check` stamps the pass's files into its `coverage.json` through `lib/verified.mjs`.
+    - The product stamp covers its overview, its open points and the product-scope glossary rows, so a module pass's glossary merge doesn't make it stale.
+    - The stages' `check:` rules, and so `run.mjs stage … done` and `knowledge.mjs plan`'s `reuse`, refuse a missing or stale stamp. The reuse fingerprints are unchanged.
+  - **Permissions.** `knowledge-generator` gains `knowledge.mjs input`, `snapshot` and `paths`, and may write `knowledge/captures/**`. Everything else under `knowledge/` that is not its markdown stays script-owned.
+  - The live-product rule stands: only to fill a blocking gap, observe only. There is no human sign-off; knowledge is trusted once `check` passes.
+- **Why:**
+  - A citation alone proved only that a source exists, not that it says what the line claims. Rule facts drive test expectations, so they get a checkable quote.
+  - "Read the references" was a prompt instruction, so an unread input went unnoticed.
+  - A fixed checklist makes a thin pass visible. Code fences used to hide uncited text from the check.
+  - module-explorer needs stable ids to account for each open point across runs.
+  - An uncapped search can run without bound, and a silent cap hides what was not read (D-049).
+- **Affects:** `scripts/knowledge.mjs`, `scripts/lib/knowledge.mjs`, `schemas/knowledge-coverage.schema.json`, `schemas/knowledge-open-points.schema.json`, `schemas/knowledge-source-cache.schema.json`, `schemas/knowledge-rule-facts.schema.json`, `agents/knowledge-generator.md`, `config/run-config.example.yaml`, `config/permissions.yaml`, `scripts/lib/contract.mjs`, `scripts/run-config.mjs`, `docs/agent-handoffs.md`, `docs/artifact-contract.md`
+- **Confirmed by the user on:** 2026-10-17. This extends D-002 (bookkeeping in scripts), D-013 (permissions), D-015 (cited and reused knowledge) and D-049 (shared helpers) without superseding them. Snapshot text is data (D-016).

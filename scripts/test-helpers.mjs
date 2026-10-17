@@ -5,7 +5,7 @@ import path from "node:path";
 import { HEADERS } from "./lib/clarifications.mjs";
 import { paths, repoRoot } from "./lib/contract.mjs";
 import { parseCsv, serializeCsv } from "./lib/csv.mjs";
-import { addSource, knowledgePaths, mergeGlossary, render } from "./lib/knowledge.mjs";
+import { knowledgePaths, mergeGlossary, registerSource, render, runCheck, storeSnapshot } from "./lib/knowledge.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
 import { initRun } from "./run.mjs";
 
@@ -49,26 +49,84 @@ export function put(root, rel, content) {
   writeFileSync(p, content);
 }
 
-// A valid product-level knowledge pass, the way the knowledge-generator produces it (via the scripts).
+// A valid product-level knowledge pass, the way the knowledge-generator produces it (via the scripts): every heading,
+// one Main areas bullet per module, a tagged open point, rendered, checked and stamped (D-051).
 export function writeProductKnowledge(root, product = "acme") {
-  const kp = knowledgePaths(paths(product, root).productDir);
-  const s = addSource(kp, { title: "Acme help center", location: "https://help.acme.test", type: "vendor-doc", scope: "_product", runId: "acme-run-1" });
-  put(root, `artifacts/${product}/knowledge/overview.md`, `# Acme CRM\n\nAcme is a CRM for small sales teams [${s.id}].\n`);
-  put(root, `artifacts/${product}/knowledge/glossary.md`, `# Glossary\n\n| Term | Definition | Scope | Sources |\n|---|---|---|---|\n| Lead | A prospective customer [${s.id}] | product | [${s.id}] |\n`);
-  render(kp);
-  return { kp, sourceId: s.id };
+  const p = paths(product, root);
+  const kp = knowledgePaths(p.productDir);
+  const cfg = JSON.parse(readFileSync(p.configFile, "utf8"));
+  const s = registerSource(kp, cfg, { title: "Acme help center", location: "https://help.acme.test", type: "vendor-doc", runId: "acme-run-1" });
+  const cite = `[${s.id}]`;
+  put(root, `artifacts/${product}/knowledge/overview.md`, [
+    "# Acme CRM", "",
+    "## What it is", "", `Acme is a CRM for small sales teams ${cite}.`, "",
+    "## Users and roles", "", `- Sales reps and their managers ${cite}.`, "",
+    "## Main areas", "", ...cfg.modules.map((m) => `- **${m.name}**: the ${m.name.toLowerCase()} area ${cite}.`), "",
+    "## Key concepts", "", `- Leads become contacts ${cite}.`, "",
+    "## Integrations", "", `- Email sync ${cite}.`, "",
+    "## Constraints and limits", "", `- Plans limit the number of seats ${cite}.`, "",
+    "## Open points", "", "- (limits) The seat limit per plan is not documented.", "",
+  ].join("\n"));
+  put(root, `artifacts/${product}/knowledge/glossary.md`, `# Glossary
+
+| Term | Definition | Scope | Sources |
+|---|---|---|---|
+| Lead | A prospective customer ${cite} | product | ${cite} |
+`);
+  render(kp, undefined, { runId: "acme-run-1" });
+  const r = runCheck(kp, cfg, { runId: "acme-run-1" });
+  if (!r.valid) throw new Error(`writeProductKnowledge: ${r.problems.join("\n")}`);
+  return { kp, sourceId: s.id, cfg };
 }
 
+// A valid module pass: every notes heading, a quoted rule fact verified against the cached source text, the other
+// categories cited or named by a tagged open point; merged, rendered, checked and stamped.
 export function writeModuleKnowledge(root, module, product = "acme") {
-  const kp = knowledgePaths(paths(product, root).productDir);
-  const s = addSource(kp, { title: `${module} guide`, location: `https://help.acme.test/${module}`, type: "vendor-doc", scope: module, runId: "acme-run-1" });
+  const p = paths(product, root);
+  const kp = knowledgePaths(p.productDir);
+  const cfg = JSON.parse(readFileSync(p.configFile, "utf8"));
+  const s = registerSource(kp, cfg, { title: `${module} guide`, location: `https://help.acme.test/${module}`, type: "vendor-doc", module, runId: "acme-run-1" });
+  storeSnapshot(kp, s.id, `<h1>${module}</h1>
+Records can be bulk-updated.
+A record name must be unique within the account.
+Only admins can delete records.`, { captured_by: "script", runId: "acme-run-1" });
+  const c = `[${s.id}]`;
   const dir = `artifacts/${product}/knowledge/modules/${module}`;
-  put(root, `${dir}/overview.md`, `# ${module}\n\nThe ${module} module stores records [${s.id}].\n`);
-  put(root, `${dir}/glossary.md`, `| Term | Definition | Sources |\n|---|---|---|\n| Owner | User responsible for the record | [${s.id}] |\n`);
-  put(root, `${dir}/notes.md`, `## How it works\n\n- Records can be bulk-updated [${s.id}].\n\n## Open points\n\n- Whether merge keeps both owners is not documented.\n`);
+  put(root, `${dir}/overview.md`, `# ${module}
+
+## Purpose
+
+The ${module} module stores records ${c}.
+
+## Who uses it
+
+- Sales reps ${c}.
+
+## Where it is
+
+- The main menu ${c}.
+
+## Open points
+
+- (flows) The import flow is not documented.
+`);
+  put(root, `${dir}/glossary.md`, `| Term | Definition | Sources |
+|---|---|---|
+| Owner | User responsible for the record | ${c} |
+`);
+  put(root, `${dir}/notes.md`, [
+    "## How it works", "", `- Records can be bulk-updated ${c}.`, "",
+    "## Key entities and fields", "", `- A record has a name [${s.id} "a record name must be unique"].`, "",
+    "## Key actions and flows", "", "## Business rules and validations", "", `- Record names are unique per account [${s.id} "must be unique within the account"].`, "",
+    "## Roles and permissions", "", `- Admins delete records [${s.id} "Only admins can delete records"].`, "",
+    "## Limits and constraints", "", "## Dependencies on other modules", "",
+    "## Open points", "", "- (limits) Whether there is a maximum number of records is not documented.", "- (dependencies) Whether deals reference records is not documented.", "",
+  ].join("\n"));
   mergeGlossary(kp, module);
-  render(kp, module);
-  return { kp, sourceId: s.id };
+  render(kp, module, { runId: "acme-run-1" });
+  const r = runCheck(kp, cfg, { module, runId: "acme-run-1" });
+  if (!r.valid) throw new Error(`writeModuleKnowledge(${module}): ${r.problems.join("\n")}`);
+  return { kp, sourceId: s.id, cfg };
 }
 
 // A human editing clarifications.csv in Excel: set one row's Answer status (and optionally its Answer) directly.
