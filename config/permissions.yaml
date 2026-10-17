@@ -47,6 +47,8 @@ variables:
 # Mode caps permissions | knowledge-generator: live product only if needed | module-explorer: mutate
 # scaffolders: web research allowed | api-discoverer: http read, shell only endpoints.mjs (D-045) | global feedback implementor: as drafted
 # module-explorer: explore.mjs owns the state machine; the agent writes flows, summary, questions, overlay, captures (D-052)
+# testcase-writer: testcases.mjs build/check/paths only, writes cases.json only; `testcases.mjs approve` and the approval
+#   sheet (approval.csv, approvals.json) are human-only: no agent's row may grant them, and the guard denies them anyway
 # Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
 #
 # ---- Shared-repo ownership inside ${pw_project} (UI and API agents write into the same repo) -------------
@@ -171,15 +173,16 @@ agents:
     spawns: [testcase-writer, testcase-reviewer]
     filesystem: { read: ["${modules}/**"], write: ["${state}/orchestration/testcases-${module}.json"] }
 
-  testcase-writer:
+  testcase-writer:              # the TC/CI ids, coverage ledger, budget, renders, summary and approval sheet are script-owned (testcases.mjs)
     layer: 2
     live_target: { browser: none, http: none, load: none }
     web_research: none
-    shell: none
+    shell: restricted           # never `testcases.mjs approve`: approval is human-only, and the guard denies it to every agent
+    shell_allow: ["node scripts/testcases.mjs build *", "node scripts/testcases.mjs check *", "node scripts/testcases.mjs paths *"]
     filesystem:
       read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/testcases/review-findings.md",
              "${results}/${module}/testcases/gate-findings.md"]
-      write: ["${modules}/testcases/**"]
+      write: ["${modules}/testcases/cases.json"]   # only its cases overlay; never approval.csv or approvals.json
 
   testcase-reviewer:
     layer: 2

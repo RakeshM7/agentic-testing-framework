@@ -56,3 +56,12 @@ test("exploration budgets: per-module max_pages 40 and max_states 150 by default
   assert.ok(errors.some((e) => e.startsWith("explore.max_states")));
   assert.ok(errors.includes("explore.depth: unknown key"));
 });
+
+test("test cases: max_cases is 200 per module by default; a positive integer only; unknown keys rejected", () => {
+  assert.deepEqual(validateRunConfig(base).normalized.testcases, { output_format: "gherkin", max_cases: 200 });
+  assert.deepEqual(validateRunConfig({ ...base, testcases: { output_format: "csv", max_cases: 50 } }).normalized.testcases, { output_format: "csv", max_cases: 50 });
+  const { errors } = validateRunConfig({ ...base, testcases: { max_cases: 0, budget: 3 } });
+  assert.ok(errors.some((e) => e.startsWith("testcases.max_cases")));
+  assert.ok(errors.includes("testcases.budget: unknown key"));
+  assert.ok(validateRunConfig({ ...base, testcases: "gherkin" }).errors.includes("testcases: must be a mapping"));
+});

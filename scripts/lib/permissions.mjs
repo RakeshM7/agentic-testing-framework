@@ -127,8 +127,52 @@ export function canWrite(row, relPath, variables, values) {
   return row.filesystem.write.some((g) => !g.startsWith("<") && globToRegExp(expandGlob(g, variables, values)).test(relPath));
 }
 
+// A command line split into its simple commands, for a restricted allow-list. Unquoted `&&`, `||`, `;`, `|`, `&` and
+// line breaks separate commands; the text inside quotes is masked, so no pattern can read it as an operator. -> the
+// commands, or null when the line has something an allow-list can't vouch for: a redirect (< >), a group or subshell
+// (( )), command substitution or a variable ($, a backtick) outside single quotes, a backslash outside quotes (an
+// escape such as \" or \' would otherwise hide where a quote starts), a backslash before a double quote inside double
+// quotes (bash reads it as an escaped quote, PowerShell and cmd as the closing one), or an unterminated quote. Any
+// other backslash inside quotes, and everything inside single quotes, is literal. Arguments belong in single quotes.
+export function shellSegments(cmd) {
+  const segs = [];
+  let cur = "";
+  let q = null;
+  const s = String(cmd ?? "");
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) {
+      if (q === '"' && c === "\\" && s[i + 1] === '"') return null;
+      if (c === q) {
+        q = null;
+        cur += c;
+      } else if (q === '"' && (c === "$" || c === "`")) return null;
+      else cur += "_";
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      q = c;
+      cur += c;
+    } else if ("<>()$`\\".includes(c)) return null;
+    else if (c === ";" || c === "\n" || c === "\r" || c === "&" || c === "|") {
+      segs.push(cur);
+      cur = "";
+      if ((c === "&" || c === "|") && s[i + 1] === c) i++;
+    } else cur += c;
+  }
+  if (q) return null;
+  segs.push(cur);
+  if (segs.some((x) => !x.trim())) return null; // an empty command around an operator (`a ;`, `a ;; b`) is not vouched for either
+  return segs.map((x) => x.trim()).filter(Boolean);
+}
+
+// restricted: every simple command of the line must match an allow-list pattern on its own; a `*` in a pattern never
+// matches an operator, a redirect, a substitution or a line break.
 export function shellAllowed(row, cmd) {
   if (row.shell === "none") return false;
   if (row.shell === "project") return true;
-  return row.shell_allow.some((p) => new RegExp(`^${p.replace(/[.+?^$()|[\]\\{}]/g, "\\$&").replace(/\*/g, ".*")}$`).test(cmd.trim()));
+  const segs = shellSegments(cmd);
+  if (!segs?.length) return false;
+  const res = row.shell_allow.map((p) => new RegExp(`^${p.replace(/[.+?^$()|[\]\\{}]/g, "\\$&").replace(/\*/g, "[^;&|<>`$()\\n\\r]*")}$`));
+  return segs.every((seg) => res.some((re) => re.test(seg)));
 }

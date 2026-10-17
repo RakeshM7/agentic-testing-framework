@@ -80,6 +80,9 @@ permissions_file: config/permissions.yaml   # per-agent ceilings; frozen into st
 
 testcases:
   output_format: gherkin        # markdown-table | gherkin | csv | testrail
+  max_cases: 200                # per module: the coverage items that need a case (EP/BVA, transitions, flows, rules,
+                                # clarifications). Over it the lowest-priority items are recorded `deferred: budget`,
+                                # never dropped.
 
 clarifications:
   unresolved_policy: stop       # stop             = the clarifications stage is not complete until every row has an

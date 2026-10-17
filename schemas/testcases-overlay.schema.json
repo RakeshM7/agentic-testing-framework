@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "testcases-overlay.schema.json",
+  "title": "testcases/cases.json: the testcase-writer's structured cases and cited exclusions, the only file it writes. scripts/testcases.mjs build gives each case its stable TC id (by key), derives @assumption and renders every downstream file from it.",
+  "type": "object",
+  "required": ["cases"],
+  "additionalProperties": false,
+  "$defs": {
+    "line": { "type": "string", "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$", "description": "One non-empty line." },
+    "ci": { "type": "string", "pattern": "^CI-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+    "citation": { "type": "string", "pattern": "^(clarification|knowledge|observation):\\S+$" },
+    "case": {
+      "type": "object",
+      "required": ["key", "title", "type", "priority", "action", "steps", "expected", "covers", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 80, "description": "The stable case key (a slug). Its TC id is assigned once and never changes; never rename a key." },
+        "title": { "$ref": "#/$defs/line", "description": "A declarative name of the behavior, unique in the module." },
+        "type": { "enum": ["functional", "negative", "boundary", "security", "visual", "api"] },
+        "priority": { "enum": ["p1", "p2", "p3"] },
+        "mutates": { "type": "boolean", "description": "Creates, changes or deletes data." },
+        "visual": { "type": "boolean" },
+        "api": { "type": "boolean", "description": "The behavior is an API contract (the API side automates it)." },
+        "assumption": { "type": "boolean", "description": "The writer's own assumption; the script also sets @assumption itself." },
+        "assumes": { "type": "string", "minLength": 1, "description": "What the case assumes (required with assumption: true)." },
+        "preconditions": { "type": "array", "items": { "$ref": "#/$defs/line" }, "description": "Given / And." },
+        "action": { "$ref": "#/$defs/line", "description": "The one When: declarative, no clicks or keys." },
+        "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/line" }, "description": "Concrete steps a person can follow (named elements, example data)." },
+        "expected": { "$ref": "#/$defs/line", "description": "The one Then; the product's messages quoted verbatim in double quotes, found in the evidence." },
+        "data": { "type": "object", "additionalProperties": { "type": ["string", "number", "boolean"] }, "description": "Synthetic test data, field -> value." },
+        "covers": { "type": "array", "items": { "$ref": "#/$defs/ci" }, "description": "The coverage items (CI ids) the case covers; at least one." },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/citation" }, "description": "What the case relies on: clarification:<id>, knowledge:<path>[#L<line>|#KQ-<id>], observation:<path>; at least one." }
+      }
+    },
+    "exclude": {
+      "type": "object",
+      "required": ["item", "reason", "detail"],
+      "additionalProperties": false,
+      "properties": {
+        "item": { "$ref": "#/$defs/ci" },
+        "reason": { "enum": ["not-testable", "not-applicable", "out-of-scope", "duplicate-of"] },
+        "detail": { "type": "string", "minLength": 1 },
+        "citation": { "$ref": "#/$defs/citation", "description": "What shows why; required for every reason except duplicate-of." },
+        "of": { "$ref": "#/$defs/ci", "description": "duplicate-of: the item that covers it." }
+      }
+    }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } },
+    "exclude": { "type": "array", "items": { "$ref": "#/$defs/exclude" } }
+  }
+}

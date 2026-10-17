@@ -23,6 +23,8 @@ const httpUrl = (v) => {
 };
 // Exploration budgets per module (D-052): new states and pages over them are recorded as deferred: budget.
 export const EXPLORE_DEFAULTS = { max_pages: 40, max_states: 150 };
+// Test cases (scripts/testcases.mjs): the rendered format, and the budget of coverage items per module that need a case.
+export const TESTCASES_DEFAULTS = { output_format: "gherkin", max_cases: 200 };
 export const API_DEFAULTS = { specs: [], graphql: [], auth_header: null, discovery_budget: 40, probe_budget: 50, probe_delay_ms: 500, plan_budget: 300 };
 
 export function validateRunConfig(cfg) {
@@ -111,8 +113,14 @@ export function validateRunConfig(cfg) {
     }
   }
   if (cfg.permissions_file !== undefined && typeof cfg.permissions_file !== "string") errors.push("permissions_file: must be a path");
-  if (cfg.testcases?.output_format !== undefined && !FORMATS.includes(cfg.testcases.output_format))
-    errors.push(`testcases.output_format: '${cfg.testcases.output_format}' not in [${FORMATS}]`);
+  if (cfg.testcases !== undefined && (!cfg.testcases || typeof cfg.testcases !== "object" || Array.isArray(cfg.testcases))) errors.push("testcases: must be a mapping");
+  else {
+    if (cfg.testcases?.output_format !== undefined && !FORMATS.includes(cfg.testcases.output_format))
+      errors.push(`testcases.output_format: '${cfg.testcases.output_format}' not in [${FORMATS}]`);
+    if (cfg.testcases?.max_cases !== undefined && !posInt(cfg.testcases.max_cases))
+      errors.push("testcases.max_cases: must be a positive integer (per module; coverage items over it are deferred: budget)");
+    for (const k of Object.keys(cfg.testcases ?? {})) if (!(k in TESTCASES_DEFAULTS)) errors.push(`testcases.${k}: unknown key`);
+  }
   if (cfg.clarifications?.unresolved_policy !== undefined && !UNRESOLVED_POLICIES.includes(cfg.clarifications.unresolved_policy))
     errors.push(`clarifications.unresolved_policy: not in [${UNRESOLVED_POLICIES}]`);
   for (const k of ["review_rounds", "heal_rounds"]) if (cfg.limits?.[k] !== undefined && !posInt(cfg.limits[k])) errors.push(`limits.${k}: must be a positive integer`);
@@ -130,7 +138,7 @@ export function validateRunConfig(cfg) {
       explore: { ...EXPLORE_DEFAULTS, ...cfg.explore },
       authorizations: { authenticated_crawl: false, credentials_file: null, session_state_file: null, identities: [], ...auth, mode: auth.mode ?? "readonly" },
       permissions_file: cfg.permissions_file ?? "config/permissions.yaml",
-      testcases: { output_format: "gherkin", ...cfg.testcases },
+      testcases: { ...TESTCASES_DEFAULTS, ...cfg.testcases },
       clarifications: { unresolved_policy: "stop", ...cfg.clarifications },
       limits: { review_rounds: 3, heal_rounds: 3, ...cfg.limits },
       concurrency: { modules: 1, clarification_rows: 1, ...cfg.concurrency },

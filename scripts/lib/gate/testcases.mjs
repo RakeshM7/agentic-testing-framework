@@ -3,76 +3,19 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { csvPath, isAnswered, isAuthoritative, readRows } from "../clarifications.mjs";
-import { parseCsv } from "../csv.mjs";
-import { checkTestcases, testcasesFile } from "../testcases.mjs";
+import { PRIORITIES, TYPES, checkTestcases, parseCases, testcasesFile } from "../testcases.mjs";
 import { finding } from "./common.mjs";
 
-export const PRIORITIES = ["p1", "p2", "p3"];
-export const TYPES = ["functional", "negative", "boundary", "security", "visual", "api"];
-const CLAR_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*-\d+$/;
-const yes = (v) => /^(yes|y|true|x|1)$/i.test(String(v ?? "").trim());
+// The parse contract lives in lib/testcases.mjs (one reader for the gates, api-plan and the stage check).
+export { PRIORITIES, TYPES, parseCases };
 
-// A case: {id, line, priority, type, clarifications[], mutates, assumption, api}.
-function fromTags(tags, line) {
-  const t = tags.map((s) => s.replace(/^@/, ""));
-  return {
-    id: t.find((s) => /^TC-/.test(s)) ?? null,
-    line,
-    priority: t.find((s) => PRIORITIES.includes(s)) ?? null,
-    type: t.find((s) => TYPES.includes(s)) ?? null,
-    clarifications: t.filter((s) => CLAR_RE.test(s)),
-    mutates: t.includes("mutates"),
-    assumption: t.includes("assumption"),
-    api: t.includes("api"),
-  };
-}
-
-function fromColumns(get, line) {
-  const type = get("type").toLowerCase();
-  return {
-    id: get("id") || null,
-    line,
-    priority: PRIORITIES.includes(get("priority").toLowerCase()) ? get("priority").toLowerCase() : null,
-    type: TYPES.includes(type) ? type : null,
-    clarifications: get("clarifications").split(/[\s,;]+/).map((s) => s.replace(/^@/, "")).filter((s) => CLAR_RE.test(s)),
-    mutates: yes(get("mutates")),
-    assumption: yes(get("assumption")),
-    api: type === "api",
-  };
-}
-
-function table(header, rows) {
-  const idx = Object.fromEntries(header.map((h, i) => [String(h).trim().toLowerCase(), i]));
-  return rows.map(({ cells, line }) => fromColumns((k) => String(cells[idx[k]] ?? "").trim(), line));
-}
-
-export function parseCases(file, format) {
-  const text = readFileSync(file, "utf8");
-  if (format === "gherkin") {
-    const cases = [];
-    let tags = [];
-    text.split(/\r?\n/).forEach((raw, i) => {
-      const l = raw.trim();
-      if (l.startsWith("@")) tags.push(...l.split(/\s+/).filter((s) => s.startsWith("@")));
-      else if (/^Scenario( Outline)?:/.test(l)) {
-        cases.push(fromTags(tags, i + 1));
-        tags = [];
-      } else if (l && !l.startsWith("#")) tags = [];
-    });
-    return cases;
+// The cases whose @assumption scripts/testcases.mjs derived, with its reasons (testcases/coverage.json). -> Set of ids
+function derivedAssumptions(file) {
+  try {
+    return new Set((JSON.parse(readFileSync(file, "utf8")).cases ?? []).filter((c) => c.assumption && c.assumptions?.length).map((c) => c.id));
+  } catch {
+    return new Set();
   }
-  if (format === "csv" || format === "testrail") {
-    const [header = [], ...rows] = parseCsv(text);
-    return table(header, rows.filter((r) => r.some((c) => String(c).trim())).map((cells, i) => ({ cells, line: i + 2 })));
-  }
-  // markdown-table: the first table whose header has an ID column
-  const lines = text.split(/\r?\n/);
-  const split = (l) => l.trim().replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map((c) => c.trim());
-  const h = lines.findIndex((l) => l.trim().startsWith("|") && split(l).some((c) => c.toLowerCase() === "id"));
-  if (h < 0) return [];
-  const rows = [];
-  for (let i = h + 2; i < lines.length && lines[i].trim().startsWith("|"); i++) rows.push({ cells: split(lines[i]), line: i + 1 });
-  return table(split(lines[h]), rows);
 }
 
 export function gateTestcases({ productDir, module, format }) {
@@ -91,6 +34,7 @@ export function gateTestcases({ productDir, module, format }) {
   const authoritative = new Set(rows.filter(isAuthoritative).map((r) => r.id.trim()));
   const known = new Set(rows.map((r) => r.id.trim()));
   const cases = parseCases(file, format);
+  const derived = derivedAssumptions(path.join(moduleDir, "testcases", "coverage.json"));
   const seen = new Set();
   const used = new Set();
   const idRe = new RegExp(`^TC-${module}-\\d+$`);
@@ -107,7 +51,9 @@ export function gateTestcases({ productDir, module, format }) {
     }
     const unconfirmed = c.clarifications.filter((r) => known.has(r) && !authoritative.has(r));
     if (unconfirmed.length && !c.assumption) at("assumption", "major", `relies on ${unconfirmed.join(", ")}, which is unanswered or awaiting human approval, but is not tagged @assumption`, "tag it @assumption and state what it assumes");
-    if (c.assumption && !unconfirmed.length) at("assumption", "minor", "tagged @assumption but relies on no unanswered or unapproved clarification", "remove @assumption, or reference the row it assumes");
+    // testcases.mjs derives @assumption from more than clarifications (a weak rule fact, an open point, the writer's
+    // stated assumption); a case whose assumption the script derived and recorded is not a finding.
+    if (c.assumption && !unconfirmed.length && !derived.has(c.id)) at("assumption", "minor", "tagged @assumption but relies on no unanswered or unapproved clarification", "remove @assumption, or reference the row it assumes");
   }
   const summaryText = existsSync(summary) ? readFileSync(summary, "utf8") : "";
   for (const id of answered)
