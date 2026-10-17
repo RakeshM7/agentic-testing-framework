@@ -664,7 +664,7 @@ export function build(pp, { module, cfg, runId, cases }) {
   const keyOfId = new Map(Object.entries(regBefore.scenarios).map(([k, v]) => [v.id, k]));
   for (const [tc, refs] of Object.entries(overlay.testcases)) {
     if (!cases.has(tc)) {
-      problems.push(`plan-overlay.json testcases: '${tc}' is not a test case of this module`);
+      problems.push(`plan-overlay.json testcases: '${tc}' is not a human-approved test case of this module (only approved cases are linked, D-053)`);
       continue;
     }
     for (const ref of refs) {

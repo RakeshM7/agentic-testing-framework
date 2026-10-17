@@ -1,5 +1,6 @@
 // Shared fixtures for the node:test suites: a throwaway repo root with the real config/permissions.yaml.
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { HEADERS } from "./lib/clarifications.mjs";
@@ -137,4 +138,58 @@ export function humanEdit(file, id, { status, answer }) {
   if (answer !== undefined) row[HEADERS.indexOf("Answer")] = answer;
   if (status !== undefined) row[HEADERS.indexOf("Answer status")] = status;
   writeFileSync(file, serializeCsv(rows));
+}
+
+// A recorded human approval of hand-written cases (ids): coverage.json lists them (when it does not exist yet) and
+// approvals.json holds a yes on each one's content hash, the way `testcases.mjs approve` records it.
+export function markApproved(root, ids, { product = "acme", module = "contacts" } = {}) {
+  const dir = path.join(root, "artifacts", product, "modules", module, "testcases");
+  const covFile = path.join(dir, "coverage.json");
+  let cov;
+  try {
+    cov = JSON.parse(readFileSync(covFile, "utf8"));
+  } catch {
+    cov = { cases: [] };
+  }
+  const missing = ids.filter((id) => !cov.cases.some((c) => c.id === id));
+  if (missing.length || !existsSync(covFile)) {
+    cov.cases.push(...missing.map((id) => ({ id, hash: createHash("sha256").update(id).digest("hex") })));
+    put(root, path.relative(root, covFile), JSON.stringify(cov));
+  }
+  const at = new Date().toISOString();
+  const cases = Object.fromEntries(cov.cases.filter((c) => ids.includes(c.id)).map((c) => [c.id, { decision: "yes", comment: "", hash: c.hash, version: `v${c.hash.slice(0, 12)}`, run: null, at }]));
+  put(root, path.relative(root, path.join(dir, "approvals.json")), JSON.stringify({ module, cases }));
+}
+
+// A module's test cases the way the pipeline makes them: the writer's cases.json (each case covering one flow), built
+// and checked by scripts/testcases.mjs, then the cases in `approve` (keys) approved by a human at a terminal.
+// cases: [{key, type?, priority?, mutates?, api?}]. -> Map key -> TC id
+export async function buildCases(root, { product = "acme", module = "contacts", cases, approve = [] }) {
+  const { main } = await import("./testcases.mjs");
+  const dir = `artifacts/${product}/modules/${module}`;
+  put(root, `${dir}/explore/flows/main.md`, "# Main flow\n\nThe contacts list and the New contact dialog.\n");
+  const run = (cmd) => main([cmd, product, module], { root, interactive: { isTTY: true, ask: async () => module } });
+  const flow = (await run("items")).out.items.find((i) => i.technique === "flow").id;
+  const overlay = cases.map((c) => ({
+    key: c.key, title: `The ${c.key.replaceAll("-", " ")} case lists the contact`, type: c.type ?? "functional", priority: c.priority ?? "p2",
+    ...(c.mutates ? { mutates: true } : {}), ...(c.api ? { api: true } : {}),
+    action: "the user opens the contact list", steps: ["Open Contacts"], expected: "the contact is listed in the table",
+    covers: [flow], evidence: ["observation:explore/flows/main.md"],
+  }));
+  put(root, `${dir}/testcases/cases.json`, JSON.stringify({ cases: overlay }));
+  for (const cmd of ["build", "check"]) {
+    const r = await run(cmd);
+    if (r.code) throw new Error(`buildCases: ${cmd}: ${JSON.stringify(r.out.problems)}`);
+  }
+  const ids = new Map(JSON.parse(readFileSync(path.join(root, dir, "testcases", "coverage.json"), "utf8")).cases.map((c) => [c.key, c.id]));
+  if (approve.length) {
+    const sheet = path.join(root, dir, "testcases", "approval.csv");
+    const rows = parseCsv(readFileSync(sheet, "utf8"));
+    const col = rows[0].indexOf("Approved");
+    for (const key of approve) rows.find((r) => r[0] === ids.get(key))[col] = "yes";
+    writeFileSync(sheet, serializeCsv(rows));
+    const r = await run("approve");
+    if (r.code) throw new Error(`buildCases: approve: ${JSON.stringify(r.out.problems)}`);
+  }
+  return ids;
 }

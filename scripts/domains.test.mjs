@@ -9,7 +9,7 @@ import { next, setStage, status } from "./run.mjs";
 import { checkTestcases } from "./lib/testcases.mjs";
 import { loadJson, paths, validateData } from "./lib/contract.mjs";
 import { append } from "./lib/clarifications.mjs";
-import { put, startRun } from "./test-helpers.mjs";
+import { markApproved, put, startRun } from "./test-helpers.mjs";
 
 test("orchestration rounds are bounded by the run-config limits and reset for a new run", () => {
   const { root } = startRun();
@@ -78,6 +78,9 @@ test("report data counts what exists, from files, per module", () => {
   assert.equal(d.totals.modulesExplored, 1);
   assert.deepEqual(d.totals.clarifications, { total: 2, answered: 0, unconfirmed: 2 });
   assert.equal(d.totals.testcases, 7);
+  assert.deepEqual(d.totals.approvals, { approved: 0, rejected: 0, changes: 0, awaiting: 0 });
+  markApproved(root, ["TC-contacts-1", "TC-contacts-2"]);
+  assert.deepEqual(collect("acme", { root }).modules[0].approvals, { approved: 2, rejected: 0, changes: 0, awaiting: 0 }, "approvals are counted per module");
   assert.equal(d.totals.playwrightUiSpecs, 2);
   assert.equal(d.totals.playwrightApiSpecs, 1);
   assert.equal(d.totals.k6Scripts, 2);

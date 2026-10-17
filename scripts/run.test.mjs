@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { endRun, initRun, makeRunId, next, setStage, status, validateProduct } from "./run.mjs";
 import { loadJson, paths } from "./lib/contract.mjs";
-import { put, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
+import { markApproved, put, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
 
 const SITEMAP = JSON.stringify([{ url: "https://app.acme.test/contacts", slug: "contacts-list", title: "Contacts" }]);
 const CSV_HEADER = "ID,Module,Question,Steps to execute,Answer,Clarification agent notes,Run ID\r\n";
@@ -83,6 +83,40 @@ test("a done stage whose output later disappears is offered again", async () => 
   put(root, "artifacts/acme/knowledge/overview.md", "");
   assert.equal((await status("acme", { root })).stages.find((s) => s.stage === "knowledge").complete, false);
   assert.ok((await ready("acme", root)).includes("knowledge"));
+});
+
+test("awaiting-approval: with no human-approved test case the automation stages wait, spend no attempt, and run once cases are approved (D-053)", async () => {
+  const { root } = startRun();
+  const p = paths("acme", root);
+  // contacts' test cases are written and reviewed, and the shared repo exists
+  put(root, "artifacts/acme/modules/contacts/testcases/contacts-testcases.feature", "Feature: C\n  @TC-contacts-1 @p1 @functional\n  Scenario: list\n    Given x\n");
+  put(root, "artifacts/acme/modules/contacts/testcases/testcases-summary.md", "Total test cases: 1\n");
+  put(root, "playwright-tests/acme/package.json", "{}");
+  put(root, "playwright-tests/acme/playwright.config.ts", "export default {};\n");
+  const run = loadJson(p.runFile);
+  run.stages["contacts/testcases"] = { status: "done", attempts: 1 };
+  run.stages["_product/playwright-repo"] = { status: "done", attempts: 1 };
+  writeFileSync(p.runFile, JSON.stringify(run));
+
+  const row = async (stage, module = "contacts") => (await status("acme", { root })).stages.find((r) => r.stage === stage && r.module === module);
+  for (const stage of ["playwright-ui", "playwright-api", "k6"]) {
+    const r = await row(stage);
+    assert.equal(r.status, "awaiting-approval", stage);
+    assert.equal(r.awaitingApproval, true, stage);
+    assert.equal(r.blocked, false, stage);
+  }
+  assert.ok(!(await ready("acme", root)).some((x) => x.startsWith("contacts/playwright") || x === "contacts/k6"), "never offered");
+  const refused = await setStage("acme", "playwright-ui", "contacts", "start", undefined, { root });
+  assert.match(refused.errors[0], /awaiting approval: the test cases of contacts predate scripts\/testcases\.mjs, so none can be approved: rebuild them.*No attempt was spent/, "hand-written cases: rebuild first");
+  assert.equal(loadJson(p.runFile).stages["contacts/playwright-ui"], undefined, "no attempt recorded");
+  assert.equal((await row("playwright-ui", "deals")).awaitingApproval, false, "a module whose test cases are not done yet is just pending");
+
+  markApproved(root, []);
+  assert.match((await setStage("acme", "playwright-ui", "contacts", "start", undefined, { root })).errors[0], /no test case of contacts is approved by a human yet \(testcases\/approval\.csv/, "built: a human approves");
+  markApproved(root, ["TC-contacts-1"]);
+  assert.deepEqual((await ready("acme", root)).filter((x) => x.startsWith("contacts/")), ["contacts/playwright-api", "contacts/playwright-ui"]);
+  assert.equal((await setStage("acme", "playwright-ui", "contacts", "start", undefined, { root })).attempts, 1);
+  assert.equal((await row("k6")).awaitingApproval, false);
 });
 
 test("an ended run accepts no stage changes and offers nothing", async () => {

@@ -67,15 +67,17 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 | `playwright-repo` | product | — | `playwright-tests/<product>/package.json`, `playwright.config.ts` |
 | `explore` | module | module-knowledge | `modules/<m>/explore/sitemap.json` (schema), `module-summary.md` — the verified stamp of `explore.mjs check` is current |
 | `clarifications` | module | explore | `modules/<m>/clarifications.csv` (check below), `clarifications-summary.md` |
-| `testcases` | module | clarifications | `modules/<m>/testcases/<m>-testcases.<ext>` + `testcases-summary.md` — `Total test cases: N` must equal the cases in the file |
-| `playwright-ui` | module | testcases, playwright-repo | `results/<run>/<m>/playwright-ui/results.json` (schema `results`, written by `results.mjs`) |
-| `playwright-api` | module | testcases, playwright-repo | `results/<run>/<m>/playwright-api/results.json` (schema `results`) |
+| `testcases` | module | clarifications | `modules/<m>/testcases/<m>-testcases.<ext>` + `testcases-summary.md` — `Total test cases: N` must equal the cases in the file. Completes once the review passes; approval comes later |
+| `playwright-ui` | module | testcases, playwright-repo, **a human-approved test case** | `results/<run>/<m>/playwright-ui/results.json` (schema `results`, written by `results.mjs`) |
+| `playwright-api` | module | testcases, playwright-repo, **a human-approved test case** | `results/<run>/<m>/playwright-api/results.json` (schema `results`) |
 | `k6` | module | playwright-api | `results/<run>/<m>/k6/results.json` (schema `results`; `not-run` in readonly runs) |
 | `report` | product | every other stage complete, exhausted or blocked | `results/<run>/report/report.json` (by `report-data.mjs`) + `index.html` |
 
 A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. Sub-steps inside a domain (build steps, gate → reviewer → fixer, runner-triager → fixer) belong to the domain orchestrator, not this table: it follows `node scripts/orchestration.mjs next <product> <domain> <module>`, which reads the domain's flow from `scripts/lib/domain-flows.mjs` and the files on disk, runs the script steps itself (the pre-review gate, the clarification summary), and spends the bounded review and heal rounds.
 
 Each stage gets at most **two attempts** per run (`attempts` in `run.json`); a stage that failed twice is *exhausted*, everything depending on it is *blocked*, and `next` no longer offers either — so the report still becomes ready and states what did not run.
+
+**`awaiting-approval` (D-053).** Once a module's test cases are complete, its `playwright-ui` and `playwright-api` stages (and `k6`, which needs the API stage) are `awaiting-approval` while no case of the module is approved by a human. Such a stage is never offered, `stage … start` refuses it without spending an attempt, and it counts as settled, so the report still runs; `end` reports the run `awaiting-approval` when nothing else is left. A later run picks the module up once cases are approved.
 
 ## Knowledge base
 
@@ -187,6 +189,20 @@ Agents record immediately after creating anything, run `owns` before any delete/
 - **Coverage.** Every coverage item ends up mapped to scenario ids, excluded with a reason code, deferred over the budget, or pending. The items are operations, parameter and field constraints, documented statuses, security schemes, flows, drift findings, `@api` test cases and answered questions. `check` fails while anything is pending; deferred items count as resolved, and `check` reports how many there are.
 - **Verified.** When `check` passes, it stamps `verified` (the sha256 of the plan and the catalogue) into `plan-coverage.json`. `orchestration.mjs next` fails the plan step when that stamp is missing or stale.
 - **Safety.** Anything that can change data is `mutates: true` and `requires: [full-run]`. Its path ids come only from a create in the same run (D-005). It names its cleanup endpoint, or is flagged `leavesData`. Scenarios that need another user get `requires: [identity:<name>]` from `authorizations.identities`, which holds paths only (D-012).
+
+## Test cases
+
+`node scripts/testcases.mjs` (`scripts/lib/testcases.mjs`) owns `modules/<m>/testcases/` (format: [`agent-handoffs.md`](agent-handoffs.md) §3; decision D-053):
+
+| File | Owner |
+|---|---|
+| `cases.json` | testcase-writer (its only file) |
+| `approval.csv` | **human only**: rendered by `build`, filled in Excel or an editor |
+| `approvals.json` | **human only**, through `node scripts/testcases.mjs approve <product> <module>` in an interactive terminal (the slug typed to confirm) |
+| `coverage.json`, `registry/{items,cases}.json`, `<m>-testcases.<ext>`, `testcases-summary.md`, `approval-findings.md` | the script |
+| `results/<run>/<m>/testcases/review.json` | testcase-reviewer; `review-findings.md` beside it is rendered by `review-check` |
+
+The guard denies `testcases.mjs approve` and any write to `approval.csv` or `approvals.json` for every tool call it sees, on every host and in every mode, inside or outside a run. Only approved cases are automated: the Playwright gates trace approved cases only (a test for an unapproved case must be absent or `test.fixme` "awaiting approval"), and the API plan's `testcase:` items cover approved `@api` cases only.
 
 ## Safety: mode × permissions, enforced in code
 

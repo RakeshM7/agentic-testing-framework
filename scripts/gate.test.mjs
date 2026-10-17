@@ -5,98 +5,161 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { gate } from "./gate.mjs";
-import { append, csvPath, record } from "./lib/clarifications.mjs";
-import { paths } from "./lib/contract.mjs";
-import { humanEdit, put, startRun } from "./test-helpers.mjs";
+import { listFindings, listedTests } from "./lib/gate/playwright.mjs";
+import { buildCases, put, startRun } from "./test-helpers.mjs";
 
 const rules = (root, r) => {
   const text = readFileSync(path.join(root, r.file), "utf8");
   return new Set([...text.matchAll(/^\| \d+ \| \w+ \| [^|]* \| [^|]* \| ([\w-]+) \|/gm)].map((m) => m[1]));
 };
-const steps = "1. Sign in.\n2. Open Contacts.";
+// The test-case gate (the verified stamp of testcases.mjs check, clarification coverage by exact citation) is tested in
+// testcases.test.mjs, where the cases are built by their script.
 
-function withClarifications() {
-  const s = startRun();
-  const file = csvPath(paths("acme", s.root).productDir, "contacts");
-  append(file, "contacts", "acme-run-1", [1, 2, 3].map((n) => ({ question: `Question ${n}?`, steps })));
-  record(file, "contacts-1", { answer: "Yes", runId: "acme-run-1" });
-  record(file, "contacts-3", { answer: "No", runId: "acme-run-1" });
-  humanEdit(file, "contacts-1", { status: "human-approved" });
-  humanEdit(file, "contacts-3", { status: "human" });
-  return s; // contacts-1 and -3 answered (and approved), contacts-2 open
-}
-const feature = (...scenarios) => ["Feature: Contacts", ...scenarios.flatMap(([tags, title]) => [`  ${tags}`, `  Scenario: ${title}`, "    Given x"])].join("\n");
-const cases = (root, f, total) => {
-  put(root, "artifacts/acme/modules/contacts/testcases/contacts-testcases.feature", f);
-  put(root, "artifacts/acme/modules/contacts/testcases/testcases-summary.md", `Total test cases: ${total}\n`);
-};
-
-test("test cases: ids, tags, assumptions and clarification coverage are checked mechanically", () => {
-  const { root } = withClarifications();
-  cases(root, feature(
-    ["@TC-contacts-1 @p1 @functional @contacts-1", "valid"],
-    ["@TC-contacts-2 @p2 @negative @contacts-2", "relies on an open row without @assumption"],
-    ["@TC-contacts-2 @functional", "duplicate id and no priority"],
-    ["@TC-contacts-4 @p3 @boundary @contacts-9", "unknown clarification"],
-  ), 4);
-  const r = gate("acme", "contacts", "testcases", { root, compile: false });
-  assert.equal(r.verdict, "changes-required");
-  assert.equal(r.file, "artifacts/acme/results/acme-run-1/contacts/testcases/gate-findings.md");
-  assert.deepEqual([...rules(root, r)].sort(), ["assumption", "case-id", "case-tags", "clarification-coverage", "clarification-ref"]);
-  assert.match(readFileSync(path.join(root, r.file), "utf8"), /^Verdict: changes-required$/m);
-
-  cases(root, feature(
-    ["@TC-contacts-1 @p1 @functional @contacts-1", "a"],
-    ["@TC-contacts-2 @p2 @negative @contacts-2 @assumption", "b"],
-    ["@TC-contacts-3 @p2 @functional @contacts-3", "c"],
-  ), 3);
-  assert.deepEqual(gate("acme", "contacts", "testcases", { root, compile: false }), {
-    verdict: "pass", file: r.file, counts: { blocker: 0, major: 0, minor: 0 },
-  });
-});
-
-test("a case relying on an agent-proposed answer needs @assumption until a human approves it (D-048)", () => {
-  const { root } = withClarifications();
-  const file = csvPath(paths("acme", root).productDir, "contacts");
-  humanEdit(file, "contacts-1", { status: "agent-proposed" });
-  const f = (tags) => feature([tags, "a"], ["@TC-contacts-2 @p2 @negative @contacts-2 @assumption", "b"], ["@TC-contacts-3 @p2 @functional @contacts-3", "c"]);
-  cases(root, f("@TC-contacts-1 @p1 @functional @contacts-1"), 3);
-  const r = gate("acme", "contacts", "testcases", { root, compile: false });
-  assert.deepEqual([...rules(root, r)], ["assumption"]);
-  assert.match(readFileSync(path.join(root, r.file), "utf8"), /contacts-1, which is unanswered or awaiting human approval/);
-  cases(root, f("@TC-contacts-1 @p1 @functional @contacts-1 @assumption"), 3);
-  assert.equal(gate("acme", "contacts", "testcases", { root, compile: false }).verdict, "pass");
-  humanEdit(file, "contacts-1", { status: "Approved" });
-  assert.deepEqual([...rules(root, gate("acme", "contacts", "testcases", { root, compile: false }))], ["assumption"], "approved: @assumption is now stale");
-});
-
-test("an answered clarification listed in the summary as not testable counts as covered", () => {
-  const { root } = withClarifications();
-  cases(root, feature(["@TC-contacts-1 @p1 @functional @contacts-1", "a"], ["@TC-contacts-2 @p2 @negative @contacts-2 @assumption", "b"]), 1);
-  put(root, "artifacts/acme/modules/contacts/testcases/testcases-summary.md", "Total test cases: 2\n\n## Not testable\n- contacts-3: needs a second tenant\n");
-  assert.equal(gate("acme", "contacts", "testcases", { root, compile: false }).verdict, "pass");
-});
-
-test("Playwright UI: traceability to non-@api cases, @mutates, fixed waits, URLs and page-object assertions", () => {
+test("Playwright UI: traceability to approved non-@api cases only, @mutates, fixed waits, URLs and page-object assertions", async () => {
   const { root } = startRun();
-  cases(root, feature(["@TC-contacts-1 @p1 @functional", "list"], ["@TC-contacts-2 @p1 @functional @mutates", "create"], ["@TC-contacts-3 @p2 @api", "api only"]), 3);
-  put(root, "playwright-tests/acme/tests/ui/contacts/contacts.spec.ts", [
-    "test('TC-contacts-1 lists contacts @p1', async ({ page }) => { await page.waitForTimeout(500); });",
-    "test('TC-contacts-2 creates a contact @p1', async () => {});",
+  const id = await buildCases(root, { cases: [{ key: "list" }, { key: "create", mutates: true }, { key: "api-only", api: true }, { key: "waiting" }], approve: ["list", "create", "api-only"] });
+  const spec = (lines) => put(root, "playwright-tests/acme/tests/ui/contacts/contacts.spec.ts", lines.join("\n"));
+  spec([
+    `test('${id.get("list")} lists contacts @p1', async ({ page }) => { await page.waitForTimeout(500); });`,
+    `test('${id.get("create")} creates a contact @p1', async () => {});`,
+    `test('${id.get("waiting")} not approved yet @p2', async () => {});`,
     "test('opens the app', async ({ page }) => { await page.goto('https://app.acme.test'); });",
-  ].join("\n"));
+  ]);
   put(root, "playwright-tests/acme/pages/contacts/list.page.ts", "// https://example.test in a comment is fine\nexport class ListPage { async check() { await expect(this.title).toBeVisible(); } }\n");
   const r = gate("acme", "contacts", "playwright-ui", { root, compile: false });
   assert.equal(r.verdict, "changes-required");
-  assert.deepEqual([...rules(root, r)].sort(), ["mutates-tag", "no-assertions-in-objects", "no-fixed-wait", "no-hardcoded-url", "traceability"]);
-  assert.doesNotMatch(readFileSync(path.join(root, r.file), "utf8"), /TC-contacts-3 has no test/, "@api cases belong to the API side");
+  assert.deepEqual([...rules(root, r)].sort(), ["approval", "mutates-tag", "no-assertions-in-objects", "no-fixed-wait", "no-hardcoded-url", "traceability"]);
+  const text = readFileSync(path.join(root, r.file), "utf8");
+  assert.doesNotMatch(text, new RegExp(`${id.get("api-only")} has no test`), "@api cases belong to the API side");
+  assert.match(text, new RegExp(`${id.get("waiting")} is not approved by a human`));
 
-  put(root, "playwright-tests/acme/tests/ui/contacts/contacts.spec.ts", [
-    "test('TC-contacts-1 lists contacts @p1', async () => {});",
-    "test('TC-contacts-2 creates a contact @p1 @mutates', async () => { await recordCreated({ type: 'contact', ref: 'x' }); });",
-  ].join("\n"));
+  spec([
+    `test('${id.get("list")} lists contacts @p1', async () => {});`,
+    `test('${id.get("create")} creates a contact @p1 @mutates', async () => { await recordCreated({ type: 'contact', ref: 'x' }); });`,
+    `test.fixme('${id.get("waiting")} lists contacts -- awaiting approval', async () => {});`,
+  ]);
   put(root, "playwright-tests/acme/pages/contacts/list.page.ts", "export class ListPage {}\n");
-  assert.equal(gate("acme", "contacts", "playwright-ui", { root, compile: false }).verdict, "pass");
+  assert.equal(gate("acme", "contacts", "playwright-ui", { root, compile: false }).verdict, "pass", "an unapproved case needs no test; one that exists is a fixme awaiting approval");
+});
+
+test("Playwright UI: one literal test per case -- built titles and aliases of test are flagged; strings, comments and fixtures are not", async () => {
+  const { root } = startRun();
+  const id = await buildCases(root, { cases: [{ key: "list" }, { key: "waiting" }], approve: ["list"] });
+  const [list, waiting] = [id.get("list"), id.get("waiting")];
+  const spec = (lines) => put(root, "playwright-tests/acme/tests/ui/contacts/contacts.spec.ts", lines.join("\n"));
+  const findings = () => {
+    const r = gate("acme", "contacts", "playwright-ui", { root, compile: false });
+    return [...readFileSync(path.join(root, r.file), "utf8").matchAll(/^\| \d+ \| \w+ \| [^|]* \| (\d*) \| ([\w-]+) \| ([^|]*) \|/gm)].map((m) => ({ line: Number(m[1]), rule: m[2], problem: m[3].trim() }));
+  };
+  const base = [
+    `test('${list} lists contacts @p1', async ({ page }) => {`,
+    `  await expect(page.getByText('${waiting} note')).toBeVisible(); // see foo('${waiting} x')`,
+    "  test.skip(true, 'not on webkit');",
+    "  test.info();",
+    "  expect(/^a\\(b/.test('y')).toBe(false); // a RegExp .test(), and a regex that unbalances the parentheses",
+    "});",
+    `test.fixme('${waiting} lists contacts -- awaiting approval', async () => {});`,
+    "test.describe(`${'group'}`, () => {});",
+    "/* test(title, async () => {}) in a block comment */",
+  ];
+  spec(base);
+  put(root, "playwright-tests/acme/fixtures/ui/index.ts", "import { test as base } from '@playwright/test';\nexport const test = base.extend({});\nexport { expect } from '@playwright/test';\n");
+  assert.deepEqual(findings(), [], "a literal test, a fixme awaiting approval, getByText with an id, comments, annotations and the fixtures file pass");
+
+  const bypasses = [
+    ["a variable title", [`const title = '${waiting} lists contacts';`, "test(title, async () => {});"]],
+    ["a loop building titles", ["for (const n of [2, 3]) {", "  test(`TC-contacts-${n} lists`, async () => {});", "}"]],
+    ["an alias with a joined title", ["const t = test;", "t('TC-contacts-' + 2, async () => {});"]],
+    ["an alias with a template title", ["const { only } = test;", "only(`${'TC-contacts-2'}`, async () => {});"]],
+    ["an alias with a variable title", ["const it = test.extend({});", "const name = 'TC-contacts-2';", "it(name, async () => {});"]],
+    ["test passed as an argument", ["register(test, 'TC-contacts-2');"]],
+    ["a joined title on test itself", ["test('TC-contacts-' + '2 lists', async () => {});"]],
+  ];
+  for (const [what, lines] of bypasses) {
+    spec([...base, ...lines]);
+    const f = findings().filter((x) => x.rule === "test-declaration");
+    assert.ok(f.length >= 1, `${what} is flagged`);
+    assert.ok(f.every((x) => x.line > base.length), `${what}: only the added lines`);
+  }
+  spec([...base, "test(title, async () => {});"]);
+  assert.match(findings().find((x) => x.rule === "test-declaration").problem, /test title must be a literal carrying its case id/);
+});
+
+test("Playwright UI, compile mode: the gate trusts Playwright's own list -- an unapproved id anywhere in a title path is flagged", () => {
+  const ok = (extra = {}) => [{ expectedStatus: "passed", annotations: [], projectName: "ui", results: [], ...extra }];
+  const report = {
+    config: {},
+    suites: [{
+      title: "contacts/contacts.spec.ts", file: "contacts/contacts.spec.ts", line: 0, column: 0,
+      specs: [
+        { title: "TC-contacts-1 lists contacts @p1", file: "contacts/contacts.spec.ts", line: 3, tests: ok() },
+        { title: "TC-contacts-2 lists contacts -- awaiting approval", file: "contacts/contacts.spec.ts", line: 5, tests: ok({ expectedStatus: "skipped", annotations: [{ type: "fixme" }] }) },
+        { title: "TC-contacts-2 declared through a helper", file: "contacts/contacts.spec.ts", line: 7, tests: ok() },
+        { title: "no case id at all", file: "contacts/contacts.spec.ts", line: 9, tests: ok() },
+      ],
+      suites: [
+        { title: "TC-contacts-2 group", file: "contacts/contacts.spec.ts", line: 11, specs: [{ title: "lists through an alias", file: "contacts/contacts.spec.ts", line: 12, tests: ok() }], suites: [] },
+        { title: "TC-contacts-1 group", file: "contacts/contacts.spec.ts", line: 14, specs: [{ title: "inner step test", file: "contacts/contacts.spec.ts", line: 15, tests: ok() }], suites: [] },
+      ],
+    }],
+    errors: [],
+  };
+  const tests = listedTests(report);
+  assert.deepEqual(tests.map((t) => [t.line, t.titlePath.join(" > "), t.fixme]), [
+    [3, "TC-contacts-1 lists contacts @p1", false],
+    [5, "TC-contacts-2 lists contacts -- awaiting approval", true],
+    [7, "TC-contacts-2 declared through a helper", false],
+    [9, "no case id at all", false],
+    [12, "TC-contacts-2 group > lists through an alias", false],
+    [15, "TC-contacts-1 group > inner step test", false],
+  ]);
+  const f = listFindings(tests, { idRe: /TC-contacts-\d+/g, unapproved: new Set(["TC-contacts-2"]), what: "test case", dir: "tests/ui/contacts" });
+  assert.deepEqual(f.map((x) => [x.line, x.severity, x.rule]), [[7, "major", "approval"], [9, "major", "traceability"], [12, "major", "approval"]], "approved tests, a fixme awaiting approval and an id carried by a describe title pass");
+  assert.equal(f[0].file, "tests/ui/contacts/contacts.spec.ts");
+
+  // files are relative to config.rootDir: a subfolder spec and a helper keep their real paths in the project
+  const project = path.resolve("pw-project");
+  const real = listedTests({
+    config: { rootDir: path.join(project, "tests", "ui").replaceAll("\\", "/") },
+    suites: [
+      { title: "contacts/deep/d.spec.ts", file: "contacts/deep/d.spec.ts", specs: [{ title: "TC-contacts-2 deep", file: "contacts/deep/d.spec.ts", line: 2, tests: ok() }], suites: [] },
+      { title: "../../helpers/ui/contacts.flows.ts", file: "../../helpers/ui/contacts.flows.ts", specs: [{ title: "TC-contacts-2 via a helper", file: "../../helpers/ui/contacts.flows.ts", line: 3, tests: ok() }], suites: [] },
+    ],
+  });
+  assert.deepEqual(listFindings(real, { idRe: /TC-contacts-\d+/g, unapproved: new Set(["TC-contacts-2"]), what: "test case", root: project, dir: "tests/ui/contacts" }).map((x) => x.file),
+    ["tests/ui/contacts/deep/d.spec.ts", "helpers/ui/contacts.flows.ts"]);
+});
+
+test("Playwright UI, syntax fallback: renamed imports, namespaces, bracket access, require renames and tests declared in helpers are flagged", async () => {
+  const { root } = startRun();
+  const id = await buildCases(root, { cases: [{ key: "list" }, { key: "waiting" }], approve: ["list"] });
+  const [list, waiting] = [id.get("list"), id.get("waiting")];
+  const good = [`test('${list} lists contacts @p1', async () => {});`, `test.fixme('${waiting} lists contacts -- awaiting approval', async () => {});`];
+  const spec = (lines) => put(root, "playwright-tests/acme/tests/ui/contacts/contacts.spec.ts", [...good, ...lines].join("\n"));
+  const declarations = () => {
+    const r = gate("acme", "contacts", "playwright-ui", { root, compile: false });
+    return [...readFileSync(path.join(root, r.file), "utf8").matchAll(/^\| \d+ \| \w+ \| ([^|]*) \| (\d*) \| test-declaration \| ([^|]*) \|/gm)].map((m) => ({ file: m[1].trim(), line: Number(m[2]), problem: m[3].trim() }));
+  };
+  spec([]);
+  assert.deepEqual(declarations(), []);
+  for (const [what, lines, re] of [
+    ["a renamed import", ["import { test as t, expect } from '../../../fixtures/ui';", `t('${waiting} sneaks in', async () => {});`], /test imported under another name/],
+    ["a renamed import as base", ["import { test as base } from '@playwright/test';", "base('TC-contacts-2 x', async () => {});"], /test imported under another name/],
+    ["a namespace member", ["import * as F from '../../../fixtures/ui';", "F.test(title, async () => {});"], /test used as a member of F/],
+    ["bracket access", [`test["only"]('${waiting} x', async () => {});`, "test['fixme'](title, async () => {});"], /test used with bracket access/],
+    ["a require rename", ["const { test: t2 } = require('../../../fixtures/ui');", "t2(title, async () => {});"], /test destructured under another name/],
+  ]) {
+    spec(lines);
+    const d = declarations();
+    assert.ok(d.some((x) => re.test(x.problem) && x.line > good.length), `${what}: ${JSON.stringify(d)}`);
+  }
+  spec([]);
+  put(root, "playwright-tests/acme/helpers/ui/contacts.flows.ts", `import { test } from '../../fixtures/ui';\nexport function declareWaiting() {\n  test('${waiting} via a helper', async () => {});\n}\n`);
+  const d = declarations();
+  assert.deepEqual(d.map((x) => [x.file, x.line]), [["helpers/ui/contacts.flows.ts", 3]]);
+  assert.match(d[0].problem, /declares a test outside a spec file/);
+  put(root, "playwright-tests/acme/helpers/ui/contacts.flows.ts", "export const isEmail = (s: string) => /@/.test(s);\n");
+  assert.deepEqual(declarations(), [], "a RegExp .test() in a helper is not a test");
 });
 
 test("Playwright API: plan scenarios are traced and mutating specs record what they create", () => {

@@ -7,6 +7,8 @@
 //   run.mjs guard-check <product>                         liveness canary: a working guard BLOCKS this (lib/guard-check.mjs)
 //   run.mjs status <product>                              per-stage status + output verification
 //   run.mjs next <product>                                stages whose dependencies are complete and that still need running
+//                                                         (an automation stage with no human-approved test case is
+//                                                         awaiting-approval instead: never offered, no attempt spent)
 //   run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]   (start needs a verified guard)
 //   run.mjs end <product> [--abandon]                     write state/history/<run-id>.json and release the lock
 //   run.mjs validate <product>                            schema-check run.json, ledger, permissions, module outputs
@@ -25,6 +27,7 @@ import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
 import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs";
 import { detectShellHost } from "./lib/hosts.mjs";
+import { approvalSummary } from "./lib/testcases.mjs";
 
 const now = () => new Date().toISOString();
 const writeJson = (file, data) => {
@@ -117,6 +120,12 @@ export async function status(product, { root = repoRoot } = {}) {
   for (const row of rows) {
     const needs = STAGES[row.stage].needs.filter((d) => d !== "*");
     row.blocked = !row.complete && needs.some((d) => depRows(row, d).some((r) => r.exhausted || r.blocked));
+    // awaiting-approval (D-053): an automation stage of a module none of whose test cases a human approved yet, once
+    // the stages it needs are complete, and every stage that needs one. It is not offered, can't be started, spends no
+    // attempt (MAX_ATTEMPTS) and counts as settled for the report; a later run picks the module up once cases are approved.
+    const own = STAGES[row.stage].approval && needs.every((d) => depRows(row, d).every((r) => r.complete)) && !approvalSummary(ctx.p.productDir, row.module).approved.length;
+    row.awaitingApproval = !row.complete && !row.blocked && (own || needs.some((d) => depRows(row, d).some((r) => r.awaitingApproval)));
+    if (row.awaitingApproval && row.status !== "running") row.status = "awaiting-approval";
   }
   return { product, runId: ctx.runId, active: ctx.active, mode: ctx.run.mode, modules: ctx.run.modules, stages: rows };
 }
@@ -128,7 +137,7 @@ export async function next(product, { root = repoRoot } = {}) {
   if (!st.active) return [];
   const complete = (stage, module) =>
     st.stages.filter((r) => r.stage === stage && (STAGES[stage].scope === "product" || r.module === module)).every((r) => r.complete);
-  const settled = (r) => r.complete || r.exhausted || r.blocked;
+  const settled = (r) => r.complete || r.exhausted || r.blocked || r.awaitingApproval;
   const ready = [];
   for (const row of st.stages) {
     if (settled(row) || row.status === "running") continue;
@@ -147,6 +156,9 @@ export async function setStage(product, stage, module, action, error, { root = r
   const key = stageKey(stage, module);
   const prev = ctx.run.stages[key] ?? {};
   if (action === "start") {
+    const row = (await status(product, { root })).stages.find((r) => r.stage === stage && (STAGES[stage].scope === "product" || r.module === module));
+    if (row?.awaitingApproval)
+      return { errors: [`${key} is awaiting approval: ${approvalSummary(ctx.p.productDir, module).built ? `no test case of ${module} is approved by a human yet (testcases/approval.csv, then node scripts/testcases.mjs approve in a terminal)` : `the test cases of ${module} predate scripts/testcases.mjs, so none can be approved: rebuild them (rerun the testcases stage), then a human approves them`}; a later run picks it up. No attempt was spent.`] };
     const guard = guardStatus(product, ctx.run.mode, root);
     if (!guard.ready) return { errors: [`guard not verified: ${guard.reason}`] };
     if (prev.status === "failed" && (prev.attempts ?? 0) >= MAX_ATTEMPTS) return { errors: [`${key} already failed ${MAX_ATTEMPTS} times this run`] };
@@ -177,7 +189,7 @@ export async function endRun(product, { abandon = false, root = repoRoot } = {})
     mode: ctx.run.mode,
     createdAt: ctx.run.createdAt,
     endedAt: now(),
-    outcome: abandon ? "abandoned" : st.stages.every((r) => r.complete) ? "completed" : "incomplete",
+    outcome: abandon ? "abandoned" : st.stages.every((r) => r.complete) ? "completed" : st.stages.every((r) => r.complete || r.awaitingApproval) ? "awaiting-approval" : "incomplete",
     stages: st.stages.map(({ stage, module, status: s, complete }) => ({ stage, module, status: s, complete })),
   };
   writeJson(path.join(ctx.p.historyDir, `${ctx.runId}.json`), summary);

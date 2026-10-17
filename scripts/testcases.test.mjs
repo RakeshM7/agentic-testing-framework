@@ -627,6 +627,113 @@ test("the gate accepts the @assumption the script derived from a weak rule fact"
   assert.doesNotMatch(readFileSync(path.join(s.root, r.file), "utf8"), /tagged @assumption but relies on no/);
 });
 
+// ---------- G3b: the gate, the per-case review, the status ----------
+
+const gateRules = (root, r) => [...readFileSync(path.join(root, r.file), "utf8").matchAll(/^\| \d+ \| (\w+) \| [^|]* \| [^|]* \| ([\w-]+) \| ([^|]*) \|/gm)].map((m) => [m[1], m[2], m[3].trim()]);
+
+test("gate: needs the cases built and checked; a clarification counts as covered only when a case's evidence cites it", async () => {
+  const s = setup();
+  let r = gate("acme", "contacts", "testcases", { root: s.root, compile: false });
+  assert.deepEqual(gateRules(s.root, r).map((x) => x[1]), ["testcases-built"]);
+  const items = (await s.tc("items")).out.items;
+  s.overlay(fullOverlay(items));
+  await s.tc("build");
+  assert.equal(gate("acme", "contacts", "testcases", { root: s.root, compile: false }).verdict, "changes-required", "built but not checked");
+  assert.equal((await s.tc("check")).code, 0);
+  r = gate("acme", "contacts", "testcases", { root: s.root, compile: false });
+  assert.deepEqual(r, { verdict: "pass", file: r.file, counts: { blocker: 0, major: 0, minor: 0 } });
+
+  // the loophole: contacts-2's id appears in a title, the summary and inside TC-contacts-2, but no case cites it
+  const ov = fullOverlay(items);
+  const k = ov.cases.find((c) => c.evidence.includes("clarification:contacts-2"));
+  ov.cases = ov.cases.filter((c) => c !== k);
+  ov.cases[0].title = "The contacts-2 answer is shown as in contacts-2";
+  s.overlay(ov);
+  await s.tc("build");
+  assert.match(readFileSync(s.tp.file("gherkin"), "utf8"), /The contacts-2 answer/);
+  r = gate("acme", "contacts", "testcases", { root: s.root, compile: false });
+  const found = gateRules(s.root, r);
+  assert.ok(found.some(([sev, rule, p]) => sev === "major" && rule === "clarification-coverage" && /answered clarification contacts-2 is cited by no test case/.test(p)));
+  assert.ok(!found.some(([, rule, p]) => rule === "clarification-coverage" && /contacts-1/.test(p)), "contacts-1 is cited exactly");
+  assert.ok(found.some(([, rule]) => rule === "testcases-check"), "the stale stamp too");
+  // an excluded (cited) clarification item is covered
+  ov.exclude = [{ item: items.find((i) => i.subject === "contacts-2").id, reason: "not-testable", detail: "needs a second tenant", citation: "clarification:contacts-1" }];
+  s.overlay(ov);
+  await s.tc("build");
+  assert.equal((await s.tc("check")).code, 0);
+  assert.equal(gate("acme", "contacts", "testcases", { root: s.root, compile: false }).verdict, "pass");
+});
+
+test("review-check: every current case needs a verdict in this round; the overall verdict is derived from the findings", async () => {
+  const s = setup();
+  const items = (await s.tc("items")).out.items;
+  s.overlay(fullOverlay(items.slice(0, 3)));
+  await s.tc("build");
+  const ids = s.cov().cases.map((c) => c.id);
+  const ver = new Map(s.cov().cases.map((c) => [c.id, c.version]));
+  const file = path.join(s.root, "artifacts/acme/results/acme-run-1/contacts/testcases/review.json");
+  const write = (o) => put(s.root, path.relative(s.root, file), JSON.stringify(o));
+  assert.equal((await main(["review-check", "acme", "contacts"], { root: s.root })).code, 2, "--round is required");
+  write({ module: "contacts", round: 1, cases: { [ids[0]]: { verdict: "ok", version: ver.get(ids[0]) } } });
+  let r = await s.tc("review-check", "--round", "1");
+  assert.equal(r.code, 1);
+  assert.deepEqual(r.out.problems, [`${ids[1]}: no verdict in this round`, `${ids[2]}: no verdict in this round`]);
+  write({ module: "contacts", round: 1, cases: { [ids[0]]: { verdict: "maybe" } } });
+  assert.match((await s.tc("review-check", "--round", "1")).out.problems.join("\n"), /review\.json: \/cases\//, "the schema");
+  const all = (extra = {}) => ({ module: "contacts", round: 2, cases: { ...Object.fromEntries(ids.map((id) => [id, { verdict: "ok", version: ver.get(id) }])), ...extra } });
+  write(all());
+  assert.match((await s.tc("review-check", "--round", "3")).out.problems[0], /review\.json is for round 2, not round 3/);
+  write(all({ [ids[1]]: { verdict: "finding", version: ver.get(ids[1]), findings: [{ severity: "minor", rule: "wording", problem: "unclear title", fix: "name the field" }] } }));
+  r = await s.tc("review-check", "--round", "2");
+  assert.equal(r.code, 0);
+  assert.equal(r.out.verdict, "pass", "minors only");
+  write(all({ [ids[1]]: { verdict: "finding", version: ver.get(ids[1]), findings: [{ severity: "blocker", rule: "correctness", problem: "the evidence says the opposite", fix: "expect the refusal" }] }, "TC-contacts-99": { verdict: "ok", version: "v000000000000" } }));
+  assert.match((await s.tc("review-check", "--round", "2")).out.problems[0], /TC-contacts-99: not a current test case/);
+  write(all({ [ids[1]]: { verdict: "finding", version: ver.get(ids[1]), findings: [{ severity: "blocker", rule: "correctness", problem: "the evidence says the opposite", fix: "expect the refusal" }] } }));
+  r = await s.tc("review-check", "--round", "2");
+  assert.deepEqual([r.code, r.out.verdict, r.out.counts], [0, "changes-required", { blocker: 1, major: 0, minor: 0 }]);
+  const md = readFileSync(path.join(s.root, r.out.file), "utf8");
+  assert.match(md, /^# Review -- testcases \/ contacts -- round 2$/m);
+  assert.match(md, new RegExp(`^\\| 1 \\| blocker \\| testcases/cases\\.json \\(case '[^']+'\\) \\|  \\| correctness \\| ${ids[1]}: the evidence says the opposite \\| expect the refusal \\|$`, "m"));
+});
+
+test("review-check: a verdict is pinned to the case's version; a copied verdict on an edited case is refused", async () => {
+  const s = setup();
+  const items = (await s.tc("items")).out.items;
+  const ov = fullOverlay(items.slice(0, 2));
+  s.overlay(ov);
+  await s.tc("build");
+  const file = "artifacts/acme/results/acme-run-1/contacts/testcases/review.json";
+  const verdicts = (round) => ({ module: "contacts", round, cases: Object.fromEntries(s.cov().cases.map((c) => [c.id, { verdict: "ok", version: c.version }])) });
+  const round1 = verdicts(1);
+  put(s.root, file, JSON.stringify(round1));
+  assert.equal((await s.tc("review-check", "--round", "1")).code, 0);
+  const edited = s.cov().cases[1];
+  ov.cases.find((c) => c.key === edited.key).expected = "the contact is saved and listed at the top";
+  s.overlay(ov);
+  await s.tc("build");
+  const now = s.cov().cases.find((c) => c.id === edited.id).version;
+  assert.notEqual(now, edited.version);
+  put(s.root, file, JSON.stringify({ ...round1, round: 2 })); // every old ok copied into round 2
+  const r = await s.tc("review-check", "--round", "2");
+  assert.equal(r.code, 1);
+  assert.deepEqual(r.out.problems, [`${edited.id}: verdict is for version ${edited.version}, current is ${now}; review the case again`]);
+  put(s.root, file, JSON.stringify(verdicts(2)));
+  assert.equal((await s.tc("review-check", "--round", "2")).code, 0, "a fresh verdict on the current version passes");
+});
+
+test("status: the totals, the assumptions and which cases a human approved", async () => {
+  const s = setup();
+  const items = (await s.tc("items")).out.items;
+  s.overlay(fullOverlay(items.slice(0, 2)));
+  await s.tc("build");
+  editApproval(s.tp, [["TC-contacts-1", "yes"]]);
+  await s.tc("approve");
+  const r = await s.tc("status");
+  assert.equal(r.code, 0);
+  assert.deepEqual({ total: r.out.total, approved: r.out.approved, approvals: r.out.approvals }, { total: 2, approved: ["TC-contacts-1"], approvals: { approved: 1, rejected: 0, changes: 0, awaiting: 1, invalidated: 0 } });
+});
+
 test("a rule mixing and with or degrades to one decision-table item per condition", () => {
   const { conditions, connective } = conditionsOf("A refund is allowed when the order is paid and the item is unused or the seller agrees.");
   assert.equal(connective, "mixed");

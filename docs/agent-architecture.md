@@ -35,7 +35,7 @@ artifacts/<product>/
     clarifications.csv               # product-level; columns below
     clarification-evidence/<ID>/     # per-row observation notes + screenshots
     clarifications-summary.md
-    testcases/                       # writer output
+    testcases/                       # testcases.mjs output; the writer's cases.json; the human's approval.csv
     api/                             # discovered-endpoints.json, coverage.json, drift.json, registry.json, sources/ (endpoints.mjs), overlay.json (api-discoverer), plan.json, plan-coverage.json, plan-registry.json, api-test-plan.md (api-plan.mjs), plan-overlay.json (api-test-planner)
     k6/                              # workload.json
   state/
@@ -69,7 +69,7 @@ main orchestrator:
                                [script] no valid record -> one retry, then blocked; follow-ups wait for the next run
         then clarifications-summary.md, rendered from the CSV by the script
         [gate] unresolved rows: human edits the Answer column, re-invoke resumes
-  4 testcase-orchestrator: testcase-writer -> gate script | testcase-reviewer -> testcase-writer (max N rounds)
+  4 testcase-orchestrator: testcase-writer (cases.json; testcases.mjs build/check) -> gate script | testcase-reviewer (a verdict per case; verdict derived) -> testcase-writer (max N rounds); then a human approves cases (approval.csv + testcases.mjs approve), and only approved cases are automated (D-053)
   5 pw-repo-owner (once per product, any time before step 6): shared repo skeleton for ui + api
   6 playwright-ui-orchestrator and playwright-api-orchestrator (independent; both need testcases + the repo)
         build:  scaffolder (product-wide foundation; skipped once it exists) -> pom|client writer -> tests-writer

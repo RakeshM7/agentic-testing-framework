@@ -14,15 +14,21 @@
 //                                              case's content. Works after the run ended. Needs an interactive
 //                                              terminal and the module slug typed to confirm. No agent may run it:
 //                                              the guard (scripts/lib/guard.mjs) denies it to every tool call it sees.
+//   testcases.mjs review-check <product> <module> --round N
+//                                              the reviewer's review.json: schema, a verdict on every current case in
+//                                              round N; renders review-findings.md with the derived verdict (pass
+//                                              exactly when no blocker or major remains). Exit 1 while incomplete.
+//   testcases.mjs status <product> <module>    the totals, the assumption count and the human approvals: which cases
+//                                              are approved (only those are automated), rejected, sent back, awaiting
 //   testcases.mjs paths <product> <module>     the module's testcases/ files
 // Exits: 0 ok, 1 problems ({problems} or {errors}), 2 usage.
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
-import { approve, build, listItems, runCheck, testcaseContext } from "./lib/testcases.mjs";
+import { approvalSummary, approve, build, listItems, reviewFiles, reviewResult, runCheck, testcaseContext, testcaseTotals } from "./lib/testcases.mjs";
 
-const USAGE = "usage: testcases.mjs items|build|check|approve|paths <product> <module>";
+const USAGE = "usage: testcases.mjs items|build|check|approve|review-check|status|paths <product> <module> [--round N]";
 const rel = (root, f) => path.relative(root, f).replaceAll("\\", "/");
 
 // active: build and check need the product's active run; approve only its last run's state (a human approves between runs).
@@ -38,9 +44,22 @@ export function context(product, module, root, { active = true } = {}) {
 // interactive: {isTTY, ask(question) -> answer} for approve; the process's own terminal unless a test injects one.
 export async function main(argv, { root = repoRoot, interactive } = {}) {
   const [cmd, product, module, ...rest] = argv;
-  if (!cmd || !product || !module || rest.length) return { code: 2, out: { errors: [USAGE] } };
+  const round = cmd === "review-check" && rest.length === 2 && rest[0] === "--round" && /^[1-9]\d*$/.test(rest[1]) ? Number(rest[1]) : null;
+  if (!cmd || !product || !module || (rest.length && round === null) || (cmd === "review-check" && round === null)) return { code: 2, out: { errors: [USAGE] } };
   if (cmd === "approve") return approve(context(product, module, root, { active: false }), validateData, interactive ? { interactive } : {});
+  if (cmd === "status") {
+    const c = context(product, module, root, { active: false });
+    const { approved } = approvalSummary(c.productDir, module);
+    return { code: 0, out: { ...testcaseTotals(c), approved } };
+  }
   const ctx = context(product, module, root);
+  if (cmd === "review-check") {
+    const file = reviewFiles(ctx.productDir, ctx.runId, module).review;
+    const bad = existsSync(file) ? await validateData("testcases-review", loadJson(file)) : [];
+    if (bad.length) return { code: 1, out: { complete: false, problems: bad.map((e) => `review.json: ${e}`) } };
+    const r = reviewResult(ctx, { round });
+    return { code: r.complete ? 0 : 1, out: { ...r, file: r.file && rel(root, r.file) } };
+  }
   if (cmd === "items") return { code: 0, out: listItems(ctx) };
   if (cmd === "build") return build(ctx, validateData);
   if (cmd === "check") {

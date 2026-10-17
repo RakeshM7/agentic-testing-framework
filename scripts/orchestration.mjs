@@ -84,14 +84,23 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
   const c = context(product, domain, module, root);
   const p = paths(product, root);
   const { runId, mode } = c.run;
-  const ctx = { productDir: p.productDir, module, pwProject: p.pwProject, k6Project: p.k6Project, format: c.cfg.testcases?.output_format ?? "gherkin" };
+  const ctx = { root, product, run: c.run, cfg: c.cfg, productDir: p.productDir, module, pwProject: p.pwProject, k6Project: p.k6Project, format: c.cfg.testcases?.output_format ?? "gherkin" };
   const S = () => load(c.file, c.run, domain, module);
   const mark = (name, action, note) => step(product, domain, module, name, action, note, { root });
   const rel = (f) => path.relative(root, f).replaceAll("\\", "/");
   const spawn = (name, agent, args = {}) => ({ actions: [{ step: name, agent, prompt: prompt({ product, module, ...args }) }] });
+  const dir = path.join(p.results(runId), module, domain);
+  // The findings file of the last review round (gate or review) when the review did not pass, for the done summary.
+  const lastFindings = () => {
+    const s = S();
+    const n = s.rounds.review;
+    if (!n || s.steps.review?.status === "done") return null;
+    return path.join(dir, s.steps[`gate-${n}`]?.note === "pass" ? "review-findings.md" : "gate-findings.md");
+  };
   const finish = (outcome, extra = {}) => {
     const s = S();
-    return { actions: [], done: { outcome, ...(s.steps.review ? { review: s.steps.review } : {}), ...(s.steps.run ? { run: s.steps.run } : {}), ...extra } };
+    const summary = FLOWS[domain]?.done?.(ctx, lastFindings());
+    return { actions: [], done: { outcome, ...(s.steps.review ? { review: s.steps.review } : {}), ...(s.steps.run ? { run: s.steps.run } : {}), ...(summary ? { summary } : {}), ...extra } };
   };
   const failed = (name) => finish("failed", { failedStep: name, note: S().steps[name]?.note ?? "" });
 
@@ -193,7 +202,6 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
 
   // ---- review loop: gate -> reviewer -> writer/fixer, bounded by limits.review_rounds ------------------------------
   const R = flow.review;
-  const dir = path.join(p.results(runId), module, domain);
   while (!SETTLED.includes(S().steps.review?.status)) {
     let n = S().rounds.review;
     if (n === 0 || S().steps[`fix-${n}`]?.status === "done") {
@@ -211,7 +219,13 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
       if (rv === "failed") return failed(`review-${n}`);
       if (rv !== "done") return spawn(`review-${n}`, R.reviewer, { run: runId, round: n, ...(R.reviewerArgs?.(ctx) ?? {}) });
       findings = path.join(dir, "review-findings.md");
-      const v = verdictOf(findings);
+      // A derived verdict (test cases, D-053): every current case needs a verdict in this round, else the step fails.
+      const derived = R.verdict?.(ctx, n);
+      if (derived && !derived.complete) {
+        mark(`review-${n}`, "fail", `review.json is incomplete: ${derived.problems.slice(0, 5).join("; ")}`);
+        return failed(`review-${n}`);
+      }
+      const v = derived ? derived.verdict : verdictOf(findings);
       if (v === "pass") {
         mark("review", "done", `passed in round ${n}`);
         break;

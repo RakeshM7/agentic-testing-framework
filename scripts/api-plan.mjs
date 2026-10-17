@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
 import { build, check, planPaths } from "./lib/api-plan.mjs";
 import { parseCases } from "./lib/gate/testcases.mjs";
-import { testcasesFile } from "./lib/testcases.mjs";
+import { approvalSummary, testcasesFile } from "./lib/testcases.mjs";
 
 function context(product, module, root) {
   const p = paths(product, root);
@@ -27,7 +27,11 @@ function context(product, module, root) {
   const cfg = loadJson(p.configFile);
   const pp = planPaths(p.productDir, module);
   const file = testcasesFile(pp.moduleDir, module, cfg.testcases?.output_format ?? "gherkin");
-  const cases = new Map(existsSync(file) ? parseCases(file, cfg.testcases?.output_format ?? "gherkin").filter((c) => c.id).map((c) => [c.id, { api: c.api, priority: c.priority }]) : []);
+  // Only cases a human approved exist for the plan (D-053): an approved @api case becomes a testcase: coverage item,
+  // and the overlay may link or cite (testcase:) approved cases only, so an unapproved case gives no priority and no
+  // traceability.
+  const approved = new Set(approvalSummary(p.productDir, module).approved);
+  const cases = new Map(existsSync(file) ? parseCases(file, cfg.testcases?.output_format ?? "gherkin").filter((c) => c.id && approved.has(c.id)).map((c) => [c.id, { api: c.api, priority: c.priority }]) : []);
   return { run, cfg, pp, cases };
 }
 

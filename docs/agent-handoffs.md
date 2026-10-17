@@ -114,15 +114,28 @@ Captures sit beside it, pasted from the tool output unedited: `snapshot-<n>.md`,
 
 The script writes the Answer as `Basis: … / Context: … / Action: … / Result: … / Scope: …` lines, with `Answer status` set to `agent-proposed`. `confirmed` requires the behavior to be captured or cited, never inferred.
 
-## 3. Test cases (`testcase-writer` → reviewers, automation)
+## 3. Test cases (`testcase-writer` → reviewers, a human, automation)
 
-`modules/<m>/testcases/<m>-testcases.<ext>` (format from `testcases.output_format`) and `testcases-summary.md`.
+Script-built (D-053): `node scripts/testcases.mjs build|check|review-check|status|paths <product> <module>` (`scripts/lib/testcases.mjs`) owns `modules/<m>/testcases/`, except the writer's `cases.json` and the human's `approval.csv`.
 
-- Every case has an id `TC-<m>-<n>` (sequential, never reused within the module).
-- Gherkin: one `Feature:` per file; each `Scenario:` tagged `@TC-<m>-<n>`, a priority tag `@p1|@p2|@p3`, a type tag `@functional|@negative|@boundary|@security|@visual|@api`, `@mutates` when it creates/changes/deletes data, and `@<clarification-id>` for every clarification row it relies on (e.g. `@contacts-4`). Cases that rely on an **unconfirmed** row also carry `@assumption`.
-- CSV / TestRail: columns `ID, Title, Priority, Type, Preconditions, Steps, Expected, Clarifications, Mutates, Assumption`.
-- Markdown table: the same columns as a table.
-- `testcases-summary.md`: `Total test cases: N` (exact line, checked by the stage), counts by type/priority, the list of clarification ids used, and the assumption-based cases.
+- **Coverage items** (`coverage.json`, schema `testcases-coverage`), each with a stable `CI-<m>-<n>` id keyed by source + technique + target (ISO/IEC/IEEE 29119-4):
+  - per input field of `explore/interactions.json`: a valid partition, a missing required value, an invalid partition per known constraint (pattern, not a number, each validation message), min/max and just below/above where a limit is known, every option plus one outside them, checked/unchecked;
+  - per transition of `explore/model.json`, per `explore/flows/*.md`;
+  - per rule fact of `knowledge/modules/<m>/rule-facts.json`: one item, or a collapsed decision table (all conditions true, then each one flipped alone: N + 1 rows; a rule mixing and/or gets one item per condition);
+  - per answered clarification.
+
+  Without G2's model or field constraints (an older exploration) the items are per flow, rule and clarification, and `degraded` says so. Every item is `mapped` (covered by cases), `excluded` (a cited reason; `duplicate-of` only for the same check found twice), `pending`, or `deferred: budget` over `testcases.max_cases` (default 200 per module, lowest priority first).
+- **`cases.json`** (the writer's only file, schema `testcases-overlay`): per case a stable `key` (it gets `TC-<m>-<n>` once, never reused), `title` (declarative, unique), `type` `functional|negative|boundary|security|visual|api`, `priority` `p1|p2|p3`, `mutates`/`visual`/`api`, `preconditions`, one `action` (the When), `steps`, one `expected` (the Then; the product's messages quoted verbatim from the evidence; an observable anchor), synthetic `data`, `covers` (1–6 CI ids: one value per field, one invalid value, one decision-table row; a clarification item only with its citation) and `evidence` (`clarification:`, `knowledge:`, `observation:`; real files). Plus `exclude`.
+- **The script derives `@assumption`** when a case relies on an unanswered or unapproved clarification (D-048), a rule fact resting on `agent-capture` or `stale` evidence (D-051), an open point, or the writer's own `assumes`.
+- **Rendered** `<m>-testcases.<ext>` (format from `testcases.output_format`), never hand-edited:
+  - Gherkin: one `Feature:`; per case the tags on the scenario (`@TC-<m>-<n>`, priority, type, `@mutates`, `@visual`, `@api`, `@<clarification-id>` per cited row, `@assumption`), a description (steps, assumptions, covers, evidence), Given/And, one When (with a data table), one Then.
+  - CSV / TestRail: columns `ID, Title, Priority, Type, Preconditions, Steps, Expected, Test data, Clarifications, Mutates, Assumption, Tags, Covers, Evidence` (TestRail adds a leading `Section`).
+  - Markdown table: the same columns as one table.
+
+  `parseCases` reads all four (every markdown table with an ID column; blank rows skipped) and `countCases` is its length.
+- **`testcases-summary.md`:** `Total test cases: N` (exact line, checked by the stage), counts by type, priority and technique, the clarifications used, the assumption-based cases, the exclusions and the deferred items.
+- **`check`** fails on a pending item, an overlay problem, a case covering nothing or citing nothing real, or an input changed since the build; a pass stamps `coverage.json` `verified`, which the writer's step and the gate require.
+- **Human approval** (human-only; no agent may run it or write the sheet). `build` renders `approval.csv` (`TC ID, Title, Key steps, Expected, Priority, Approved, Comment, Rendered in run, Version`; `Version` is `v<hash>`), keeping a human's entries for unchanged cases. The human fills `Approved` (`yes`, `no`, `changes` or blank) and `Comment` in Excel or an editor (`,` or `;`), then runs `node scripts/testcases.mjs approve <product> <module>` in an interactive terminal, typing the module slug to confirm. `approvals.json` (schema `testcases-approvals`) pins each decision to the case's content hash (content, covers, evidence, the derived `@assumption`), so a later edit makes the case unapproved again. `no` and `changes` become findings for the writer in `approval-findings.md` (§6 format). **Only approved cases are automated.**
 
 ## 4. API discovery and plan (`api-discoverer`, `api-test-planner` → API and k6 writers)
 
@@ -251,6 +264,8 @@ Verdict: pass | changes-required
 |---|---|---|---|---|---|---|
 ```
 Severity `blocker | major | minor`. `Verdict: pass` exactly when there is no blocker or major finding. Reviewers never edit what they review.
+
+**Test cases (D-053).** `testcase-reviewer` writes `results/<run>/<m>/testcases/review.json` (schema `testcases-review`): `{module, round, cases: {<TC id>: {verdict: "ok", version} | {verdict: "finding", version, findings: [{severity, rule, problem, fix}]}}, general?}` with a verdict on **every** current case in this round. `version` is the case's current `version` in `coverage.json` (`v<hash>`, the same one approvals pin): a verdict for an earlier version is refused, so an edited case is always reviewed again. `node scripts/testcases.mjs review-check <p> <m> --round <n>` fails until it is complete, and renders `review-findings.md` in this format with the **derived** verdict; `orchestration.mjs` derives it the same way and never trusts a typed `Verdict:` line.
 
 **Gate findings.** At the start of each review round `orchestration.mjs next` runs the gate (`node scripts/gate.mjs <product> <m> <domain>`), which writes `results/<run>/<m>/<domain>/gate-findings.md` in the same format (heading `# Gate -- <domain> / <m>`; the Rule column holds the gate rule id) with the mechanical checks: ids and tags, traceability, `@mutates`, ledger calls, fixed waits, hard-coded URLs, the safety calls, and compile/`--list`/`k6 inspect`. On `changes-required` (exit 1) that file goes to the writer or fixer instead of starting the reviewer; on `pass` the reviewer judges only what a script can't.
 

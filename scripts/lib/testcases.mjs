@@ -997,12 +997,14 @@ export async function build(ctx, validateData) {
     seenKeys.add(c.key);
     const covers = effectiveCovers(c, itemsById).sort(byNum);
     const assumptions = assumptionsOf(c, { itemsById, rowsById, facts });
+    const hash = caseHash(c, assumptions.length > 0);
     cases.push({
       id: caseReg.cases[c.key].id, key: c.key, title: one(c.title), type: c.type, priority: c.priority,
       mutates: !!c.mutates, visual: !!c.visual || c.type === "visual", api: !!c.api || c.type === "api",
       assumption: assumptions.length > 0, assumptions,
       preconditions: c.preconditions ?? [], action: c.action, steps: c.steps, expected: c.expected, data: c.data ?? {},
-      covers, evidence: uniq(c.evidence ?? []), clarifications: clarificationsOfCase(c), hash: caseHash(c, assumptions.length > 0),
+      covers, evidence: uniq(c.evidence ?? []), clarifications: clarificationsOfCase(c), hash,
+      version: versionOf(hash), // what a review verdict and a human approval are pinned to
     });
   }
   cases.sort((a, b) => byNum(a.id, b.id));
@@ -1136,4 +1138,93 @@ export async function runCheck(ctx, validateData) {
   const valid = !uniq(problems).length;
   if (valid) writeJson(tp.coverage, { ...unstamped, verified: { ...stampVerified(verifiedInputs(ctx)), ...extraDigests(ctx) } });
   return { valid, cases: cov.cases.length, assumption: cov.cases.filter((c) => c.assumption).length, items: cov.summary, deferred: cov.summary.deferred, degraded: cov.degraded, problems: uniq(problems) };
+}
+
+// ---------- downstream: which cases may be automated ----------
+
+// The module's cases and their human approval (approvals.json is the only source), without a run context. Only an
+// approved case is automated (playwright-ui, playwright-api, the API plan's testcase: items); a module with no
+// approved case has its automation stages awaiting approval (scripts/run.mjs).
+// -> {built, cases (coverage.json), approved: [ids], counts: {approved, rejected, changes, awaiting, invalidated}}
+export function approvalSummary(productDir, module) {
+  const tp = testcasePaths(productDir, module);
+  const cov = readJson(tp.coverage, null);
+  const cases = cov?.cases ?? [];
+  const approvals = readApprovals(tp, module);
+  const st = approvalStatus(cases, approvals);
+  return { built: !!cov, cases, approved: cases.filter((c) => st.get(c.id).status === "approved").map((c) => c.id), counts: approvalCounts(cases, approvals) };
+}
+
+// ---------- the review: a verdict per case, the overall verdict derived ----------
+
+export const REVIEW_SEVERITIES = ["blocker", "major", "minor"];
+export const reviewFiles = (productDir, runId, module) => {
+  const dir = path.join(productDir, "results", runId ?? "-", module, "testcases");
+  return { review: path.join(dir, "review.json"), findings: path.join(dir, "review-findings.md") };
+};
+
+// The reviewer's review.json (schema testcases-review) for this round, checked: every current case has a verdict (`ok`,
+// or `finding` with findings), nothing unknown, every finding with a severity, a problem and a fix. When complete, the
+// overall verdict is derived -- pass exactly when no blocker or major remains -- and review-findings.md is rendered
+// from it (docs/agent-handoffs.md §6); the reviewer never types a verdict. Synchronous on purpose: orchestration.mjs
+// calls it. -> {complete, verdict, counts, problems, file}
+export function reviewResult(ctx, { round } = {}) {
+  const { module, productDir, runId } = ctx;
+  const rf = reviewFiles(productDir, runId, module);
+  const cov = readJson(ctx.tp.coverage, null);
+  const problems = [];
+  if (!cov) return { complete: false, verdict: null, problems: ["testcases/coverage.json is missing: the cases were never built"] };
+  let review;
+  try {
+    review = readJson(rf.review, null);
+  } catch (e) {
+    return { complete: false, verdict: null, problems: [`review.json is not valid JSON: ${e.message}`] };
+  }
+  if (!review) return { complete: false, verdict: null, problems: ["review.json is missing: the reviewer writes a verdict per case there"] };
+  if (review.module !== module) problems.push(`review.json: module is '${review.module}', not '${module}'`);
+  if (round !== undefined && review.round !== Number(round)) problems.push(`review.json is for round ${review.round}, not round ${round}: every case is reviewed again in each round`);
+  const current = new Set(cov.cases.map((c) => c.id));
+  const verdicts = review.cases && typeof review.cases === "object" ? review.cases : {};
+  const findings = [];
+  const checkFinding = (f, where) => {
+    if (!f || !REVIEW_SEVERITIES.includes(f.severity)) problems.push(`${where}: a finding needs a severity (${REVIEW_SEVERITIES.join(", ")})`);
+    if (!String(f?.problem ?? "").trim() || !String(f?.fix ?? "").trim()) problems.push(`${where}: a finding needs a problem and a fix`);
+  };
+  for (const c of cov.cases) {
+    const v = verdicts[c.id];
+    if (!v) problems.push(`${c.id}: no verdict in this round`);
+    // a verdict is pinned to the content it judged (the version approvals use): an edited case is reviewed again
+    else if (versionMatch(v.version, c.hash) !== "match")
+      problems.push(`${c.id}: verdict is for version ${v.version || "(none)"}, current is ${versionOf(c.hash)}; review the case again`);
+    else if (v.verdict === "ok") {
+      if (v.findings?.length) problems.push(`${c.id}: verdict ok with findings; use verdict finding`);
+    } else if (v.verdict === "finding") {
+      if (!v.findings?.length) problems.push(`${c.id}: verdict finding without findings`);
+      for (const f of v.findings ?? []) {
+        checkFinding(f, c.id);
+        findings.push({ ...f, case: c.id, key: c.key });
+      }
+    } else problems.push(`${c.id}: verdict must be ok or finding`);
+  }
+  for (const id of Object.keys(verdicts)) if (!current.has(id)) problems.push(`${id}: not a current test case`);
+  for (const [i, f] of (review.general ?? []).entries()) {
+    checkFinding(f, `general[${i}]`);
+    findings.push({ ...f });
+  }
+  const counts = Object.fromEntries(REVIEW_SEVERITIES.map((s) => [s, findings.filter((f) => f.severity === s).length]));
+  if (problems.length) return { complete: false, verdict: null, counts, problems, file: rf.findings };
+  const verdict = counts.blocker || counts.major ? "changes-required" : "pass";
+  const cell = (s) => one(s).replace(/\|/g, "\\|");
+  const order = (f) => REVIEW_SEVERITIES.indexOf(f.severity);
+  const rows = [...findings].sort((a, b) => order(a) - order(b)).map((f, i) => `| ${i + 1} | ${f.severity} | testcases/cases.json${f.key ? ` (case '${f.key}')` : ""} |  | ${cell(f.rule ?? "review")} | ${f.case ? `${f.case}: ` : ""}${cell(f.problem)} | ${cell(f.fix)} |`);
+  const text = [`# Review -- testcases / ${module} -- round ${review.round}`, `Verdict: ${verdict}`, "| # | Severity | File | Line | Rule | Problem | Required fix |", "|---|---|---|---|---|---|---|", ...rows, ""].join("\n");
+  writeAtomic(rf.findings, text);
+  return { complete: true, verdict, counts, cases: cov.cases.length, problems: [], file: rf.findings };
+}
+
+// What the testcase domain reports when it is done: the totals, the assumption count and the approval counts.
+export function testcaseTotals(ctx) {
+  const cov = readJson(ctx.tp.coverage, null);
+  const { counts } = approvalSummary(ctx.productDir, ctx.module);
+  return { total: cov?.cases.length ?? 0, assumption: cov?.cases.filter((c) => c.assumption).length ?? 0, items: cov?.summary ?? null, approvals: counts };
 }

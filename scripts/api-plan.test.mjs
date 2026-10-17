@@ -13,7 +13,7 @@ import { paths } from "./lib/contract.mjs";
 import { apiPaths, build as buildCatalogue, saveSource, writeJson } from "./lib/endpoints.mjs";
 import { INTROSPECTION_QUERY } from "./lib/graphql.mjs";
 import { validateRunConfig } from "./run-config.mjs";
-import { put, startRun } from "./test-helpers.mjs";
+import { markApproved, put, startRun } from "./test-helpers.mjs";
 
 const MOD = "artifacts/acme/modules/contacts";
 const CONTACT = {
@@ -62,7 +62,7 @@ const SPEC = {
 };
 const FEATURE = ["Feature: Contacts", "  @TC-contacts-1 @p1 @api", "  Scenario: create a contact via the API", "    Given x", "  @TC-contacts-2 @p2 @functional", "  Scenario: list contacts", "    Given y", ""].join("\n");
 
-function setup({ spec = SPEC, identities, budget, graphql } = {}) {
+function setup({ spec = SPEC, identities, budget, graphql, approved = ["TC-contacts-1", "TC-contacts-2"] } = {}) {
   const extra = [];
   if (budget) extra.push(`api: {plan_budget: ${budget}}`);
   const { root } = startRun({ extra });
@@ -77,6 +77,7 @@ function setup({ spec = SPEC, identities, budget, graphql } = {}) {
   if (graphql) saveSource(ap, { kind: "graphql", location: "https://app.acme.test/graphql", content: graphql, getSupported: true, status: "ok" });
   put(root, `${MOD}/explore/network-inventory.json`, JSON.stringify([{ method: "GET", pathTemplate: "/api/v1/contacts", statusCodes: [200], requestKeys: [], responseKeys: ["id", "name"], pages: ["/contacts"] }]));
   put(root, `${MOD}/testcases/contacts-testcases.feature`, FEATURE);
+  markApproved(root, approved); // only human-approved @api cases become testcase: items (D-053)
   const cfg = JSON.parse(readFileSync(p.configFile, "utf8"));
   assert.deepEqual(buildCatalogue(ap, { module: "contacts", cfg, runId: "acme-run-1" }).problems, []);
   const pp = planPaths(p.productDir, "contacts");
@@ -226,6 +227,25 @@ test("coverage and check: an @api test case is pending until linked; check stamp
   plan[0].expect = { status: 200, source: "spec" };
   writeJson(s.pp.plan, plan);
   assert.match(planUnverified(s.pp), /changed after api-plan.mjs check/, "a hand edit after check is caught");
+});
+
+test("an @api test case becomes a testcase: coverage item only once a human approved it (D-053)", async () => {
+  const s = setup({ approved: [] });
+  await s.run("build");
+  assert.ok(!s.cov().pending.some((p) => p.item === "testcase:TC-contacts-1"), "awaiting approval: not planned yet");
+  markApproved(s.root, ["TC-contacts-1"]);
+  await s.run("build");
+  assert.ok(s.cov().pending.some((p) => p.item === "testcase:TC-contacts-1"));
+});
+
+test("the plan overlay may link only human-approved test cases: no priority or traceability from an unapproved one (D-053)", async () => {
+  const s = setup({ approved: ["TC-contacts-2"] });
+  await s.run("build");
+  s.overlay(LINK_TC(s)); // links TC-contacts-1, which is not approved
+  const r = await s.run("build");
+  assert.equal(r.code, 1);
+  assert.ok(r.out.problems.some((p) => /'TC-contacts-1' is not a human-approved test case of this module/.test(p)), JSON.stringify(r.out.problems));
+  assert.ok(!s.plan().some((x) => x.testcases.includes("TC-contacts-1")), "no link, so no raised priority");
 });
 
 test("overlay: citations must resolve, exclusions need a matching item, and generated scenarios cannot be renamed", async () => {

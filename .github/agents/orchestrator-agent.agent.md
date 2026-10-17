@@ -35,7 +35,7 @@ Repeat until `node scripts/run.mjs next <p>` returns `[]`:
 | `playwright-repo` | **pw-repo-owner** | `product=<p> task=skeleton` |
 | `explore` | **module-explorer** | `product=<p> module=<m> mode=<mode>` |
 | `clarifications` | **clarification-orchestrator** | `product=<p> module=<m> run=<run-id> mode=<mode>` |
-| `testcases` | **testcase-orchestrator** | `product=<p> module=<m> run=<run-id> format=<testcases.output_format>` |
+| `testcases` | **testcase-orchestrator** | `product=<p> module=<m> run=<run-id>` |
 | `playwright-ui` | **playwright-ui-orchestrator** | `product=<p> module=<m> run=<run-id> mode=<mode>` |
 | `playwright-api` | **playwright-api-orchestrator** | same |
 | `k6` | **k6-orchestrator** | same |
@@ -50,7 +50,7 @@ If `clarifications … done` is refused because rows are unanswered (policy `sto
 Never fill answers yourself, and never mark the stage done another way. Other modules' stages that are ready keep running while one module waits.
 
 ## Finish
-When nothing is ready: `node scripts/run.mjs status <p>` and `node scripts/ledger.mjs list <p> --live`. If everything is complete or settled, `node scripts/run.mjs end <p>`. Tell the human: the report path (`artifacts/<p>/results/<run-id>/report/index.html`), stages failed or blocked and why, unconfirmed clarifications, agent-proposed answers awaiting human approval (`clarifications-summary.md` → `## Awaiting approval`), and entities the run created that are still live (they need cleanup).
+When nothing is ready: `node scripts/run.mjs status <p>` and `node scripts/ledger.mjs list <p> --live`. If everything is complete or settled, `node scripts/run.mjs end <p>`. Tell the human: the report path (`artifacts/<p>/results/<run-id>/report/index.html`), stages failed or blocked and why, unconfirmed clarifications, agent-proposed answers awaiting human approval (`clarifications-summary.md` → `## Awaiting approval`), the modules whose automation stages are `awaiting-approval` because no test case is approved yet (a human fills `testcases/approval.csv` and runs `node scripts/testcases.mjs approve <p> <m>` in a terminal; the next run picks them up), and entities the run created that are still live (they need cleanup).
 
 ## Rules
 - Pass paths and the parameters above, never file contents, to other agents. Keep their reports short in your own notes (`artifacts/<p>/state/notes.md`).

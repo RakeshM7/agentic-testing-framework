@@ -7,6 +7,7 @@
 // modules explored        modules with a valid explore/sitemap.json
 // clarifications          rows / answered / unconfirmed across modules/<m>/clarifications.csv
 // test cases              "Total test cases: N" line of modules/<m>/testcases/testcases-summary.md
+// test case approvals     approved / rejected / changes / awaiting per module (lib/testcases.mjs approvalSummary, D-053)
 // Playwright scripts      *.spec.ts under playwright-tests/<product>/tests/{ui,api}/<module>/
 // k6 scripts              *.js under k6-tests/<product>/scripts/ named <module>-*.js
 // execution results       results/<run-id>/<module>/<framework>/results.json
@@ -16,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
 import { csvPath, status as csvStatus } from "./lib/clarifications.mjs";
 import { FRAMEWORKS } from "./results.mjs";
+import { approvalSummary } from "./lib/testcases.mjs";
 
 const TOTAL_RE = /^Total test cases:\s*(\d+)\s*$/im;
 
@@ -55,6 +57,7 @@ export function collect(product, { root = repoRoot } = {}) {
       explored,
       clarifications: { total: clar.total, answered: clar.answered, unconfirmed: clar.unconfirmed.length },
       testcases: testcaseTotal(path.join(mdir, "testcases", "testcases-summary.md")),
+      approvals: (({ approved, rejected, changes, awaiting }) => ({ approved, rejected, changes, awaiting }))(approvalSummary(p.productDir, m).counts),
       playwrightUiSpecs: walk(path.join(p.pwProject, "tests", "ui", m), (n) => n.endsWith(".spec.ts")).length,
       playwrightApiSpecs: walk(path.join(p.pwProject, "tests", "api", m), (n) => n.endsWith(".spec.ts")).length,
       k6Scripts: walk(path.join(p.k6Project, "scripts"), (n) => n.startsWith(`${m}-`) && n.endsWith(".js")).length,
@@ -86,6 +89,7 @@ export function collect(product, { root = repoRoot } = {}) {
       modulesExplored: perModule.filter((r) => r.explored).length,
       clarifications: perModule.reduce((a, r) => ({ total: a.total + r.clarifications.total, answered: a.answered + r.clarifications.answered, unconfirmed: a.unconfirmed + r.clarifications.unconfirmed }), { total: 0, answered: 0, unconfirmed: 0 }),
       testcases: sum("testcases"),
+      approvals: Object.fromEntries(["approved", "rejected", "changes", "awaiting"].map((k) => [k, perModule.reduce((n, r) => n + r.approvals[k], 0)])),
       playwrightUiSpecs: sum("playwrightUiSpecs"),
       playwrightApiSpecs: sum("playwrightApiSpecs"),
       k6Scripts: sum("k6Scripts"),

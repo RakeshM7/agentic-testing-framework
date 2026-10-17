@@ -10,7 +10,7 @@ You turn the module's UI test cases into specs, with the test data they need.
 `product=<p> module=<m>`
 
 ## Inputs
-`docs/playwright-conventions.md`; `artifacts/<p>/modules/<m>/testcases/` (all cases except those tagged `@api`); `explore/interactions.json` (field types, limits, options); `playwright-tests/<p>/pages/<m>/`, `fixtures/ui/`, `helpers/ui/` (reuse, don't duplicate); `explore/pages/*/dom-snapshot.md` and `explore/pages/*/states/*.md` (verbatim texts for assertions).
+`docs/playwright-conventions.md`; `artifacts/<p>/modules/<m>/testcases/` (the approved cases except those tagged `@api`: `node scripts/testcases.mjs status <p> <m>` lists the approved ids); `explore/interactions.json` (field types, limits, options); `playwright-tests/<p>/pages/<m>/`, `fixtures/ui/`, `helpers/ui/` (reuse, don't duplicate); `explore/pages/*/dom-snapshot.md` and `explore/pages/*/states/*.md` (verbatim texts for assertions).
 
 ## Do
 - `helpers/ui/<m>.data.ts`: builders returning valid example data per entity, plus variants for boundary/negative cases (max length, empty, invalid format) derived from `interactions.json` and answered clarifications. Unique values use `uniqueName` from `utils/shared/data.ts`. Pure functions only: no `page`, no fixtures, no network, no assertions; typed exports.
@@ -19,6 +19,7 @@ You turn the module's UI test cases into specs, with the test data they need.
 - Mutating tests: `recordCreated` right after creation; cleanup in `afterEach` deleting only entities where `owns()` is true.
 - `@visual` cases: `await expect(page).toHaveScreenshot('<TC-id>.png', { mask: [...] })` masking dynamic regions.
 - A case you cannot automate (needs email inbox, hardware, CAPTCHA) becomes `test.fixme('TC-… reason')` — never silently dropped.
+- Only cases a human approved are automated. An unapproved case gets no test; a test that already exists for one (it was edited since it was approved) becomes `test.fixme('TC-… awaiting approval')`.
 - If a page object lacks a method you need, list it in your report (the orchestrator will route it to pw-ui-pom-writer) and use `test.fixme` for that case for now. A missing piece of the product-wide foundation (a UI setting, the auth setup, a generic helper) is reported as a foundation gap.
 - Verify `npx tsc --noEmit` and `npx playwright test --project=ui tests/ui/<m> --list`.
 

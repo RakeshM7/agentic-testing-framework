@@ -67,7 +67,8 @@
           "covers": { "type": "array", "items": { "$ref": "#/$defs/ci" } },
           "evidence": { "type": "array", "items": { "type": "string" } },
           "clarifications": { "type": "array", "items": { "type": "string" } },
-          "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "What a human approves: the content, covers, evidence and derived @assumption. approvals.json pins each decision to it and is the only source of approval status." }
+          "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "What a human approves: the content, covers, evidence and derived @assumption. approvals.json pins each decision to it and is the only source of approval status." },
+          "version": { "type": "string", "pattern": "^v[0-9a-f]{12}$", "description": "v + the first 12 hex of hash: the version a review verdict (review.json) and a human approval (approval.csv) name." }
         }
       }
     },

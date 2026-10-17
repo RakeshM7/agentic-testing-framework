@@ -108,16 +108,19 @@ export const STAGES = {
     needs: [],
     outputs: [{ path: "playwright-tests/{product}/package.json" }, { path: "playwright-tests/{product}/playwright.config.ts" }],
   },
+  // approval: only human-approved test cases are automated; with none, the stage awaits approval (scripts/run.mjs, D-053).
   "playwright-ui": {
     scope: "module",
     orchestrator: "playwright-ui-orchestrator",
     needs: ["testcases", "playwright-repo"],
+    approval: true,
     outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-ui/results.json", schema: "results" }],
   },
   "playwright-api": {
     scope: "module",
     orchestrator: "playwright-api-orchestrator",
     needs: ["testcases", "playwright-repo"],
+    approval: true,
     outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-api/results.json", schema: "results" }],
   },
   k6: {

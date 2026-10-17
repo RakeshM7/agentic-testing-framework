@@ -130,7 +130,8 @@ export function canWrite(row, relPath, variables, values) {
 // A command line split into its simple commands, for a restricted allow-list. Unquoted `&&`, `||`, `;`, `|`, `&` and
 // line breaks separate commands; the text inside quotes is masked, so no pattern can read it as an operator. -> the
 // commands, or null when the line has something an allow-list can't vouch for: a redirect (< >), a group or subshell
-// (( )), command substitution or a variable ($, a backtick) outside single quotes, a backslash outside quotes (an
+// (( )), command substitution or a variable ($, a backtick) outside single quotes, cmd.exe's ^ escape or %VAR% outside
+// quotes, a backslash outside quotes (an
 // escape such as \" or \' would otherwise hide where a quote starts), a backslash before a double quote inside double
 // quotes (bash reads it as an escaped quote, PowerShell and cmd as the closing one), or an unterminated quote. Any
 // other backslash inside quotes, and everything inside single quotes, is literal. Arguments belong in single quotes.
@@ -153,7 +154,7 @@ export function shellSegments(cmd) {
     if (c === "'" || c === '"') {
       q = c;
       cur += c;
-    } else if ("<>()$`\\".includes(c)) return null;
+    } else if ("<>()$`\\^%".includes(c)) return null; // ^ and % for cmd.exe: ^" hides a quote, %VAR% expands
     else if (c === ";" || c === "\n" || c === "\r" || c === "&" || c === "|") {
       segs.push(cur);
       cur = "";

@@ -194,6 +194,23 @@ test("command detection covers curl, wget, PowerShell and inline scripts", () =>
   assert.equal(allowed(RO.root, sh(undefined, "curl -X GET https://x")), true);
 });
 
+test("cmd.exe syntax is unvouchable outside quotes: ^ escapes (^\" hides a quote, so & runs) and %VAR% expansions", () => {
+  const run = (cmd) => allowed(FULL.root, sh("testcase-writer", cmd));
+  const build = "node scripts/testcases.mjs build acme contacts";
+  for (const cmd of [`${build} ^"& copy x y ^"`, `${build} ^& copy x y`, `${build} %COMSPEC%`, `node scripts/testcases.mjs build acme %M%`]) assert.equal(run(cmd), false, cmd);
+  assert.equal(run(`${build} '50% ^ done'`), true, "inside single quotes they are text");
+});
+
+test("testcase-reviewer runs only testcases.mjs review-check and writes only its review.json (D-053)", () => {
+  const run = (cmd) => allowed(FULL.root, sh("testcase-reviewer", cmd));
+  assert.equal(run("node scripts/testcases.mjs review-check acme contacts --round 2"), true);
+  for (const cmd of ["node scripts/testcases.mjs build acme contacts", "node scripts/testcases.mjs check acme contacts", "npx tsc --noEmit", "node scripts/gate.mjs acme contacts testcases"]) assert.equal(run(cmd), false, cmd);
+  const w = (rel) => allowed(FULL.root, call("testcase-reviewer", "Write", { file_path: path.join(FULL.root, rel) }));
+  assert.equal(w("artifacts/acme/results/acme-run-1/contacts/testcases/review.json"), true);
+  for (const f of ["artifacts/acme/results/acme-run-1/contacts/testcases/review-findings.md", "artifacts/acme/results/acme-run-1/contacts/testcases/gate-findings.md", "artifacts/acme/modules/contacts/testcases/cases.json", "artifacts/acme/results/other-run/contacts/testcases/review.json"])
+    assert.equal(w(f), false, f);
+});
+
 test("testcase-writer runs testcases.mjs build/check/paths only and writes only its cases overlay", () => {
   const run = (cmd) => allowed(FULL.root, sh("testcase-writer", cmd));
   for (const cmd of ["build acme contacts", "check acme contacts", "paths acme contacts"]) assert.equal(run(`node scripts/testcases.mjs ${cmd}`), true, cmd);

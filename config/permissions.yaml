@@ -184,11 +184,12 @@ agents:
              "${results}/${module}/testcases/gate-findings.md"]
       write: ["${modules}/testcases/cases.json"]   # only its cases overlay; never approval.csv or approvals.json
 
-  testcase-reviewer:
+  testcase-reviewer:            # D-053: writes only its per-case verdicts; testcases.mjs review-check derives the verdict and review-findings.md
     layer: 2
     profile: reviewer
-    shell: none
-    filesystem: { read: ["${modules}/**", "${results}/${module}/testcases/gate-findings.md"], write: ["${results}/${module}/testcases/review-findings.md"] }
+    shell: restricted
+    shell_allow: ["node scripts/testcases.mjs review-check *"]
+    filesystem: { read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/testcases/gate-findings.md"], write: ["${results}/${module}/testcases/review.json"] }
 
   # ======================= Shared Playwright repo owner (repo: ${pw_project}) =============================
   pw-repo-owner:                # sole writer of shared repo files (see ownership table in the header)

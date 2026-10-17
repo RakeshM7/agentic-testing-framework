@@ -28,7 +28,7 @@ export function gate(product, module, domain, { root = repoRoot, compile = true 
   if (!run.modules.includes(module)) throw new Error(`module must be one of [${run.modules}]`);
   const cfg = existsSync(p.configFile) ? loadJson(p.configFile) : {};
   const format = cfg.testcases?.output_format ?? "gherkin";
-  const ctx = { productDir: p.productDir, module, format, compile, pwProject: p.pwProject, k6Project: p.k6Project };
+  const ctx = { root, product, run, cfg, productDir: p.productDir, module, format, compile, pwProject: p.pwProject, k6Project: p.k6Project };
 
   const findings =
     domain === "testcases" ? gateTestcases(ctx)

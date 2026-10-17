@@ -4,6 +4,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { planPaths, planUnverified } from "./api-plan.mjs";
+import { reviewResult, testcaseContext, testcaseTotals, testcasesUnverified } from "./testcases.mjs";
 
 const exists = (dir, ...files) => files.every((f) => existsSync(path.join(dir, f)));
 const json = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null);
@@ -17,11 +18,27 @@ function noApiSurface(c) {
   return cov?.status === "blocked" ? `API discovery blocked: ${cov.blockedReason ?? "no reason recorded"}` : "no API surface found";
 }
 
-// ctx: {productDir, module, pwProject, k6Project, format}
+const tcCtx = (c) => testcaseContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir });
+
+// The blocker and major rows of a findings file (docs/agent-handoffs.md §6): what is still unresolved.
+export function unresolvedFindings(file) {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, "utf8")
+    .split(/\r?\n/)
+    .map((l) => /^\|\s*(\d+)\s*\|\s*(blocker|major)\s*\|[^|]*\|[^|]*\|\s*([^|]*?)\s*\|\s*((?:[^|\\]|\\.)*?)\s*\|/.exec(l))
+    .filter(Boolean)
+    .map((m) => ({ n: Number(m[1]), severity: m[2], rule: m[3], problem: m[4] }));
+}
+
+// ctx: {root, product, run, cfg, productDir, module, pwProject, k6Project, format}
 export const FLOWS = {
+  // The cases are script-built (D-053): a done write step counts only once testcases.mjs check passed on what is on
+  // disk; the review verdict is derived from the reviewer's per-case review.json, never read from a typed line.
   testcases: {
-    build: [{ step: "write", agent: "testcase-writer", args: (c) => ({ format: c.format }) }],
-    review: { reviewer: "testcase-reviewer", fixer: "testcase-writer", reviewerArgs: (c) => ({ format: c.format }), fixerArgs: (c) => ({ format: c.format }) },
+    build: [{ step: "write", agent: "testcase-writer", verify: (c) => testcasesUnverified(tcCtx(c)) }],
+    review: { reviewer: "testcase-reviewer", fixer: "testcase-writer", verdict: (c, round) => reviewResult(tcCtx(c), { round }) },
+    // what done reports, so the orchestrator reads nothing by hand: totals, assumptions, approvals, unresolved findings
+    done: (c, lastFindings) => ({ ...testcaseTotals(tcCtx(c)), unresolved: lastFindings ? unresolvedFindings(lastFindings) : [] }),
   },
   "playwright-ui": {
     build: [

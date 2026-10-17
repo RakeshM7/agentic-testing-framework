@@ -2,12 +2,12 @@
 // orchestrator uses it: ask next, start the agent, mark the step, repeat. Gate compile commands are skipped here.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { next, show, step } from "./orchestration.mjs";
 import { append, csvPath, readRows, record, recordOutcome } from "./lib/clarifications.mjs";
 import { paths } from "./lib/contract.mjs";
-import { humanEdit, put, startRun } from "./test-helpers.mjs";
+import { buildCases, humanEdit, markApproved, put, startRun } from "./test-helpers.mjs";
 
 const RESULTS = "artifacts/acme/results/acme-run-1/contacts";
 const go = (root, domain, opts = {}) => next("acme", domain, "contacts", { root, compile: false, ...opts });
@@ -25,6 +25,7 @@ function perform(root, domain, expect, work = () => {}) {
 const uiCases = (root) => {
   put(root, "artifacts/acme/modules/contacts/testcases/contacts-testcases.feature", "Feature: C\n  @TC-contacts-1 @p1 @functional\n  Scenario: list\n    Given x\n");
   put(root, "artifacts/acme/modules/contacts/testcases/testcases-summary.md", "Total test cases: 1\n");
+  markApproved(root, ["TC-contacts-1"]); // only approved cases are automated (D-053)
 };
 const goodSpec = (root) => put(root, "playwright-tests/acme/tests/ui/contacts/c.spec.ts", "test('TC-contacts-1 lists @p1', async () => {});\n");
 const verdict = (root, v) => put(root, `${RESULTS}/playwright-ui/review-findings.md`, `# Review\nVerdict: ${v}\n| # | Severity | File | Line | Rule | Problem | Required fix |\n|---|---|---|---|---|---|---|\n`);
@@ -73,17 +74,64 @@ test("an interrupted step is offered again, and an existing foundation is skippe
   assert.deepEqual(go(root, "playwright-ui").done, { outcome: "failed", failedStep: "pages", note: "pom-writer could not ground locators" });
 });
 
-test("review rounds are bounded: test cases end review-failed; automation still runs the suite", () => {
+// The reviewer's per-case verdicts for round n (D-053): every case of the module, with `finding` for the ones listed.
+const versions = (root) => new Map(JSON.parse(readFileSync(path.join(root, "artifacts/acme/modules/contacts/testcases/coverage.json"), "utf8")).cases.map((c) => [c.id, c.version]));
+const review = (root, n, ids, findings = [], v = versions(root)) =>
+  put(root, `${RESULTS}/testcases/review.json`, JSON.stringify({ module: "contacts", round: n, cases: Object.fromEntries(ids.map((id) => [id, findings.includes(id) ? { verdict: "finding", version: v.get(id), findings: [{ severity: "major", rule: "correctness", problem: `${id} expects the wrong result`, fix: "quote the observed message" }] } : { verdict: "ok", version: v.get(id) }])) }));
+
+test("test cases: a write step that never passed testcases.mjs check ends the domain failed", () => {
   const { root } = startRun();
-  perform(root, "testcases", { step: "write", agent: "testcase-writer" }); // no test cases written: the gate keeps failing
+  const a = perform(root, "testcases", { step: "write", agent: "testcase-writer" }); // nothing built
+  assert.equal(a.prompt, "product=acme module=contacts", "no format argument: the script knows it");
+  const done = go(root, "testcases");
+  assert.equal(done.done.outcome, "failed");
+  assert.equal(done.done.failedStep, "write");
+  assert.match(done.done.note, /coverage\.json is missing/);
+  assert.deepEqual(done.done.summary, { total: 0, assumption: 0, items: null, approvals: { approved: 0, rejected: 0, changes: 0, awaiting: 0, invalidated: 0 }, unresolved: [] });
+});
+
+test("test cases: the review verdict is derived from per-case verdicts; rounds are bounded; done reports totals, approvals and what is unresolved", async () => {
+  const { root } = startRun();
+  let ids;
+  perform(root, "testcases", { step: "write", agent: "testcase-writer" });
+  ids = [...(await buildCases(root, { cases: [{ key: "list" }, { key: "create", mutates: true }], approve: ["list"] })).values()];
   for (const n of [1, 2, 3]) {
-    const a = perform(root, "testcases", { step: `fix-${n}`, agent: "testcase-writer" });
-    assert.match(a.prompt, /format=gherkin$/);
+    const r = perform(root, "testcases", { step: `review-${n}`, agent: "testcase-reviewer" }, () => review(root, n, ids, [ids[1]]));
+    assert.equal(r.prompt, `product=acme module=contacts run=acme-run-1 round=${n}`);
+    perform(root, "testcases", { step: `fix-${n}`, agent: "testcase-writer" });
   }
   const done = go(root, "testcases");
   assert.equal(done.done.outcome, "review-failed");
   assert.match(done.done.review.note, /3 review rounds used/);
+  assert.equal(done.done.summary.total, 2);
+  assert.deepEqual(done.done.summary.approvals, { approved: 1, rejected: 0, changes: 0, awaiting: 1, invalidated: 0 });
+  assert.deepEqual(done.done.summary.unresolved.map((f) => [f.severity, f.rule]), [["major", "correctness"]]);
+  assert.match(done.done.summary.unresolved[0].problem, new RegExp(`${ids[1]}: ${ids[1]} expects the wrong result`));
+});
 
+test("test cases: a review missing a verdict for a case, or from another round, fails the step; a clean one passes", async () => {
+  const { root } = startRun();
+  perform(root, "testcases", { step: "write", agent: "testcase-writer" });
+  const ids = [...(await buildCases(root, { cases: [{ key: "list" }, { key: "create" }] })).values()];
+  perform(root, "testcases", { step: "review-1", agent: "testcase-reviewer" }, () => review(root, 1, ids.slice(0, 1)));
+  let done = go(root, "testcases");
+  assert.equal(done.done.outcome, "failed");
+  assert.match(done.done.note, new RegExp(`${ids[1]}: no verdict in this round`));
+
+  const again = startRun();
+  perform(again.root, "testcases", { step: "write", agent: "testcase-writer" });
+  const ids2 = [...(await buildCases(again.root, { cases: [{ key: "list" }] })).values()];
+  perform(again.root, "testcases", { step: "review-1", agent: "testcase-reviewer" }, () => {
+    review(again.root, 1, ids2);
+    // a typed verdict line is never trusted: the derived one replaces it
+    put(again.root, `${RESULTS}/testcases/review-findings.md`, "Verdict: changes-required\n");
+  });
+  done = go(again.root, "testcases");
+  assert.equal(done.done.outcome, "complete");
+  assert.match(readFileSync(path.join(again.root, RESULTS, "testcases/review-findings.md"), "utf8"), /^Verdict: pass$/m);
+});
+
+test("review rounds are bounded: automation still runs the suite", () => {
   const ui = startRun();
   uiCases(ui.root);
   for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root: ui.root });
