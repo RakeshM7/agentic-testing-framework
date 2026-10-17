@@ -5,9 +5,9 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { next, show, step } from "./orchestration.mjs";
-import { append, csvPath, record } from "./lib/clarifications.mjs";
+import { append, csvPath, readRows, record, recordOutcome } from "./lib/clarifications.mjs";
 import { paths } from "./lib/contract.mjs";
-import { put, startRun } from "./test-helpers.mjs";
+import { humanEdit, put, startRun } from "./test-helpers.mjs";
 
 const RESULTS = "artifacts/acme/results/acme-run-1/contacts";
 const go = (root, domain, opts = {}) => next("acme", domain, "contacts", { root, compile: false, ...opts });
@@ -115,19 +115,64 @@ test("Playwright API with no API surface skips the build and review and goes to 
   assert.deepEqual(["plan", "scaffold", "clients", "tests", "review"].map((k) => [s[k].status, s[k].note]), Array(5).fill(["skipped", "no API surface found"]));
 });
 
-test("clarifications: open rows come in batches of --max, then the summary is rendered", () => {
+// What a clarification-explorer leaves behind when it records its row properly (via recordOutcome).
+function explore(root, id, verdict = "unconfirmed") {
+  const pp = paths("acme", root);
+  const file = csvPath(pp.productDir, "contacts");
+  put(root, `artifacts/acme/modules/contacts/clarification-evidence/${id}/observation.md`, `Verdict: ${verdict}\n`);
+  const ev = [`clarification-evidence/${id}/observation.md`];
+  const outcome = verdict === "confirmed"
+    ? (put(root, `artifacts/acme/modules/contacts/clarification-evidence/${id}/snapshot-1.md`, "- alert: Saved\n"),
+      { verdict, answer: { context: "c", action: "a", result: 'shows "Saved"', scope: "s" }, basis: ["observed"], evidence: [...ev, `clarification-evidence/${id}/snapshot-1.md`] })
+    : { verdict, reason: "needs-full-run", summary: "needs a submit", nextStep: "re-run in full-run", evidence: ev };
+  return recordOutcome(file, outcome, { id, module: "contacts", runId: "acme-run-1", mode: "readonly", ledgerEntries: [], sourceIds: new Set(), productDir: pp.productDir });
+}
+
+test("clarifications: one row at a time from the rows open at the start, each checked, then the summary", () => {
   const { root } = startRun();
   const file = csvPath(paths("acme", root).productDir, "contacts");
   append(file, "contacts", "acme-run-1", [1, 2, 3].map((n) => ({ question: `Q${n}?`, steps: "1. Sign in." })));
   record(file, "contacts-2", { answer: "Yes", runId: "acme-run-1" });
   const r = go(root, "clarifications", { max: 5 });
-  assert.deepEqual(r.actions.map((a) => [a.step, a.agent, a.prompt]), [
-    ["explore-contacts-1", "clarification-explorer", "product=acme module=contacts id=contacts-1 mode=readonly"],
-    ["explore-contacts-3", "clarification-explorer", "product=acme module=contacts id=contacts-3 mode=readonly"],
-  ]);
-  for (const a of r.actions) step("acme", "clarifications", "contacts", a.step, "done", undefined, { root });
+  assert.deepEqual(r.actions.map((a) => [a.step, a.agent, a.prompt]), [["explore-contacts-1", "clarification-explorer", "product=acme module=contacts id=contacts-1 mode=readonly"]], "one at a time, whatever --max says (D-047)");
+  perform(root, "clarifications", { step: "explore-contacts-1", agent: "clarification-explorer" }, () => explore(root, "contacts-1", "confirmed"));
+  perform(root, "clarifications", { step: "explore-contacts-3", agent: "clarification-explorer" }, () => explore(root, "contacts-3"));
   const done = go(root, "clarifications");
   assert.equal(done.done.outcome, "complete");
-  assert.deepEqual([done.done.summary.answered, done.done.summary.total], [1, 3]);
+  assert.deepEqual([done.done.summary.answered, done.done.summary.total, done.done.summary.proposed], [2, 3, ["contacts-1", "contacts-2"]]);
+  assert.deepEqual([done.done.deferred, done.done.failedRows], [[], []]);
   assert.ok(existsSync(path.join(root, done.done.summary.file)));
+  assert.equal(show("acme", "clarifications", "contacts", { root }).steps["explore-contacts-1"].verified, true);
+});
+
+test("clarifications: an explorer that left no valid record is retried once, then the script records the row blocked", () => {
+  const { root } = startRun();
+  const file = csvPath(paths("acme", root).productDir, "contacts");
+  append(file, "contacts", "acme-run-1", [{ question: "Q1?", steps: "1. Sign in." }]);
+  perform(root, "clarifications", { step: "explore-contacts-1", agent: "clarification-explorer" }); // returns without recording
+  const retry = go(root, "clarifications");
+  assert.equal(retry.actions[0].prompt, "product=acme module=contacts id=contacts-1 mode=readonly attempt=2");
+  assert.match(show("acme", "clarifications", "contacts", { root }).notes.join("\n"), /explore-contacts-1: attempt 1: no clarification-evidence\/contacts-1\/record.json/);
+  step("acme", "clarifications", "contacts", "explore-contacts-1", "start", undefined, { root });
+  step("acme", "clarifications", "contacts", "explore-contacts-1", "fail", "browser crashed", { root });
+  const done = go(root, "clarifications");
+  assert.equal(done.done.outcome, "complete");
+  assert.deepEqual(done.done.failedRows, ["contacts-1"]);
+  const [row] = readRows(file);
+  assert.match(row.notes, /^\[acme-run-1\] blocked \(no-valid-record\): the explorer failed: browser crashed \(after 2 attempts\)\.\nNext step: /);
+  assert.deepEqual(done.done.summary.unconfirmed.map((u) => u.id), ["contacts-1"]);
+});
+
+test("clarifications: a row answered by a human meanwhile needs no record; follow-ups wait for the next run", () => {
+  const { root } = startRun();
+  const file = csvPath(paths("acme", root).productDir, "contacts");
+  append(file, "contacts", "acme-run-1", [1, 2].map((n) => ({ question: `Q${n}?`, steps: "1. Sign in." })));
+  perform(root, "clarifications", { step: "explore-contacts-1", agent: "clarification-explorer" }, () => {
+    explore(root, "contacts-1");
+    append(file, "contacts", "acme-run-1", [{ question: "Follow-up?", steps: "1. Sign in." }], { raisedBy: "contacts-1" });
+  });
+  perform(root, "clarifications", { step: "explore-contacts-2", agent: "clarification-explorer" }, () => humanEdit(file, "contacts-2", { answer: "Only admins" }));
+  const done = go(root, "clarifications");
+  assert.equal(done.done.outcome, "complete");
+  assert.deepEqual([done.done.deferred, done.done.failedRows], [["contacts-3"], []]);
 });

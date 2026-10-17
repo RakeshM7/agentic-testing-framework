@@ -19,7 +19,9 @@
 #     load:        none | run   (execute k6 against the target)
 #     Every `mutate`/`run` is ALWAYS scoped to entities the CURRENT run created (state/ledger.jsonl, entries are
 #     tagged with the run id); deletes of anything else are blocked by the guard regardless of this file.
-# web_research     none | allowed -- may fetch pages from the public internet that are NOT the product under test
+# browser_session  shared (default) | fresh -- may close its own browser session, so its next call starts clean from
+#                  the saved login state (D-047). Needs browser access; changes nothing in the product.
+# web_research    none | allowed -- may fetch pages from the public internet that are NOT the product under test
 # shell            none | restricted (only the commands listed in `shell_allow`) | project (any command that
 #                  passes the guard, e.g. npm/npx/node/k6 inspect)
 # ask_user         none | allowed -- may ask the human questions (main session only; default none)
@@ -143,16 +145,18 @@ agents:
   clarification-explorer:       # one invocation per CSV row: executes the Steps, observes, records the row's outcome
     layer: 2
     live_target: { browser: mutate, http: none, load: none }   # mutate (ledger-scoped); capped to read in readonly runs
+    browser_session: fresh      # closes its browser session after each row, so every row starts clean (D-047)
     web_research: none
     shell: restricted
     shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs record *",
                   "node scripts/ledger.mjs add *", "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
     filesystem:
       read: ["${modules}/**", "${knowledge}/**"]
-      write: ["${modules}/clarification-evidence/**"]   # observation notes + screenshots, one folder per row ID
-    # Fills Answer / "Clarification agent notes" of its own row through clarifications.mjs record (single writer per
-    # cell: one explorer per row); never overwrites a non-empty Answer cell (a human may have written it); Run ID
-    # (creating run) is never changed.
+      write: ["${modules}/clarification-evidence/**"]   # observation, captures, outcome.json; one folder per row ID
+    # Records its own row through `clarifications.mjs record --file outcome.json` (single writer per cell: one explorer
+    # per row): the script checks the outcome against the evidence, writes the Answer as agent-proposed or the notes,
+    # and appends the outcome's follow-up questions for the next run (D-048). Never overwrites a non-empty Answer cell
+    # (a human may have written it); Run ID (creating run) is never changed.
 
   # ======================= Test case domain ===============================================================
   testcase-orchestrator:

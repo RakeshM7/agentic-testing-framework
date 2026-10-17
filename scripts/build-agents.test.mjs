@@ -46,6 +46,14 @@ test("Claude tools follow permissions: workers cannot spawn, read-only browser g
   assert.ok(!probeTools("claude").includes("Write"));
 });
 
+test("browser_session: fresh grants only closing the agent's own session, and only to the clarification-explorer (D-047)", () => {
+  assert.ok(tools("clarification-explorer", "claude").includes("mcp__playwright__browser_close"));
+  assert.ok(tools("clarification-explorer", "copilot").includes("playwright/browser_close"));
+  for (const agent of ["module-explorer", "knowledge-generator", "pw-ui-test-runner-triager"]) assert.ok(!tools(agent, "claude").includes("mcp__playwright__browser_close"), agent);
+  const bad = resolvePermissions({ agents: { x: { layer: 2, browser_session: "fresh" }, y: { layer: 2, browser_session: "sometimes", live_target: { browser: "read" } } } });
+  assert.deepEqual(bad.errors, ["x: browser_session: fresh needs browser access", "y: browser_session 'sometimes' not in [shared,fresh]"]);
+});
+
 test("Copilot tools are the same capabilities in Copilot's names", () => {
   assert.deepEqual(probeTools("copilot"), ["read", "search", "execute"]);
   assert.deepEqual(tools("pw-ui-tests-writer", "copilot"), ["read", "search", "edit", "execute"]);

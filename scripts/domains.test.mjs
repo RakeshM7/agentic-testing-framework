@@ -88,7 +88,7 @@ test("report data counts what exists, from files, per module", () => {
 test("init creates a header-only clarifications.csv per module", () => {
   const { root } = startRun();
   const csv = readFileSync(path.join(paths("acme", root).module("deals"), "clarifications.csv"), "utf8");
-  assert.equal(csv.trim(), "ID,Module,Question,Steps to execute,Answer,Clarification agent notes,Run ID");
+  assert.equal(csv.trim(), "ID,Module,Question,Steps to execute,Answer,Answer status,Clarification agent notes,Run ID");
 });
 
 test("a stage failing twice is exhausted, its dependents are blocked, and the report still becomes ready", async () => {

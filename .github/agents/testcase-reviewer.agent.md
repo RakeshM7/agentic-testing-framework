@@ -23,7 +23,7 @@ You check that the module's test cases are correct, complete and automatable. Yo
 - `docs/agent-handoffs.md` §3 (format and tags)
 
 ## Check
-The gate (`node scripts/gate.mjs`, findings in `results/<run-id>/<m>/testcases/gate-findings.md`) has already passed: ids, priority/type tags, the `Total test cases` line, clarification references, `@assumption` on cases relying on unanswered rows, and coverage of every answered clarification. Don't repeat those checks; judge what a script can't:
+The gate (`node scripts/gate.mjs`, findings in `results/<run-id>/<m>/testcases/gate-findings.md`) has already passed: ids, priority/type tags, the `Total test cases` line, clarification references, `@assumption` on cases relying on unanswered or `agent-proposed` rows, and coverage of every answered clarification. Don't repeat those checks; judge what a script can't:
 1. **Correctness**: every expected result agrees with the answered clarifications and observed flows; no case contradicts an answer; quoted messages match the evidence; a "not testable" reason in the summary is genuine.
 2. **Coverage**: each flow has a main-path case; negative and boundary cases exist where inputs exist; every case that creates, changes or deletes data is tagged `@mutates`.
 3. **Automatability**: steps are concrete (named elements, example data), one expected result per case, independent of other cases.
