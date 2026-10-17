@@ -49,14 +49,21 @@ export function writeAtomic(file, text) {
   mkdirSync(dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, text, "utf8");
-  try {
-    renameSync(tmp, file);
-  } catch (e) {
-    if (e.code === "EPERM" || e.code === "EBUSY") {
+  // On Windows a rename fails while another process (a virus scanner, an indexer) briefly holds the file: retry a few
+  // times before reporting it as locked (Excel holds it for good).
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync(tmp, file);
+      return;
+    } catch (e) {
+      if (e.code !== "EPERM" && e.code !== "EBUSY") throw e;
+      if (attempt < 10) {
+        sleep(25 * (attempt + 1));
+        continue;
+      }
       unlinkSync(tmp);
       throw new Error(`${file} is locked by another program (is it open in Excel?). Close it and retry.`);
     }
-    throw e;
   }
 }
 

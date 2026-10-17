@@ -76,6 +76,11 @@ test("citations: each prefix holds when its target exists and is refused when it
   };
   for (const [c, why] of Object.entries(refused)) assert.match(citationProblem(c, ctx), why, c);
   assert.equal(citationProblem("testcase:TC-contacts-1", { ...ctx, cases: new Set(["TC-contacts-1"]) }), null, "cases may be a Set");
+  // a network-inventory entry by its stable NI id must exist; the older #/<index> form only needs the file (D-052)
+  put(root, "acme/modules/contacts/explore/network-inventory.json", JSON.stringify([{ id: "NI-contacts-3", method: "GET", pathTemplate: "/x" }]));
+  assert.equal(citationProblem("observation:explore/network-inventory.json#NI-contacts-3", ctx), null);
+  assert.equal(citationProblem("observation:explore/network-inventory.json#/0", ctx), null);
+  assert.match(citationProblem("observation:explore/network-inventory.json#NI-contacts-9", ctx), /no entry NI-contacts-9/);
 });
 
 test("verified: a stamp holds until an input changes, then gives a reason", () => {

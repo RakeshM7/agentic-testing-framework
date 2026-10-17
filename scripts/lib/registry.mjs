@@ -15,7 +15,8 @@ export function assignIds(registryFile, keys, { module, runId, prefix, field, fo
   if (!field || typeof field !== "string") throw new Error("assignIds: `field` (the registry's map, e.g. \"endpoints\") is required");
   if (!prefix || typeof prefix !== "string") throw new Error("assignIds: `prefix` (the id prefix, e.g. \"EP\") is required");
   return withFileLock(registryFile, () => {
-    const reg = existsSync(registryFile) ? JSON.parse(readFileSync(registryFile, "utf8")) : { module, next: 1, [field]: {} };
+    const before = existsSync(registryFile) ? readFileSync(registryFile, "utf8") : null;
+    const reg = before !== null ? JSON.parse(before) : { module, next: 1, [field]: {} };
     const present = new Set(keys);
     for (const k of [...keys].sort()) {
       const e = reg[field][k];
@@ -23,7 +24,8 @@ export function assignIds(registryFile, keys, { module, runId, prefix, field, fo
       else reg[field][k] = { id: format({ prefix, module, n: reg.next++ }), status: "active", firstSeen: runId, lastSeen: runId };
     }
     for (const [k, e] of Object.entries(reg[field])) if (!present.has(k) && e.status === "active") e.status = "gone";
-    writeAtomic(registryFile, JSON.stringify(reg, null, 2) + "\n");
+    const after = JSON.stringify(reg, null, 2) + "\n";
+    if (after !== before) writeAtomic(registryFile, after); // unchanged: no rewrite
     return reg;
   });
 }
