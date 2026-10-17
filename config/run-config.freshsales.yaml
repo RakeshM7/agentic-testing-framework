@@ -103,7 +103,7 @@ limits:
 
 concurrency:
   modules: 1                    # modules explored/processed in parallel (1 = sequential, one browser)
-  clarification_rows: 1         # clarification rows executed in parallel
+  clarification_rows: 1         # ignored: clarification rows run one at a time, each in a fresh browser session (D-047)
 
 feedback_loop:
   auto_invoke_implementor: false

@@ -2,7 +2,7 @@
 // expected result is right stays with testcase-reviewer.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { csvPath, isAnswered, readRows } from "../clarifications.mjs";
+import { csvPath, isAnswered, isAuthoritative, readRows } from "../clarifications.mjs";
 import { parseCsv } from "../csv.mjs";
 import { checkTestcases, testcasesFile } from "../testcases.mjs";
 import { finding } from "./common.mjs";
@@ -87,6 +87,8 @@ export function gateTestcases({ productDir, module, format }) {
 
   const rows = readRows(csvPath(productDir, module));
   const answered = new Set(rows.filter(isAnswered).map((r) => r.id.trim()));
+  // Rows a case may rely on without @assumption: a human answered them, or approved the agent's answer (D-048).
+  const authoritative = new Set(rows.filter(isAuthoritative).map((r) => r.id.trim()));
   const known = new Set(rows.map((r) => r.id.trim()));
   const cases = parseCases(file, format);
   const seen = new Set();
@@ -103,9 +105,9 @@ export function gateTestcases({ productDir, module, format }) {
       used.add(ref);
       if (!known.has(ref)) at("clarification-ref", "major", `references ${ref}, which is not a row of clarifications.csv`, "reference an existing clarification id");
     }
-    const unanswered = c.clarifications.filter((r) => known.has(r) && !answered.has(r));
-    if (unanswered.length && !c.assumption) at("assumption", "major", `relies on unanswered ${unanswered.join(", ")} but is not tagged @assumption`, "tag it @assumption and state what it assumes");
-    if (c.assumption && !unanswered.length) at("assumption", "minor", "tagged @assumption but relies on no unanswered clarification", "remove @assumption, or reference the row it assumes");
+    const unconfirmed = c.clarifications.filter((r) => known.has(r) && !authoritative.has(r));
+    if (unconfirmed.length && !c.assumption) at("assumption", "major", `relies on ${unconfirmed.join(", ")}, which is unanswered or awaiting human approval, but is not tagged @assumption`, "tag it @assumption and state what it assumes");
+    if (c.assumption && !unconfirmed.length) at("assumption", "minor", "tagged @assumption but relies on no unanswered or unapproved clarification", "remove @assumption, or reference the row it assumes");
   }
   const summaryText = existsSync(summary) ? readFileSync(summary, "utf8") : "";
   for (const id of answered)

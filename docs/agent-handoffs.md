@@ -27,16 +27,65 @@ Unconfirmed behavior goes to `clarifications.csv` via `node scripts/clarificatio
 ```
 # <ID>: <question>
 Verdict: confirmed | unconfirmed | blocked
+Reason: <reason code>            (unconfirmed/blocked only)
 Mode: readonly | full-run
+## Key points
+1. <an observable fact that settles the question> -- <capture that shows it, or "not observed">
 ## Steps executed
-1. ... (as actually performed; note any deviation from the CSV steps)
+1. done | deviated | not possible -- <the step as actually performed; for a deviation, what differed>
 ## Observed behavior
-<what the product did, quoting messages verbatim>
+<what the product did, quoting messages verbatim; both runs of the decisive step>
+## Scope
+<what this does NOT cover>
 ## Why not confirmed            (unconfirmed/blocked only)
-<e.g. needs full-run; CAPTCHA; element missing; behavior inconsistent across attempts>
 ## Entities created              (ledger refs, or "none")
+## Follow-up questions           (ids the script added, or "none")
 ```
-Screenshots, if any, sit next to it as `step-<n>.png`. `confirmed` requires the behavior to be observed directly, not inferred.
+Captures sit beside it, pasted from the tool output unedited: `snapshot-<n>.md`, `network-<n>.txt`, `console-<n>.txt`, `step-<n>.png`.
+
+`outcome.json`, recorded with `clarifications.mjs record <p> <m> <ID> --file …` (checks: `docs/artifact-contract.md`):
+
+```json
+{
+  "verdict": "confirmed",
+  "answer": {
+    "context": "Signed in as the run's user, on the \"New contact\" form",
+    "action": "Clicked \"Save\" with \"Email\" empty (twice)",
+    "result": "Not saved; \"Email is required\" appears under \"Email\"; POST /api/contacts returns 422",
+    "scope": "Create form only; the edit form and the import were not checked"
+  },
+  "basis": [
+    "network",
+    "observed"
+  ],
+  "quotes": [
+    "Email is required"
+  ],
+  "evidence": [
+    "clarification-evidence/contacts-4/observation.md",
+    "clarification-evidence/contacts-4/snapshot-3.md",
+    "clarification-evidence/contacts-4/network-3.txt"
+  ],
+  "created": [],
+  "followUps": [
+    {
+      "question": "Is Email required when editing a contact?",
+      "steps": "1. Sign in. … 5. Observe whether …"
+    }
+  ]
+}
+```
+- `verdict`: `confirmed`, `unconfirmed` or `blocked`.
+- `answer` (confirmed only): `context`, `action`, `result` (product text in "double quotes", exactly as captured) and `scope`.
+- `basis` (confirmed): any of `network`, `observed`, `dom` and `documented:S<n>`.
+- `reason`, `summary` and `nextStep` (unconfirmed/blocked only):
+  - unconfirmed reasons: `needs-full-run`, `inconsistent`, `evidence-insufficient`, `steps-ambiguous`, `element-not-found`;
+  - blocked reasons: `auth`, `no-access`, `environment`, `precondition-missing`, `guard-denied`.
+- `evidence`: paths relative to the module, or `knowledge/…` relative to the product. It always includes this row's `observation.md`.
+- `created`: `[{type, ref}]`, each in the ledger (full-run only).
+- `followUps`: `[{question, steps}]` to module-explorer's standard.
+
+The script writes the Answer as `Basis: … / Context: … / Action: … / Result: … / Scope: …` lines, with `Answer status` set to `agent-proposed`. `confirmed` requires the behavior to be captured or cited, never inferred.
 
 ## 3. Test cases (`testcase-writer` → reviewers, automation)
 

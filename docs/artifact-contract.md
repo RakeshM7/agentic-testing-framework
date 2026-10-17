@@ -90,13 +90,27 @@ Each stage gets at most **two attempts** per run (`attempts` in `run.json`); a s
 | `Module` | script | module slug |
 | `Question` | module-explorer (new rows; refines unanswered rows) | |
 | `Steps to execute` | same | detailed, human-readable, followable by someone who has never seen the product |
-| `Answer` | clarification-explorer (its own row), or a human directly in the file | never overwritten once non-empty, except for a requirement change |
-| `Clarification agent notes` | clarification-explorer (its own row) | why still unconfirmed, what was tried, evidence path, and a final `Next step:` line for a human |
+| `Answer` | clarification-explorer (its own row, through `record --file`), or a human directly in the file | never overwritten once non-empty, except for a requirement change. An agent's answer is structured: `Basis:`, `Context:`, `Action:`, `Result:`, `Scope:` lines |
+| `Answer status` | script (`agent-proposed` for every agent answer), then a human (`human-approved`, or `human` after rewriting the answer) | `agent-proposed` answers are assumptions downstream until a human approves them; empty on an answered row = `human` (D-048) |
+| `Clarification agent notes` | clarification-explorer (its own row), rendered by the script | `[<run>] <verdict> (<reason>): <summary>`, the evidence path, and a final `Next step:` line for a human |
 | `Run ID` | script | the run that **created** the row; never changed |
 
-All agent writes go through `node scripts/clarifications.mjs` (`append`, `set-steps`, `record`, `list`, `status`, `summary`), which locks the file, de-duplicates new questions against existing ones, preserves human edits (Excel BOM/CRLF are fine) and reports clearly if the file is open in Excel. `summary` renders `clarifications-summary.md` from the CSV alone (totals, every row, and a `## Needs a human` list built from each unanswered row's `Next step:`), so the two never disagree. Answered rows are **trusted as is**; `record --requirement-change` is the only way to change one, and it stamps `[<run-id>] updated: incoming requirement changed this behavior` into the notes.
+Files in the older 7-column layout (no `Answer status`) are read as is and rewritten in the current layout on the next write.
 
-Stage check: with `clarifications.unresolved_policy: stop` (default) every row needs an Answer — a human fills the remaining ones and re-invokes; with `continue-flagged`, unanswered rows are allowed but must carry agent notes.
+All agent writes go through `node scripts/clarifications.mjs` (`append`, `set-steps`, `record`, `list`, `status`, `summary`), which locks the file, de-duplicates new questions against existing ones, preserves human edits (Excel BOM/CRLF are fine) and reports clearly if the file is open in Excel. `summary` renders `clarifications-summary.md` from the CSV alone (totals, every row, a `## Needs a human` list built from each unanswered row's `Next step:`, and an `## Awaiting approval` list of agent-proposed answers), so the two never disagree.
+
+The clarification-explorer records a row with `record <p> <m> <ID> --file clarification-evidence/<ID>/outcome.json` (format: `docs/agent-handoffs.md` §2). The script records nothing unless the outcome holds up against the evidence:
+- the verdict and reason fit (a reason from the verdict's list; no `needs-full-run` in a full-run);
+- every evidence file exists, including `observation.md`, whose `Verdict:` line matches;
+- each basis has its capture (`observed`: a capture of this row; `network`: `network-<n>.txt`; `dom`: a snapshot; `documented:S<n>`: a registered source);
+- every listed quote, and every "quoted" text in the Result, appears verbatim in a captured text file;
+- every created entity is in the ledger for this run.
+
+It then writes the row, appends the outcome's `followUps` as new rows (notes say they wait for the next run), and writes `clarification-evidence/<ID>/record.json`, the proof `orchestration.mjs` checks.
+
+**The clarifications domain** (`orchestration.mjs next <p> clarifications <m>`) explores only the rows open when it started, one at a time. A finished explorer without a valid `record.json` of this run is offered once more, and then the script records the row `blocked (no-valid-record)`. Answered rows are **trusted as is**; `record --requirement-change` is the only way to change one, and it stamps `[<run-id>] updated: incoming requirement changed this behavior` into the notes.
+
+Stage check: with `clarifications.unresolved_policy: stop` (default) every row needs an Answer — a human fills the remaining ones and re-invokes; with `continue-flagged`, unanswered rows are allowed but must carry agent notes. An `agent-proposed` answer counts as answered, so the run goes on; test cases that rely on it are `@assumption` until a human approves it. An unknown `Answer status` value fails the check.
 
 ## Ledger
 

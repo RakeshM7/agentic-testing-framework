@@ -1,8 +1,10 @@
 // Shared fixtures for the node:test suites: a throwaway repo root with the real config/permissions.yaml.
-import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { HEADERS } from "./lib/clarifications.mjs";
 import { paths, repoRoot } from "./lib/contract.mjs";
+import { parseCsv, serializeCsv } from "./lib/csv.mjs";
 import { addSource, knowledgePaths, mergeGlossary, render } from "./lib/knowledge.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
 import { initRun } from "./run.mjs";
@@ -67,4 +69,14 @@ export function writeModuleKnowledge(root, module, product = "acme") {
   mergeGlossary(kp, module);
   render(kp, module);
   return { kp, sourceId: s.id };
+}
+
+// A human editing clarifications.csv in Excel: set one row's Answer status (and optionally its Answer) directly.
+export function humanEdit(file, id, { status, answer }) {
+  const rows = parseCsv(readFileSync(file, "utf8"));
+  const row = rows.find((r) => r[0] === id);
+  if (!row) throw new Error(`${id}: no such row`);
+  if (answer !== undefined) row[HEADERS.indexOf("Answer")] = answer;
+  if (status !== undefined) row[HEADERS.indexOf("Answer status")] = status;
+  writeFileSync(file, serializeCsv(rows));
 }

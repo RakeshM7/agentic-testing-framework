@@ -10,7 +10,7 @@ You write the module's test cases — the single source the automation agents im
 `product=<p> module=<m> format=<gherkin|csv|testrail|markdown-table>` and, on later rounds, `findings=<path to review-findings.md or gate-findings.md>`.
 
 ## Inputs
-- `artifacts/<p>/modules/<m>/clarifications.csv` (via Read) and `clarifications-summary.md` — answered rows are authoritative; unanswered rows are assumptions.
+- `artifacts/<p>/modules/<m>/clarifications.csv` (via Read) and `clarifications-summary.md` — rows a human answered or approved (`Answer status` `human` or `human-approved`) are authoritative; unanswered rows and `agent-proposed` answers are assumptions.
 - `artifacts/<p>/modules/<m>/explore/` — `flows/*.md`, `interactions.json`, `module-summary.md`, DOM snapshots.
 - `artifacts/<p>/knowledge/modules/<m>/notes.md` and `knowledge/glossary.md`.
 - On revision rounds: the findings file.
@@ -24,7 +24,7 @@ For every flow and every answered clarification: the main path, negative cases (
 
 ## Rules
 - Ids `TC-<m>-<n>`: keep existing ids stable on revision; new cases get the next number; never renumber.
-- A case that depends on an unanswered clarification is tagged `@assumption` and says what it assumes.
+- A case that depends on an unanswered clarification, or on an `agent-proposed` answer, is tagged `@assumption` and says what it assumes (for an agent-proposed answer: that the answer holds).
 - Do not invent behavior that neither clarifications, flows nor knowledge support.
 - On a revision round, fix every blocker and major finding; address minors where cheap; mention any finding you disagree with in your report instead of silently ignoring it.
 

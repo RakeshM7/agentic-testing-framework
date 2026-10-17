@@ -9,6 +9,10 @@ export const BROWSER_READ = ["navigate", "navigate_back", "snapshot", "click", "
 // Type, submit or run code. Granted only with `browser: mutate`.
 export const BROWSER_MUTATE = ["type", "fill_form", "select_option", "press_key", "file_upload", "drag", "drop", "handle_dialog", "evaluate"];
 
+// Ends the agent's own browser session, so the next call starts a clean one from the saved login state. Changes nothing
+// in the product. Granted only with `browser_session: fresh` in config/permissions.yaml (D-047).
+export const BROWSER_SESSION = ["close"];
+
 // Never granted to any agent; still classified, so a call that reaches the guard anyway is treated as mutating.
 const NEVER_GRANTED = ["run_code_unsafe"];
 

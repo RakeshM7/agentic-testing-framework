@@ -7,7 +7,7 @@ import path from "node:path";
 import { gate } from "./gate.mjs";
 import { append, csvPath, record } from "./lib/clarifications.mjs";
 import { paths } from "./lib/contract.mjs";
-import { put, startRun } from "./test-helpers.mjs";
+import { humanEdit, put, startRun } from "./test-helpers.mjs";
 
 const rules = (root, r) => {
   const text = readFileSync(path.join(root, r.file), "utf8");
@@ -21,7 +21,9 @@ function withClarifications() {
   append(file, "contacts", "acme-run-1", [1, 2, 3].map((n) => ({ question: `Question ${n}?`, steps })));
   record(file, "contacts-1", { answer: "Yes", runId: "acme-run-1" });
   record(file, "contacts-3", { answer: "No", runId: "acme-run-1" });
-  return s; // contacts-1 and -3 answered, contacts-2 open
+  humanEdit(file, "contacts-1", { status: "human-approved" });
+  humanEdit(file, "contacts-3", { status: "human" });
+  return s; // contacts-1 and -3 answered (and approved), contacts-2 open
 }
 const feature = (...scenarios) => ["Feature: Contacts", ...scenarios.flatMap(([tags, title]) => [`  ${tags}`, `  Scenario: ${title}`, "    Given x"])].join("\n");
 const cases = (root, f, total) => {
@@ -51,6 +53,21 @@ test("test cases: ids, tags, assumptions and clarification coverage are checked 
   assert.deepEqual(gate("acme", "contacts", "testcases", { root, compile: false }), {
     verdict: "pass", file: r.file, counts: { blocker: 0, major: 0, minor: 0 },
   });
+});
+
+test("a case relying on an agent-proposed answer needs @assumption until a human approves it (D-048)", () => {
+  const { root } = withClarifications();
+  const file = csvPath(paths("acme", root).productDir, "contacts");
+  humanEdit(file, "contacts-1", { status: "agent-proposed" });
+  const f = (tags) => feature([tags, "a"], ["@TC-contacts-2 @p2 @negative @contacts-2 @assumption", "b"], ["@TC-contacts-3 @p2 @functional @contacts-3", "c"]);
+  cases(root, f("@TC-contacts-1 @p1 @functional @contacts-1"), 3);
+  const r = gate("acme", "contacts", "testcases", { root, compile: false });
+  assert.deepEqual([...rules(root, r)], ["assumption"]);
+  assert.match(readFileSync(path.join(root, r.file), "utf8"), /contacts-1, which is unanswered or awaiting human approval/);
+  cases(root, f("@TC-contacts-1 @p1 @functional @contacts-1 @assumption"), 3);
+  assert.equal(gate("acme", "contacts", "testcases", { root, compile: false }).verdict, "pass");
+  humanEdit(file, "contacts-1", { status: "Approved" });
+  assert.deepEqual([...rules(root, gate("acme", "contacts", "testcases", { root, compile: false }))], ["assumption"], "approved: @assumption is now stale");
 });
 
 test("an answered clarification listed in the summary as not testable counts as covered", () => {

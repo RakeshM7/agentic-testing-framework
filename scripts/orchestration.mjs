@@ -8,8 +8,10 @@
 //        The domain's next agent(s) to start, from the flow in scripts/lib/domain-flows.mjs and what is on disk. It
 //        runs the script steps itself (the pre-review gate, the clarification summary), skips steps whose work exists,
 //        and spends review/heal rounds; a done step with a verify rule (the API plan) fails when its output did not
-//        pass its check. Start every returned action (several only for clarification rows, up to --max), mark each
-//        with `step`, then call next again. --static skips the gate's compile commands.
+//        pass its check. Start every returned action, mark each with `step`, then call next again. --static skips the
+//        gate's compile commands. Clarifications: one row at a time from the rows open when the domain started; a
+//        finished explorer must have left a valid record.json of this run, else the row is retried once and then
+//        recorded blocked (no-valid-record); done adds `deferred` (rows added during the run) and `failedRows`.
 //   orchestration.mjs show  <product> <domain> <module>
 //   orchestration.mjs step  <product> <domain> <module> <step> start|done|fail|skip [--note TEXT]
 //   orchestration.mjs round <product> <domain> <module> review|heal
@@ -19,7 +21,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { gate } from "./gate.mjs";
-import { csvPath, isAnswered, readRows, renderSummary } from "./lib/clarifications.mjs";
+import { csvPath, isAnswered, isAuthoritative, readRecord, readRows, record, renderSummary } from "./lib/clarifications.mjs";
 import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
 import { withFileLock, writeAtomic } from "./lib/csv.mjs";
 import { FLOWS, healableRows, verdictOf } from "./lib/domain-flows.mjs";
@@ -75,6 +77,7 @@ export function round(product, domain, module, kind, { root = repoRoot } = {}) {
 }
 
 const SETTLED = ["done", "failed", "skipped"];
+const CLARIFICATION_ATTEMPTS = 2; // per row: the first try and one retry, then the script records it blocked (D-011)
 const prompt = (args) => Object.entries(args).map(([k, v]) => `${k}=${v}`).join(" ");
 
 export function next(product, domain, module, { root = repoRoot, max = 1, compile = true } = {}) {
@@ -92,15 +95,70 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
   };
   const failed = (name) => finish("failed", { failedStep: name, note: S().steps[name]?.note ?? "" });
 
-  // ---- clarifications: one explorer per open row, then the summary -------------------------------------------
+  // ---- clarifications: one explorer per open row, each checked, then the summary (D-048) -----------------------
   if (domain === "clarifications") {
     const file = csvPath(p.productDir, module);
-    const s = S();
-    const todo = readRows(file).filter((r) => !isAnswered(r)).map((r) => r.id.trim()).filter((id) => !SETTLED.includes(s.steps[`explore-${id}`]?.status));
-    if (todo.length) return { actions: todo.slice(0, max).map((id) => ({ step: `explore-${id}`, agent: "clarification-explorer", prompt: prompt({ product, module, id, mode }) })) };
+    const patch = (fn) =>
+      withFileLock(c.file, () => {
+        const s = load(c.file, c.run, domain, module);
+        fn(s);
+        writeAtomic(c.file, JSON.stringify(s, null, 2) + "\n");
+      });
+    const rowsById = () => new Map(readRows(file).map((r) => [r.id.trim(), r]));
+    // The rows open when the domain started. Rows added later (an explorer's follow-up questions) wait for the next run.
+    if (!S().rows) patch((s) => Object.assign(s, { rows: readRows(file).filter((r) => !isAnswered(r)).map((r) => r.id.trim()), attempts: {} }));
+
+    // A finished explorer must have left a valid record of this run (or someone answered the row meanwhile).
+    const postcheck = (id) => {
+      const row = rowsById().get(id);
+      if (!row || isAuthoritative(row)) return null;
+      const rec = readRecord(file, id);
+      if (!rec) return `no clarification-evidence/${id}/record.json: the outcome was never recorded with clarifications.mjs record --file`;
+      if (rec.runId !== runId) return `record.json is from run ${rec.runId}, not this run`;
+      if (rec.verdict === "confirmed" ? !isAnswered(row) : !row.notes.trim()) return `record.json says ${rec.verdict}, but the CSV row does not show it`;
+      return null;
+    };
+    for (const id of S().rows) {
+      const name = `explore-${id}`;
+      const st = S().steps[name];
+      if (!st || st.verified || !["done", "failed"].includes(st.status)) continue;
+      const problem = st.status === "failed" ? `the explorer failed: ${st.note ?? "no reason given"}` : postcheck(id);
+      if (!problem) {
+        patch((s) => (s.steps[name].verified = true));
+        continue;
+      }
+      const attempt = S().attempts[id] ?? 1;
+      if (attempt < CLARIFICATION_ATTEMPTS) {
+        patch((s) => {
+          delete s.steps[name];
+          s.attempts[id] = attempt + 1;
+          s.notes.push(`${name}: attempt ${attempt}: ${problem}; retrying`);
+        });
+        continue;
+      }
+      patch((s) => {
+        s.steps[name] = { ...s.steps[name], status: "failed", verified: true, note: problem };
+        s.notes.push(`${name}: ${problem}; no attempts left`);
+      });
+      const row = rowsById().get(id);
+      if (row && !isAnswered(row))
+        record(file, id, { notes: `[${runId}] blocked (no-valid-record): ${problem} (after ${CLARIFICATION_ATTEMPTS} attempts).\nNext step: re-run the clarifications stage, or answer it directly.`, runId });
+    }
+
+    // One row at a time, whatever --max says: each row closes the one shared browser server's session (D-047).
+    const rows = rowsById();
+    const todo = S().rows.filter((id) => rows.has(id) && !isAnswered(rows.get(id)) && !SETTLED.includes(S().steps[`explore-${id}`]?.status));
+    if (todo.length) {
+      const [id] = todo;
+      const attempt = S().attempts[id] ?? 1;
+      return { actions: [{ step: `explore-${id}`, agent: "clarification-explorer", prompt: prompt({ product, module, id, mode, ...(attempt > 1 ? { attempt } : {}) }) }] };
+    }
     const summary = renderSummary(file, module);
-    mark("summary", "done", `${summary.answered}/${summary.total} answered`);
-    return finish("complete", { summary: { ...summary, file: rel(summary.file) } });
+    mark("summary", "done", `${summary.answered}/${summary.total} answered, ${summary.proposed.length} awaiting approval`);
+    const snapshot = new Set(S().rows);
+    const deferred = [...rows.values()].filter((r) => !isAnswered(r) && !snapshot.has(r.id.trim())).map((r) => r.id.trim());
+    const failedRows = S().rows.filter((id) => S().steps[`explore-${id}`]?.status === "failed");
+    return finish("complete", { summary: { ...summary, file: rel(summary.file) }, deferred, failedRows });
   }
 
   const flow = FLOWS[domain];
