@@ -36,7 +36,7 @@ artifacts/<product>/
     clarification-evidence/<ID>/     # per-row observation notes + screenshots
     clarifications-summary.md
     testcases/                       # writer output
-    api/                             # discovered-endpoints.json, coverage.json, drift.json, registry.json, sources/ (endpoints.mjs), overlay.json (api-discoverer), api-test-plan.md, plan.json
+    api/                             # discovered-endpoints.json, coverage.json, drift.json, registry.json, sources/ (endpoints.mjs), overlay.json (api-discoverer), plan.json, plan-coverage.json, plan-registry.json, api-test-plan.md (api-plan.mjs), plan-overlay.json (api-test-planner)
     k6/                              # workload.json
   state/
     run.json                         # current run: id, mode, stage status      (replaces artifacts/<run-id>/run.json)

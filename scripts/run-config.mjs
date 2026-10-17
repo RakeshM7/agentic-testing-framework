@@ -21,7 +21,7 @@ const httpUrl = (v) => {
     return false;
   }
 };
-export const API_DEFAULTS = { specs: [], graphql: [], auth_header: null, discovery_budget: 40, probe_budget: 50, probe_delay_ms: 500 };
+export const API_DEFAULTS = { specs: [], graphql: [], auth_header: null, discovery_budget: 40, probe_budget: 50, probe_delay_ms: 500, plan_budget: 300 };
 
 export function validateRunConfig(cfg) {
   const errors = [];
@@ -45,7 +45,7 @@ export function validateRunConfig(cfg) {
     for (const k of ["specs", "graphql"]) if (api[k] !== undefined && !strList(api[k])) errors.push(`api.${k}: must be a list of paths/URLs`);
     if (api.auth_header != null && !(typeof api.auth_header.name === "string" && typeof api.auth_header.env === "string" && (api.auth_header.prefix === undefined || typeof api.auth_header.prefix === "string")))
       errors.push("api.auth_header: needs {name, env, prefix?} -- the header name and the VARIABLE NAME in credentials_file, never a value");
-    for (const k of ["discovery_budget", "probe_budget"]) if (api[k] !== undefined && !posInt(api[k])) errors.push(`api.${k}: must be a positive integer`);
+    for (const k of ["discovery_budget", "probe_budget", "plan_budget"]) if (api[k] !== undefined && !posInt(api[k])) errors.push(`api.${k}: must be a positive integer`);
     if (api.probe_delay_ms !== undefined && !(Number.isInteger(api.probe_delay_ms) && api.probe_delay_ms >= 0)) errors.push("api.probe_delay_ms: must be a non-negative integer");
     for (const k of Object.keys(api)) if (!(k in API_DEFAULTS)) errors.push(`api.${k}: unknown key`);
   }
@@ -81,6 +81,22 @@ export function validateRunConfig(cfg) {
   if (auth.authenticated_crawl !== undefined && typeof auth.authenticated_crawl !== "boolean") errors.push("authorizations.authenticated_crawl: must be true/false");
   for (const k of ["credentials_file", "session_state_file"])
     if (auth[k] != null && typeof auth[k] !== "string") errors.push(`authorizations.${k}: must be a file path string or null`);
+  // Further identities for authorization scenarios (another user, a lower role): names, roles and FILE PATHS only (D-012, D-046).
+  if (auth.identities !== undefined) {
+    if (!Array.isArray(auth.identities)) errors.push("authorizations.identities: must be a list of {name, role, credentials_file?, session_state_file?}");
+    else {
+      const names = new Set();
+      auth.identities.forEach((id, i) => {
+        if (!id || typeof id.name !== "string" || !SLUG_RE.test(id.name)) errors.push(`authorizations.identities[${i}].name: required, lowercase kebab-case`);
+        else if (names.has(id.name)) errors.push(`authorizations.identities[${i}].name: duplicate '${id.name}'`);
+        else names.add(id.name);
+        if (typeof id?.role !== "string" || !id.role) errors.push(`authorizations.identities[${i}].role: required string (e.g. 'peer' for another user with the same role, or the role name)`);
+        for (const k of ["credentials_file", "session_state_file"]) if (id?.[k] != null && typeof id[k] !== "string") errors.push(`authorizations.identities[${i}].${k}: must be a file path string`);
+        if (id && id.credentials_file == null && id.session_state_file == null) errors.push(`authorizations.identities[${i}]: needs credentials_file and/or session_state_file (paths, never values)`);
+        for (const k of Object.keys(id ?? {})) if (!["name", "role", "credentials_file", "session_state_file"].includes(k)) errors.push(`authorizations.identities[${i}].${k}: unknown key`);
+      });
+    }
+  }
   if (cfg.permissions_file !== undefined && typeof cfg.permissions_file !== "string") errors.push("permissions_file: must be a path");
   if (cfg.testcases?.output_format !== undefined && !FORMATS.includes(cfg.testcases.output_format))
     errors.push(`testcases.output_format: '${cfg.testcases.output_format}' not in [${FORMATS}]`);
@@ -98,7 +114,7 @@ export function validateRunConfig(cfg) {
       api: { ...API_DEFAULTS, ...cfg.api },
       feature: { description: "", requirement_docs: [], ...cfg.feature },
       knowledge: { references: [], ...cfg.knowledge },
-      authorizations: { authenticated_crawl: false, credentials_file: null, session_state_file: null, ...auth, mode: auth.mode ?? "readonly" },
+      authorizations: { authenticated_crawl: false, credentials_file: null, session_state_file: null, identities: [], ...auth, mode: auth.mode ?? "readonly" },
       permissions_file: cfg.permissions_file ?? "config/permissions.yaml",
       testcases: { output_format: "gherkin", ...cfg.testcases },
       clarifications: { unresolved_policy: "stop", ...cfg.clarifications },

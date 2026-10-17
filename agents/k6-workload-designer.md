@@ -14,6 +14,7 @@ You decide what load to apply and what "good enough" means, before any script ex
 
 ## Do
 Write `artifacts/<p>/modules/<m>/k6/workload.json` (format `docs/agent-handoffs.md` §5):
+- A `blocked` plan scenario, such as the deliberate rate-limit one, is never turned into load.
 - Choose the module's most-used read endpoints first:
   - prefer `safeMethod: true` endpoints with `observed.ui`;
   - a `queryLike` POST, such as search, is a read in load terms but still `mutates: true` for the guard.

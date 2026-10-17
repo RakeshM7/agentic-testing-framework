@@ -7,8 +7,9 @@
 //        -> {actions: [{step, agent, prompt}], done?: {outcome, review?, run?, summary?}}
 //        The domain's next agent(s) to start, from the flow in scripts/lib/domain-flows.mjs and what is on disk. It
 //        runs the script steps itself (the pre-review gate, the clarification summary), skips steps whose work exists,
-//        and spends review/heal rounds. Start every returned action (several only for clarification rows, up to
-//        --max), mark each with `step`, then call next again. --static skips the gate's compile commands.
+//        and spends review/heal rounds; a done step with a verify rule (the API plan) fails when its output did not
+//        pass its check. Start every returned action (several only for clarification rows, up to --max), mark each
+//        with `step`, then call next again. --static skips the gate's compile commands.
 //   orchestration.mjs show  <product> <domain> <module>
 //   orchestration.mjs step  <product> <domain> <module> <step> start|done|fail|skip [--note TEXT]
 //   orchestration.mjs round <product> <domain> <module> review|heal
@@ -106,7 +107,15 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
   // ---- build ---------------------------------------------------------------------------------------------------
   for (const [i, b] of flow.build.entries()) {
     const status = S().steps[b.step]?.status;
-    if (status === "done" || status === "skipped") continue;
+    if (status === "done") {
+      const unverified = b.verify?.(ctx);
+      if (unverified) {
+        mark(b.step, "fail", unverified);
+        return failed(b.step);
+      }
+      continue;
+    }
+    if (status === "skipped") continue;
     if (status === "failed") return failed(b.step);
     if (status !== "running") {
       const rest = b.skipRest?.(ctx);

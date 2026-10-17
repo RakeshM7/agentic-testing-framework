@@ -99,6 +99,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-043 | Three layers of 34 agents: one fixer per domain, foundations built once, the explorer records its row | Accepted | 2026-10-16 |
 | D-044 | A script gate runs before every review, and `orchestration.mjs next` drives each domain's loop | Accepted | 2026-10-16 |
 | D-045 | The endpoint catalogue is script-built: stable ids, full coverage, guarded GET probes, API hosts are the target | Accepted | 2026-10-17 |
+| D-046 | The API test plan is script-built: a rule catalogue, stable ids, sourced expectations, a coverage ledger, verified before code | Accepted | 2026-10-17 |
 
 ## Decisions
 
@@ -706,3 +707,65 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - An empty catalogue hid the difference between "no API" and "could not see the API".
 - **Affects:** `scripts/endpoints.mjs`, `scripts/lib/endpoints.mjs`, `scripts/lib/probe.mjs`, `scripts/lib/api-discovery.mjs`, `schemas/discovered-endpoints.schema.json`, `schemas/api-overlay.schema.json`, `agents/api-discoverer.md`
 - **Confirmed by the user on:** 2026-10-17. This extends D-003 (run schema), D-006 and D-013 (permissions), D-020 (guard), D-043 (hand-off formats) and D-044 (domain flow) without superseding them.
+
+### D-046 · The API test plan is script-built: a rule catalogue, stable ids, sourced expectations, a coverage ledger, verified before code
+- **Status:** Accepted · **Date:** 2026-10-17 · **Source:** conversation with the user, 2026-10-17. They reviewed `api-test-planner` and stated their expectations in an interview:
+  - technique-driven depth, meaning partitions and boundaries for every spec constraint;
+  - a script that owns enumeration, ids and the coverage proof, with an overlay for the agent's judgments;
+  - authorization (OWASP), lifecycle, HTTP-semantics and GraphQL scenarios;
+  - a status class plus a clarification question when no source gives the exact status;
+  - single-fault negatives, deduplicated by request schema, within a budget;
+  - a script check before any code is written;
+  - structured mutations in the request;
+  - optional further identities in the run-config.
+
+  They then approved the redesign that follows from them.
+- **Decision:**
+  - **The script owns the plan.** `scripts/api-plan.mjs`, with `scripts/lib/api-plan.mjs`, writes `plan.json`, `plan-coverage.json`, `plan-registry.json` and `api-test-plan.md` in `modules/<m>/api/`. They are validated by `schemas/{api-plan,api-plan-coverage,api-plan-overlay}.schema.json`. The script never sends a request to the product.
+  - **A fixed rule catalogue** enumerates the scenarios from the endpoint catalogue:
+    - a happy path per operation, which also validates the response schema and checks that `writeOnly` fields are absent;
+    - per parameter and body field, one fault each: a missing value, null, the wrong type, 2-value boundaries (min, max and their invalid neighbors, exclusive bounds respected), every enum value and one outside it, a pattern violation, an invalid format, an unknown property, duplicate items, and an unknown or wrongly typed id;
+    - authentication: no credentials on every endpoint, malformed credentials once per scheme;
+    - authorization: a `readOnly` field sent (mass assignment, OWASP API3), another identity using this user's object (BOLA, API1), and cited role refusals (BFLA, API5);
+    - CRUD flows over the catalogue's links: create→read, create→update→read, create→delete→read (use after delete), and idempotent PUT and DELETE;
+    - HTTP semantics: 405 with `Allow` once per path, and 415 once per module; 406, 409 and 412 when documented; 429 planned but `blocked`, because load stays below documented limits;
+    - pagination edges, and GraphQL-over-HTTP error checks;
+    - one contract scenario per drift finding a request can check; the other findings are reported as documentation findings.
+  - **Optimal size.**
+    - Every negative changes exactly one thing (the single fault assumption).
+    - Endpoints with the same request schema get field negatives once. The create is canonical, then a PUT, then the lowest EP id; every other endpoint gets one smoke negative.
+    - Once-per-module checks go to a readonly-runnable endpoint where one exists.
+    - `api.plan_budget` (default 300) caps the plan. The lowest-priority http, graphql and boundary scenarios go first; happy paths, linked test cases and overlay scenarios never do.
+  - **Stable ids.** A scenario's key is `<endpoint key>|<rule>|<target>`, or `overlay|<name>`. `API-<m>-<n>` is assigned once per key, in key order. Ids are never renumbered or reused, and a scenario that disappears is kept as `gone`.
+  - **Sourced expectations.**
+    - Every expectation and rule names its source: `spec`, `observed`, `rfc9110`, `graphql-over-http`, a citation (`clarification:`, `testcase:`, `knowledge:`), or `class-only`.
+    - When no source gives the exact status, the status class is asserted and never a 5xx. The module then gets one clarification question per fault class (validation, auth, forbidden, not found), appended through `scripts/lib/clarifications.mjs` (D-009).
+    - An answered question stays pending until a cited `statusRules` entry applies it.
+  - **The agent writes only its judgments.** `api-test-planner` writes `plan-overlay.json`, which is schema-validated and in which every fact is cited:
+    - `statusRules` and realistic `values`;
+    - links from test cases to scenarios;
+    - business-rule `scenarios`;
+    - inter-parameter `dependencies` (IDL);
+    - `bfla`;
+    - `priorities`, each with a reason;
+    - `exclude`, each with a reason and a detail.
+
+    It can't drop, rename or re-expect a generated scenario. It gets `shell: restricted`, limited to `node scripts/api-plan.mjs *`. It now also reads `${knowledge}`, and its writes shrink to `plan-overlay.json`.
+  - **The coverage ledger.**
+    - Every coverage item is mapped to scenario ids, excluded with a reason code, or pending. The items are operations, schemas, parameter and field constraints, documented statuses, security schemes, BOLA/BFLA, flows, HTTP checks, pagination, dependencies, drift findings, `@api` test cases, required pattern values and answered questions.
+    - `check` fails while anything is pending, and whenever the catalogue changed after the build.
+    - The ledger reports the Martin-Lopez et al. test coverage levels TCL1–TCL7.
+  - **Verified before code.** A passing `check` stamps the sha256 of the plan and the catalogue into `plan-coverage.json`. The `plan` step in `scripts/lib/domain-flows.mjs` has a `verify` rule, so `orchestration.mjs next` fails the step when the stamp is missing or stale.
+  - **Safety.**
+    - Every scenario that can change data is `mutates: true` and `requires: [full-run]`.
+    - Path ids for anything that can change data come only from a create in the same run, never from a list of existing data (D-005).
+    - A wrong method on an item path names only an id that doesn't exist, and a collection path is probed only with a missing GET.
+    - Creates name their cleanup endpoint, or are flagged `leavesData`.
+  - **Identities.** The run-config gains optional `authorizations.identities: [{name, role, credentials_file?, session_state_file?}]`, with paths only (D-012). Scenarios that need one carry `requires: [identity:<name>]`. Without any identities those scenarios are excluded as `needs_identity`. The API gate requires `@identity-<name>` in their test titles.
+  - **The catalogue** keeps each parameter's spec constraints (`params[].constraints`), so query, path and header parameters get boundaries too.
+- **Why:**
+  - The plan is bookkeeping every API and k6 agent depends on, so it must be identical on every rerun (D-002). A hand-written plan renumbered its scenario ids on rerun and left "exhaustive" unprovable. Nothing checked it before the clients and tests were written.
+  - Research on schema-driven tools (Schemathesis, Tcases, PICT, CATS, RESTler, Dredd) shows what makes plans reproducible: rule-based enumeration from the spec, one invalid value per case, and expectations only from the spec. LLM oracles without a source of authority are often wrong (LogiAgent: 66% accurate). LLMs help with realistic values, dependencies and business rules (RESTGPT, LlamaRestTest, KAT), which is the overlay's job here.
+  - A class-only assertion plus a question keeps the plan from inventing a status while still testing for server errors, and lets the next run tighten the assertion.
+- **Affects:** `scripts/api-plan.mjs`, `scripts/lib/api-plan.mjs`, `schemas/api-plan.schema.json`, `schemas/api-plan-coverage.schema.json`, `schemas/api-plan-overlay.schema.json`, `agents/api-test-planner.md`
+- **Confirmed by the user on:** 2026-10-17. This extends D-012 (identities as paths), D-013 (permissions), D-043 (hand-off formats), D-044 (the plan step's verify rule) and D-045 (parameter constraints in the catalogue; the plan files in `api/`) without superseding them.

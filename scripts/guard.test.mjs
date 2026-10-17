@@ -133,6 +133,18 @@ test("api-discoverer's shell is endpoints.mjs only; it writes only its overlay",
   assert.equal(w("artifacts/acme/modules/contacts/api/registry.json"), false);
 });
 
+test("api-test-planner's shell is api-plan.mjs only; it writes only its plan overlay (D-046)", () => {
+  const run = (cmd) => allowed(FULL.root, sh("api-test-planner", cmd));
+  assert.equal(run("node scripts/api-plan.mjs build acme contacts"), true);
+  assert.equal(run("node scripts/api-plan.mjs check acme contacts"), true);
+  assert.equal(run("node scripts/endpoints.mjs probe acme contacts"), false, "the planner never reaches the product");
+  assert.equal(run("node scripts/clarifications.mjs append acme contacts q.json"), false, "questions go through api-plan.mjs only");
+  assert.equal(run("curl -s https://app.acme.test/api/contacts"), false);
+  const w = (rel) => allowed(FULL.root, call("api-test-planner", "Write", { file_path: path.join(FULL.root, rel) }));
+  assert.equal(w("artifacts/acme/modules/contacts/api/plan-overlay.json"), true);
+  for (const f of ["plan.json", "plan-coverage.json", "plan-registry.json", "api-test-plan.md"]) assert.equal(w(`artifacts/acme/modules/contacts/api/${f}`), false, `${f} is script-only`);
+});
+
 test("unmanaged sessions get mode rules only; env can downgrade but never upgrade", () => {
   assert.equal(allowed(FULL.root, sh(undefined, "curl -X POST https://x/api")), true);
   assert.equal(allowed(FULL.root, sh(undefined, "curl -X POST https://x/api"), { AUTHORIZATIONS_MODE: "readonly" }), false);

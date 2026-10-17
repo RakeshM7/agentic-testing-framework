@@ -50,7 +50,7 @@ Screenshots, if any, sit next to it as `step-<n>.png`. `confirmed` requires the 
 
 ## 4. API discovery and plan (`api-discoverer`, `api-test-planner` → API and k6 writers)
 
-`modules/<m>/api/` is written by `node scripts/endpoints.mjs build` and nothing else, except `overlay.json` (D-045).
+The catalogue files in `modules/<m>/api/` are written by `node scripts/endpoints.mjs build` and nothing else, except `overlay.json` (D-045). The plan files are written by `node scripts/api-plan.mjs build` and nothing else, except `plan-overlay.json` (D-046).
 
 **`discovered-endpoints.json`** (schema `discovered-endpoints`). One entry per operation:
 ```
@@ -112,7 +112,52 @@ What the fields mean:
 
 `registry.json` and `sources/`, which holds fetched specs, introspection results, `index.json` and `probes.json`, are script state. Probes record status codes, content types, key names and rate-limit numbers, never values.
 
-`modules/<m>/api/plan.json` (api-test-planner): `[{id: "API-<m>-<n>", endpoint: "EP-...", type: functional|negative|boundary|auth|schema|contract, title, request, expect: {status, schema?, rules?[]}, mutates: bool, testcases: ["TC-..."], priority}]` and `api-test-plan.md` explaining coverage and gaps.
+**`plan.json`** (schema `api-plan`), built by `api-plan.mjs build` from the catalogue, `drift.json`, the test cases and `plan-overlay.json`. One entry per scenario:
+```
+{id: "API-<m>-<n>", key, endpoint: "EP-...", rule,
+ type: functional|negative|boundary|auth|authorization|lifecycle|http|graphql|contract|business, title,
+ request: {base: valid|changed|none, auth: default|none|malformed:<scheme>|identity:<name>,
+           mutation?: {in: body|query|path|header|cookie|graphql, pointer?|name?, op: remove|set|type|length|items|each|duplicate|unknown-id, value?, values?},
+           method?, target?: unknown-id, setup?: [{endpoint, pointer, param}], headers?, values?, repeat?, select?, dependency?},
+ steps?: [{endpoint, bind?: {param, from, pointer}, request?, expect}],
+ expect: {status | statusIn[] | statusClass: 2xx|4xx|non-5xx, source, schema?: response|error:<status>,
+          rules: [{assert, pointer?, name?, value?, when?, source}]},
+ mutates, requires: [full-run, identity:<name>], cleanup?: {endpoint} | null, leavesData?, documentedOnly?, blocked?,
+ testcases: ["TC-..."], priority: p1|p2|p3, priorityReason?, citations?}
+```
+
+What the fields mean:
+- **Ids.** `key` is `<endpoint key>|<rule>|<target>`, or `overlay|<name>`. `id` is assigned once per key in `plan-registry.json` and is never renumbered or reused.
+- **One fault.** A negative or boundary scenario changes the valid request in exactly one place, its `mutation`. A lifecycle scenario is its `steps`, in order.
+- **Sources.** Every `expect` and every rule names its `source`:
+  - `spec`, `observed`, `rfc9110` or `graphql-over-http`;
+  - a citation: `clarification:<id>`, `testcase:<id>` or `knowledge:<path>`;
+  - `class-only`, which means no source gives the exact status, so only the class is asserted, never a 5xx.
+- **Running.** An empty `requires` runs in readonly. A scenario with `blocked` is written as `test.fixme` with that reason.
+
+**`plan-coverage.json`** (schema `api-plan-coverage`) accounts for every coverage item. Each one is in `mapped` (scenario ids), in `excluded` (a reason, a detail and maybe a citation), or in `pending`.
+- **The items:**
+  - operations, response schemas, parameter and field constraints;
+  - documented statuses, auth schemes, BOLA/BFLA;
+  - flows, HTTP checks, pagination and dependencies;
+  - drift findings, `@api` test cases, required pattern values and answered questions.
+- **The script's exclusion reasons:**
+  - `deduped`, `budget`, `not_applicable`, `unsupported_schema`, `unreachable_status`;
+  - `needs_identity`, `auth_unknown`, `public`, `no_link`, `unsafe_probe`, `documentation_finding`.
+- **The planner's exclusion reasons:** `not_testable`, `out_of_scope`, `covered_elsewhere`, `needs_data`, `spec_wrong`, `unreachable_status`.
+- **Other fields:** `levels` gives the coverage levels TCL1–TCL7 reached, `questions` the clarification rows raised, and `verified` the stamp `check` writes.
+
+**`plan-overlay.json`** (schema `api-plan-overlay`) holds the api-test-planner's judgments, applied by `build`. Every fact in it is cited.
+- `statusRules`: exact statuses per fault class.
+- `values`: realistic valid values.
+- `testcases`: links from test cases to scenarios.
+- `scenarios`: business rules.
+- `dependencies`: inter-parameter rules.
+- `bfla`: functions a role must be refused.
+- `priorities`, each with a reason.
+- `exclude`, each with a reason and a detail.
+
+`api-test-plan.md` is rendered from these files. It sets out the scenarios, readonly versus full-run, documented-only endpoints, data left behind, blocked scenarios, class-only expectations, questions, drift and what is not covered.
 
 ## 5. Load workload (`k6-workload-designer` → k6 writers)
 

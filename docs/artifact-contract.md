@@ -17,6 +17,8 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     testcases/   api/   k6/           # domain working files
     api/                              # endpoints.mjs: discovered-endpoints.json coverage.json drift.json registry.json sources/;
                                       # overlay.json is the api-discoverer's (see below)
+                                      # api-plan.mjs: plan.json plan-coverage.json plan-registry.json api-test-plan.md;
+                                      # plan-overlay.json is the api-test-planner's
   state/
     run.json                          # the current (or last) run: id, mode, modules, stage status
     lock.json                         # present only while a run is active -- one active run per product
@@ -125,6 +127,24 @@ Agents record immediately after creating anything, run `owns` before any delete/
   - only shapes are recorded.
 - **Credentials.** The run's `session_state_file` cookies and `api.auth_header` (a variable name in `credentials_file`) are read by path. They are sent only to the product's hosts and never printed or written.
 - **An empty catalogue** says `empty` or `blocked` (with `blockedReason`), and `orchestration.mjs next` reports which.
+
+## API test plan
+
+`node scripts/api-plan.mjs build|check <product> <module>` (`scripts/lib/api-plan.mjs`) owns the plan files in `modules/<m>/api/`: `plan.json`, `plan-coverage.json`, `plan-registry.json` and `api-test-plan.md`. The only exception is `plan-overlay.json`, which belongs to the api-test-planner. The format is in [`agent-handoffs.md`](agent-handoffs.md) §4, and the design is decision D-046. The script never sends a request to the product.
+
+- **Scenarios.** A fixed rule catalogue enumerates them from the catalogue:
+  - partitions and 2-value boundaries per spec constraint, one fault per negative;
+  - authentication per security scheme;
+  - object-, property- and function-level authorization;
+  - CRUD flows over the links;
+  - HTTP semantics, GraphQL-over-HTTP, and drift contracts.
+
+  Endpoints that share a request schema get field negatives once. `api.plan_budget` caps the plan, and the lowest-priority boundary and HTTP scenarios go first.
+- **Stable ids.** `plan-registry.json` holds one `API-<m>-<n>` per scenario key (`<endpoint key>|<rule>|<target>`), never renumbered or reused.
+- **Expectations** each name a source: `spec`, `observed`, `rfc9110`, `graphql-over-http`, a citation (`clarification:`, `testcase:`, `knowledge:`), or `class-only`. A class-only status raises one clarification question per fault class, through `clarifications.mjs`'s library.
+- **Coverage.** Every coverage item ends up mapped to scenario ids, excluded with a reason code, or pending. The items are operations, parameter and field constraints, documented statuses, security schemes, flows, drift findings, `@api` test cases and answered questions. `check` fails while anything is pending.
+- **Verified.** When `check` passes, it stamps `verified` (the sha256 of the plan and the catalogue) into `plan-coverage.json`. `orchestration.mjs next` fails the plan step when that stamp is missing or stale.
+- **Safety.** Anything that can change data is `mutates: true` and `requires: [full-run]`. Its path ids come only from a create in the same run (D-005). It names its cleanup endpoint, or is flagged `leavesData`. Scenarios that need another user get `requires: [identity:<name>]` from `authorizations.identities`, which holds paths only (D-012).
 
 ## Safety: mode × permissions, enforced in code
 
