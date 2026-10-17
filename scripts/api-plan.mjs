@@ -8,7 +8,8 @@
 //                                           clarification question per fault class asserted as a status class only
 //                                           (exit 1 on overlay problems)
 //   api-plan.mjs check <product> <module>   schemas, ids vs registry, nothing pending, catalogue unchanged; stamps
-//                                           plan-coverage.json `verified` (exit 1 on problems)
+//                                           plan-coverage.json `verified` (exit 1 on problems); reports how many
+//                                           items are deferred over api.plan_budget (resolved, not pending; D-050)
 //   api-plan.mjs paths <product> <module>   the plan's file paths
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -49,7 +50,8 @@ export async function main(argv, { root = repoRoot } = {}) {
   }
   if (cmd === "check") {
     const problems = await check(pp, validateData, { cases });
-    return { code: problems.length ? 1 : 0, out: { valid: !problems.length, problems } };
+    const deferred = existsSync(pp.coverage) ? (loadJson(pp.coverage).deferred ?? []).length : 0;
+    return { code: problems.length ? 1 : 0, out: { valid: !problems.length, deferred, problems } };
   }
   return { code: 2, out: { errors: [`unknown command ${cmd}`] } };
 }

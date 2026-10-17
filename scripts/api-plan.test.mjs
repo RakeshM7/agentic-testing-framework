@@ -215,7 +215,7 @@ test("coverage and check: an @api test case is pending until linked; check stamp
   s.overlay(LINK_TC(s));
   await s.run("build");
   const ok = await s.run("check");
-  assert.deepEqual(ok.out, { valid: true, problems: [] });
+  assert.deepEqual(ok.out, { valid: true, deferred: 0, problems: [] });
   assert.equal(planUnverified(s.pp), null);
   assert.deepEqual(s.plan().find((x) => x.testcases.includes("TC-contacts-1")).priority, "p1", "a linked test case raises the priority");
   assert.ok(s.cov().excluded.some((x) => x.item.endsWith(":402") && x.reason === "not_testable"));
@@ -283,13 +283,31 @@ test("GraphQL: errors are asserted with the status GraphQL-over-HTTP allows; a m
   assert.equal(g.filter((x) => x.key.endsWith("|gql|mutation-over-get")).length, 1);
 });
 
-test("budget: the lowest-priority scenarios are dropped first and their items say so; happy paths and linked cases stay", async () => {
+test("budget: the lowest-priority scenarios are not planned and their items are deferred, not excluded; check passes and reports them (D-050)", async () => {
   const s = setup({ budget: 20 });
   await s.run("build");
+  s.overlay(LINK_TC(s));
+  const built = await s.run("build");
+  assert.deepEqual(built.out.problems, []);
   assert.ok(s.plan().length <= 20);
-  assert.ok(s.cov().excluded.some((x) => x.reason === "budget"));
   assert.ok(s.plan().filter((x) => x.rule === "happy-path").length >= 6, "every operation keeps its happy path");
+  assert.ok(s.plan().some((x) => x.testcases.includes("TC-contacts-1")), "a linked test case stays");
   assert.ok(!s.plan().some((x) => x.type === "http"), "p3 http scenarios go first");
+  const cov = s.cov();
+  assert.ok(cov.deferred.length > 0);
+  assert.equal(built.out.deferred, cov.deferred.length);
+  assert.ok(cov.deferred.every((d) => d.reason === "budget" && d.detail === "over api.plan_budget (20)"));
+  assert.ok(cov.deferred.some((d) => d.item.startsWith("http:")));
+  assert.ok(!cov.excluded.some((x) => x.reason === "budget"), "budget is no longer an exclusion reason");
+  const listed = [...cov.mapped, ...cov.excluded, ...cov.pending].map((x) => x.item);
+  assert.ok(cov.deferred.every((d) => !listed.includes(d.item)), "a deferred item is in no other list");
+  assert.deepEqual(cov.pending, []);
+  const ok = await s.run("check");
+  assert.deepEqual(ok.out, { valid: true, deferred: cov.deferred.length, problems: [] }, "deferred counts as resolved, and check reports how many");
+  assert.equal(planUnverified(s.pp), null);
+  const md = readFileSync(s.pp.md, "utf8");
+  assert.ok(md.includes("## Deferred (over the budget)"));
+  assert.ok(cov.deferred.every((d) => md.includes(`- ${d.item}: over api.plan_budget (20)`)));
 });
 
 test("orchestration: the plan step counts as done only after api-plan.mjs check passed on what is on disk", async () => {

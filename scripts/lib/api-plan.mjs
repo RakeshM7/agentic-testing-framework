@@ -1,8 +1,9 @@
 // A module's API test plan: artifacts/<product>/modules/<m>/api/ (docs/agent-handoffs.md §4, decision D-046).
 //
 //   plan.json            the scenarios (schema api-plan) -- written only by build()
-//   plan-coverage.json   every coverage item of the catalogue mapped to scenario ids, excluded with a reason, or
-//                        still pending (schema api-plan-coverage); `verified` is stamped by check()
+//   plan-coverage.json   every coverage item of the catalogue mapped to scenario ids, excluded with a reason,
+//                        deferred over api.plan_budget (D-050), or still pending (schema api-plan-coverage); `verified`
+//                        is stamped by check()
 //   plan-registry.json   scenario key -> API id, assigned once and never reused (stable across runs)
 //   plan-overlay.json    the api-test-planner's judgments (schema api-plan-overlay) -- the only file the agent writes
 //   api-test-plan.md     rendered from the above
@@ -32,7 +33,7 @@ export const TYPES = ["functional", "negative", "boundary", "auth", "authorizati
 export const SOURCES = ["spec", "observed", "rfc9110", "graphql-over-http", "class-only"]; // plus clarification:/testcase:/knowledge:
 export const EXCLUSION_REASONS = [
   // set by build()
-  "deduped", "budget", "not_applicable", "unsupported_schema", "unreachable_status", "needs_identity", "auth_unknown", "public", "no_link", "unsafe_probe", "documentation_finding",
+  "deduped", "not_applicable", "unsupported_schema", "unreachable_status", "needs_identity", "auth_unknown", "public", "no_link", "unsafe_probe", "documentation_finding",
   // set by the overlay (each with a detail, most with a citation)
   "not_testable", "out_of_scope", "covered_elsewhere", "needs_data", "spec_wrong",
 ];
@@ -713,7 +714,7 @@ export function build(pp, { module, cfg, runId, cases }) {
     s.priority = `p${p}`;
   }
 
-  // budget: drop the lowest priority, least specific scenarios first; their items become `budget` exclusions
+  // budget: drop the lowest priority, least specific scenarios first; their items are `deferred: budget` (D-050)
   const budget = cfg.api?.plan_budget ?? DEFAULT_BUDGET;
   const order = ["http", "graphql", "boundary", "negative", "contract", "lifecycle", "business", "authorization", "auth", "functional"];
   const ranked = [...scenarios.values()].sort((a, b) => P(b.priority) - P(a.priority) || order.indexOf(a.type) - order.indexOf(b.type) || b.key.localeCompare(a.key));
@@ -766,6 +767,7 @@ export function build(pp, { module, cfg, runId, cases }) {
   // coverage
   const mapped = [];
   const excluded = [];
+  const deferred = [];
   const pending = [];
   for (const [it, x] of [...items.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     if (x.pending) pending.push({ item: it, why: x.pending });
@@ -773,7 +775,7 @@ export function build(pp, { module, cfg, runId, cases }) {
     else {
       const kept = [...x.keys].filter((k) => scenarios.has(k));
       if (kept.length || it.startsWith("question:")) mapped.push({ item: it, scenarios: kept.map(idOf).sort(byId) });
-      else if ([...x.keys].some((k) => overBudget.has(k))) excluded.push({ item: it, reason: "budget", detail: `over api.plan_budget (${budget})` });
+      else if ([...x.keys].some((k) => overBudget.has(k))) deferred.push({ item: it, reason: "budget", detail: `over api.plan_budget (${budget})` });
       else pending.push({ item: it, why: "every scenario covering it was excluded by plan-overlay.json: exclude this item too, or keep a scenario" });
     }
   }
@@ -786,6 +788,7 @@ export function build(pp, { module, cfg, runId, cases }) {
     counts: counts(plan),
     mapped,
     excluded,
+    deferred,
     pending,
     questions,
     retired: Object.values(reg.scenarios).filter((e) => e.status === "gone").map((e) => e.id).sort(byId),
@@ -793,7 +796,7 @@ export function build(pp, { module, cfg, runId, cases }) {
   writeJson(pp.plan, plan);
   writeJson(pp.coverage, coverage);
   writeAtomic(pp.md, render(module, catalogue, plan, coverage, drift));
-  return { problems, summary: { scenarios: plan.length, ...coverage.counts, levels: coverage.levels, excluded: excluded.length, pending: pending.length, questions: questions.map((q) => `${q.id} (${q.fault}${q.answered ? ", answered" : ""})`), retired: coverage.retired.length } };
+  return { problems, summary: { scenarios: plan.length, ...coverage.counts, levels: coverage.levels, excluded: excluded.length, deferred: deferred.length, pending: pending.length, questions: questions.map((q) => `${q.id} (${q.fault}${q.answered ? ", answered" : ""})`), retired: coverage.retired.length } };
 }
 
 
@@ -863,6 +866,7 @@ export async function check(pp, validateData, { cases = new Map() } = {}) {
   }
   for (const m of cov.mapped) for (const id of m.scenarios) if (!ids.has(id)) problems.push(`plan-coverage.json: '${m.item}' maps to unknown ${id}`);
   for (const p of cov.pending) problems.push(`pending ${p.item}: ${p.why}`);
+  for (const d of cov.deferred) if (cov.mapped.some((m) => m.item === d.item) || cov.excluded.some((x) => x.item === d.item)) problems.push(`plan-coverage.json: '${d.item}' is deferred and also mapped or excluded`);
   if (cov.catalogue !== sha256(pp.catalogue)) problems.push("plan-coverage.json: the catalogue changed since the plan was built (run api-plan.mjs build again)");
   const { verified, ...rest } = cov;
   writeJson(pp.coverage, problems.length ? rest : { ...rest, verified: stampVerified(verifiedInputs(pp)) });
@@ -941,6 +945,10 @@ function render(module, catalogue, plan, cov, drift) {
     ...(cov.discovery.status === "partial" || cov.discovery.status === "blocked" ? [`- Discovery is ${cov.discovery.status}: ${cov.discovery.blockedReason ?? "see coverage.json"}. What discovery could not see is not planned.`] : []),
     ...Object.entries(cov.excluded.reduce((m, x) => ({ ...m, [x.reason]: [...(m[x.reason] ?? []), x] }), {})).sort().flatMap(([reason, xs]) => [`- **${reason}** (${xs.length}):`, ...xs.map((x) => `  - ${x.item}${x.detail ? `: ${x.detail}` : ""}${x.citation ? ` [${x.citation}]` : ""}`)]),
     ...(cov.excluded.length || cov.discovery.status === "partial" || cov.discovery.status === "blocked" ? [] : ["- nothing"]),
+    "",
+    "## Deferred (over the budget)",
+    "",
+    ...(cov.deferred.length ? [`Not planned this run because the plan reached api.plan_budget (${cov.budget}). They stay in the ledger; raise the budget to plan them.`, "", ...cov.deferred.map((d) => `- ${d.item}: ${d.detail}`)] : ["- none"]),
     "",
     ...(cov.pending.length ? ["## Pending (check fails until resolved)", "", ...cov.pending.map((p) => `- ${p.item}: ${p.why}`), ""] : []),
   ];

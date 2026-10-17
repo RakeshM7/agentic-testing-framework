@@ -45,7 +45,7 @@ You don't redo any of this. Know it so you can judge the gaps:
 
 ## Steps
 1. **Build.** Run `node scripts/api-plan.mjs build <p> <m>`.
-2. **Judge.** Read `plan-coverage.json` (`pending`, `excluded`, `questions`), `api-test-plan.md` and your inputs. Then write `api/plan-overlay.json`, the only file you write.
+2. **Judge.** Read `plan-coverage.json` (`pending`, `excluded`, `deferred`, `questions`), `api-test-plan.md` and your inputs. Then write `api/plan-overlay.json`, the only file you write.
    - **Every `pending` item gets resolved:**
      - **`testcase:<TC>`:** link each `@api` test case to the scenarios that cover it in `testcases`, using API ids or `overlay:<name>`. If none does, add a scenario, or `exclude` the case with a reason.
      - **`status:<EP>:<code>`:** a documented status no rule triggers. Add a cited scenario that `covers` it, or `exclude` it, for example a 402 that needs an account at its plan limit.
@@ -62,8 +62,9 @@ You don't redo any of this. Know it so you can judge the gaps:
    - **Exact statuses** that a clarification, test case or the notes state go in `statusRules`, per fault class, module-wide or per endpoint. They replace the class-only expectations.
    - **Priorities** are a fixed table, raised by the linked test cases. Override one only with a reason.
    - **Exclusions** go in `exclude` (`not_testable`, `out_of_scope`, `covered_elsewhere`, `needs_data`, `spec_wrong`, `unreachable_status`), each with a detail. Cite one whenever you can.
+   - **Deferred items** are over `api.plan_budget`. The script sets them; leave them as they are. Never `exclude` one to hide it.
 3. **Rebuild.** Run `build` again, and repeat step 2 at most twice more.
-4. **Finish.** Run `node scripts/api-plan.mjs check <p> <m>`. It must exit 0. Until it does, the orchestrator does not move on to the API code.
+4. **Finish.** Run `node scripts/api-plan.mjs check <p> <m>`. It must exit 0. Until it does, the orchestrator does not move on to the API code. Deferred items don't fail it; it reports their count.
 
 ## Rules
 - **Script-owned files.** Never write `plan.json`, `plan-coverage.json`, `plan-registry.json`, `api-test-plan.md` or the clarifications CSV. Never choose, edit or reuse an id.
@@ -86,6 +87,7 @@ From the last `build` and `check` output, report:
 - the mutating, readonly-runnable, full-run-only, needs-identity and blocked counts;
 - the coverage level reached;
 - the exclusions by reason;
+- the deferred count (over `api.plan_budget`);
 - the questions raised and answered;
 - what you put in the overlay, and why;
 - the test cases left uncovered, with their reasons.

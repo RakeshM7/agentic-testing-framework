@@ -153,10 +153,10 @@ Agents record immediately after creating anything, run `owns` before any delete/
   - CRUD flows over the links;
   - HTTP semantics, GraphQL-over-HTTP, and drift contracts.
 
-  Endpoints that share a request schema get field negatives once. `api.plan_budget` caps the plan, and the lowest-priority boundary and HTTP scenarios go first.
+  Endpoints that share a request schema get field negatives once. `api.plan_budget` caps the plan, and the lowest-priority boundary and HTTP scenarios go first. Their coverage items are `deferred` (reason `budget`), never dropped (D-050).
 - **Stable ids.** `plan-registry.json` holds one `API-<m>-<n>` per scenario key (`<endpoint key>|<rule>|<target>`), never renumbered or reused.
 - **Expectations** each name a source: `spec`, `observed`, `rfc9110`, `graphql-over-http`, a citation (`clarification:`, `testcase:`, `knowledge:`), or `class-only`. A class-only status raises one clarification question per fault class, through `clarifications.mjs`'s library.
-- **Coverage.** Every coverage item ends up mapped to scenario ids, excluded with a reason code, or pending. The items are operations, parameter and field constraints, documented statuses, security schemes, flows, drift findings, `@api` test cases and answered questions. `check` fails while anything is pending.
+- **Coverage.** Every coverage item ends up mapped to scenario ids, excluded with a reason code, deferred over the budget, or pending. The items are operations, parameter and field constraints, documented statuses, security schemes, flows, drift findings, `@api` test cases and answered questions. `check` fails while anything is pending; deferred items count as resolved, and `check` reports how many there are.
 - **Verified.** When `check` passes, it stamps `verified` (the sha256 of the plan and the catalogue) into `plan-coverage.json`. `orchestration.mjs next` fails the plan step when that stamp is missing or stale.
 - **Safety.** Anything that can change data is `mutates: true` and `requires: [full-run]`. Its path ids come only from a create in the same run (D-005). It names its cleanup endpoint, or is flagged `leavesData`. Scenarios that need another user get `requires: [identity:<name>]` from `authorizations.identities`, which holds paths only (D-012).
 

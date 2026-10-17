@@ -184,16 +184,17 @@ What the fields mean:
   - `class-only`, which means no source gives the exact status, so only the class is asserted, never a 5xx.
 - **Running.** An empty `requires` runs in readonly. A scenario with `blocked` is written as `test.fixme` with that reason.
 
-**`plan-coverage.json`** (schema `api-plan-coverage`) accounts for every coverage item. Each one is in `mapped` (scenario ids), in `excluded` (a reason, a detail and maybe a citation), or in `pending`.
+**`plan-coverage.json`** (schema `api-plan-coverage`) accounts for every coverage item. Each one is in `mapped` (scenario ids), in `excluded` (a reason, a detail and maybe a citation), in `deferred`, or in `pending`.
 - **The items:**
   - operations, response schemas, parameter and field constraints;
   - documented statuses, auth schemes, BOLA/BFLA;
   - flows, HTTP checks, pagination and dependencies;
   - drift findings, `@api` test cases, required pattern values and answered questions.
 - **The script's exclusion reasons:**
-  - `deduped`, `budget`, `not_applicable`, `unsupported_schema`, `unreachable_status`;
+  - `deduped`, `not_applicable`, `unsupported_schema`, `unreachable_status`;
   - `needs_identity`, `auth_unknown`, `public`, `no_link`, `unsafe_probe`, `documentation_finding`.
 - **The planner's exclusion reasons:** `not_testable`, `out_of_scope`, `covered_elsewhere`, `needs_data`, `spec_wrong`, `unreachable_status`.
+- **Deferred items** (D-050): items whose scenarios were over `api.plan_budget`. They are not planned this run, carry reason `budget` and the detail `over api.plan_budget (N)`, and stay in the ledger. `check` treats them as resolved, not pending, and reports how many there are.
 - **Other fields:** `levels` gives the coverage levels TCL1–TCL7 reached, `questions` the clarification rows raised, and `verified` the stamp `check` writes.
 
 **`plan-overlay.json`** (schema `api-plan-overlay`) holds the api-test-planner's judgments, applied by `build`. Every fact in it is cited.

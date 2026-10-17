@@ -99,10 +99,11 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-043 | Three layers of 34 agents: one fixer per domain, foundations built once, the explorer records its row | Accepted | 2026-10-16 |
 | D-044 | A script gate runs before every review, and `orchestration.mjs next` drives each domain's loop | Accepted | 2026-10-16 |
 | D-045 | The endpoint catalogue is script-built: stable ids, full coverage, guarded GET probes, API hosts are the target | Accepted | 2026-10-17 |
-| D-046 | The API test plan is script-built: a rule catalogue, stable ids, sourced expectations, a coverage ledger, verified before code | Accepted | 2026-10-17 |
+| D-046 | The API test plan is script-built: a rule catalogue, stable ids, sourced expectations, a coverage ledger, verified before code | Superseded by D-050 | 2026-10-17 |
 | D-047 | Sequential by default; every clarification row starts in a fresh browser session | Accepted | 2026-10-17 |
 | D-048 | Clarification outcomes are checked by script against their evidence; agent answers are proposals until a human approves them | Accepted | 2026-10-17 |
 | D-049 | Script-built agents share registry, citation, coverage and verified helpers; exhaustive ledger, budgeted work | Accepted | 2026-10-17 |
+| D-050 | API plan budget overflow is deferred, not excluded | Accepted | 2026-10-17 |
 
 ## Decisions
 
@@ -712,7 +713,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Confirmed by the user on:** 2026-10-17. This extends D-003 (run schema), D-006 and D-013 (permissions), D-020 (guard), D-043 (hand-off formats) and D-044 (domain flow) without superseding them.
 
 ### D-046 · The API test plan is script-built: a rule catalogue, stable ids, sourced expectations, a coverage ledger, verified before code
-- **Status:** Accepted · **Date:** 2026-10-17 · **Source:** conversation with the user, 2026-10-17. They reviewed `api-test-planner` and stated their expectations in an interview:
+- **Status:** Superseded by D-050 (2026-10-17) · **Date:** 2026-10-17 · **Source:** conversation with the user, 2026-10-17. They reviewed `api-test-planner` and stated their expectations in an interview:
   - technique-driven depth, meaning partitions and boundaries for every spec constraint;
   - a script that owns enumeration, ids and the coverage proof, with an overlay for the agent's judgments;
   - authorization (OWASP), lifecycle, HTTP-semantics and GraphQL scenarios;
@@ -848,3 +849,14 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - A budget that silently drops work hides what was never tested; a deferred item stays visible to the next run and the report.
 - **Affects:** `scripts/lib/registry.mjs`, `scripts/lib/citations.mjs`, `scripts/lib/verified.mjs`, `scripts/lib/coverage.mjs`, `docs/conventions.md`
 - **Confirmed by the user on:** 2026-10-17. This extends D-002, D-045, D-046 and D-048 without superseding them.
+
+### D-050 · API plan budget overflow is deferred, not excluded
+- **Status:** Accepted · **Date:** 2026-10-17 · **Source:** conversation with the user, 2026-10-17, while aligning the script-built agents with D-049's "exhaustive ledger, budgeted work".
+- **Decision:**
+  - Scenarios over `api.plan_budget` are still not generated, and the ranking that picks them is unchanged.
+  - Their coverage items go in a new `deferred` list of `plan-coverage.json`, with reason `budget` and the detail `over api.plan_budget (N)`. They are no longer `budget` exclusions, and `budget` is removed from the exclusion reasons in `scripts/lib/api-plan.mjs` and `schemas/api-plan-coverage.schema.json`.
+  - `check` treats a deferred item as resolved, not pending, and reports the deferred count. `api-test-plan.md` lists them under `## Deferred (over the budget)`.
+  - **The rest of D-046 still stands.** This supersedes only its budget rule ("their items become `budget` exclusions"). The rule catalogue, stable ids, sourced expectations, the coverage ledger, the overlay, the verified stamp, safety and identities are unchanged, and this entry's Affects carries D-046's paths so they stay governed.
+- **Why:** an exclusion means "left out on purpose". A budget overflow is work not done yet, so it must stay visible to the next run and the report as deferred, the same as every other ledger built on `scripts/lib/coverage.mjs` (D-049).
+- **Affects:** `scripts/api-plan.mjs`, `scripts/lib/api-plan.mjs`, `schemas/api-plan.schema.json`, `schemas/api-plan-coverage.schema.json`, `schemas/api-plan-overlay.schema.json`, `agents/api-test-planner.md`
+- **Supersedes:** D-046 (the budget rule only) · **Confirmed by the user on:** 2026-10-17
