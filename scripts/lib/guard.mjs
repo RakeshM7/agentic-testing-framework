@@ -8,6 +8,7 @@
 //   - ownership:    that run's state/ledger.jsonl, entries of the CURRENT run only
 //   - caller:       the call's `agent` (set by the adapter only from a trusted source) and `host`
 // The env var AUTHORIZATIONS_MODE=readonly can only downgrade. No active run => readonly, no per-agent rules.
+// One rule holds for every call, in or out of a run, whoever calls: test case approval is human-only (humanOnly()).
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
 // On a host that cannot name the calling agent (scripts/lib/hosts.mjs), a full-run call gets what at least one of the
 // run's agents may do (runCeiling, D-035): every call there comes from one of the run's agents.
@@ -74,6 +75,28 @@ const DELETE_RE = /(-X|--request)[\s=]*['"]?DELETE\b|--method[\s=]*['"]?DELETE\b
 // Matched as any command of a compound line and by any path to run.mjs: agents often write `cd <repo> && node …`.
 const CANARY = /(?:^\s*|[;&|(]\s*)node\s+(?:\S*\/)?scripts\/run\.mjs\s+guard-check\s+([a-z0-9]+(?:-[a-z0-9]+)*)(?![\w-])/;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Human-only (the user's decision, 2026-10-17): a test case is automated only once a human approves it. Every tool call
+// the hook sees -- any host and mode, identified caller or not, inside or outside a run -- is denied when it runs
+// `testcases.mjs approve` (also chained, through the lib, or with the names split by string concatenation) or touches
+// the approval sheet and its record (approval.csv, approvals.json, their 8.3 short names, anything named approv* in a
+// testcases folder). A human edits the sheet and runs the command in their own terminal. Matching code text can't be
+// complete (an in-process import can hide any name), so this is defence in depth: `approve` itself also insists on an
+// interactive terminal and a typed confirmation (scripts/lib/testcases.mjs).
+// Known limit (accepted, recorded in G3's decision): an agent with `shell: project` can still write approvals.json
+// through code this match can't read -- `node -e` with String.fromCharCode, template literals, base64 or eval, or a
+// shell glob such as appro?als.json. Restricted agents can't: their allow-list never vouches for such a line.
+const JOIN_CONCAT = /(['"`])\s*\+\s*(['"`])/g;
+const HUMAN_ONLY_CMD = /testcases[\s\S]*\bapprove\b|\bapprove\b[\s\S]*testcases/i;
+const HUMAN_ONLY_FILES = /approvals?\.(csv|json)|approv~\d|testcases[\\/]+approv/i;
+const HUMAN_ONLY_PATH = /(^|[\\/])(testcases[\\/]+approv[^\\/]*|approvals?\.(csv|json)|approv~\d[^\\/]*)$/i;
+const HUMAN_ONLY_REASON = "test case approval is human-only: a human edits testcases/approval.csv and runs `node scripts/testcases.mjs approve` in their own terminal";
+function humanOnly(call) {
+  if (call.kind === "shell") {
+    const cmd = String(call.command ?? "").replace(JOIN_CONCAT, "");
+    return HUMAN_ONLY_CMD.test(cmd) || HUMAN_ONLY_FILES.test(cmd);
+  }
+  return call.kind === "write" && call.paths.some((p) => HUMAN_ONLY_PATH.test(String(p)));
+}
 
 const deny = (rule, reason) => ({ allowed: false, rule, reason });
 const ALLOW = { allowed: true };
@@ -175,6 +198,7 @@ export function checkTool(call, root, env = process.env) {
   const canary = call.kind === "shell" ? CANARY.exec(call.command ?? "") : null;
   if (canary)
     return { allowed: false, rule: "canary", reason: `guard is active on ${labelOf(call.host)} (caller: ${call.agent ?? "unidentified"}); this block is expected`, canary: { product: canary[1] } };
+  if (humanOnly(call)) return deny("human-only", HUMAN_ONLY_REASON);
   const runs = findActiveRuns(root, env);
   if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHosts: [] }, null) : ALLOW;
   const verdicts = runs.map((r) => evaluate(call, r));

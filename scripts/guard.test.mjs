@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
+import { toolCall } from "./lib/tool-call.mjs";
+import { shellAllowed } from "./lib/permissions.mjs";
 import { normalize } from "./hooks/hosts/claude.mjs";
 import { append } from "./lib/ledger.mjs";
 import { paths } from "./lib/contract.mjs";
@@ -189,4 +192,150 @@ test("command detection covers curl, wget, PowerShell and inline scripts", () =>
   ])
     assert.equal(allowed(RO.root, sh(undefined, cmd)), false, cmd);
   assert.equal(allowed(RO.root, sh(undefined, "curl -X GET https://x")), true);
+});
+
+test("testcase-writer runs testcases.mjs build/check/paths only and writes only its cases overlay", () => {
+  const run = (cmd) => allowed(FULL.root, sh("testcase-writer", cmd));
+  for (const cmd of ["build acme contacts", "check acme contacts", "paths acme contacts"]) assert.equal(run(`node scripts/testcases.mjs ${cmd}`), true, cmd);
+  assert.equal(run("node scripts/testcases.mjs items acme contacts"), false);
+  assert.equal(run("node scripts/clarifications.mjs list acme contacts"), false);
+  const w = (rel) => allowed(FULL.root, call("testcase-writer", "Write", { file_path: path.join(FULL.root, "artifacts/acme/modules/contacts/testcases", rel) }));
+  assert.equal(w("cases.json"), true);
+  for (const f of ["contacts-testcases.feature", "testcases-summary.md", "coverage.json", "registry/cases.json", "registry/items.json", "approval-findings.md", "approval.csv", "approvals.json"])
+    assert.equal(w(f), false, `${f} is not the writer's`);
+});
+
+test("restricted shell: a `*` never spans an operator, a redirect, a substitution or a line break; every command of a line must be allowed", () => {
+  const run = (cmd, agent = "testcase-writer") => allowed(FULL.root, sh(agent, cmd));
+  const build = "node scripts/testcases.mjs build acme contacts";
+  assert.equal(run(build), true);
+  assert.equal(run(`${build} && node scripts/testcases.mjs check acme contacts`), true, "two allowed commands");
+  assert.equal(run(`cd "${FULL.root}" && ${build}`), true, "D-041: a leading cd into the repo root");
+  for (const cmd of [
+    `${build} && node -e "require('fs').writeFileSync('artifacts/acme/modules/contacts/testcases/registry/cases.json','{}')"`,
+    `${build}; cp x artifacts/acme/modules/contacts/testcases/coverage.json`,
+    `${build} || rm artifacts/acme/modules/contacts/testcases/coverage.json`,
+    `${build} | tee artifacts/acme/modules/contacts/testcases/coverage.json`,
+    `${build} & node -e "1"`,
+    `${build} > artifacts/acme/modules/contacts/testcases/approval-findings.md`,
+    `${build} 2> artifacts/acme/modules/contacts/testcases/coverage.json`,
+    `${build} < /etc/passwd`,
+    `node scripts/testcases.mjs build $(node -e "require('fs').rmSync('x')") contacts`,
+    "node scripts/testcases.mjs build `rm -rf artifacts` contacts",
+    `node scripts/testcases.mjs build "$(rm -rf artifacts)" contacts`,
+    `node scripts/testcases.mjs build acme $HOME`,
+    `${build}\nnode -e "require('fs').rmSync('artifacts', { recursive: true })"`,
+    `${build}\r\nrm -rf artifacts`,
+    `node scripts/testcases.mjs build acme (contacts)`,
+    `node scripts/testcases.mjs build acme "contacts`,
+  ])
+    assert.equal(run(cmd), false, cmd);
+  // quoted text is an argument, never an operator
+  assert.equal(run(`node scripts/knowledge.mjs input acme --module contacts --location docs/prd.md --status failed --reason "404 (gone); retry later | maybe"`, "knowledge-generator"), true);
+  assert.equal(run(`node scripts/explore.mjs state acme contacts --snapshot captures/1.md --via ST-contacts-1 --action 'button "New contact"'`, "module-explorer"), true);
+  assert.equal(run(`node scripts/knowledge.mjs input acme --reason 'it costs $5'`, "knowledge-generator"), true, "single quotes are literal");
+  assert.equal(run(`node scripts/knowledge.mjs input acme --reason "it costs $5"`, "knowledge-generator"), false, "a $ in double quotes expands");
+  // escaped quotes outside quotes would hide where a quote starts: any backslash outside quotes is unvouchable
+  assert.equal(run(`${build} \\"; node -e 'require(1)'; echo \\"`), false);
+  assert.equal(run(`${build} \\'; cp x artifacts/acme/modules/contacts/testcases/registry/cases.json; echo \\'`), false);
+  assert.equal(run(`node scripts/explore.mjs ingest-network acme contacts --file captures\\net.json`, "module-explorer"), false, "unquoted Windows paths too");
+  assert.equal(run(`node scripts/explore.mjs ingest-network acme contacts --file 'captures\\net.json'`, "module-explorer"), true);
+  assert.equal(run(`node scripts/explore.mjs state acme contacts --snapshot captures/1.md --action "button \\"Save\\""`, "module-explorer"), false, "bash reads \\\" as an escape, PowerShell as the closing quote");
+});
+
+// Reference readers: does bash, or PowerShell, see a second command, a redirect or an expansion in this line?
+function bashSeesMore(line) {
+  let q = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q === "'") {
+      if (c === "'") q = null;
+    } else if (q === '"') {
+      if (c === "\\") i++;
+      else if (c === '"') q = null;
+      else if (c === "$" || c === "`") return true;
+    } else if (c === "\\") i++;
+    else if (c === "'" || c === '"') q = c;
+    else if (";&|\n\r<>()$`".includes(c)) return true;
+  }
+  return q !== null;
+}
+function powershellSeesMore(line) {
+  let q = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q === "'") {
+      if (c === "'" && line[i + 1] === "'") i++;
+      else if (c === "'") q = null;
+    } else if (q === '"') {
+      if (c === "`") i++;
+      else if (c === '"' && line[i + 1] === '"') i++;
+      else if (c === '"') q = null;
+      else if (c === "$") return true;
+    } else if (c === "`") i++;
+    else if (c === "'" || c === '"') q = c;
+    else if (";&|\n\r<>()$".includes(c)) return true;
+  }
+  return q !== null;
+}
+
+test("fuzz: the restricted splitter never vouches for a line in which bash or PowerShell would run more than the allowed command", () => {
+  const row = { shell: "restricted", shell_allow: ["node scripts/testcases.mjs build *"] };
+  const ALPHA = ["\\", '"', "'", ";", "x", " ", "$", "`", "\n", "&", "|"];
+  let checked = 0;
+  const visit = (tail, depth) => {
+    const line = `node scripts/testcases.mjs build acme ${tail}`;
+    if (shellAllowed(row, line)) {
+      assert.equal(bashSeesMore(line), false, JSON.stringify(line));
+      assert.equal(powershellSeesMore(line), false, JSON.stringify(line));
+    }
+    checked++;
+    if (depth) for (const c of ALPHA) visit(tail + c, depth - 1);
+  };
+  visit("", 5);
+  assert.ok(checked > 150000);
+  assert.equal(shellAllowed(row, "node scripts/testcases.mjs build acme 'a;b' \"c|d\""), true, "quoted operators are arguments");
+});
+
+test("test case approval is human-only: no agent can run approve or write approval.csv / approvals.json", () => {
+  const agents = Object.keys(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents);
+  assert.ok(agents.length >= 30);
+  const sheet = "artifacts/acme/modules/contacts/testcases/approval.csv";
+  const record = "artifacts/acme/modules/contacts/testcases/approvals.json";
+  for (const { root } of [RO, FULL])
+    for (const agent of agents) {
+      assert.equal(allowed(root, sh(agent, "node scripts/testcases.mjs approve acme contacts")), false, `${agent}: approve`);
+      assert.equal(allowed(root, sh(agent, `cd "${root}" && node scripts/testcases.mjs approve acme contacts`)), false, `${agent}: approve after cd`);
+      for (const f of [sheet, record]) {
+        assert.equal(allowed(root, call(agent, "Write", { file_path: path.join(root, f) })), false, `${agent}: write ${f}`);
+        assert.equal(allowed(root, call(agent, "Edit", { file_path: path.join(root, f) })), false, `${agent}: edit ${f}`);
+        assert.equal(allowed(root, sh(agent, `echo yes > ${f}`)), false, `${agent}: shell write ${f}`);
+      }
+    }
+  // chained after an allowed command, through the lib, or by a shell: project agent
+  assert.equal(allowed(FULL.root, sh("testcase-writer", "node scripts/testcases.mjs build acme contacts && node scripts/testcases.mjs approve acme contacts")), false);
+  assert.equal(allowed(FULL.root, sh("pw-ui-tests-writer", "node -e \"import('./scripts/lib/testcases.mjs').then((m) => m.approve(ctx))\"")), false);
+  assert.equal(allowed(FULL.root, sh("feedback-implementor-agent", "node scripts/testcases.mjs approve acme contacts")), false);
+  // every tool call the hook sees: unidentified callers on every host, in a full-run or readonly run, and outside any run
+  const unnamed = (host, command) => toolCall({ host, kind: "shell", tool: "bash", command });
+  for (const root of [FULL.root, RO.root, tempRoot()])
+    for (const host of ["copilot-cli", "vscode", "claude-code", "copilot-cloud"]) {
+      assert.equal(allowed(root, unnamed(host, "node scripts/testcases.mjs approve acme contacts")), false, `${host}: approve`);
+      assert.equal(allowed(root, toolCall({ host, kind: "write", tool: "create", paths: [path.join(root, sheet)] })), false, `${host}: write the sheet`);
+      assert.equal(allowed(root, toolCall({ host, kind: "write", tool: "create", paths: [path.join(root, record)] })), false, `${host}: write the record`);
+    }
+  assert.equal(allowed(tempRoot(), sh(undefined, "node scripts/testcases.mjs approve acme contacts")), false, "a human's own session too: they run it in their own terminal");
+  // names split up to dodge a pattern, short names, and folders
+  for (const cmd of [
+    "node -e \"require('fs').writeFileSync('artifacts/acme/modules/contacts/testcases/approv'+'als.json','{}')\"",
+    "node -e \"import('./scripts/lib/test'+'cases.mjs').then((m) => m['appr'+'ove'])\"",
+    "cp /tmp/a.csv artifacts/acme/modules/contacts/testcases/APPROV~1.CSV",
+    "cp /tmp/a.csv artifacts/acme/modules/contacts/testcases/approval-copy.csv",
+  ])
+    assert.equal(allowed(FULL.root, sh("pw-ui-test-runner-triager", cmd)), false, cmd);
+  // no agent's row grants it either
+  for (const a of Object.values(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents)) {
+    assert.ok(!a.shell_allow.some((p) => /approve/.test(p)), "no shell_allow names approve");
+    assert.ok(!a.filesystem.write.some((g) => /approval|testcases\/\*\*|modules\}\/\*\*/.test(g)), `no write glob reaches the approval files: ${a.filesystem.write}`);
+  }
 });
