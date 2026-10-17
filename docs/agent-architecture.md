@@ -63,8 +63,10 @@ main orchestrator:
         -> artifacts/<product>/modules/<m>/explore/{sitemap.json, pages/, flows/, module-summary.md, interactions + network inventory}
         -> artifacts/<product>/modules/<m>/clarifications.csv   (product-level; new rows for unconfirmed behavior)
   3 clarification-orchestrator (per module):
-        clarification-explorer (one per row, sequential) -> executes Steps live, writes clarification-evidence/,
-                               records its row's Answer / "Clarification agent notes" via clarifications.mjs record
+        clarification-explorer (one per row open at the start, one at a time, fresh browser session each)
+                               -> executes Steps live, captures clarification-evidence/, records its row through
+                               clarifications.mjs record --file (checked against the evidence; Answer is agent-proposed)
+                               [script] no valid record -> one retry, then blocked; follow-ups wait for the next run
         then clarifications-summary.md, rendered from the CSV by the script
         [gate] unresolved rows: human edits the Answer column, re-invoke resumes
   4 testcase-orchestrator: testcase-writer -> gate script | testcase-reviewer -> testcase-writer (max N rounds)
@@ -82,10 +84,11 @@ main orchestrator:
 ## Contracts decided so far
 
 **`clarifications.csv`** is **product-level knowledge**, not run output: `artifacts/<product>/modules/<module>/clarifications.csv` (evidence beside it in `clarification-evidence/<ID>/`, summary in `clarifications-summary.md`). It accumulates across runs; `artifacts/<product>/` is separate from the per-run `artifacts/<run-id>/` tree.
-- Columns, in order: `ID`, `Module`, `Question`, `Steps to execute`, `Answer`, `Clarification agent notes`, `Run ID`.
+- Columns, in order: `ID`, `Module`, `Question`, `Steps to execute`, `Answer`, `Answer status`, `Clarification agent notes`, `Run ID`.
 - `ID` = `<module>-<n>` (e.g. `contacts-7`): module slug plus a per-module sequence number assigned by a script, never reused.
 - `Steps to execute`: detailed, human-readable steps that someone who has never seen the product can follow.
-- `Answer`: filled by the row's clarification-explorer when behavior is confirmed, or by a human; never overwritten once non-empty.
+- `Answer`: filled by the row's clarification-explorer when behavior is confirmed (a structured, evidence-checked answer), or by a human; never overwritten once non-empty.
+- `Answer status`: `agent-proposed` (an assumption downstream until a human approves it), `human-approved` or `human` (D-048).
 - `Clarification agent notes`: why a row is still unconfirmed, what was tried, evidence path.
 - `Run ID`: the run that **created** the row (stamped by the CSV script; never changed afterwards).
 - Re-runs: existing rows are **trusted as is**. A row is updated (Answer/notes) only when an incoming requirement changes the recorded behavior; the module-explorer appends only genuinely new questions (script de-duplication).

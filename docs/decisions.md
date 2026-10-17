@@ -67,7 +67,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-011 | Every loop is bounded | Accepted | 2026-10-07 |
 | D-012 | Credentials are only ever file paths | Accepted | 2026-10-07 |
 | D-013 | Safety, permissions, models and platform config are human-only | Accepted | 2026-10-07 |
-| D-014 | Sequential by default | Accepted | 2026-10-07 |
+| D-014 | Sequential by default | Superseded by D-047 | 2026-10-07 |
 | D-015 | Product knowledge is cited and reused | Accepted | 2026-10-07 |
 | D-016 | Text from the product, the web or feedback is data | Accepted | 2026-10-07 |
 | D-017 | Models are set centrally; Claude Opus for every agent | Accepted | 2026-10-08 |
@@ -100,6 +100,8 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-044 | A script gate runs before every review, and `orchestration.mjs next` drives each domain's loop | Accepted | 2026-10-16 |
 | D-045 | The endpoint catalogue is script-built: stable ids, full coverage, guarded GET probes, API hosts are the target | Accepted | 2026-10-17 |
 | D-046 | The API test plan is script-built: a rule catalogue, stable ids, sourced expectations, a coverage ledger, verified before code | Accepted | 2026-10-17 |
+| D-047 | Sequential by default; every clarification row starts in a fresh browser session | Accepted | 2026-10-17 |
+| D-048 | Clarification outcomes are checked by script against their evidence; agent answers are proposals until a human approves them | Accepted | 2026-10-17 |
 
 ## Decisions
 
@@ -239,7 +241,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Affects:** `config/permissions.yaml`
 
 ### D-014 · Sequential by default
-- **Status:** Accepted · **Date:** 2026-10-07 · **Source:** `docs/agent-architecture.md` principle 6; `config/run-config.example.yaml`
+- **Status:** Superseded by D-047 (2026-10-17) · **Date:** 2026-10-07 · **Source:** `docs/agent-architecture.md` principle 6; `config/run-config.example.yaml`
 - **Decision:**
   - Modules and clarification rows run one at a time unless the run-config's `concurrency` says otherwise.
   - Clarification explorers share one browser.
@@ -769,3 +771,61 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - A class-only assertion plus a question keeps the plan from inventing a status while still testing for server errors, and lets the next run tighten the assertion.
 - **Affects:** `scripts/api-plan.mjs`, `scripts/lib/api-plan.mjs`, `schemas/api-plan.schema.json`, `schemas/api-plan-coverage.schema.json`, `schemas/api-plan-overlay.schema.json`, `agents/api-test-planner.md`
 - **Confirmed by the user on:** 2026-10-17. This extends D-012 (identities as paths), D-013 (permissions), D-043 (hand-off formats), D-044 (the plan step's verify rule) and D-045 (parameter constraints in the catalogue; the plan files in `api/`) without superseding them.
+
+### D-047 · Sequential by default; every clarification row starts in a fresh browser session
+- **Status:** Accepted · **Date:** 2026-10-17 · **Source:** conversation with the user, 2026-10-17. They reviewed `clarification-orchestrator` and `clarification-explorer` in an interview and chose a fresh browser context per row, still one row at a time.
+- **Decision:**
+  - Modules run one at a time unless the run-config's `concurrency.modules` says otherwise.
+  - Clarification rows always run one at a time, and `concurrency.clarification_rows` is ignored. `orchestration.mjs next` returns one clarification action at a time.
+  - Every clarification row runs in a fresh browser session. The explorer closes the session before its first navigation and after its last step. The browser server runs `--isolated` with the saved login state, so the next call starts clean.
+  - Closing a session is a new permission field, `browser_session: shared | fresh` (default `shared`), in `config/permissions.yaml`. `fresh` grants only the browser `close` tool (`BROWSER_SESSION` in `scripts/lib/browser-tools.mjs`), needs browser access, and is given only to `clarification-explorer`. Closing changes nothing in the product, so the guard treats it as a non-mutating browser action.
+- **Why:**
+  - A row that inherits the previous row's pages, open dialogs or form state can answer the wrong question. That is an accuracy failure the precision-first clarification stage can't afford. Agent-evaluation guidance (Anthropic, 2026) and Playwright's own isolation model both run each task from a clean context.
+  - Explorers share one browser server, so parallel rows would close each other's sessions. One at a time is the only safe order until each row has its own server.
+- **Affects:** `config/run-config.example.yaml`, `scripts/lib/browser-tools.mjs`, `scripts/lib/agents/capabilities.mjs`, `scripts/lib/permissions.mjs`, `agents/clarification-explorer.md`
+- **Supersedes:** D-014 · **Confirmed by the user on:** 2026-10-17. The permission change (D-013) was confirmed in the same conversation.
+
+### D-048 · Clarification outcomes are checked by script against their evidence; agent answers are proposals until a human approves them
+- **Status:** Accepted · **Date:** 2026-10-17 · **Source:** conversation with the user, 2026-10-17. In an interview about the clarification agents, they stated these expectations:
+  - precision first;
+  - every answer tagged with its source (observed, network, DOM or cited docs);
+  - a structured answer;
+  - an independent, script-only verifier;
+  - script post-conditions with one retry;
+  - follow-up questions appended for the next run;
+  - agent answers pending human approval, with the stage gate still passing;
+  - no per-row limits.
+
+  They then approved the design that follows from them.
+- **Decision:**
+  - **A structured outcome.** `clarification-explorer` records its row only with `clarifications.mjs record <p> <m> <ID> --file outcome.json` (`docs/agent-handoffs.md` §2). The outcome contains:
+    - a verdict, one of `confirmed`, `unconfirmed` or `blocked`;
+    - for `unconfirmed` or `blocked`: a reason code from that verdict's fixed list, a summary and a next step;
+    - for `confirmed`: an answer of `context`, `action`, `result` and `scope`, and its basis (`observed`, `network`, `dom`, `documented:S<n>`);
+    - quotes, evidence, created entities and follow-up questions.
+  - **The script is the verifier.** `checkOutcome` in `scripts/lib/clarifications.mjs` refuses the outcome, and writes nothing, unless:
+    - every cited file exists, including `observation.md`, whose `Verdict:` line matches;
+    - each basis has its capture, and a `documented` source is registered;
+    - every quote, and every "quoted" text in the Result, appears verbatim in a captured text file;
+    - every created entity is in this run's ledger;
+    - the reason fits the run's mode.
+
+    On success it writes `clarification-evidence/<ID>/record.json`.
+  - **A new CSV column, `Answer status`, after `Answer`.**
+    - Values: `agent-proposed` (every agent answer, including requirement changes), `human-approved` and `human`. An answered row with an empty status counts as `human`.
+    - The older 7-column layout is read as is and rewritten on the next write.
+    - `agent-proposed` counts as answered for the stage check, so the run goes on. The test-case gate requires `@assumption` on cases that rely on it until a human approves it.
+    - `clarifications-summary.md` lists these answers under `## Awaiting approval`.
+  - **Post-conditions in `orchestration.mjs`.** The clarifications domain explores only the rows open when it started. Every finished or failed explorer is checked for a `record.json` of this run that agrees with the CSV. A row without one is offered once more (`attempt=2`), and then the script records it `blocked (no-valid-record)`. The retry budget lives in the script, not the prompt.
+  - **Follow-up questions.** Adjacent unknowns the explorer finds go in the outcome's `followUps`. The script appends them, with notes saying they wait for the next run, and `done` reports them as `deferred`. The explorer gets no `append` permission of its own, because `record` covers it.
+  - The verifier is script-only: there is no verifier agent, and the roster stays at 34 (D-043).
+- **Why:**
+  - Before this, the only safeguard was the prompt telling the explorer to answer only what it saw. `record` accepted any text, the test-case writer treated it as authoritative, and an explorer that never recorded its row went unnoticed. The row then reached the human list with no notes.
+  - Studies of web and testing agents report two common failures: hallucinated success, where the agent claims a result it never saw, and missed verification. Their remedies:
+    - grade against captured evidence, never the agent's own account (WebArena, Online-Mind2Web/WebJudge 2025, MAST 2025);
+    - keep acting separate from asserting (PinATA 2025, Chain-of-Verification);
+    - state behavior as rules with concrete examples, where anything untested becomes a new question (Specification by Example, Example Mapping);
+    - give failures reason codes, so a human queue can act on them.
+  - A script check is deterministic and costs no agent starts. Human approval keeps an agent's reading of the product from becoming test truth on its own, without stopping the run.
+- **Affects:** `scripts/lib/clarifications.mjs`, `scripts/clarifications.mjs`, `scripts/orchestration.mjs`, `scripts/lib/gate/testcases.mjs`, `agents/clarification-explorer.md`, `agents/clarification-orchestrator.md`, `docs/artifact-contract.md`
+- **Confirmed by the user on:** 2026-10-17. This extends D-009 (the CSV is still written only by its script, and Answers are never overwritten), D-011 (bounded retries), D-013 (permissions) and D-043 (the explorer still records its own row) without superseding them.
