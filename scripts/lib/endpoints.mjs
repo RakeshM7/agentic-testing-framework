@@ -24,6 +24,7 @@ import yaml from "js-yaml";
 import { writeAtomic, withFileLock } from "./csv.mjs";
 import { operationsFromIntrospection } from "./graphql.mjs";
 import { parseSpec, specVersion } from "./openapi.mjs";
+import { assignIds } from "./registry.mjs";
 
 export const EXCLUSION_REASONS = ["third_party", "static_asset", "preflight", "telemetry", "health", "auth_plumbing", "page_navigation", "out_of_module", "duplicate", "deprecated", "not_api"];
 const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -262,23 +263,6 @@ export function saveSource(ap, { kind, location, content, ...meta }) {
   });
 }
 
-// ---------- registry: stable ids ----------
-
-export function assignIds(registryFile, module, keys, runId) {
-  return withFileLock(registryFile, () => {
-    const reg = readJson(registryFile, { module, next: 1, endpoints: {} });
-    const present = new Set(keys);
-    for (const k of [...keys].sort()) {
-      const e = reg.endpoints[k];
-      if (e) Object.assign(e, { status: "active", lastSeen: runId });
-      else reg.endpoints[k] = { id: `EP-${module}-${reg.next++}`, status: "active", firstSeen: runId, lastSeen: runId };
-    }
-    for (const [k, e] of Object.entries(reg.endpoints)) if (!present.has(k) && e.status === "active") e.status = "gone";
-    writeJson(registryFile, reg);
-    return reg;
-  });
-}
-
 const idNum = (id) => Number(id.split("-").at(-1));
 
 // ---------- schema helpers ----------
@@ -491,7 +475,7 @@ export function build(ap, { module, cfg, runId }) {
   });
 
   // 5. ids
-  const reg = assignIds(ap.registry, module, [...acc.keys()], runId);
+  const reg = assignIds(ap.registry, [...acc.keys()], { module, runId, prefix: "EP", field: "endpoints" });
   const idOf = (k) => reg.endpoints[k].id;
 
   // 6. finalize each endpoint

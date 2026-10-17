@@ -35,6 +35,68 @@ A further platform or host must behave identically — same stages, artifacts, s
 - Before changing any framework file, read [`decisions.md`](decisions.md); a change that conflicts with a recorded decision needs the user's explicit confirmation (as a subagent: report it instead).
 - Credentials are only ever paths to files a human prepared; values never appear in prompts, artifacts, code or commits.
 
+## Script-built agents
+
+The single reference for turning an agent's bookkeeping into a script (D-002, D-049). `api-discoverer` (D-045), `api-test-planner` (D-046) and `clarification-explorer` (D-047, D-048) follow it. A script owns everything that must be identical on every rerun: enumeration, ids, coverage and the checks. The agent owns only its judgments, and every judgment is cited.
+
+### Two variants
+
+- **Variant A: the script builds, the agent overlays.** For an artifact enumerated from inputs (a catalogue, a plan).
+  1. `<script> build <p> <m>` writes the artifact and its coverage ledger.
+  2. The agent reads the ledger and writes its overlay: the one file it owns.
+  3. `build` again; the agent repeats step 2 at most twice more (≤ 3 builds).
+  4. `<script> check <p> <m>` must exit 0. On success it writes the verified stamp (`lib/verified.mjs`).
+  5. The step in `scripts/lib/domain-flows.mjs` has a `verify` rule, so `orchestration.mjs next` fails the step while the stamp is missing or stale.
+- **Variant B: the agent acts, the script verifies.** For work only an agent can do (a live browser row).
+  1. The agent writes a structured outcome file (verdict, reason code, evidence, citations).
+  2. `<script> record ... --file outcome.json` refuses it, and writes nothing, unless every cited file, quote and entity holds up against the captured evidence.
+  3. The orchestration post-check looks for a valid record of this run. It offers the item once more (`attempt=2`), then records it `blocked` with a reason code. The retry budget lives in the script.
+
+### Shared helpers (`scripts/lib/`)
+
+- **`registry.mjs` `assignIds`: stable ids.** One registry file maps each key to `<PREFIX>-<m>-<n>`. Ids are assigned once, in key order, and are never renumbered or reused. A key that disappears is kept as `gone` and gets its old id back if it returns. The prefix, the map field and the id format are options.
+- **`coverage.mjs`: the coverage ledger.** Every input item is listed once and ends in one status:
+  - `mapped`: covered by ids;
+  - `excluded`: with a reason code and a detail;
+  - `pending`: unresolved, so `check` fails;
+  - `deferred`: reason `budget`, with a detail.
+
+  **Exhaustive ledger, budgeted work: overflow is `deferred: budget`, never dropped silently.** `applyBudget(items, budget, rankFn)` keeps the best-ranked items and defers the rest. `problems()` flags an item that is unresolved, listed twice, or excluded without a reason.
+- **`citations.mjs` `citationProblem`: citations.** Each is checked against the module's own files, never trusted:
+  - `clarification:<id>`: an answered row of `clarifications.csv`;
+  - `testcase:<TC id>`: a test case of the module;
+  - `knowledge:<path>`: a file under the product's `knowledge/`;
+  - `spec:<path>`: a file under the module's `api/`;
+  - `observation:<path>`: a file under the module.
+- **`verified.mjs`: the verified stamp.** `stampVerified({name: file})` records each input's sha256 under its name. `unverifiedReason(stamp, inputs)` returns null, or why the stamp is missing or stale.
+
+### Rules
+
+- **The agent adds; it never removes. Only a cited `exclude` removes.** An overlay can annotate, link, raise priority and add cited items. It can't drop, rename, renumber or re-expect what the script generated.
+- **Files are split by owner.** The script owns the artifact, the ledger, the registry and anything rendered from them. The agent owns its overlay or outcome file and nothing else; its `write` limit names only that file.
+- **Nothing is silent.** Every input is mapped, excluded with a reason, pending or deferred. A blocked step says "blocked: <reason>", never "nothing found".
+
+### CLI shape
+
+- `export async function main(argv, { root = repoRoot } = {})` returns `{ code, out }`; tests call `main` directly.
+- Run as a script, it prints `out` as JSON on stdout and exits with `code`. A thrown error prints `{ errors: [message] }` and exits 1.
+- Exit codes: `0` ok, `1` problems (listed in `out.problems`), `2` usage.
+- Subcommands take `<product> <module>` and read the active run's `state/run.json` and `state/config.resolved.json`. A `paths` subcommand lists the files the agent reads and writes.
+
+### Agent body layout
+
+`## Invocation` → `## Inputs` → `## What the script generates` → `## Steps` → `## Rules` → `## Return`. The steps name the script's commands; they never re-state what the script enforces.
+
+### Files one refactor touches
+
+1. The script, `scripts/<name>.mjs`, and its lib, `scripts/lib/<name>.mjs`, built on the shared helpers above.
+2. Tests: `scripts/<name>.test.mjs`, plus `scripts/guard.test.mjs` for the agent's new shell and write limits.
+3. Schemas in `schemas/` for the artifact, the ledger and the overlay or outcome.
+4. `config/permissions.yaml` (human-only, D-013): `shell: restricted`, a `shell_allow` naming only the script, and `write` shrunk to the agent's own file.
+5. The agent source, `agents/<name>.md`; then `npm run build-agents`, and `npm run check`.
+6. A D-entry in `decisions.md` listing the new files under **Affects**.
+7. Docs: `agent-handoffs.md` (the file formats), `artifact-contract.md` (the layout) and `agent-architecture.md` (the agent's role).
+
 ## Feedback contract (improving the framework itself)
 
 Problems with the framework — an agent prompt, a script, a doc — are recorded as **feedback files** and fixed by `feedback-implementor-agent`. Per-product issues in generated test code are not feedback: each domain's own reviewer and fixer handle those during the run.

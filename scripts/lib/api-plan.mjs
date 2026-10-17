@@ -19,11 +19,14 @@
 //   - the overlay can annotate, link test cases, add cited scenarios, and exclude coverage items with a reason; it can
 //     never change what a rule generated
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
-import { withFileLock, writeAtomic } from "./csv.mjs";
+import { writeAtomic } from "./csv.mjs";
+import { citationProblem } from "./citations.mjs";
 import { append, csvPath, isAnswered, readRows } from "./clarifications.mjs";
 import { erase, readJson, writeJson } from "./endpoints.mjs";
+import { assignIds } from "./registry.mjs";
+import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 
 export const TYPES = ["functional", "negative", "boundary", "auth", "authorization", "lifecycle", "http", "graphql", "contract", "business"];
 export const SOURCES = ["spec", "observed", "rfc9110", "graphql-over-http", "class-only"]; // plus clarification:/testcase:/knowledge:
@@ -71,7 +74,6 @@ export function planPaths(productDir, module) {
   };
 }
 
-export const sha256 = (file) => (existsSync(file) ? createHash("sha256").update(readFileSync(file)).digest("hex") : null);
 const uniq = (xs) => [...new Set(xs)];
 const numeric = (xs) => uniq(xs).sort((a, b) => a - b);
 const idNum = (id) => Number(String(id).split("-").at(-1));
@@ -82,23 +84,6 @@ const glob = (pattern) => new RegExp("^" + pattern.split("*").map((s) => s.repla
 export const EMPTY_OVERLAY = { statusRules: [], values: {}, testcases: {}, scenarios: [], dependencies: [], bfla: [], priorities: {}, exclude: [] };
 export function readOverlay(file) {
   return { ...EMPTY_OVERLAY, ...readJson(file, {}) };
-}
-
-// ---------- registry: stable ids ----------
-
-export function assignIds(registryFile, module, keys, runId) {
-  return withFileLock(registryFile, () => {
-    const reg = readJson(registryFile, { module, next: 1, scenarios: {} });
-    const present = new Set(keys);
-    for (const k of [...keys].sort()) {
-      const e = reg.scenarios[k];
-      if (e) Object.assign(e, { status: "active", lastSeen: runId });
-      else reg.scenarios[k] = { id: `API-${module}-${reg.next++}`, status: "active", firstSeen: runId, lastSeen: runId };
-    }
-    for (const [k, e] of Object.entries(reg.scenarios)) if (!present.has(k) && e.status === "active") e.status = "gone";
-    writeJson(registryFile, reg);
-    return reg;
-  });
 }
 
 // ---------- request schemas -> fields ----------
@@ -601,26 +586,6 @@ function generateGraphql(e, { add, item, exclude, firstOf, values }) {
   if (firstMutation?.id === e.id) add(e, "gql", "mutation-over-get", { type: "graphql", title: `mutation ${g.field} over GET is refused (GraphQL-over-HTTP)`, request: { method: "GET" }, expect: { statusClass: "4xx", source: "graphql-over-http", rules: [] }, mutates: true }, [item(e, "gql:mutation-over-get")]);
 }
 
-// ---------- overlay ----------
-
-// A citation is checked against the module's own files: clarification:<answered id>, testcase:<TC id>,
-// knowledge:<path under knowledge/>, spec:<path under api/>, observation:<path under the module>.
-export function citationProblem(c, ctx) {
-  const [kind, ...restParts] = String(c).split(":");
-  const ref = restParts.join(":");
-  const file = ref.split("#")[0];
-  if (kind === "clarification") {
-    const row = ctx.rows.find((r) => r.id.trim() === ref);
-    if (!row) return `'${c}': no such row in clarifications.csv`;
-    return isAnswered(row) ? null : `'${c}': the row is not answered yet`;
-  }
-  if (kind === "testcase") return ctx.cases.has(ref) ? null : `'${c}': no such test case`;
-  if (kind === "knowledge") return existsSync(path.join(ctx.pp.productDir, "knowledge", file)) ? null : `'${c}': no such file under knowledge/`;
-  if (kind === "spec") return existsSync(path.join(ctx.pp.dir, file)) ? null : `'${c}': no such file under api/`;
-  if (kind === "observation") return existsSync(path.join(ctx.pp.moduleDir, file)) ? null : `'${c}': no such file under the module`;
-  return `'${c}': a citation is clarification:<id>, testcase:<id>, knowledge:<path>, spec:<path> or observation:<path>`;
-}
-
 // ---------- build ----------
 
 // ctx: {module, cfg, runId, cases: Map TC id -> {api, priority}}. Reads the catalogue, drift and overlay from disk;
@@ -636,7 +601,8 @@ export function build(pp, { module, cfg, runId, cases }) {
   const csv = csvPath(pp.productDir, module);
   let rows = readRows(csv);
   const identities = [...(cfg.authorizations?.identities ?? [])].sort((a, b) => a.name.localeCompare(b.name));
-  const cctx = { rows, cases, pp };
+  // Citations are checked by scripts/lib/citations.mjs against the module's own files.
+  const cctx = { rows, cases, productDir: pp.productDir, moduleDir: pp.moduleDir, apiDir: pp.dir };
   const cite = (where, c) => {
     const p = citationProblem(c, cctx);
     if (p) problems.push(`plan-overlay.json ${where}: ${p}`);
@@ -760,7 +726,7 @@ export function build(pp, { module, cfg, runId, cases }) {
   for (const key of overBudget) scenarios.delete(key);
 
   // overlay priority overrides
-  const reg = assignIds(pp.registry, module, [...scenarios.keys()], runId);
+  const reg = assignIds(pp.registry, [...scenarios.keys()], { module, runId, prefix: "API", field: "scenarios" });
   const idOf = (k) => reg.scenarios[k].id;
   for (const [ref, v] of Object.entries(overlay.priorities)) {
     const key = scenarios.has(refOf(ref)) ? refOf(ref) : Object.keys(reg.scenarios).find((k) => reg.scenarios[k].id === ref);
@@ -899,17 +865,17 @@ export async function check(pp, validateData, { cases = new Map() } = {}) {
   for (const p of cov.pending) problems.push(`pending ${p.item}: ${p.why}`);
   if (cov.catalogue !== sha256(pp.catalogue)) problems.push("plan-coverage.json: the catalogue changed since the plan was built (run api-plan.mjs build again)");
   const { verified, ...rest } = cov;
-  writeJson(pp.coverage, problems.length ? rest : { ...rest, verified: { plan: sha256(pp.plan), catalogue: sha256(pp.catalogue) } });
+  writeJson(pp.coverage, problems.length ? rest : { ...rest, verified: stampVerified(verifiedInputs(pp)) });
   return problems;
 }
+
+const verifiedInputs = (pp) => ({ plan: pp.plan, catalogue: pp.catalogue });
 
 // For orchestration.mjs next: null when the plan on disk passed check and nothing changed since, else why not.
 export function planUnverified(pp) {
   const cov = readJson(pp.coverage, null);
   if (!cov) return "api/plan-coverage.json is missing: the planner must finish with api-plan.mjs check";
-  if (!cov.verified) return "the API plan did not pass api-plan.mjs check";
-  if (cov.verified.plan !== sha256(pp.plan) || cov.verified.catalogue !== sha256(pp.catalogue)) return "the API plan or the catalogue changed after api-plan.mjs check";
-  return null;
+  return unverifiedReason(cov.verified, verifiedInputs(pp), { unstamped: "the API plan did not pass api-plan.mjs check", changed: "the API plan or the catalogue changed after api-plan.mjs check" });
 }
 
 // ---------- api-test-plan.md ----------

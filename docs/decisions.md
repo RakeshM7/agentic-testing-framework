@@ -102,6 +102,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-046 | The API test plan is script-built: a rule catalogue, stable ids, sourced expectations, a coverage ledger, verified before code | Accepted | 2026-10-17 |
 | D-047 | Sequential by default; every clarification row starts in a fresh browser session | Accepted | 2026-10-17 |
 | D-048 | Clarification outcomes are checked by script against their evidence; agent answers are proposals until a human approves them | Accepted | 2026-10-17 |
+| D-049 | Script-built agents share registry, citation, coverage and verified helpers; exhaustive ledger, budgeted work | Accepted | 2026-10-17 |
 
 ## Decisions
 
@@ -829,3 +830,21 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - A script check is deterministic and costs no agent starts. Human approval keeps an agent's reading of the product from becoming test truth on its own, without stopping the run.
 - **Affects:** `scripts/lib/clarifications.mjs`, `scripts/clarifications.mjs`, `scripts/orchestration.mjs`, `scripts/lib/gate/testcases.mjs`, `agents/clarification-explorer.md`, `agents/clarification-orchestrator.md`, `docs/artifact-contract.md`
 - **Confirmed by the user on:** 2026-10-17. This extends D-009 (the CSV is still written only by its script, and Answers are never overwritten), D-011 (bounded retries), D-013 (permissions) and D-043 (the explorer still records its own row) without superseding them.
+
+### D-049 · Script-built agents share registry, citation, coverage and verified helpers; exhaustive ledger, budgeted work
+- **Status:** Accepted · **Date:** 2026-10-17 · **Source:** conversation with the user, 2026-10-17. They approved a plan to refactor the remaining agents the way D-045, D-046 and D-048 did, starting from one shared foundation.
+- **Decision:**
+  - **Shared helpers.** Every script-built agent uses the same modules in `scripts/lib/`:
+    - `registry.mjs` `assignIds`: stable ids, assigned once per key in key order, never renumbered or reused, with a key that disappears kept as `gone`. The prefix, the registry's map field and the id format are options.
+    - `citations.mjs` `citationProblem` and the citation prefixes `clarification:`, `testcase:`, `knowledge:`, `spec:` and `observation:`, each checked against the module's own files.
+    - `verified.mjs` `stampVerified` and `unverifiedReason`: the sha256 stamp a passing `check` writes, and the reason a domain flow's `verify` rule refuses a missing or stale one.
+    - `coverage.mjs`: a coverage ledger whose items are `mapped`, `excluded` (a reason code and a detail), `pending` or `deferred` (reason `budget`, with a detail).
+  - `scripts/lib/endpoints.mjs` and `scripts/lib/api-plan.mjs` use the registry, citation and verified helpers, with no change to their files on disk.
+  - **Exhaustive ledger, budgeted work.** A ledger lists every input item. When a budget caps the work, the overflow is `deferred: budget` and stays in the ledger; nothing is dropped silently.
+  - **One pattern.** `docs/conventions.md` "Script-built agents" is the single reference: the two variants (script builds and agent overlays, verified before the next step; agent acts and the script verifies, with one retry), the file split by owner, the CLI shape, the agent body layout, and the files one refactor touches. The agent adds; it never removes, and only a cited `exclude` removes.
+- **Why:**
+  - The id registry, the citation check and the verified stamp were copied between the endpoint catalogue and the API plan, so a fix in one could miss the other.
+  - About 30 agent refactors follow. One tested set of helpers and one written pattern keep them consistent and keep the bookkeeping in scripts (D-002).
+  - A budget that silently drops work hides what was never tested; a deferred item stays visible to the next run and the report.
+- **Affects:** `scripts/lib/registry.mjs`, `scripts/lib/citations.mjs`, `scripts/lib/verified.mjs`, `scripts/lib/coverage.mjs`, `docs/conventions.md`
+- **Confirmed by the user on:** 2026-10-17. This extends D-002, D-045, D-046 and D-048 without superseding them.
