@@ -244,12 +244,13 @@ agents:
     shell: restricted
     shell_allow: ["node scripts/endpoints.mjs *"]
     filesystem: { read: ["${knowledge}/**", "${modules}/**"], write: ["${modules}/api/overlay.json"] }
-  api-test-planner:
+  api-test-planner:             # D-046: plan.json, its coverage, ids, questions and api-test-plan.md are script-owned (api-plan.mjs)
     layer: 2
     live_target: { browser: none, http: none, load: none }
     web_research: none
-    shell: none
-    filesystem: { read: ["${modules}/**"], write: ["${modules}/api/api-test-plan.md", "${modules}/api/plan.json"] }
+    shell: restricted
+    shell_allow: ["node scripts/api-plan.mjs *"]
+    filesystem: { read: ["${modules}/**", "${knowledge}/**"], write: ["${modules}/api/plan-overlay.json"] }
   pw-api-scaffolder:            # the API side's product-wide foundation, once; shared files belong to pw-repo-owner
     layer: 2
     profile: code_writer

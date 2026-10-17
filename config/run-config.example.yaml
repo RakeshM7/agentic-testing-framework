@@ -24,6 +24,7 @@ api:
   discovery_budget: 40          # max requests to find specs / introspect, per module
   probe_budget: 50              # max GET probes of documented endpoints, per module
   probe_delay_ms: 500           # pause between requests
+  plan_budget: 300              # max API test plan scenarios per module; the lowest-priority boundary/http ones go first
 
 # Optional: the feature / requirement driving this run. An incoming requirement that changes a behavior already
 # recorded in clarifications.csv is the ONLY reason an answered row gets updated.
@@ -60,6 +61,11 @@ authorizations:
   credentials_file: null        # e.g. playwright-tests/<product>/.env -- a FILE PATH, never inline values
   session_state_file: null      # e.g. playwright-tests/<product>/.auth/state.json -- Playwright storageState a human
                                 # produced by logging in (incl. any CAPTCHA/MFA) once, out-of-band
+  identities: []                # optional further test users, for the API plan's authorization scenarios (OWASP
+                                # API1 another user's object, API5 a role without the right). FILE PATHS only, e.g.
+                                # - {name: peer, role: peer, session_state_file: playwright-tests/<product>/.auth/peer.json}
+                                # - {name: viewer, role: read-only, credentials_file: playwright-tests/<product>/.env.viewer}
+                                # Without them those scenarios are planned as "needs an identity" and not run.
 
 permissions_file: config/permissions.yaml   # per-agent ceilings; frozen into state/ at `run.mjs init`
 

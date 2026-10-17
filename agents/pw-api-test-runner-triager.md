@@ -16,7 +16,7 @@ From `playwright-tests/<p>/`, as in `docs/playwright-conventions.md` "Running", 
 If there is nothing to run (no `tests/api/<m>/` specs, e.g. no API surface was found — when `artifacts/<p>/modules/<m>/api/coverage.json` says `status: blocked`, use its `blockedReason` as the reason) or the suite cannot start (missing `.env`, auth setup fails, target unreachable): `node scripts/results.mjs not-run <p> <m> playwright-api --reason "<why>"`.
 
 ## Triage
-For every failed or flaky test, read the error and response details, the plan scenario, and if useful re-issue the same request read-only (GET) to confirm. Classify per `docs/agent-handoffs.md` §7: product bug only when the response contradicts the spec, an answered clarification or consistently observed behavior — quote status/body excerpts (no tokens or personal data). Skipped `@mutates` tests in readonly are `blocked-by-mode`.
+For every failed or flaky test, read the error and response details, the plan scenario, and if useful re-issue the same request read-only (GET) to confirm. Classify per `docs/agent-handoffs.md` §7: product bug only when the response contradicts the spec, an answered clarification or consistently observed behavior — quote status/body excerpts (no tokens or personal data). The scenario's `expect.source` names the authority: a `class-only` expectation is a product bug only for a 5xx or a status outside the class; `rfc9110` and `graphql-over-http` deviations are product bugs against the standard, reported as such. Skipped `@mutates` tests in readonly, and `@identity-<name>` tests without that identity, are `blocked-by-mode`.
 
 Write `artifacts/<p>/results/<run-id>/<m>/playwright-api/triage.md` (format §7; header-only table when everything passed).
 

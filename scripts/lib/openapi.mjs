@@ -89,9 +89,13 @@ function security(reqs, schemes) {
   );
 }
 
+// Value constraints of a parameter, kept for the API test plan's boundary and negative scenarios (D-046).
+const CONSTRAINTS = ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "minLength", "maxLength", "pattern", "minItems", "maxItems", "uniqueItems", "default", "example"];
+
 function param(doc, p0, version) {
   const p = deref(doc, p0);
-  const schema = version === "2.0" ? { type: p.type, ...(p.format ? { format: p.format } : {}), ...(p.enum ? { enum: p.enum } : {}), ...(p.items ? { items: p.items } : {}) } : p.schema ?? {};
+  const schema = version === "2.0" ? { ...Object.fromEntries(CONSTRAINTS.map((k) => [k, p[k]])), type: p.type, ...(p.format ? { format: p.format } : {}), ...(p.enum ? { enum: p.enum } : {}), ...(p.items ? { items: p.items } : {}) } : { ...(p.example !== undefined ? { example: p.example } : {}), ...(p.schema ?? {}) };
+  const constraints = Object.fromEntries(CONSTRAINTS.filter((k) => schema[k] !== undefined).map((k) => [k, schema[k]]));
   return {
     in: p.in,
     name: p.name,
@@ -99,6 +103,7 @@ function param(doc, p0, version) {
     ...(schema.type ? { type: Array.isArray(schema.type) ? schema.type.filter((t) => t !== "null")[0] : schema.type } : {}),
     ...(schema.format ? { format: schema.format } : {}),
     ...(schema.enum ? { enum: schema.enum } : {}),
+    ...(Object.keys(constraints).length ? { constraints } : {}),
   };
 }
 

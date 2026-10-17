@@ -3,6 +3,7 @@
 // domains, the bounded run loop (runner-triager -> fixer). The clarification domain is one explorer per open row.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { planPaths, planUnverified } from "./api-plan.mjs";
 
 const exists = (dir, ...files) => files.every((f) => existsSync(path.join(dir, f)));
 const json = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null);
@@ -35,7 +36,8 @@ export const FLOWS = {
     build: [
       { step: "discover", agent: "api-discoverer" },
       // No API surface (or discovery blocked): nothing to plan, build or review; the runner records not-run with the reason.
-      { step: "plan", agent: "api-test-planner", skipRest: noApiSurface },
+      // The plan is script-built (D-046): a "done" plan step counts only once api-plan.mjs check passed on what is on disk.
+      { step: "plan", agent: "api-test-planner", skipRest: noApiSurface, verify: (c) => planUnverified(planPaths(c.productDir, c.module)) },
       { step: "scaffold", agent: "pw-api-scaffolder", skip: (c) => exists(c.pwProject, "config/api/settings.ts", "fixtures/api/index.ts", "fixtures/api/auth.setup.ts", "helpers/api/schema.ts") && "the API foundation exists" },
       { step: "clients", agent: "pw-api-client-writer" },
       { step: "tests", agent: "pw-api-tests-writer" },

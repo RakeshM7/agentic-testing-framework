@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-plan-overlay.schema.json",
+  "title": "The api-test-planner's judgments for one module (artifacts/<product>/modules/<m>/api/plan-overlay.json), applied by scripts/api-plan.mjs build (D-046)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "statusRules": {
+      "type": "array",
+      "description": "The exact status of a fault class, from an answered clarification, a test case or the knowledge notes. endpoint omitted or '*' = every endpoint of the module.",
+      "items": {
+        "type": "object",
+        "required": ["fault", "citation"],
+        "additionalProperties": false,
+        "oneOf": [{ "required": ["status"] }, { "required": ["statusIn"] }],
+        "properties": {
+          "fault": { "enum": ["validation", "auth", "forbidden", "notFound", "pathType", "conflict", "precondition", "media", "notAcceptable", "method", "rateLimit"] },
+          "endpoint": { "type": "string", "pattern": "^(EP-.+|\\*)$" },
+          "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+          "statusIn": { "type": "array", "minItems": 2, "items": { "type": "integer" } },
+          "citation": { "$ref": "api-plan.schema.json#/$defs/citation" }
+        }
+      }
+    },
+    "values": {
+      "type": "object",
+      "description": "Realistic valid values, keyed '<EP id>#<JSON Pointer>' (e.g. a phone number for a pattern field).",
+      "propertyNames": { "pattern": "^EP-[^#]+#/.*$" },
+      "additionalProperties": { "type": "object", "required": ["value", "citation"], "additionalProperties": false, "properties": { "value": {}, "citation": { "$ref": "api-plan.schema.json#/$defs/citation" } } }
+    },
+    "testcases": {
+      "type": "object",
+      "description": "TC id -> the scenarios that cover it (API ids, scenario keys, or overlay:<name>).",
+      "propertyNames": { "pattern": "^TC-" },
+      "additionalProperties": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+    },
+    "scenarios": {
+      "type": "array",
+      "description": "Business-rule scenarios no rule generates, each cited.",
+      "items": {
+        "type": "object",
+        "required": ["name", "endpoint", "title", "request", "expect", "citations"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Stable: the scenario key is overlay|<name>." },
+          "endpoint": { "type": "string", "pattern": "^EP-" },
+          "type": { "enum": ["functional", "negative", "boundary", "auth", "authorization", "lifecycle", "http", "graphql", "contract", "business"] },
+          "title": { "type": "string", "minLength": 1 },
+          "request": { "$ref": "api-plan.schema.json#/$defs/request" },
+          "expect": { "$ref": "api-plan.schema.json#/$defs/expect" },
+          "priority": { "enum": ["p1", "p2", "p3"] },
+          "requires": { "type": "array", "items": { "type": "string", "pattern": "^identity:[a-z0-9]+(-[a-z0-9]+)*$" } },
+          "mutates": { "const": true, "description": "Only to raise: a non-GET request always mutates." },
+          "covers": { "type": "array", "items": { "type": "string" }, "description": "Coverage items this scenario covers (e.g. a pending status:<EP>:<code>)." },
+          "citations": { "type": "array", "minItems": 1, "items": { "$ref": "api-plan.schema.json#/$defs/citation" } }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Inter-parameter dependencies (IDL) read from the spec text or knowledge: one valid and one violating scenario each.",
+      "items": {
+        "type": "object",
+        "required": ["endpoint", "kind", "params", "citation"],
+        "additionalProperties": false,
+        "properties": {
+          "endpoint": { "type": "string", "pattern": "^EP-" },
+          "kind": { "enum": ["requires", "or", "onlyOne", "allOrNone", "zeroOrOne"] },
+          "params": { "type": "array", "minItems": 2, "items": { "type": "string" } },
+          "citation": { "$ref": "api-plan.schema.json#/$defs/citation" }
+        }
+      }
+    },
+    "bfla": {
+      "type": "array",
+      "description": "Function-level authorization (OWASP API5): an identity that must be refused an operation, from the knowledge notes or a clarification.",
+      "items": {
+        "type": "object",
+        "required": ["identity", "match", "citation"],
+        "additionalProperties": false,
+        "properties": {
+          "identity": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "match": { "type": "string", "description": "An EP id, an endpoint key, or a key pattern with '*'." },
+          "citation": { "$ref": "api-plan.schema.json#/$defs/citation" }
+        }
+      }
+    },
+    "priorities": {
+      "type": "object",
+      "description": "Priority overrides by API id, scenario key or overlay:<name>, each with a reason.",
+      "additionalProperties": { "type": "object", "required": ["priority", "reason"], "additionalProperties": false, "properties": { "priority": { "enum": ["p1", "p2", "p3"] }, "reason": { "type": "string", "minLength": 1 } } }
+    },
+    "exclude": {
+      "type": "array",
+      "description": "Coverage items not to plan, matched by id or a '*' pattern, each with a reason and a detail.",
+      "items": {
+        "type": "object",
+        "required": ["match", "reason", "detail"],
+        "additionalProperties": false,
+        "properties": {
+          "match": { "type": "string", "minLength": 1 },
+          "reason": { "enum": ["not_testable", "out_of_scope", "covered_elsewhere", "needs_data", "spec_wrong", "unreachable_status"] },
+          "detail": { "type": "string", "minLength": 1 },
+          "citation": { "$ref": "api-plan.schema.json#/$defs/citation" }
+        }
+      }
+    }
+  }
+}

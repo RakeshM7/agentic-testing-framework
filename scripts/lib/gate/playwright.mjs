@@ -6,7 +6,7 @@ import { testcasesFile } from "../testcases.mjs";
 import { parseCases } from "./testcases.mjs";
 import { finding, hygiene, matches, read, run, testTitles, walk } from "./common.mjs";
 
-// What the side must implement: Map id -> {mutates}.
+// What the side must implement: Map id -> {mutates, identities[]}.
 function expected({ productDir, module, side, format }) {
   const moduleDir = path.join(productDir, "modules", module);
   if (side === "ui") {
@@ -16,7 +16,7 @@ function expected({ productDir, module, side, format }) {
   }
   const plan = path.join(moduleDir, "api", "plan.json");
   if (!existsSync(plan)) return null;
-  return new Map(JSON.parse(readFileSync(plan, "utf8")).map((s) => [s.id, { mutates: Boolean(s.mutates) }]));
+  return new Map(JSON.parse(readFileSync(plan, "utf8")).map((s) => [s.id, { mutates: Boolean(s.mutates), identities: (s.requires ?? []).filter((r) => r.startsWith("identity:")).map((r) => r.slice(9)) }]));
 }
 
 export function gatePlaywright({ pwProject, productDir, module, side, format, compile = true }) {
@@ -48,6 +48,7 @@ export function gatePlaywright({ pwProject, productDir, module, side, format, co
         const exp = want?.get(id);
         if (want && !exp) out.push(finding("major", f, t.line, "traceability", `${id} is not a ${what} of this module`, `trace the test to an existing ${what}`));
         else if (exp?.mutates && !/@mutates\b/.test(t.title)) out.push(finding("blocker", f, t.line, "mutates-tag", `${id} changes data but its title lacks @mutates`, "add @mutates so readonly runs skip it"));
+        for (const who of exp?.identities ?? []) if (!t.title.split(/\s+/).includes(`@identity-${who}`)) out.push(finding("major", f, t.line, "identity-tag", `${id} needs identity '${who}' but its title lacks @identity-${who}`, `add @identity-${who} so runs without that identity skip it`));
       }
     }
     if (mutating && !/\brecordCreated\(/.test(text)) out.push(finding("major", f, null, "ledger", "has @mutates tests but never calls recordCreated", "record every created entity with recordCreated right after creating it"));
