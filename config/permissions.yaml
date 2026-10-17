@@ -46,6 +46,7 @@ variables:
 # ---- Decision log (the reasons and the full log: docs/decisions.md) -------------------------------------
 # Mode caps permissions | knowledge-generator: live product only if needed | module-explorer: mutate
 # scaffolders: web research allowed | api-discoverer: http read, shell only endpoints.mjs (D-045) | global feedback implementor: as drafted
+# module-explorer: explore.mjs owns the state machine; the agent writes flows, summary, questions, overlay, captures (D-052)
 # Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
 #
 # ---- Shared-repo ownership inside ${pw_project} (UI and API agents write into the same repo) -------------
@@ -121,13 +122,16 @@ agents:
     spawns: []
     live_target: { browser: mutate, http: none, load: none }   # mutate (ledger-scoped; capped to read in readonly runs)
     web_research: none
-    shell: restricted
-    shell_allow: ["node scripts/clarifications.mjs append *", "node scripts/clarifications.mjs list *",
+    shell: restricted           # states, pages, the frontier, the network inventory, ids and the question audit are script-owned (D-052)
+    shell_allow: ["node scripts/explore.mjs *",
+                  "node scripts/clarifications.mjs append *", "node scripts/clarifications.mjs list *",
                   "node scripts/clarifications.mjs set-steps *", "node scripts/clarifications.mjs record *",
                   "node scripts/ledger.mjs add *", "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
     filesystem:
       read: ["${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
-      write: ["${modules}/explore/**"]   # incl. explore/new-questions.json handed to clarifications.mjs append
+      # only the agent's own explore files; everything else in explore/ is written by scripts/explore.mjs
+      write: ["${modules}/explore/flows/**", "${modules}/explore/module-summary.md", "${modules}/explore/new-questions.json",
+              "${modules}/explore/overlay.json", "${modules}/explore/captures/**"]
     # Appends only NEW rows (new ID, Module, Question, Steps, empty Answer/notes, Run ID = this run) and refines the
     # Question/Steps of still-unanswered rows (set-steps); never edits answered rows -- EXCEPT where the incoming
     # requirement changes a behavior already recorded (then the row's Answer/notes are updated, Run ID kept as the

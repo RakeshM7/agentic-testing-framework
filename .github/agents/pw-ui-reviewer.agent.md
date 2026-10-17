@@ -18,7 +18,7 @@ You review; you never change code.
 `product=<p> module=<m> run=<run-id> round=<n>`
 
 ## Inputs
-`docs/playwright-conventions.md` (the rules you check), `docs/agent-handoffs.md` §6 (output format); `playwright-tests/<p>/` — `pages/<m>/`, `fixtures/ui/`, `helpers/ui/`, `tests/ui/<m>/`, `config/ui/`; `artifacts/<p>/modules/<m>/testcases/`; `explore/pages/*/dom-snapshot.md`.
+`docs/playwright-conventions.md` (the rules you check), `docs/agent-handoffs.md` §6 (output format); `playwright-tests/<p>/` — `pages/<m>/`, `fixtures/ui/`, `helpers/ui/`, `tests/ui/<m>/`, `config/ui/`; `artifacts/<p>/modules/<m>/testcases/`; `explore/pages/*/dom-snapshot.md` and `explore/pages/*/states/*.md`.
 
 ## Check
 The gate (`node scripts/gate.mjs`, findings in `results/<run-id>/<m>/playwright-ui/gate-findings.md`) has already passed: typecheck and `--list`, a test (or `test.fixme`) per non-`@api` case and no test without one, `@mutates` on tests of mutating cases, `recordCreated` in mutating specs, no `waitForTimeout`, no hard-coded URLs or `test.only`, no assertions in page objects. Don't repeat those checks; judge what a script can't:

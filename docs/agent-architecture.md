@@ -31,7 +31,7 @@ Roster v3 ([`decisions.md`](decisions.md) D-043): one fixer per automation domai
 artifacts/<product>/
   knowledge/                         # knowledge-generator output, reusable, refreshed each run
   modules/<module>/                  # latest working state per module
-    explore/                         # sitemap, pages/, flows/, module-summary, interactions + network inventory
+    explore/                         # explore.mjs: state model, frontier, sitemap, pages/, interactions, network inventory; the agent's flows/, module-summary
     clarifications.csv               # product-level; columns below
     clarification-evidence/<ID>/     # per-row observation notes + screenshots
     clarifications-summary.md

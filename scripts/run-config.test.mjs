@@ -47,3 +47,12 @@ test("api discovery settings: API hosts, specs, auth header by variable NAME, bu
   assert.ok(errors.some((e) => e.startsWith("api.probe_budget")));
   assert.ok(errors.includes("api.token: unknown key"));
 });
+
+test("exploration budgets: per-module max_pages 40 and max_states 150 by default; positive integers only (D-052)", () => {
+  assert.deepEqual(validateRunConfig(base).normalized.explore, { max_pages: 40, max_states: 150 });
+  assert.deepEqual(validateRunConfig({ ...base, explore: { max_states: 20 } }).normalized.explore, { max_pages: 40, max_states: 20 });
+  const { errors } = validateRunConfig({ ...base, explore: { max_pages: 0, max_states: "lots", depth: 3 } });
+  assert.ok(errors.some((e) => e.startsWith("explore.max_pages")));
+  assert.ok(errors.some((e) => e.startsWith("explore.max_states")));
+  assert.ok(errors.includes("explore.depth: unknown key"));
+});

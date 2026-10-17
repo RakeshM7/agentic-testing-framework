@@ -157,6 +157,20 @@ test("knowledge-generator's shell is knowledge.mjs only; it writes its markdown 
     assert.equal(w(`artifacts/acme/knowledge/${f}`), false, `${f} is script-only`);
 });
 
+test("module-explorer runs explore.mjs and writes only its own explore files, never the script-owned model (D-052)", () => {
+  const run = (cmd) => allowed(FULL.root, sh("module-explorer", cmd));
+  for (const cmd of ["state acme contacts --snapshot captures/1.md", "frontier acme contacts", "ingest-network acme contacts --file captures/n.txt", "build acme contacts", "check acme contacts"])
+    assert.equal(run(`node scripts/explore.mjs ${cmd}`), true, cmd);
+  assert.equal(run("node scripts/clarifications.mjs append acme contacts artifacts/acme/modules/contacts/explore/new-questions.json"), true);
+  assert.equal(run("node scripts/ledger.mjs owns acme --type contact --ref x"), true);
+  assert.equal(run("node scripts/endpoints.mjs build acme contacts"), false);
+  assert.equal(run("curl -s https://app.acme.test/api/contacts"), false);
+  const w = (rel) => allowed(FULL.root, call("module-explorer", "Write", { file_path: path.join(FULL.root, "artifacts/acme/modules/contacts/explore", rel) }));
+  for (const f of ["flows/create-contact.md", "module-summary.md", "new-questions.json", "overlay.json", "captures/snap-1.md", "captures/network-1.txt"]) assert.equal(w(f), true, f);
+  for (const f of ["model.json", "coverage.json", "sitemap.json", "interactions.json", "network-inventory.json", "explore-model.md", "log.jsonl", "registry/states.json", "pages/contacts/states/ST-contacts-1.md", "pages/contacts/dom-snapshot.md"])
+    assert.equal(w(f), false, `${f} is script-only`);
+});
+
 test("unmanaged sessions get mode rules only; env can downgrade but never upgrade", () => {
   assert.equal(allowed(FULL.root, sh(undefined, "curl -X POST https://x/api")), true);
   assert.equal(allowed(FULL.root, sh(undefined, "curl -X POST https://x/api"), { AUTHORIZATIONS_MODE: "readonly" }), false);

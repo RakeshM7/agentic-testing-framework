@@ -1,0 +1,43 @@
+### Page state
+- Page URL: https://app.acme.test/contacts?q=zzz
+- Page Title: Contacts - Acme CRM
+- Page Snapshot:
+```yaml
+- generic [ref=h2]:
+  - banner [ref=h3]:
+    - link "Acme CRM" [ref=h4] [cursor=pointer]:
+      - /url: /contacts
+    - navigation "Main" [ref=h5]:
+      - list [ref=h6]:
+        - listitem [ref=h7]:
+          - link "Contacts" [ref=h8] [cursor=pointer]:
+            - /url: /contacts
+        - listitem [ref=h9]:
+          - link "Deals" [ref=h10] [cursor=pointer]:
+            - /url: /deals
+        - listitem [ref=h11]:
+          - link "Help" [ref=h12] [cursor=pointer]:
+            - /url: https://help.vendor.test/contacts
+    - button "Sign out" [ref=h13] [cursor=pointer]
+  - main [ref=h14]:
+    - heading "Contacts" [level=1] [ref=h15]
+    - button "New contact" [ref=h16] [cursor=pointer]
+    - searchbox "Search contacts" [ref=h17]: zzz
+    - combobox "Sort by" [ref=h18]:
+      - option "Name" [selected]
+      - option "Created"
+    - tablist [ref=h19]:
+      - tab "All" [selected] [ref=h20]
+      - tab "Mine" [ref=h21]
+    - table "Contacts" [ref=h22]:
+      - rowgroup [ref=h23]:
+        - row "Name Email Created" [ref=h24]:
+          - columnheader "Name" [ref=h25]
+          - columnheader "Email" [ref=h26]
+          - columnheader "Created" [ref=h27]
+    - paragraph [ref=h44]: No contacts found
+    - button "Delete selected" [disabled] [ref=h45]
+  - contentinfo [ref=h46]:
+    - link "Privacy" [ref=h47] [cursor=pointer]:
+      - /url: /privacy
+```

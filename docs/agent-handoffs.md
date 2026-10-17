@@ -4,19 +4,46 @@ Every file one agent writes for another. Paths are under `artifacts/<product>/` 
 
 ## 1. Module exploration (`module-explorer` → everyone)
 
-`modules/<m>/explore/`
+`modules/<m>/explore/`. The exploration is a state machine recorded by `node scripts/explore.mjs state|frontier|ingest-network|build|check <product> <m>` (`scripts/lib/explore.mjs`, D-052). The script owns every file below except the agent's: `flows/`, `module-summary.md`, `new-questions.json`, `overlay.json` and `captures/`.
+
+**Script-owned** (never hand-edited):
 
 | File | Content |
 |---|---|
-| `sitemap.json` | `[{url, slug, title, links[]}]` — every page visited (schema `sitemap`). `slug` is kebab-case and unique within the module. |
-| `pages/<slug>/dom-snapshot.md` | The accessibility snapshot of the page as captured, plus a one-line purpose. Visible text is copied **verbatim** (later selectors depend on it). |
-| `pages/<slug>/screenshot.png` | When the browser tool can save to this path; otherwise omitted and noted in `module-summary.md`. |
-| `pages/<slug>/console.txt` | Console errors/warnings seen on the page (may be empty). |
-| `interactions.json` | `[{page, element, role, name, kind: button|link|input|select|checkbox|radio|textarea|other, required?, options?[], validation?[], mutates: bool, tried: bool, observed?}]` |
-| `network-inventory.json` | `[{method, pathTemplate, host?, statusCodes[], requestKeys[], responseKeys[], pages[], graphql?: [{operationType, operationName?, fields[]}]}]` — endpoint **shapes only**: JSON key names, never values, tokens, cookies or personal data. Ids in paths become `{id}`. `host` when the request went to a host other than the target's. `graphql` for GraphQL requests: the operation type and the **root field names** of each operation (`query { contacts {…} }` → `fields: ["contacts"]`). |
-| `flows/<flow-slug>.md` | One user task per file: `# <Task>`, `Preconditions:`, then numbered steps a person who has never seen the product can follow (exact labels in quotes, where to click, what to type), then `Expected result:`. |
+| `sitemap.json` | `[{id: "PG-<m>-<n>", url, slug, title, template, links[], states[], domSnapshotPath, statesDir}]` (schema `sitemap`): every page recorded. `url` is the first URL seen, without its query; `template` is the path with ids as `{id}`; `links` are the link targets seen on the page, including other modules'. `slug` is kebab-case, unique within the module, and never changes. |
+| `pages/<slug>/states/<ST>.md` | The accessibility snapshot of state `ST-<m>-<n>`, copied **verbatim** from the agent's capture (later selectors depend on it). |
+| `pages/<slug>/dom-snapshot.md` | The page's first state, verbatim (kept for older readers). |
+| `model.json` | Schema `explore-model`: `budgets`, `prefixes` (the module's paths), `pages[]`, `states[{id, fingerprint, page, url, title, snapshot, reach: {from, url, steps[]}, frontier}]`, `transitions[{from, actions[], items[], to}]` and `frontier[{id: "FR-<m>-<n>", state, page, role, name, kind: navigation|control|input, url?, target?, status, reason?, detail?, refs?, by?}]`. `reach` is how to get to the state: open `url`, then the steps. |
+| `interactions.json` | Schema `interactions`: one entry per control of every state, `{id, state, page, element, role, name, kind: button|link|input|select|checkbox|radio|textarea|other, required?, options?[], placeholder?, inputType?, maxlength?, pattern?, url?, mutates, tried, status, reason?, observed?}`. The constraints are what the snapshot shows (a label ending in `*`, a select's options, a placeholder), best effort. |
+| `network-inventory.json` | Schema `network-inventory`: `[{id: "NI-<m>-<n>", method, pathTemplate, host?, statusCodes[], requestKeys[], queryKeys[], responseKeys[], pages[], states[], graphql?: [{operationType, operationName?, fields[]}]}]`. Endpoint **shapes only**: key names, never values, tokens, cookies, headers or personal data. Ids, emails and tokens in paths become `{id}`; a key that is itself a value becomes `{key}`. `host` when the request went to another host than the target's. `graphql`: the operation type and the **root field names** (`query { contacts {…} }` → `fields: ["contacts"]`); a persisted query without its document is `unknown`. Static assets are dropped. Cite an entry as `observation:explore/network-inventory.json#NI-<m>-<n>`. |
+| `coverage.json` | Schema `explore-coverage`: the frontier ledger, the KQ ledger (every active `KQ-<m>-<n>` and `KQ-product-<n>`: observed, asked or dismissed), the untried-input ledger (a question's CSV ids or a reason), `questions[{question, kq[], items[], csv}]`, `liveEntities`, and the `verified` stamp of a passing `check`. |
+| `explore-model.md` | Rendered from the two above for humans. |
+| `log.jsonl`, `registry/{states,pages,frontier,network}.json` | What `state` and `ingest-network` recorded, per run; the id registries (`scripts/lib/registry.mjs`: ids never renumbered or reused). |
+
+**States and ids.** A state's key is its page template plus the *shape* of its snapshot (the page-template variance rule): the fingerprint lines (roles and names; headings with their level; the selected tab; each table's column headers with any sort state, its distinct row shapes and whether it has rows; each list's distinct item shapes and whether it has items; a filled search or filter box; a select's selected option index; validation-like, alert and status messages) with every record-varying name replaced by a data slot. Two snapshots of a page that differ only in data slots are one state, independent of recording order, and the slot positions that varied are recorded as `dataSlots`. A name is a data slot only when it is record-varying: inside a collection (a list item, a table row, an article or card, a navigation list), a link to a record (its target erases to an id), a level-1 or level-2 heading outside a dialog, a breadcrumb item, or a name that repeats the page title (equal to a part of it, or containing a part of two or more words, such as "Assign to Jane Doe" on "Jane Doe - Acme CRM"). Every other name stays in the shape and tells states apart: buttons and other controls (Activate vs Deactivate, Follow vs Unfollow), alerts and status messages, validation messages, column headers (the chosen columns), filter chips, tabs, h3 and lower headings ("Active contacts" vs "Archived contacts"), mode indicators, and anything inside a dialog. The page title comes from the snapshot's `Page Title:` line, or `--title`. The full `fingerprint` keeps every name and is recorded with each state. Frontier items are keyed by state, role and accessible name; candidates are the control roles plus any element marked `[cursor=pointer]`; the links of a table column and clickable rows count once. Network paths keep exactly `lib/endpoints.mjs`'s id rules plus emails and tokens; page paths also treat a letters-only segment after a people collection (`/users/jdoe`) as data unless it is a common literal.
+
+Known limits of the shape rule: some data still splits states (a record's status shown as a status-role badge, an h3 that names the record without repeating the page title, a record name in a dialog's title, an owner shown as a plain button, an "Assign to <name>" button whose name is not in the page title); and some different screens still merge (h2 section names, a name equal to a part of the page title, record sub-page links such as Edit vs Clone, whose targets both erase to an id).
+
+**Budgets.** `explore.max_states` (150) and `explore.max_pages` (40) per module. Over them a new state or page is not recorded and the item that led there is `deferred: budget`; with the state budget full, every open item is deferred.
+
+**Captures the scripts read** (agent-owned, under `captures/`, saved as the tools returned them):
+- **Snapshots:** the browser tool's snapshot output, with or without its page-state header and ```yaml fence: lines `- <role> "<name>" [attr] [ref=eN]: <text>`, children indented two spaces, properties as `- /url: …` and `- /placeholder: …`, YAML-quoted lines accepted. The `Page URL:` header line, or `--url`, gives the URL.
+- **Network:** one of
+  - the browser tool's network listing, one request per line: `[GET] https://host/path?x=1 => [200] OK` (numbered lines and a missing status are fine);
+  - a HAR (`log.entries[]`, with `postData` and `response.content`, base64 included) for request and response key names;
+  - a JSON list, or `{requests: [...]}`, of `{method, url, status, requestBody?, responseBody?}`.
+
+  The raw capture can hold values, so `ingest-network` deletes it after reading it (`--keep` to keep it).
+
+**Agent-owned:**
+
+| File | Content |
+|---|---|
+| `flows/<flow-slug>.md` | One user task per file: `# <Task>`, `Preconditions:`, then numbered steps a person who has never seen the product can follow (exact labels in quotes, where to click, what to type), then `Expected result:`. It names the state ids (`ST-<m>-<n>`) it passes through; `check` fails on none or an unknown one. |
 | `module-summary.md` | `## Pages`, `## Key entities`, `## Key actions`, `## Roles observed`, `## Mutations performed` (with ledger refs), `## Not explored` (and why), `## Questions raised` (CSV ids). |
-| `new-questions.json` | Scratch input for `clarifications.mjs append`: `[{question, steps}]`. |
+| `new-questions.json` | Input for `clarifications.mjs append`: `[{question, steps, kq?, item?}]`. `kq` and `item` (an id or a list) name the KQ ids and the FR ids of untried inputs it answers; `check` links each question to its CSV id by its text and fails on one that was not appended. |
+| `overlay.json` | Schema `explore-overlay`: `items` (`{FR: {reason, detail, citation?}}`, frontier items not explored; the agent's reasons are `destructive-preexisting`, `guard-denied` and `unreachable`, each citing an `observation:explore/captures/<file>` that names the control and is not a snapshot of the state it was found in (its raw capture, or the same shape again), or a different state (`ST-…`) that acting on it reached, and `duplicate-of`, naming an item with the same role and name; every other reason is the script's), `kq` (`{KQ: {status: observed, state?, evidence?: "observation:<path>"}}`, where the state's snapshot or the evidence quotes three or more consecutive words of the open point, or `{status: asked, csv}`, or `{status: dismissed, reason, citation}`, where the citation is a file that quotes three consecutive words of the open point (not its own knowledge file) or an answered `clarification:` row a question linked to the KQ; never a bare state), `inputs` (`{FR: {reason}}`, untried inputs without a question), `scope.prefixes` (extra module paths). |
+| `captures/` | The raw snapshots, network captures, screenshots and console output the agent saved. |
 
 Unconfirmed behavior goes to `clarifications.csv` via `node scripts/clarifications.mjs append <product> <m> modules/<m>/explore/new-questions.json` — never by editing the CSV.
 

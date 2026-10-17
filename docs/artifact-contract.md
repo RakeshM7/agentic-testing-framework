@@ -1,6 +1,6 @@
 # Artifact contract — layout v2 (implemented: foundation)
 
-The single definition of where things live, how stages hand off, and how state and safety work. It is implemented in code — `scripts/lib/{contract,clarifications,ledger,permissions,guard,csv,endpoints}.mjs` and the CLIs `scripts/{run,clarifications,ledger,run-config,endpoints}.mjs` — and validated by JSON Schemas in `schemas/`. Agent prompts must never contradict this file; when they differ, this file and the scripts win. The agent roster and responsibilities are in [`agent-architecture.md`](agent-architecture.md).
+The single definition of where things live, how stages hand off, and how state and safety work. It is implemented in code — `scripts/lib/{contract,clarifications,ledger,permissions,guard,csv,endpoints,explore}.mjs` and the CLIs `scripts/{run,clarifications,ledger,run-config,endpoints,explore}.mjs` — and validated by JSON Schemas in `schemas/`. Agent prompts must never contradict this file; when they differ, this file and the scripts win. The agent roster and responsibilities are in [`agent-architecture.md`](agent-architecture.md).
 
 ## Layout: everything is product-level
 
@@ -14,7 +14,9 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     modules/<module>/{overview,glossary,notes}.md                 # the agent's (module pass)
     modules/<module>/{sources.md,coverage.json,open-points.json,rule-facts.json}   # knowledge.mjs
   modules/<module>/                   # latest working state, overwritten by later runs
-    explore/                          # sitemap.json, module-summary.md, pages/, flows/, interactions + network inventory
+    explore/                          # explore.mjs: sitemap.json model.json coverage.json interactions.json network-inventory.json
+                                      # explore-model.md log.jsonl registry/ pages/<slug>/{dom-snapshot.md,states/<ST>.md};
+                                      # flows/ module-summary.md new-questions.json overlay.json captures/ are the module-explorer's
     clarifications.csv                # product-level clarifications (format below)
     clarification-evidence/<ID>/      # what the clarification-explorer observed per row
     clarifications-summary.md
@@ -63,7 +65,7 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 | `knowledge` | product | — | `knowledge/{overview,glossary,sources}.md`, `sources.json`, `coverage.json`, `open-points.json` (schemas) — every knowledge check passes and the verified stamp is current |
 | `module-knowledge` | module | knowledge | `knowledge/modules/<m>/{overview,glossary,notes,sources}.md`, `coverage.json`, `open-points.json`, `rule-facts.json` (schemas) — every knowledge, glossary-merge and sources check passes and the verified stamp is current |
 | `playwright-repo` | product | — | `playwright-tests/<product>/package.json`, `playwright.config.ts` |
-| `explore` | module | module-knowledge | `modules/<m>/explore/sitemap.json` (schema), `module-summary.md` |
+| `explore` | module | module-knowledge | `modules/<m>/explore/sitemap.json` (schema), `module-summary.md` — the verified stamp of `explore.mjs check` is current |
 | `clarifications` | module | explore | `modules/<m>/clarifications.csv` (check below), `clarifications-summary.md` |
 | `testcases` | module | clarifications | `modules/<m>/testcases/<m>-testcases.<ext>` + `testcases-summary.md` — `Total test cases: N` must equal the cases in the file |
 | `playwright-ui` | module | testcases, playwright-repo | `results/<run>/<m>/playwright-ui/results.json` (schema `results`, written by `results.mjs`) |
@@ -140,11 +142,22 @@ node scripts/ledger.mjs list    <product> [--live] [--all-runs]
 
 Agents record immediately after creating anything, run `owns` before any delete/cancel/remove, and record `deleted` after.
 
+## Module exploration
+
+`node scripts/explore.mjs state|frontier|ingest-network|build|check|paths <product> <module>` (`scripts/lib/explore.mjs`) owns `modules/<m>/explore/` except the module-explorer's `flows/`, `module-summary.md`, `new-questions.json`, `overlay.json` and `captures/`. The format is in [`agent-handoffs.md`](agent-handoffs.md) §1, and the design is decision D-052. The script never touches the product: the agent acts in the browser and saves its captures, and the script records them.
+
+- **A state machine.** A state is a page template plus a structural fingerprint of its accessibility snapshot (roles and data-free names of controls, headings, dialogs, tabs, alerts; sort, filter, selected option and empty lists; values, counts, record names and refs ignored). `state --via <ST> --action …` records the transition too, including into a known state. Each state records how to reach it.
+- **Stable ids** from `explore/registry/` (`scripts/lib/registry.mjs`): `ST-`, `PG-`, `FR-` (frontier items) and `NI-<m>-<n>` (network inventory entries), never renumbered or reused.
+- **The frontier ledger.** Every candidate control of every state is explored, derived away by the script (logout, external, out-of-module, duplicate, disabled, not allowed in readonly), excluded in the overlay with one of the agent's cited reasons, or `deferred: budget`. `explore.max_states` (150) and `explore.max_pages` (40) cap new states and pages per module.
+- **The question audit.** Every active knowledge open point (`KQ-<m>-<n>`, `KQ-product-<n>`) is observed (a state or `observation:` evidence), asked (a CSV id) or dismissed (a reason); every untried input has a question or a reason; every question in `new-questions.json` is in the CSV (`clarifications.mjs` stays the only CSV writer).
+- **The network inventory** keeps method, host, path template and key names only; the raw capture is deleted after `ingest-network` reads it.
+- **Verified.** A passing `check` stamps `coverage.json`; the `explore` stage's done refuses a missing or stale stamp. Entities the run created while exploring and left live are reported, not a failure (D-005 limits deletes, it does not require them).
+
 ## API endpoint catalogue
 
 `node scripts/endpoints.mjs find-spec|introspect|build|probe|check <product> <module>` (`scripts/lib/{endpoints,openapi,graphql,probe,api-discovery}.mjs`) owns `modules/<m>/api/` except `overlay.json`. The format is in [`agent-handoffs.md`](agent-handoffs.md) §4, and the design is decision D-045.
 
-- **Stable ids.** Ids come from `registry.json`: one `EP-<m>-<n>` per endpoint key, never renumbered or reused.
+- **Stable ids.** Ids come from `registry.json`: one `EP-<m>-<n>` per endpoint key, never renumbered or reused. An inventory input is cited by its `NI-<m>-<n>` id (`explore/network-inventory.json#NI-…`); an older inventory without ids by its index.
 - **Coverage.** `build` fails unless every input appears exactly once in `coverage.json`, either mapped or excluded with a reason code. The inputs are spec operations, GraphQL root fields, inventory entries and docs endpoints.
 - **Overlay.** The agent's `overlay.json` is schema-validated before `build` uses it.
 - **Network requests** from the script are guarded GETs (`scripts/lib/probe.mjs`):
@@ -193,4 +206,4 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.

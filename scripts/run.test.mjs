@@ -56,8 +56,9 @@ test("done is refused until declared outputs exist and validate", async () => {
   put(root, "artifacts/acme/modules/contacts/explore/module-summary.md", "# s");
   assert.match((await setStage("acme", "explore", "contacts", "done", undefined, { root })).errors.join("\n"), /slug|title/);
   put(root, "artifacts/acme/modules/contacts/explore/sitemap.json", SITEMAP);
-  assert.equal((await setStage("acme", "explore", "contacts", "done", undefined, { root })).status, "done");
-  assert.ok((await ready("acme", root)).includes("contacts/clarifications"));
+  // a valid sitemap is not enough: the exploration must have passed explore.mjs check (D-052; explore.test.mjs)
+  assert.match((await setStage("acme", "explore", "contacts", "done", undefined, { root })).errors.join("\n"), /no verified stamp/);
+  assert.ok(!(await ready("acme", root)).includes("contacts/clarifications"));
 });
 
 test("clarifications stage: policy stop needs every Answer; continue-flagged needs notes", async () => {

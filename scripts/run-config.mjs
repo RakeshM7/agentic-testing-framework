@@ -11,7 +11,7 @@ import { UNRESOLVED_POLICIES } from "./lib/clarifications.mjs";
 
 const MODES = ["readonly", "full-run"];
 const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
-const KNOWN = ["product", "target", "feature", "knowledge", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git"];
+const KNOWN = ["product", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git"];
 const posInt = (v) => Number.isInteger(v) && v > 0;
 const strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
 const httpUrl = (v) => {
@@ -21,6 +21,8 @@ const httpUrl = (v) => {
     return false;
   }
 };
+// Exploration budgets per module (D-052): new states and pages over them are recorded as deferred: budget.
+export const EXPLORE_DEFAULTS = { max_pages: 40, max_states: 150 };
 export const API_DEFAULTS = { specs: [], graphql: [], auth_header: null, discovery_budget: 40, probe_budget: 50, probe_delay_ms: 500, plan_budget: 300 };
 
 export function validateRunConfig(cfg) {
@@ -56,6 +58,14 @@ export function validateRunConfig(cfg) {
   if (cfg.knowledge?.references !== undefined && !strList(cfg.knowledge.references)) errors.push("knowledge.references: must be a list of URLs/paths");
   if (cfg.knowledge?.max_extra_sources !== undefined && !(Number.isInteger(cfg.knowledge.max_extra_sources) && cfg.knowledge.max_extra_sources >= 0))
     errors.push("knowledge.max_extra_sources: must be a non-negative integer (extra sources per knowledge pass, D-051)");
+
+  if (cfg.explore !== undefined) {
+    if (!cfg.explore || typeof cfg.explore !== "object" || Array.isArray(cfg.explore)) errors.push("explore: must be a mapping");
+    else {
+      for (const k of Object.keys(cfg.explore)) if (!(k in EXPLORE_DEFAULTS)) errors.push(`explore.${k}: unknown key`);
+      for (const k of Object.keys(EXPLORE_DEFAULTS)) if (cfg.explore[k] !== undefined && !posInt(cfg.explore[k])) errors.push(`explore.${k}: must be a positive integer (per module, D-052)`);
+    }
+  }
 
   if (!Array.isArray(cfg.modules) || !cfg.modules.length) errors.push("modules: required, a non-empty list (modules are explored in this order)");
   else {
@@ -117,6 +127,7 @@ export function validateRunConfig(cfg) {
       api: { ...API_DEFAULTS, ...cfg.api },
       feature: { description: "", requirement_docs: [], ...cfg.feature },
       knowledge: { references: [], max_extra_sources: 20, ...cfg.knowledge },
+      explore: { ...EXPLORE_DEFAULTS, ...cfg.explore },
       authorizations: { authenticated_crawl: false, credentials_file: null, session_state_file: null, identities: [], ...auth, mode: auth.mode ?? "readonly" },
       permissions_file: cfg.permissions_file ?? "config/permissions.yaml",
       testcases: { output_format: "gherkin", ...cfg.testcases },

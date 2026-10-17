@@ -77,12 +77,13 @@ export const STAGES = {
       { path: "artifacts/{product}/knowledge/modules/{m}/rule-facts.json", schema: "knowledge-rule-facts" },
     ],
   },
+  // The exploration's state machine is script-built (D-052): done needs the verified stamp of `explore.mjs check`.
   explore: {
     scope: "module",
     orchestrator: "module-explorer",
     needs: ["module-knowledge"],
     outputs: [
-      { path: "artifacts/{product}/modules/{m}/explore/sitemap.json", schema: "sitemap" },
+      { path: "artifacts/{product}/modules/{m}/explore/sitemap.json", schema: "sitemap", check: "explore" },
       { path: "artifacts/{product}/modules/{m}/explore/module-summary.md" },
     ],
   },
@@ -182,6 +183,11 @@ const CHECKS = {
   "knowledge-module": async (_file, ctx) => {
     const { k, kp, cfg } = await knowledgeLib(ctx);
     return k.checkModule(kp, cfg, ctx.module);
+  },
+  explore: async (_file, ctx) => {
+    const x = await import("./explore.mjs");
+    const p = paths(ctx.product, ctx.root ?? repoRoot);
+    return x.stageProblems(x.exploreContext({ root: ctx.root ?? repoRoot, product: ctx.product, module: ctx.module, run: loadJson(p.runFile), cfg: loadJson(p.configFile), productDir: p.productDir, ledgerFile: p.ledgerFile }));
   },
 };
 

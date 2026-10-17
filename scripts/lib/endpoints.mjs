@@ -17,6 +17,8 @@
 //     excluded with a reason code; build() fails if any input is unaccounted for
 //   - non-GET REST operations always mutate; the overlay can raise `mutates`, never lower it
 //   - traffic gives key names only, so types and schemas come only from a spec
+//   - an inventory entry is cited by its stable id, explore/network-inventory.json#NI-<m>-<n> (D-052); an older
+//     inventory without ids is still read, and cited by its array index (#/<index>)
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -97,6 +99,12 @@ export function normalizePath(raw, { literals = [] } = {}) {
 }
 
 export const erase = (p) => p.replace(/\{[^}]*\}/g, "{}");
+
+// A network-inventory entry: its stable NI id (D-052), or its index in an older inventory without ids.
+const NI_RE = /^NI-[a-z0-9]+(-[a-z0-9]+)*-[1-9]\d*$/;
+const hasNiId = (e) => typeof e.id === "string" && NI_RE.test(e.id);
+export const inventoryInput = (e, i) => `inventory:${hasNiId(e) ? e.id : i}:${String(e.method ?? "").toUpperCase()} ${e.pathTemplate}`;
+export const inventoryRef = (e, i) => `explore/network-inventory.json#${hasNiId(e) ? e.id : `/${i}`}`;
 export const segments = (p) => p.split("/").filter(Boolean);
 
 export function restKey(method, origin, p, primaryOrigin) {
@@ -343,7 +351,7 @@ export function build(ap, { module, cfg, runId }) {
   const protocol = new URL(cfg.target.url).protocol;
   const inv = inventory.map((e, i) => {
     const method = String(e.method ?? "").toUpperCase();
-    const input = `inventory:${i}:${method} ${e.pathTemplate}`;
+    const input = inventoryInput(e, i);
     let n;
     try {
       n = normalizePath(e.host && !/^https?:/i.test(e.pathTemplate) ? `${protocol}//${e.host}${e.pathTemplate}` : e.pathTemplate, { literals });
@@ -527,7 +535,7 @@ export function build(ap, { module, cfg, runId }) {
         return [];
       }
     }),
-    ...inventory.map((e, i) => `inventory:${i}:${String(e.method ?? "").toUpperCase()} ${e.pathTemplate}`),
+    ...inventory.map(inventoryInput),
     ...overlay.endpoints.map((d, i) => `docs:${i}:${String(d.method).toUpperCase()} ${d.path}`),
   ];
   const accounted = new Map();
@@ -593,7 +601,7 @@ function finalize(a, { idOf, probes }) {
   const sources = [
     ...a.specOps.map((o) => ({ source: "openapi", ref: `sources/${o.sourceId}.json${o.ref}` })),
     ...a.gql.map((g) => ({ source: "graphql", ref: `sources/${g.sourceId}.json#${g.operationType}.${g.field}` })),
-    ...a.inv.map((x) => ({ source: "network", ref: `explore/network-inventory.json#/${x.index}` })),
+    ...a.inv.map((x) => ({ source: "network", ref: inventoryRef(x, x.index) })),
     ...a.docs.map((d) => ({ source: "docs", ref: d.citation })),
     ...(probed ? [{ source: "probe", ref: "sources/probes.json" }] : []),
   ];

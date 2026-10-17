@@ -18,7 +18,7 @@ You turn the module's UI test cases into specs, with the test data they need.
 `product=<p> module=<m>`
 
 ## Inputs
-`docs/playwright-conventions.md`; `artifacts/<p>/modules/<m>/testcases/` (all cases except those tagged `@api`); `explore/interactions.json` (field types, limits, options); `playwright-tests/<p>/pages/<m>/`, `fixtures/ui/`, `helpers/ui/` (reuse, don't duplicate); `explore/pages/*/dom-snapshot.md` (verbatim texts for assertions).
+`docs/playwright-conventions.md`; `artifacts/<p>/modules/<m>/testcases/` (all cases except those tagged `@api`); `explore/interactions.json` (field types, limits, options); `playwright-tests/<p>/pages/<m>/`, `fixtures/ui/`, `helpers/ui/` (reuse, don't duplicate); `explore/pages/*/dom-snapshot.md` and `explore/pages/*/states/*.md` (verbatim texts for assertions).
 
 ## Do
 - `helpers/ui/<m>.data.ts`: builders returning valid example data per entity, plus variants for boundary/negative cases (max length, empty, invalid format) derived from `interactions.json` and answered clarifications. Unique values use `uniqueName` from `utils/shared/data.ts`. Pure functions only: no `page`, no fixtures, no network, no assertions; typed exports.

@@ -235,6 +235,28 @@ test("ids are stable across rebuilds and runs; gone endpoints keep their id and 
   assert.equal(Number(notes.id.split("-").at(-1)), Object.keys(first).length + 1);
 });
 
+test("inventory entries with NI ids are cited and accounted for by id; an older inventory by index (D-052)", () => {
+  const { root } = startRun();
+  const withIds = INVENTORY.map((e, i) => ({ id: `NI-contacts-${i + 10}`, ...e }));
+  const ap = fixture(root, { inventory: withIds });
+  assert.deepEqual(build(ap, ctxOf()).problems, []);
+  const cov = read(ap.coverage);
+  const reasons = Object.fromEntries(cov.excluded.map((x) => [x.input, x.reason]));
+  assert.equal(reasons["inventory:NI-contacts-14:GET /api/v1/deals"], "out_of_module");
+  assert.ok(cov.mapped.some((m) => m.input === "inventory:NI-contacts-10:GET /api/v1/contacts"));
+  assert.ok(!JSON.stringify(cov).includes("inventory:0:"), "no index once ids exist");
+  const list = read(ap.catalogue).find((e) => e.key === "GET /api/v1/contacts");
+  assert.ok(list.sources.some((s) => s.source === "network" && s.ref === "explore/network-inventory.json#NI-contacts-10"));
+  // reordering the inventory changes no citation (an index would)
+  writeJson(ap.inventory, [...withIds].reverse());
+  build(ap, ctxOf());
+  assert.ok(read(ap.catalogue).find((e) => e.key === "GET /api/v1/contacts").sources.some((s) => s.ref === "explore/network-inventory.json#NI-contacts-10"));
+  // the old form still reads
+  writeJson(ap.inventory, INVENTORY);
+  build(ap, ctxOf());
+  assert.ok(read(ap.catalogue).find((e) => e.key === "GET /api/v1/contacts").sources.some((s) => s.ref === "explore/network-inventory.json#/0"));
+});
+
 test("overlay: scope, exclusions, docs endpoints and annotations are applied; mutates is never lowered; unknown targets fail", () => {
   const { root } = startRun();
   const overlay = {
