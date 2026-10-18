@@ -7,7 +7,7 @@ One repo per product holds both UI and API tests. Every Playwright agent follows
 ```
 package.json, package-lock.json, playwright.config.ts, tsconfig.json,
 .env.example, .gitignore, README.md, utils/shared/          pw-repo-owner (only), rendered
-config/ui/   fixtures/ui/   helpers/ui/   pages/<m>/   tests/ui/<m>/        UI agents
+config/ui/   fixtures/ui/   helpers/ui/   pages/<m>/   tests/ui/<m>/        UI agents (scaffolded by ui-code.mjs, D-055)
 config/api/  fixtures/api/  helpers/api/  clients/<m>/ tests/api/<m>/       API agents
 .auth/ (git-ignored storage state)   test-results/{ui,api}/ (git-ignored)
 ```
@@ -24,7 +24,104 @@ The fixed files are not written by hand: `node scripts/foundation.mjs render <p>
 
 The overlays live in `artifacts/<p>/foundation/`. Dependencies are named without a version: `foundation.mjs install` resolves the latest at creation, and from then on `package-lock.json` pins them.
 
-Within a side: the scaffolder writes the side's overlay and renders the foundation; later it fills only a reported gap, in `helpers/<side>/`. The pom- or client-writer adds one fixture per page object or client to `fixtures/<side>/index.ts`, which builds on `./base` (and the client-writer adds `config/api/schemas/`). The tests-writer writes the specs and the module's data or payload builders in `helpers/<side>/`. The fixer edits any of these except a managed file to apply findings.
+Within a side: the scaffolder writes the side's overlay and renders the foundation; later it fills only a reported gap, in `helpers/<side>/`. The pom- or client-writer adds one fixture per page object or client to `fixtures/<side>/index.ts`, which builds on `./base` (and the client-writer adds `config/api/schemas/`). The tests-writer writes the specs and the module's data or payload builders in `helpers/<side>/`. The fixer edits any of these except a managed file to apply findings. On the UI side the module's code is scaffolded by a script first (below).
+
+### UI code is scaffolded per approved case and required page template (D-055)
+
+`node scripts/ui-code.mjs build|check|paths <p> <m>` (`scripts/lib/ui-code.mjs`) derives what the module needs from the test cases a human approved (D-053) and the exploration's state machine (D-052), and writes the parts that must be identical on every run:
+
+| File (in `playwright-tests/<p>/`) | Owner |
+|---|---|
+| `tests/ui/<m>/cases.spec.ts`: one `test()` per approved non-`@api` case, its literal title `TC-<m>-<n> <title> @<priority> @<type> [@mutates] [@assumption] [@visual]`, the page-object fixtures its states need, one `test.step` per case step and one `Then: <expected>` step | the script, **except the marked regions** |
+| the regions `// ui-code:begin <key>` … `// ui-code:end <key>` of that file: `setup` (imports, hooks, helpers), one per test for its data (`TC-<m>-<n> data`, at the top of the test) and one per step (`TC-<m>-<n> step <n>`, `TC-<m>-<n> then`) | pw-ui-tests-writer |
+| `helpers/ui/<m>.data.ts` | pw-ui-tests-writer |
+| `pages/<m>/<slug>.page.ts` per required page template (`PG-` id), `pages/<m>/components/<name>.component.ts` per dialog its states show; `build` seeds a class shell once when one is missing | pw-ui-pom-writer |
+| `fixtures/ui/pages/<m>.ts`: the module's page-object fixtures (`type <M>Pages`, `const <m>Pages`) | the script |
+| `fixtures/ui/index.ts`: imports `<m>Pages` from `./pages/<m>` and spreads it into `base.extend<<M>Pages>({ ...<m>Pages })` | pw-ui-pom-writer |
+| `tests/ui/<m>/_locators.smoke.spec.ts`: the locator smoke (below) | the script |
+
+**Why marked regions.** The generated and the agent-written code share one file: the script owns every line outside the regions, so a rebuild re-renders the skeleton around the file's own region bodies and keeps every body; `check` re-renders it the same way, and any other difference is an edit of generated code. The step bodies close over the test's fixtures, so they need no plumbing. A body whose test is no longer generated (its case was edited and is awaiting a new approval, or a step was dropped) is parked in `artifacts/<p>/modules/<m>/ui-code/parked.json` and restored when its region comes back; a file whose markers are broken is never rewritten.
+
+**Required page objects.** A case touches the states its coverage items name (an input field's states, a transition's two ends, the states its flow file names) and the state snapshots its `observation:` evidence cites. Each page template (`PG-`) of a touched state needs a page object, and each dialog those states show needs a component object. Unapproved cases are never generated, and approved ones over `testcases.max_cases` are deferred (lowest priority first). `ui-code/coverage.json` is the ledger: every case is mapped to its test, excluded (`not-approved`, `api-side`) or deferred (`budget`); every page template is mapped to its page object or excluded (`not-touched`); every dialog is mapped to its component.
+
+**Locator policy.** `getByRole` first, then `getByLabel`, then `getByText`; `getByPlaceholder` and `getByTestId` when the snapshot shows that placeholder or that test-id attribute. Every name is a string literal copied **verbatim and whole** from a stored state snapshot of the page object's own template (`explore/pages/<slug>/states/<ST>.md`; a component: the states that show its dialog):
+- a `getByRole` name is a node of that role with exactly that name;
+- a `getByLabel` name is a node's whole name;
+- a `getByText` (or `filter({ hasText })`, `getByTitle`, `getByAltText`) text is a node's whole name or text;
+- a `getByPlaceholder` or `getByTestId` value is an exact recorded placeholder or test-id attribute;
+- never a substring.
+
+Options are an object literal: no variable, no spread. These are findings:
+- a regular expression, a template literal, a concatenation, a variable or a `String(…)` as a name;
+- computed access (`page['getByText']`, `this['row']`);
+- a page-object method taken around its call (`.call`, `.apply`, `.bind`);
+- a `this.<field>` holding a string passed to `locator(…)`: only a field that holds a locator built by a checked call is a chain.
+
+CSS, XPath, page scripts and Playwright's legacy selector API on a page or frame take a string-literal selector and a cited reason on or up to three lines above: `// locator: css|xpath|evaluate because <reason> [observation:explore/pages/<slug>/states/<ST>.md]`, citing a snapshot of the same template. That covers `locator('…')`, `frameLocator`, `$`, `$$`, `$eval`, `$$eval`, `waitForSelector`, `evaluate*` and `dispatchEvent`, and `page.click`, `fill`, `type`, `press`, `check`, `uncheck`, `selectOption`, `hover`, `tap`, `dblclick`, `focus`, `textContent`, `innerText`, `innerHTML`, `getAttribute`, `inputValue`, `is*`, `setInputFiles` and the like.
+
+**Runtime data (a data-driven locator).** Most `@mutates` cases look up what they created: find the new row, open it, delete their own entity, search for it. A page-object method may build a locator from a `string` parameter `v` only under these conditions:
+- it is non-async and only returns the locator;
+- that locator is a grounded literal locator refined only by `getByRole('<grounded literal role>', { name: v, exact: true })`, or by `.filter({ hasText: v })` on a grounded container: `row(name: string) { return this.table.getByRole('row', { name, exact: true }); }`.
+
+At each call site `v` is one of:
+- a grounded literal;
+- in the cases spec, a name from the test's **data region**, directly or through a step-local `const x = <name>.<member>`;
+- inside a page object, a string parameter of the calling method, whose own call sites are checked the same way (`async openContact(name: string) { await this.row(name).click(); }`).
+
+Anything else is a finding (`locator-param`). Such locators are left out of the smoke: only their role and container are grounded and checked.
+
+**The per-test data region.** Each generated test opens with `// ui-code:begin TC-<m>-<n> data` … `// ui-code:end TC-<m>-<n> data`, before its steps:
+
+```ts
+  test('TC-contacts-1 … @p1 @functional @mutates', async ({ page, contactsPage }) => {
+    // ui-code:begin TC-contacts-1 data
+    const contact = buildContact();
+    // ui-code:end TC-contacts-1 data
+    await test.step('1. …', async () => { … await contactsPage.row(contact.name).click(); … });
+    await test.step('Then: …', async () => { … await expect(contactsPage.row(contact.name)).toBeVisible(); … });
+  });
+```
+
+It holds only `const <name> = <builder>(…);` with a builder imported (in `setup`) from `helpers/ui/<m>.data.ts` (rule `data-region`). Its consts are visible to every step of that test and are rebuilt on each retry. A builder called at module level, in `setup` or inside a step binds nothing: its value would be shared between tests and retries, or would never reach the Then step.
+
+Binding is per test: re-declaring, shadowing (a const, a destructuring, a parameter) or reassigning a data name anywhere in the test is a finding (`data-shadow`), and the shadowed value is no longer data. Every builder value a data-driven locator finds is built with `uniqueName` (or `uniqueEmail`) from `utils/shared/data.ts`; a fixed string is a finding (`data-unique`).
+
+**The data builders** (`helpers/ui/<m>.data.ts`) hold data only: values, and functions returning data, built with `uniqueName`. They never import `@playwright/test`, the page objects or the fixtures, never name `Page`, `Locator` or `page`, and never call a locator, selector or page-object method (rule `data-file`). Any other `helpers/ui/` file that the spec or a page object imports is checked under the page-object rules.
+
+**Steps go through the page objects.** A region of the cases spec never finds elements itself (rule `raw-locator`): no `getBy*`, `locator`, `frameLocator`, `$` or `evaluate`, no computed access to them, and no selector-taking `page.<method>(…)` or frame call. `page` appears only for navigation (`page.goto`, `reload`, `waitForURL` …), in `expect(page)` and in `waitForReady(page)`. A page object appears only as `po.<locator>` or `po.method(…)` (rule `po-access`): no computed access, no `.call`, `.apply` or `.bind`, no method taken without being called, never passed on or aliased. A missing locator or action is a request to pw-ui-pom-writer.
+
+A region uses `test` only as `test.step(…)`, plus the hooks (`beforeEach`, `afterEach`, `beforeAll`, `afterAll`) in `setup` (rule `test-reference`, which also catches an alias). testInfo (a hook's second parameter, or `test.info()`) is used only to `.attach(…)` or to read `.title` and `.project`: no assignment, no computed access and no other method (rule `test-info`). A region never calls `.skip(…)`, `.fixme(…)`, `.fail(…)` or `.slow(…)` in any form (rule `silent-skip`).
+
+The only exception parks a case that can't be automated yet: `test.fixme(true, '<reason>');` as the unconditional **first statement** of its first step, never inside any control flow. A parked case is not covered: `coverage.json` lists it under `parked`, its ledger item is excluded with reason `parked`, `check` lists it, and the gate reports it as a minor finding (`approved case parked: <reason>`). Every step of a test that is not parked holds at least one statement.
+
+**The expected-result step really asserts.** It holds at least one top-level `expect(<page object>.<locator or read>).<matcher>(…)`, a web-first or value assertion on a page-object locator or on data read through a page object; for a test with no page object, `expect(page).toHaveURL / toHaveTitle / toHaveScreenshot`. None of these count, and the rule is `no-assertion`:
+- `expect(<literal>)`;
+- `expect.poll`;
+- `expect.soft`;
+- an assertion on the page object's own `page`;
+- an assertion in a nested block or function;
+- an assertion after a top-level `return` or `throw` (code there is a finding of its own).
+
+### The locator smoke (`tests/ui/<m>/_locators.smoke.spec.ts`)
+
+Generated by `ui-code.mjs build` from the plan and the page objects; never edited. One test per required page object, titled `<PG id> <class or dialog> locators resolve @locators-smoke`:
+- it opens the page template at a URL one of its explore states recorded, as a path under `BASE_URL` (GET navigation only; query parameters that can carry a credential are dropped); a URL on another host is skipped with the reason;
+- a dialog is reached by replaying its state's recorded path from a URL-entered state, and only when every step is safe:
+  - a click on a navigation-like control (link, button, tab, menu item, tree item, column header);
+  - not inside a form or dialog, and found exactly once in the snapshot of the state it was clicked in;
+  - with a name that neither signs out nor commits. The test is the explorer's `mutatesControl` with the control's context, plus the smoke's own words for every role including links: OK, Confirm, Continue, Next, Done, Submit, Apply, Save, Add, Empty, Clear, Remove, Archive, Send, Delete, Buy, Cart, Pay, Star, Favorite, Follow, Subscribe, Like, Pin, Mute, Block, Report, Accept, Decline, Watch, Unwatch, Bookmark, Retry, and Open, unless the control is a link to a page;
+  - followed by a recorded transition into a state for which the exploration's network inventory holds no request other than GET.
+
+  Each click targets the recorded element exactly (`getByRole(role, { name, exact: true })`), asserts `toHaveCount(1)`, then clicks; there is no `.first()`. A path that fails any condition makes the test a `test.skip(true, '<reason>')`;
+- it asserts `await expect(<fixture>.<locator>).not.toHaveCount(0)` for each public locator property of the page object whose `getBy*` names the visited state's snapshot shows; locators only another state shows are listed in a comment. A data-driven locator (runtime data, above) is left out: its value exists only at run time, and its role and container are grounded by the check.
+
+It is readonly-safe **in every mode**: no typing, no commit click, no `@mutates`, and its own `beforeEach` routes every request: a GET goes on (to the mutation guard, which is off in a full-run), anything else is aborted and recorded, and the `afterEach` fails the test when one was attempted. The UI runner-triager runs it **first** (`--grep @locators-smoke`), then the cases (`--grep-invert @locators-smoke`). Its failures are classified in `triage.md` like any other test (§7 of the hand-off formats):
+- a page-object locator that does not resolve on a page that loaded: `test-bug`, healable. The fixer re-grounds the locator verbatim in a snapshot, then runs `ui-code.mjs build` (the smoke follows the page objects);
+- a recorded click whose control is gone: `test-bug`, not healable. The exploration is stale, and the module needs re-exploring;
+- the page did not load (an error status, a login page, the host down): `environment`;
+- a skipped smoke test is a skip with its reason, not a failure.
+
+The gate traces the smoke's tests to page templates, not to cases, only at the exact path `tests/ui/<m>/_locators.smoke.spec.ts` of a scaffolded module (one with `ui-code/plan.json`): each of its tests must carry `@locators-smoke`, and the file must stay byte-identical to its render; `check` and the gate flag any edit. In compile mode the gate also flags an alias of `test`, a case id Playwright lists twice or that is not an automated case (the UI side only: an API scenario may span several tests, and a title may name a related scenario), and any difference between the tests listed in `cases.spec.ts` and the plan's (one each).
 
 A change to a file you don't own, or to a managed file, is a request in your report to your orchestrator — never an edit. The guard denies every agent a direct write to a managed file.
 
@@ -49,17 +146,17 @@ A change to a file you don't own, or to a managed file, is a request in your rep
 
 ## Code rules
 
-- Test titles start with the test case id: `test('TC-contacts-3 creates a contact with required fields @mutates', …)`. One `describe` per test case group; tags in titles mirror the test case tags (`@p1`, `@negative`, …).
-- Locators: `getByRole` / `getByLabel` / `getByPlaceholder` / `getByTestId` first; text copied verbatim from `explore/pages/<slug>/dom-snapshot.md`; CSS/XPath only when nothing else exists, with a comment why.
+- Test titles start with the test case id: `test('TC-contacts-3 creates a contact with required fields @mutates', …)`. One `describe` per test case group; tags in titles mirror the test case tags (`@p1`, `@negative`, …). On the UI side `ui-code.mjs build` writes the titles, tags and steps (D-055).
+- Locators: `getByRole` / `getByLabel` / `getByPlaceholder` / `getByTestId` first; text copied verbatim from `explore/pages/<slug>/dom-snapshot.md`; CSS/XPath only when nothing else exists, with a comment why. On the UI side the stricter locator policy above applies, checked against the state snapshots.
 - No `waitForTimeout`, no fixed sleeps; web-first assertions (`await expect(locator).toBeVisible()`).
 - Page objects (`pages/<m>/<page>.page.ts`): class per page, constructor `(page: Page)`, locators as readonly properties, actions as async methods, **no assertions**.
 - API clients (`clients/<m>/<resource>.client.ts`): class per resource wrapping `APIRequestContext`, typed request/response, **no assertions**.
 - Helpers (`helpers/<side>/`): pure functions (builders, formatters, parsers); no Playwright fixtures inside.
-- Fixtures (`fixtures/<side>/index.ts`): `import { test as base } from './base'`, then `export const test = base.extend<…>()` providing the page objects or clients; `export { expect } from './base'`. The guard (the UI mutation guard, the API's guarded contexts) lives in the rendered `fixtures/<side>/base.ts` and the login in `auth.setup.ts`, never in `index.ts`; `index.ts` never takes `test` or `expect` from `@playwright/test` (type-only imports are fine).
+- Fixtures (`fixtures/<side>/index.ts`): `import { test as base } from './base'`, then `export const test = base.extend<…>()` providing the page objects or clients (on the UI side by spreading each module's generated `fixtures/ui/pages/<m>.ts`); `export { expect } from './base'`. The guard (the UI mutation guard, the API's guarded contexts) lives in the rendered `fixtures/<side>/base.ts` and the login in `auth.setup.ts`, never in `index.ts`; `index.ts` never takes `test` or `expect` from `@playwright/test` (type-only imports are fine).
 - Visual checks (`@visual` cases): `toHaveScreenshot()` with masks for dynamic regions; baselines are created by the runner with `--update-snapshots` only when none exist.
 - `npx tsc --noEmit` must pass before handing back.
 
-**Machine-checked** by `scripts/gate.mjs` before every review (findings in `gate-findings.md`): typecheck and `--list`; one test (or `test.fixme`) per test case (ui, all but `@api`) or plan scenario (api), and no test without one; `@mutates` in the title of every test whose case or scenario mutates; `@identity-<name>` in the title of every API test whose scenario needs that identity; `recordCreated` in specs with `@mutates` tests; no `waitForTimeout`; no hard-coded URLs or `test.only`; no assertions in page objects or clients; once the foundation is rendered, no managed file drifted from its render, `fixtures/<side>/index.ts` builds on `./base`, and no setup file but `auth.setup.ts`. `node scripts/foundation.mjs check` enforces the rest of the foundation's rules. Its URL check flags a full URL, a protocol-relative `'//host'`, and a URL assembled from pieces (a scheme joined with `+`, through `${'…'}`, or an array holding a scheme piece that is joined); a bare host literal such as `'acme.example.com'` is out of its scope and left to the reviewer. Everything else in this file is the reviewer's to judge.
+**Machine-checked** by `scripts/gate.mjs` before every review (findings in `gate-findings.md`): typecheck and `--list`; one test (or `test.fixme`) per test case (ui, all but `@api`) or plan scenario (api), and no test without one; `@mutates` in the title of every test whose case or scenario mutates; `@identity-<name>` in the title of every API test whose scenario needs that identity; `recordCreated` in specs with `@mutates` tests; no `waitForTimeout`; no hard-coded URLs or `test.only`; no assertions in page objects or clients; once the foundation is rendered, no managed file drifted from its render, `fixtures/<side>/index.ts` builds on `./base`, and no setup file but `auth.setup.ts`. Once a UI module is scaffolded (D-055), the gate also runs `scripts/lib/ui-code.mjs`'s rules: the cases spec's skeleton intact (no missing or extra test, no changed title or tags), no empty step body, an assertion in each expected-result step, `toHaveScreenshot` in every `@visual` test, `recordCreated` in every `@mutates` test's own steps, the required page objects present and registered, every locator grounded, no selector without a cited reason, and the registration and smoke as generated; `node scripts/ui-code.mjs check` runs the same rules (with `--pages`, the page-object ones and `tsc`). `node scripts/foundation.mjs check` enforces the rest of the foundation's rules. Its URL check flags a full URL, a protocol-relative `'//host'`, and a URL assembled from pieces (a scheme joined with `+`, through `${'…'}`, or an array holding a scheme piece that is joined); a bare host literal such as `'acme.example.com'` is out of its scope and left to the reviewer. Everything else in this file is the reviewer's to judge.
 
 ## Running (runner-triagers only)
 
@@ -69,3 +166,5 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/<side>/<m>-report.json \
 npx playwright test --project=<side> tests/<side>/<m> --reporter=list,json
 node $ATF_REPO_ROOT/scripts/results.mjs playwright <p> <m> <side> playwright-tests/<p>/test-results/<side>/<m>-report.json
 ```
+
+On the UI side the module's locator smoke (`--grep @locators-smoke`) runs first and the cases after it (`--grep-invert @locators-smoke`); see "The locator smoke" above for how its failures are classified (D-055).

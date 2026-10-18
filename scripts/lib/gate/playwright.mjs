@@ -2,12 +2,15 @@
 // to the test cases (ui) or the API plan's scenarios (api). Only a case a human approved is automated
 // (scripts/lib/testcases.mjs approvalSummary): the UI side must trace every approved non-@api case; a case not approved
 // (awaiting, rejected, sent back, or edited since it was approved) needs no test, and a test that exists for one must
-// be a test.fixme whose title says "awaiting approval".
+// be a test.fixme whose title says "awaiting approval". Once a UI module is scaffolded by scripts/ui-code.mjs (D-055),
+// its rules (the skeleton per approved case, the page objects, locators grounded in the snapshots, the generated
+// registration and locator smoke) run here too, from scripts/lib/ui-code.mjs; the smoke's tests trace to page templates.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { SETUP_FILE, foundationContext, gateFoundationProblems } from "../foundation.mjs";
 import { approvalSummary } from "../testcases.mjs";
+import { SMOKE_FILE, SMOKE_TAG, uiCodeContext, uiCodeFindings } from "../ui-code.mjs";
 import { finding, hygiene, matches, read, run, testTitles, walk } from "./common.mjs";
 
 // What the side must implement: {want: Map id -> {mutates, identities[]}, unapproved: Set of case ids}, or null.
@@ -131,7 +134,7 @@ export function testDeclarationProblems(raw, { spec = true } = {}) {
       out.push({ line: lineAt(m.index), problem: `test title must be a literal carrying its case id (found ${(args[0] || "nothing").slice(0, 60)})`, fix: "write one test per approved case, its title a plain string literal starting with the case id; no variables, loops, ${} or +" });
   }
   const alias = (re, what) => {
-    for (const m of code.matchAll(re)) out.push({ line: lineAt(m.index), problem: `${what}: a test declared through it is invisible to traceability and approval`, fix: "call test(), test.fixme() or test.describe() directly" });
+    for (const m of code.matchAll(re)) out.push({ line: lineAt(m.index), alias: true, problem: `${what}: a test declared through it is invisible to traceability and approval`, fix: "call test(), test.fixme() or test.describe() directly" });
   };
   alias(/\b(?:const|let|var)\s+(?!test\b)[A-Za-z_$][\w$]*\s*=\s*test\b(?!\s*\.\s*(?:info|step|use|expect|setTimeout)\b)/g, "an alias of test");
   alias(/\b(?:const|let|var)\s*\{[^}]*\}\s*=\s*test\b/g, "test destructured");
@@ -170,24 +173,48 @@ export function listedTests(report) {
 // "awaiting approval", is a major finding. root: the Playwright project, which an absolute listed file is reported
 // relative to; dir: the module's spec folder, for a relative file or none. setupFile: the side's rendered
 // fixtures/<side>/auth.setup.ts (D-054), whose setup test Playwright lists as the side project's dependency; it is not a
-// case. Only that one file is exempt, and the gate flags any other setup file and any drift from its render.
-export function listFindings(tests, { idRe, unapproved, what, root, dir, setupFile = null }) {
+// case. Only that one file is exempt, and the gate flags any other setup file and any drift from its render. exempt:
+// further script-owned files whose tests trace to no case (the UI side's generated locator smoke, D-055); the gate
+// flags any edit of them through scripts/lib/ui-code.mjs.
+// A listed test's file relative to the Playwright project: an absolute file relative to root; a relative one (to the
+// side's test folder) keeps its subfolders.
+export function listedFile(t, { base, dir }) {
+  if (!t.file) return dir;
+  if (path.isAbsolute(t.file) && base) return path.relative(base, t.file).replaceAll("\\", "/");
+  const rel = path.posix.normalize(t.file.replaceAll("\\", "/"));
+  return rel.split("/")[0] === path.posix.basename(dir) ? path.posix.join(path.posix.dirname(dir), rel) : path.posix.join(dir, rel);
+}
+
+// exempt: exact project-relative paths whose tests carry exemptTag instead of a case id (the UI side's generated locator
+// smoke of a scaffolded module, D-055). known: the UI side's automated cases; when given, an id outside it and an id
+// listed by more than one test are findings too. The API side passes none: one plan scenario may span several tests
+// (a lifecycle, a split matrix), and a title may name a related scenario, as the API conventions allow.
+export function listFindings(tests, { idRe, unapproved, what, root, dir, setupFile = null, exempt = [], exemptTag = null, known = null }) {
   const out = [];
   let base = root;
   try {
     if (root) base = realpathSync.native(root);
   } catch {}
+  const seen = new Map();
   for (const t of tests) {
     const title = t.titlePath.join(" > ");
-    const file = !t.file ? dir
-      : path.isAbsolute(t.file) && base ? path.relative(base, t.file).replaceAll("\\", "/")
-      : path.posix.join(dir, t.file.replaceAll("\\", "/").split("/").pop());
+    const file = listedFile(t, { base, dir });
     if (setupFile && file === setupFile) continue;
-    const ids = title.match(new RegExp(idRe.source, "g")) ?? [];
+    if (exempt.includes(file)) {
+      if (exemptTag && !t.titlePath.at(-1)?.split(/\s+/).includes(exemptTag)) out.push(finding("major", file, t.line, "traceability", `Playwright lists "${title}" in the generated smoke without ${exemptTag}`, "re-render it: node scripts/ui-code.mjs build <product> <module>"));
+      continue;
+    }
+    const ids = [...new Set(title.match(new RegExp(idRe.source, "g")) ?? [])];
     if (!ids.length) out.push(finding("major", file, t.line, "traceability", `Playwright lists "${title}", which carries no ${what} id`, `start the test (or its describe) title with its ${what} id, or remove a test that has no ${what}`));
-    for (const id of ids)
-      if (unapproved.has(id) && !(t.fixme && /awaiting approval/i.test(title)))
-        out.push(finding("major", file, t.line, "approval", `Playwright lists "${title}", but ${id} is not approved by a human`, `remove the test, or make it test.fixme('${id} ... awaiting approval')`));
+    for (const id of ids) {
+      if (unapproved.has(id)) {
+        if (!(t.fixme && /awaiting approval/i.test(title))) out.push(finding("major", file, t.line, "approval", `Playwright lists "${title}", but ${id} is not approved by a human`, `remove the test, or make it test.fixme('${id} ... awaiting approval')`));
+        continue;
+      }
+      if (known && !known.has(id)) out.push(finding("major", file, t.line, "traceability", `Playwright lists "${title}", but ${id} is not an automated ${what} of this module`, `trace the test to an existing ${what}, or remove it`));
+      if (known && seen.has(id)) out.push(finding("major", file, t.line, "traceability", `Playwright lists ${id} twice ("${seen.get(id)}" and "${title}")`, `one test per ${what}: remove the second one`));
+      else seen.set(id, title);
+    }
   }
   return out;
 }
@@ -209,31 +236,53 @@ function listJson(cwd, side, module) {
   }
 }
 
+// The rules on every code file of a side: no fixed sleep anywhere, no assertion in a page object or client.
+// files: relative to pwProject; objects: the module's page-object or client folder. Shared with `ui-code.mjs check`.
+export function codeFindings(pwProject, files, objects, side) {
+  const out = [];
+  for (const f of files) {
+    for (const m of matches(read(pwProject, f), /\bwaitForTimeout\(/)) out.push(finding("major", f, m.line, "no-fixed-wait", "waitForTimeout is a fixed sleep", "wait for a state with a web-first assertion or locator"));
+    if (f.startsWith(`${objects}/`)) for (const m of matches(read(pwProject, f), /\bexpect\(/)) out.push(finding("major", f, m.line, "no-assertions-in-objects", `assertion in a ${side === "ui" ? "page object" : "client"}`, "move the assertion into the test"));
+  }
+  return out;
+}
+
+// ctx.exec(cmd, args, cwd) -> null | error and ctx.listTests(cwd, side, module) -> {report} | {error} replace the
+// compile commands (tsc, playwright --list) when given; tests inject them.
 export function gatePlaywright(ctx) {
   const { pwProject, productDir, module, side, compile = true } = ctx;
+  const exec = ctx.exec ?? run;
+  const list = ctx.listTests ?? listJson;
   const idRe = new RegExp(`${side === "ui" ? "TC" : "API"}-${module}-\\d+`, "g");
   const what = side === "ui" ? "test case" : "plan scenario";
   const objects = side === "ui" ? `pages/${module}` : `clients/${module}`;
   const owned = [objects, `tests/${side}/${module}`, `helpers/${side}`, `fixtures/${side}`];
   const files = owned.flatMap((d) => walk(pwProject, d, /\.ts$/));
   const specs = walk(pwProject, `tests/${side}/${module}`, /\.spec\.ts$/);
+  // The UI side's generated locator smoke traces to page templates, not cases (D-055); ui-code.mjs's rules flag any edit.
+  const uctx = side === "ui" ? uiCodeContext({ root: ctx.root, product: ctx.product, module, run: ctx.run, cfg: ctx.cfg, productDir, pwProject }) : null;
+  const scaffolded = !!uctx && existsSync(uctx.up.plan);
+  // exempt only at its exact path, and only once the module is scaffolded (a plan exists)
+  const exempt = scaffolded ? [SMOKE_FILE(module)] : [];
+  const traced = specs.filter((f) => !exempt.includes(f));
   const exp0 = expected({ productDir, module, side });
   const want = exp0?.want ?? null;
   const unapproved = exp0?.unapproved ?? new Set();
   const out = [];
 
   if (want === null) out.push(finding("blocker", side === "ui" ? "testcases/" : "api/plan.json", null, "traceability", `no ${what}s to trace to`, `the ${side === "ui" ? "testcase" : "plan"} stage must finish first`));
-  else if (want.size && !specs.length) out.push(finding("blocker", `tests/${side}/${module}/`, null, "traceability", `no specs for ${want.size} ${what}s`, `write one test per ${what}`));
+  else if (want.size && !traced.length) out.push(finding("blocker", `tests/${side}/${module}/`, null, "traceability", `no specs for ${want.size} ${what}s`, `write one test per ${what}`));
 
   const implemented = new Set();
   const project = compile && existsSync(path.join(pwProject, "package.json"));
-  if (!project) {
-    // the syntax fallback: specs strictly; any other .ts under the module's tests or the side's helpers must declare no test
+  {
+    // the syntax fallback: specs strictly; any other .ts under the module's tests or the side's helpers must declare no
+    // test. In compile mode Playwright's list replaces those rules, but an alias of test is still flagged (D-055).
     const nonSpecs = [`tests/${side}/${module}`, `helpers/${side}`].flatMap((d) => walk(pwProject, d, /\.ts$/)).filter((f) => !f.endsWith(".spec.ts"));
     for (const [f, spec] of [...specs.map((f) => [f, true]), ...nonSpecs.map((f) => [f, false])])
-      for (const d of testDeclarationProblems(read(pwProject, f), { spec })) out.push(finding("major", f, d.line, "test-declaration", d.problem, d.fix));
+      for (const d of testDeclarationProblems(read(pwProject, f), { spec })) if (!project || d.alias) out.push(finding("major", f, d.line, "test-declaration", d.problem, d.fix));
   }
-  for (const f of specs) {
+  for (const f of traced) {
     const text = stripComments(read(pwProject, f));
     let mutating = false;
     for (const t of testTitles(text)) {
@@ -255,15 +304,16 @@ export function gatePlaywright(ctx) {
         for (const who of exp?.identities ?? []) if (!t.title.split(/\s+/).includes(`@identity-${who}`)) out.push(finding("major", f, t.line, "identity-tag", `${id} needs identity '${who}' but its title lacks @identity-${who}`, `add @identity-${who} so runs without that identity skip it`));
       }
     }
-    if (mutating && !/\brecordCreated\(/.test(text)) out.push(finding("major", f, null, "ledger", "has @mutates tests but never calls recordCreated", "record every created entity with recordCreated right after creating it"));
+    // scaffolded UI code: ui-code.mjs checks recordCreated per test, in that test's own steps (stricter than per file)
+    if (mutating && !scaffolded && !/\brecordCreated\(/.test(text)) out.push(finding("major", f, null, "ledger", "has @mutates tests but never calls recordCreated", "record every created entity with recordCreated right after creating it"));
   }
   for (const id of want?.keys() ?? []) if (!implemented.has(id)) out.push(finding("major", `tests/${side}/${module}/`, null, "traceability", `${id} has no test (nor a test.fixme with a reason)`, `implement it, or add test.fixme('${id} <reason>')`));
 
-  for (const f of files) {
-    for (const m of matches(read(pwProject, f), /\bwaitForTimeout\(/)) out.push(finding("major", f, m.line, "no-fixed-wait", "waitForTimeout is a fixed sleep", "wait for a state with a web-first assertion or locator"));
-    if (f.startsWith(`${objects}/`)) for (const m of matches(read(pwProject, f), /\bexpect\(/)) out.push(finding("major", f, m.line, "no-assertions-in-objects", `assertion in a ${side === "ui" ? "page object" : "client"}`, "move the assertion into the test"));
-  }
+  out.push(...codeFindings(pwProject, files, objects, side));
   out.push(...hygiene(pwProject, files));
+  // The scaffolded UI code (D-055): the skeleton per approved case, the page objects per page template, locators
+  // grounded verbatim in the template's snapshots, the selector policy, the registration and the smoke.
+  if (scaffolded) out.push(...uiCodeFindings(uctx, { scope: "tests" }));
 
   // The foundation (D-054), once the script rendered this side: no managed file (the side's, or the repo's shared
   // files) drifted from its render between renders, and the extension files keep the guard.
@@ -272,12 +322,30 @@ export function gatePlaywright(ctx) {
   for (const d of gateFoundationProblems(fctx, side)) out.push(finding("blocker", d.file, null, "foundation", d.problem, `re-render it: node scripts/foundation.mjs render ${ctx.product} --side <side> (a needed change goes into that side's overlay)`));
 
   if (project) {
-    const tsc = run("npx", ["tsc", "--noEmit"], pwProject);
+    const tsc = exec("npx", ["tsc", "--noEmit"], pwProject);
     if (tsc) out.push(finding("blocker", "tsconfig.json", null, "typecheck", `npx tsc --noEmit failed: ${tsc}`, "fix the type errors"));
     // no specs: nothing to list (Playwright would fail with "No tests found"); a missing spec is the blocker above
-    const listed = specs.length ? listJson(pwProject, side, module) : null;
+    const listed = specs.length ? list(pwProject, side, module) : null;
     if (listed?.error) out.push(finding("blocker", `tests/${side}/${module}/`, null, "list", `playwright --list failed: ${listed.error}`, "fix the specs so Playwright can load them"));
-    else if (listed) out.push(...listFindings(listedTests(listed.report), { idRe, unapproved, what, root: pwProject, dir: `tests/${side}/${module}`, setupFile: rendered ? SETUP_FILE(side) : null }));
+    else if (listed) {
+      const tests = listedTests(listed.report);
+      const dir = `tests/${side}/${module}`;
+      out.push(...listFindings(tests, { idRe, unapproved, what, root: pwProject, dir, setupFile: rendered ? SETUP_FILE(side) : null, exempt, exemptTag: SMOKE_TAG, known: side === "ui" && want ? new Set(want.keys()) : null }));
+      // scaffolded: the tests Playwright lists in the cases spec are exactly the plan's, one each (D-055)
+      if (scaffolded) {
+        const plan = JSON.parse(readFileSync(uctx.up.plan, "utf8"));
+        let base = pwProject;
+        try {
+          base = realpathSync.native(pwProject);
+        } catch {}
+        const listedTitles = tests.filter((t) => listedFile(t, { base, dir }) === plan.files.spec).map((t) => t.titlePath.at(-1));
+        const count = (xs) => xs.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map());
+        const have = count(listedTitles);
+        const wantTitles = count(plan.tests.map((t) => t.literal));
+        for (const [title, n] of wantTitles) if (have.get(title) !== n) out.push(finding("major", plan.files.spec, null, "skeleton", `Playwright lists "${title}" ${have.get(title) ?? 0} times; the plan has it once`, `run node scripts/ui-code.mjs build ${ctx.product} ${module}`));
+        for (const [title] of have) if (!wantTitles.has(title)) out.push(finding("major", plan.files.spec, null, "skeleton", `Playwright lists "${title}", which is not a test of the plan`, "tests are generated, one per approved case; remove whatever declares it"));
+      }
+    }
   }
   return out;
 }

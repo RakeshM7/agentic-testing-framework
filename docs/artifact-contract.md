@@ -1,6 +1,6 @@
 # Artifact contract — layout v2 (implemented: foundation)
 
-The single definition of where things live, how stages hand off, and how state and safety work. It is implemented in code — `scripts/lib/{contract,clarifications,ledger,permissions,guard,csv,endpoints,explore,foundation}.mjs` and the CLIs `scripts/{run,clarifications,ledger,run-config,endpoints,explore,foundation}.mjs` — and validated by JSON Schemas in `schemas/`. Agent prompts must never contradict this file; when they differ, this file and the scripts win. The agent roster and responsibilities are in [`agent-architecture.md`](agent-architecture.md).
+The single definition of where things live, how stages hand off, and how state and safety work. It is implemented in code — `scripts/lib/{contract,clarifications,ledger,permissions,guard,csv,endpoints,explore,foundation,ui-code}.mjs` and the CLIs `scripts/{run,clarifications,ledger,run-config,endpoints,explore,foundation,ui-code}.mjs` — and validated by JSON Schemas in `schemas/`. Agent prompts must never contradict this file; when they differ, this file and the scripts win. The agent roster and responsibilities are in [`agent-architecture.md`](agent-architecture.md).
 
 ## Layout: everything is product-level
 
@@ -21,6 +21,7 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     clarification-evidence/<ID>/      # what the clarification-explorer observed per row
     clarifications-summary.md
     testcases/   api/   k6/           # domain working files
+    ui-code/                          # ui-code.mjs (D-055): plan.json coverage.json parked.json -- all script-owned
     api/                              # endpoints.mjs: discovered-endpoints.json coverage.json drift.json registry.json sources/;
                                       # overlay.json is the api-discoverer's (see below)
                                       # api-plan.mjs: plan.json plan-coverage.json plan-registry.json api-test-plan.md;
@@ -215,6 +216,22 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 - **Extension files** (`fixtures/<side>/index.ts`, seeded once; `helpers/<side>/`; `lib/ext/`) are hand-written.
 - **Verified.** A passing `check` (static rules plus `tsc`, `playwright test --list` or `k6 inspect`) stamps `<side>-manifest.json` over the overlay, the templates, the run-config inputs and every managed file; a failing one clears it. The `playwright-repo` stage, and the UI, API and k6 flows' foundation steps, refuse a missing or stale stamp, and skip the step while it is current. The gate also flags drift between renders.
 
+## UI code
+
+`node scripts/ui-code.mjs build|check|paths <product> <module> [--pages] [--static]` (`scripts/lib/ui-code.mjs`) scaffolds a module's UI test code from the cases a human approved and the exploration's page templates (format: [`agent-handoffs.md`](agent-handoffs.md) §11; design: [`playwright-conventions.md`](playwright-conventions.md) and decision D-055). It never touches the product.
+
+| File | Owner |
+|---|---|
+| `modules/<m>/ui-code/plan.json` (schema `ui-code-plan`): the required tests and page objects | the script |
+| `modules/<m>/ui-code/coverage.json` (schema `ui-code-coverage`): the ledger, the build's input digests, the `verified` stamps (`pages`, `tests`) | the script |
+| `modules/<m>/ui-code/parked.json` (schema `ui-code-parked`): step bodies of tests no longer generated | the script |
+| `playwright-tests/<p>/tests/ui/<m>/cases.spec.ts` outside its marked regions; `tests/ui/<m>/_locators.smoke.spec.ts`; `fixtures/ui/pages/<m>.ts` | the script |
+| the marked regions of `cases.spec.ts`; `helpers/ui/<m>.data.ts` | pw-ui-tests-writer |
+| `pages/<m>/**` (shells seeded once by the script); the registration in `fixtures/ui/index.ts` | pw-ui-pom-writer |
+
+- **Only approved cases** (D-053) get a test; unapproved ones are reported as awaiting approval, `@api` ones belong to the API side, and approved ones over `testcases.max_cases` are `deferred: budget`.
+- **Verified.** A passing `check --pages` stamps `verified.pages`; a passing full `check` (every gate rule, `tsc` and `playwright --list`) stamps both. The `playwright-ui` flow's `pages` and `tests` steps refuse a missing or stale stamp when they are first seen done; from then on the gate re-checks every rule each review round. `--static` skips the compile commands and stamps nothing. A build whose inputs (the cases, the approvals, the model, the flows, the run-config) changed is stale until rebuilt.
+
 ## Safety: mode × permissions, enforced in code
 
 - **Mode** — `authorizations.mode` → `state/run.json`. `readonly` caps every agent at read (browser/http) and none (load), whatever the permissions file says; `full-run` applies `config/permissions.yaml` as written, and gives every agent that has browser access (`read` or `mutate`) the full browser. `AUTHORIZATIONS_MODE=readonly` in the environment can downgrade; nothing can upgrade.
@@ -233,4 +250,4 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest,ui-code-plan,ui-code-coverage,ui-code-parked}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.

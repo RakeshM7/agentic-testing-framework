@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ui-code-plan.schema.json",
+  "title": "ui-code/plan.json: a module's required UI tests (one per approved non-@api test case within testcases.max_cases) and page objects (one per page template an automated case touches, a component per dialog its states show), written only by scripts/ui-code.mjs build (D-055).",
+  "type": "object",
+  "required": ["module", "runId", "maxCases", "files", "registration", "tests", "objects", "awaiting", "deferred", "unmapped"],
+  "additionalProperties": false,
+  "$defs": {
+    "tc": { "type": "string", "pattern": "^TC-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+    "st": { "type": "string", "pattern": "^ST-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+    "pg": { "type": "string", "pattern": "^PG-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+    "ident": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$" },
+    "strings": { "type": "array", "items": { "type": "string" } }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": ["string", "null"] },
+    "maxCases": { "type": "integer", "minimum": 1 },
+    "files": {
+      "type": "object",
+      "required": ["spec", "smoke", "registration", "data", "index"],
+      "additionalProperties": false,
+      "description": "Paths relative to playwright-tests/<product>/.",
+      "properties": { "spec": { "type": "string" }, "smoke": { "type": "string" }, "registration": { "type": "string" }, "data": { "type": "string" }, "index": { "type": "string" } }
+    },
+    "registration": {
+      "type": "object",
+      "required": ["type", "value"],
+      "additionalProperties": false,
+      "properties": { "type": { "$ref": "#/$defs/ident" }, "value": { "$ref": "#/$defs/ident" } }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version", "title", "tags", "literal", "priority", "type", "mutates", "visual", "assumption", "states", "pages", "objects", "fixtures", "steps", "expected", "preconditions", "data", "covers"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/tc" },
+          "version": { "type": "string", "description": "The case's approved version (v<hash>)." },
+          "title": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string", "pattern": "^@[a-z0-9-]+$" } },
+          "literal": { "type": "string", "description": "The test's literal title: the TC id, the title, then the tags." },
+          "priority": { "type": ["string", "null"] },
+          "type": { "type": ["string", "null"] },
+          "mutates": { "type": "boolean" },
+          "visual": { "type": "boolean" },
+          "assumption": { "type": "boolean" },
+          "states": { "type": "array", "items": { "$ref": "#/$defs/st" }, "description": "The states the case touches (its coverage items and observation evidence)." },
+          "pages": { "type": "array", "items": { "$ref": "#/$defs/pg" } },
+          "objects": { "$ref": "#/$defs/strings" },
+          "fixtures": { "type": "array", "items": { "$ref": "#/$defs/ident" } },
+          "steps": { "$ref": "#/$defs/strings" },
+          "expected": { "type": "string" },
+          "preconditions": { "$ref": "#/$defs/strings" },
+          "data": { "$ref": "#/$defs/strings", "description": "The case's test-data keys (values stay in the case)." },
+          "covers": { "$ref": "#/$defs/strings" }
+        }
+      }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "kind", "template", "templatePath", "dialog", "class", "fixture", "file", "states", "snapshots", "smoke", "cases"],
+        "additionalProperties": false,
+        "properties": {
+          "key": { "type": "string", "description": "PG-<m>-<n>, or PG-<m>-<n>#dialog:<name> for a component." },
+          "kind": { "enum": ["page", "dialog"] },
+          "template": { "$ref": "#/$defs/pg" },
+          "templatePath": { "type": "string" },
+          "dialog": { "type": ["string", "null"] },
+          "dialogRole": { "enum": ["dialog", "alertdialog"] },
+          "class": { "$ref": "#/$defs/ident" },
+          "fixture": { "$ref": "#/$defs/ident" },
+          "file": { "type": "string", "pattern": "^pages/" },
+          "states": { "type": "array", "items": { "$ref": "#/$defs/st" }, "description": "The states whose snapshots ground its locators." },
+          "snapshots": { "$ref": "#/$defs/strings" },
+          "smoke": {
+            "type": "object",
+            "description": "How the locator smoke reaches it: a recorded URL and readonly-safe clicks, or why it is skipped.",
+            "properties": {
+              "state": { "$ref": "#/$defs/st" },
+              "url": { "type": "string", "pattern": "^/" },
+              "clicks": { "type": "array", "items": { "type": "object", "required": ["role", "name"], "properties": { "role": { "type": "string" }, "name": { "type": "string" } } } },
+              "skip": { "type": "string" }
+            },
+            "oneOf": [{ "required": ["url", "clicks", "state"] }, { "required": ["skip"] }]
+          },
+          "cases": { "type": "array", "items": { "$ref": "#/$defs/tc" } }
+        }
+      }
+    },
+    "awaiting": {
+      "type": "array",
+      "description": "Non-@api cases not approved by a human: never generated.",
+      "items": { "type": "object", "required": ["id", "status"], "additionalProperties": false, "properties": { "id": { "$ref": "#/$defs/tc" }, "status": { "enum": ["awaiting", "rejected", "changes", "invalidated"] } } }
+    },
+    "deferred": { "type": "array", "items": { "$ref": "#/$defs/tc" }, "description": "Approved cases over testcases.max_cases." },
+    "unmapped": { "type": "array", "items": { "$ref": "#/$defs/tc" }, "description": "Automated cases no page template could be derived for." }
+  }
+}

@@ -42,7 +42,7 @@ test("filesystem writes are limited to the agent's allow-list, with ${product}/$
   assert.equal(w("clarification-orchestrator", "artifacts/acme/modules/contacts/clarifications-summary.md"), false, "the summary is rendered by its script");
   assert.equal(w("clarification-explorer", "artifacts/acme/modules/contacts/clarifications.csv"), false, "explorer writes evidence only");
   assert.equal(w("clarification-explorer", "artifacts/acme/modules/contacts/clarification-evidence/contacts-1/notes.md"), true);
-  assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/pages/contacts.page.ts"), true);
+  assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/pages/contacts/contacts.page.ts"), true);
   assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/tests/api/x.spec.ts"), false);
   assert.equal(w("pw-ui-scaffolder", "playwright-tests/acme/playwright.config.ts"), false, "shared files belong to pw-repo-owner");
   assert.equal(w("pw-repo-owner", "playwright-tests/acme/playwright.config.ts"), false, "rendered by foundation.mjs from templates/ (D-054)");
@@ -66,7 +66,8 @@ test("shell: none / restricted / project", () => {
   assert.equal(allowed(FULL.root, sh("testcase-writer", "ls")), false);
   assert.equal(allowed(FULL.root, sh("orchestrator-agent", "node scripts/run.mjs next acme")), true);
   assert.equal(allowed(FULL.root, sh("orchestrator-agent", "npm test")), false);
-  assert.equal(allowed(FULL.root, sh("pw-ui-tests-writer", "npx tsc --noEmit")), true);
+  assert.equal(allowed(FULL.root, sh("pw-api-tests-writer", "npx tsc --noEmit")), true);
+  assert.equal(allowed(FULL.root, sh("pw-ui-tests-writer", "npx tsc --noEmit")), false, "D-055: the UI writers run tsc through ui-code.mjs check");
 });
 
 test("restricted shell: a leading cd into the repo root is ignored, any other prefix is not", () => {
@@ -310,7 +311,7 @@ test("managed foundation files: a junction or symlink inside a writable folder c
     assert.equal(v.allowed, false, `${agent ?? "unnamed"} through the link`);
     assert.equal(v.rule, "managed-file");
   }
-  assert.equal(allowed(FULL.root, call("pw-ui-tests-writer", "Write", { file_path: pw("helpers/ui/link/../dates.ts") })), true, "the rest of the folder stays writable");
+  assert.equal(allowed(FULL.root, call("pw-ui-tests-writer", "Write", { file_path: pw("helpers/ui/link/../contacts.data.ts") })), true, "the rest of the folder stays writable");
 });
 
 test("managed foundation files: directory short names, \\\\?\\ and \\\\.\\ prefixes and UNC paths to this machine reach no managed file", () => {

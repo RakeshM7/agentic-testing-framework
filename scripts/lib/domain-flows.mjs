@@ -6,6 +6,7 @@ import path from "node:path";
 import { planPaths, planUnverified } from "./api-plan.mjs";
 import { foundationContext, foundationUnverified } from "./foundation.mjs";
 import { reviewResult, testcaseContext, testcaseTotals, testcasesUnverified } from "./testcases.mjs";
+import { noUiCases, uiCodeContext, uiCodeUnverified } from "./ui-code.mjs";
 
 const json = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null);
 
@@ -30,6 +31,11 @@ const foundationStep = (side, step, agent, what) => ({
 
 const tcCtx = (c) => testcaseContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir });
 
+// The UI code is script-scaffolded (D-055): a done pages or tests step counts only once `ui-code.mjs check` (--pages for
+// the page objects) stamped what is on disk. Verified once, when the step is first seen done (verifyOnce): the review
+// and heal loops' fixer edits the same files afterwards, and the gate re-checks every rule each round.
+const ucCtx = (c) => uiCodeContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir, pwProject: c.pwProject });
+
 // The blocker and major rows of a findings file (docs/agent-handoffs.md §6): what is still unresolved.
 export function unresolvedFindings(file) {
   if (!existsSync(file)) return [];
@@ -53,8 +59,9 @@ export const FLOWS = {
   "playwright-ui": {
     build: [
       foundationStep("ui", "scaffold", "pw-ui-scaffolder", "the UI foundation"),
-      { step: "pages", agent: "pw-ui-pom-writer" },
-      { step: "tests", agent: "pw-ui-tests-writer" },
+      // Every approved case is @api: nothing to scaffold or review; the runner records not-run with the reason.
+      { step: "pages", agent: "pw-ui-pom-writer", skipRest: (c) => noUiCases(ucCtx(c)), verify: (c) => uiCodeUnverified(ucCtx(c), "pages"), verifyOnce: true },
+      { step: "tests", agent: "pw-ui-tests-writer", verify: (c) => uiCodeUnverified(ucCtx(c), "tests"), verifyOnce: true },
     ],
     review: { reviewer: "pw-ui-reviewer", fixer: "pw-ui-fixer" },
     run: { runner: "pw-ui-test-runner-triager", fixer: "pw-ui-fixer", framework: "playwright-ui" },

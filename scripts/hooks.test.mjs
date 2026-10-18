@@ -86,7 +86,7 @@ test("VS Code chat on its Copilot CLI engine is recognised and treated like Copi
 
 test("per-agent rules apply on VS Code through the agent's own hook", () => {
   const w = (agent, rel) => allowed(FULL.root, vscode(agent, { tool_name: "create_file", tool_input: { filePath: path.join(FULL.root, rel) } }));
-  assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/pages/contacts.page.ts"), true);
+  assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/pages/contacts/contacts.page.ts"), true);
   assert.equal(w("pw-ui-pom-writer", "config/permissions.yaml"), false);
   const shot = path.join(FULL.root, "artifacts/acme/modules/contacts/explore/screenshots/list.png");
   assert.equal(allowed(FULL.root, vscode("pw-ui-reviewer", { tool_name: "view_image", tool_input: { filePath: shot } })), true, "a read: no longer an unmapped tool during a run");

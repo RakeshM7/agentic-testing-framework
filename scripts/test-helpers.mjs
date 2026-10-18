@@ -1,6 +1,6 @@
 // Shared fixtures for the node:test suites: a throwaway repo root with the real config/permissions.yaml.
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { HEADERS } from "./lib/clarifications.mjs";
@@ -209,4 +209,48 @@ export async function renderFoundation(root, sides = ["repo", "ui", "api", "k6"]
     out[side] = c.out;
   }
   return out;
+}
+
+// Playwright's `test --list --reporter=json` of a module's specs, read from their literal test titles: what the gate's
+// compile mode sees, without Playwright (D-053's list, injected into ui-code.mjs and the gate).
+export function listSpecTitles(cwd, side, module) {
+  const dir = path.join(cwd, "tests", side, module);
+  const specs = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".spec.ts")).sort() : [];
+  return {
+    report: {
+      config: {},
+      suites: specs.map((f) => ({
+        title: `${module}/${f}`, file: `${module}/${f}`,
+        specs: [...readFileSync(path.join(dir, f), "utf8").matchAll(/^\s*test\((['"])((?:\\.|(?!\1).)*)\1/gm)].map((m, i) => ({ title: m[2].replace(/\\(.)/g, "$1"), file: `${module}/${f}`, line: i + 1, tests: [{ expectedStatus: "passed", annotations: [] }] })),
+        suites: [],
+      })),
+    },
+  };
+}
+
+// A module's UI code the way pw-ui-pom-writer and pw-ui-tests-writer make it (D-055): ui-code.mjs build, every step region
+// filled, and check (scope "pages": check --pages, without filling) with the compile commands stubbed to pass, so the
+// scope's verified stamp is current. The module's cases must be built and approved, and the foundation rendered.
+export async function scaffoldUiCode(root, { product = "acme", module = "contacts", scope = "tests" } = {}) {
+  const { main } = await import("./ui-code.mjs");
+  const { parseRegions, renderSpec, uiCodeContext } = await import("./lib/ui-code.mjs");
+  const uc = (...args) => main(args, { root, exec: () => null, listTests: listSpecTitles });
+  const b = await uc("build", product, module);
+  if (b.code) throw new Error(`scaffoldUiCode: build: ${JSON.stringify(b.out.problems)}`);
+  if (scope === "tests") {
+    const p = paths(product, root);
+    const ctx = uiCodeContext({ root, product, module, run: JSON.parse(readFileSync(p.runFile, "utf8")), cfg: JSON.parse(readFileSync(p.configFile, "utf8")), productDir: p.productDir });
+    const plan = JSON.parse(readFileSync(ctx.up.plan, "utf8"));
+    const spec = path.join(ctx.pwProject, plan.files.spec);
+    const { regions } = parseRegions(readFileSync(spec, "utf8"));
+    regions.set("setup", ["import { recordCreated } from '../../../utils/shared/ledger';"]);
+    for (const t of plan.tests) {
+      t.steps.forEach((_, n) => regions.set(`${t.id} step ${n + 1}`, ["      await page.goto('/');", ...(t.mutates && n === 0 ? [`      recordCreated({ type: 'record', ref: '${t.id}', module: '${module}' });`] : [])]));
+      regions.set(`${t.id} then`, [t.visual ? `      await expect(page).toHaveScreenshot('${t.id}.png');` : "      await expect(page).toHaveURL(/./);"]);
+    }
+    writeFileSync(spec, renderSpec(ctx, plan, regions));
+  }
+  const c = await uc("check", product, module, ...(scope === "pages" ? ["--pages"] : []));
+  if (c.code) throw new Error(`scaffoldUiCode: check: ${JSON.stringify(c.out.problems)}`);
+  return c.out;
 }

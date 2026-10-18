@@ -113,8 +113,9 @@ test("Playwright UI, compile mode: the gate trusts Playwright's own list -- an u
     [12, "TC-contacts-2 group > lists through an alias", false],
     [15, "TC-contacts-1 group > inner step test", false],
   ]);
-  const f = listFindings(tests, { idRe: /TC-contacts-\d+/g, unapproved: new Set(["TC-contacts-2"]), what: "test case", dir: "tests/ui/contacts" });
-  assert.deepEqual(f.map((x) => [x.line, x.severity, x.rule]), [[7, "major", "approval"], [9, "major", "traceability"], [12, "major", "approval"]], "approved tests, a fixme awaiting approval and an id carried by a describe title pass");
+  const f = listFindings(tests, { idRe: /TC-contacts-\d+/g, unapproved: new Set(["TC-contacts-2"]), what: "test case", dir: "tests/ui/contacts", known: new Set(["TC-contacts-1"]) }); // the UI side passes its automated cases
+  assert.deepEqual(f.map((x) => [x.line, x.severity, x.rule]), [[7, "major", "approval"], [9, "major", "traceability"], [12, "major", "approval"], [15, "major", "traceability"]], "approved tests and a fixme awaiting approval pass; an id carried by a describe title counts once per test, so a second test under TC-contacts-1 is listed twice (D-055)");
+  assert.match(f.at(-1).problem, /lists TC-contacts-1 twice/);
   assert.equal(f[0].file, "tests/ui/contacts/contacts.spec.ts");
 
   // files are relative to config.rootDir: a subfolder spec and a helper keep their real paths in the project

@@ -51,6 +51,8 @@ variables:
 #   sheet (approval.csv, approvals.json) are human-only: no agent's row may grant them, and the guard denies them anyway
 # foundations (D-054): pw-repo-owner, the scaffolders and k6-lib-writer run only foundation.mjs and write only their
 #   overlay and extension files; every managed foundation file is in managed_files, and no agent writes one
+# UI code (D-055): pw-ui-pom-writer and pw-ui-tests-writer run only ui-code.mjs build/check/paths; the pom-writer writes
+#   pages/<m>/** and fixtures/ui/index.ts, the tests-writer the cases spec's regions and helpers/ui/<m>.data.ts
 # Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
 #
 # ---- Shared-repo ownership inside ${pw_project} (UI and API agents write into the same repo) -------------
@@ -257,14 +259,19 @@ agents:
     filesystem:
       read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
       write: ["${product_dir}/foundation/ui-overlay.json", "${pw_project}/fixtures/ui/index.ts", "${pw_project}/helpers/ui/**"]
-  pw-ui-pom-writer:             # page objects, plus one fixture per page object in fixtures/ui/index.ts
+  pw-ui-pom-writer:             # D-055: ui-code.mjs scaffolds; it writes the module's page objects and registers their fixtures
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/pages/**", "${pw_project}/fixtures/ui/index.ts"] }
-  pw-ui-tests-writer:           # specs, plus the module's data builders in helpers/ui/
+    shell: restricted           # tsc and playwright --list run inside `ui-code.mjs check` (a restricted row can't vouch for npx in the product's repo)
+    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *"]
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/pages/${module}/**", "${pw_project}/fixtures/ui/index.ts"] }
+  pw-ui-tests-writer:           # D-055: fills the step regions of the generated cases spec, plus the module's data builders
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**"] }
+    shell: restricted
+    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *"]
+    # the generated smoke (tests/ui/<m>/_locators.smoke.spec.ts) and registration (fixtures/ui/pages/<m>.ts) are the script's
+    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/ui/${module}/cases.spec.ts", "${pw_project}/helpers/ui/${module}.data.ts"] }
   pw-ui-reviewer:
     layer: 2
     profile: reviewer
@@ -272,6 +279,9 @@ agents:
   pw-ui-fixer:                  # review findings or healable triage rows
     layer: 2
     profile: fixer
+    # D-055: re-renders the smoke and re-checks after a fix (shell: project already allows it; listed for the record and
+    # for the run's combined ceiling). The full fixer refactor is G9's.
+    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *"]
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-ui/review-findings.md",
              "${results}/${module}/playwright-ui/gate-findings.md", "${results}/${module}/playwright-ui/triage.md"]

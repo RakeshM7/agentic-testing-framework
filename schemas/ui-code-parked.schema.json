@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ui-code-parked.schema.json",
+  "title": "ui-code/parked.json: the step bodies of tests no longer generated (their case was unapproved again, removed or shortened), kept by scripts/ui-code.mjs build and restored when the region comes back (D-055).",
+  "type": "object",
+  "required": ["module", "regions"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "regions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["lines", "title", "run"],
+        "additionalProperties": false,
+        "properties": {
+          "lines": { "type": "array", "items": { "type": "string" } },
+          "title": { "type": ["string", "null"], "description": "The test.step title the body was written for." },
+          "run": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

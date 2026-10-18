@@ -7,7 +7,7 @@ import path from "node:path";
 import { next, show, step } from "./orchestration.mjs";
 import { append, csvPath, readRows, record, recordOutcome } from "./lib/clarifications.mjs";
 import { paths } from "./lib/contract.mjs";
-import { buildCases, humanEdit, markApproved, put, renderFoundation, startRun } from "./test-helpers.mjs";
+import { buildCases, humanEdit, put, renderFoundation, scaffoldUiCode, startRun } from "./test-helpers.mjs";
 
 const RESULTS = "artifacts/acme/results/acme-run-1/contacts";
 const go = (root, domain, opts = {}) => next("acme", domain, "contacts", { root, compile: false, ...opts });
@@ -22,36 +22,46 @@ function perform(root, domain, expect, work = () => {}) {
   step("acme", domain, "contacts", a.step, "done", undefined, { root });
   return a;
 }
-const uiCases = (root) => {
-  put(root, "artifacts/acme/modules/contacts/testcases/contacts-testcases.feature", "Feature: C\n  @TC-contacts-1 @p1 @functional\n  Scenario: list\n    Given x\n");
-  put(root, "artifacts/acme/modules/contacts/testcases/testcases-summary.md", "Total test cases: 1\n");
-  markApproved(root, ["TC-contacts-1"]); // only approved cases are automated (D-053)
-};
-const goodSpec = (root) => put(root, "playwright-tests/acme/tests/ui/contacts/c.spec.ts", "test('TC-contacts-1 lists @p1', async () => {});\n");
+// An approved case and the UI foundation, then the UI code the way the writers make it (ui-code.mjs build + check, D-055).
+const uiCases = (root) => buildCases(root, { cases: [{ key: "list" }], approve: ["list"] });
+async function uiCode(root) {
+  await uiCases(root);
+  await renderFoundation(root, ["repo", "ui"]);
+  await scaffoldUiCode(root);
+}
+const SPEC = "playwright-tests/acme/tests/ui/contacts/cases.spec.ts";
+const editSpec = (root, from, to) => put(root, SPEC, readFileSync(path.join(root, SPEC), "utf8").replace(from, to));
 const verdict = (root, v) => put(root, `${RESULTS}/playwright-ui/review-findings.md`, `# Review\nVerdict: ${v}\n| # | Severity | File | Line | Rule | Problem | Required fix |\n|---|---|---|---|---|---|---|\n`);
 const triage = (root, framework, healable) =>
   put(root, `${RESULTS}/${framework}/triage.md`, ["# Triage", "| Test | File | Classification | Healable | Evidence | Suggested action |", "|---|---|---|---|---|---|", ...(healable ? ["| TC-contacts-1 | c.spec.ts | test-bug | yes | x | fix locator |"] : []), ""].join("\n"));
+// The single returned action, started; `work` (async) produces its files; then marked done.
+async function performAsync(root, domain, expect, work) {
+  const [a] = go(root, domain).actions;
+  assert.deepEqual({ step: a?.step, agent: a?.agent }, expect);
+  step("acme", domain, "contacts", a.step, "start", undefined, { root });
+  await work(a);
+  step("acme", domain, "contacts", a.step, "done", undefined, { root });
+  return a;
+}
 
-test("Playwright UI: build, a failing gate goes straight to the fixer, review, run, heal, re-run, done", async () => {
+test("Playwright UI: build (verified by ui-code.mjs check), review, a failing gate goes straight to the fixer, run, heal, re-run, done", async () => {
   const { root } = startRun();
-  uiCases(root);
+  await uiCases(root);
   // the scaffolder renders and checks the UI foundation (D-054); its done step counts only with the verified stamp
-  const sc = go(root, "playwright-ui").actions[0];
-  assert.deepEqual({ step: sc.step, agent: sc.agent }, { step: "scaffold", agent: "pw-ui-scaffolder" });
-  step("acme", "playwright-ui", "contacts", "scaffold", "start", undefined, { root });
-  await renderFoundation(root, ["repo", "ui"]);
-  step("acme", "playwright-ui", "contacts", "scaffold", "done", undefined, { root });
-  perform(root, "playwright-ui", { step: "pages", agent: "pw-ui-pom-writer" });
-  perform(root, "playwright-ui", { step: "tests", agent: "pw-ui-tests-writer" }, () =>
-    put(root, "playwright-tests/acme/tests/ui/contacts/c.spec.ts", "test('TC-contacts-1 lists @p1', async ({ page }) => { await page.waitForTimeout(9); });\n"));
+  await performAsync(root, "playwright-ui", { step: "scaffold", agent: "pw-ui-scaffolder" }, () => renderFoundation(root, ["repo", "ui"]));
+  // the writers' done steps count only with ui-code.mjs check's stamps (D-055)
+  await performAsync(root, "playwright-ui", { step: "pages", agent: "pw-ui-pom-writer" }, () => scaffoldUiCode(root, { scope: "pages" }));
+  await performAsync(root, "playwright-ui", { step: "tests", agent: "pw-ui-tests-writer" }, () => scaffoldUiCode(root));
 
-  const fix = perform(root, "playwright-ui", { step: "fix-1", agent: "pw-ui-fixer" }, () => goodSpec(root));
+  const review = perform(root, "playwright-ui", { step: "review-1", agent: "pw-ui-reviewer" }, () => verdict(root, "changes-required"));
+  assert.equal(review.prompt, "product=acme module=contacts run=acme-run-1 round=1");
+  assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps.tests.verified, true, "verified once, when first seen done");
+  // the fixer's edit makes the stamps stale: the gate, not the build step, judges it from here on
+  perform(root, "playwright-ui", { step: "fix-1", agent: "pw-ui-fixer" }, () => editSpec(root, "await page.goto('/');", "await page.waitForTimeout(9);"));
+  const fix = perform(root, "playwright-ui", { step: "fix-2", agent: "pw-ui-fixer" }, () => editSpec(root, "await page.waitForTimeout(9);", "await page.goto('/');"));
   assert.equal(fix.prompt, `product=acme module=contacts findings=${RESULTS}/playwright-ui/gate-findings.md`, "gate findings go to the fixer; no reviewer started");
-  assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps["gate-1"].note, "changes-required");
-
-  const review = perform(root, "playwright-ui", { step: "review-2", agent: "pw-ui-reviewer" }, () => verdict(root, "changes-required"));
-  assert.equal(review.prompt, "product=acme module=contacts run=acme-run-1 round=2");
-  perform(root, "playwright-ui", { step: "fix-2", agent: "pw-ui-fixer" });
+  assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps["gate-2"].note, "changes-required");
+  assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps["review-2"], undefined);
   perform(root, "playwright-ui", { step: "review-3", agent: "pw-ui-reviewer" }, () => verdict(root, "pass"));
 
   const run = perform(root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" }, () => triage(root, "playwright-ui", true));
@@ -65,6 +75,31 @@ test("Playwright UI: build, a failing gate goes straight to the fixer, review, r
   assert.equal(done.done.outcome, "complete");
   assert.equal(done.done.review.note, "passed in round 3");
   assert.deepEqual(go(root, "playwright-ui").done.outcome, "complete", "asking again after the end is stable");
+});
+
+test("Playwright UI: a pages or tests step that never passed ui-code.mjs check ends the domain failed; all-@api approvals skip the UI build", async () => {
+  const { root } = startRun();
+  await uiCases(root);
+  await renderFoundation(root, ["repo", "ui"]);
+  perform(root, "playwright-ui", { step: "pages", agent: "pw-ui-pom-writer" }); // nothing built
+  let done = go(root, "playwright-ui");
+  assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "pages"]);
+  assert.match(done.done.note, /ui-code\/coverage\.json is missing/);
+
+  const again = startRun();
+  await uiCases(again.root);
+  await renderFoundation(again.root, ["repo", "ui"]);
+  await performAsync(again.root, "playwright-ui", { step: "pages", agent: "pw-ui-pom-writer" }, () => scaffoldUiCode(again.root, { scope: "pages" }));
+  perform(again.root, "playwright-ui", { step: "tests", agent: "pw-ui-tests-writer" }); // built, but no step filled or checked
+  done = go(again.root, "playwright-ui");
+  assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "tests"]);
+  assert.match(done.done.note, /the tests never passed ui-code\.mjs check acme contacts/);
+
+  const api = startRun();
+  await buildCases(api.root, { cases: [{ key: "endpoint", api: true }], approve: ["endpoint"] });
+  await renderFoundation(api.root, ["repo", "ui"]);
+  perform(api.root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" });
+  assert.match(show("acme", "playwright-ui", "contacts", { root: api.root }).steps.pages.note, /every approved test case is @api/);
 });
 
 test("an interrupted step is offered again, and a verified foundation is skipped", async () => {
@@ -142,18 +177,18 @@ test("test cases: a review missing a verdict for a case, or from another round, 
 
 test("review rounds are bounded: automation still runs the suite", async () => {
   const ui = startRun();
-  uiCases(ui.root);
-  await renderFoundation(ui.root, ["repo", "ui"]);
+  await uiCode(ui.root);
   for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root: ui.root });
-  for (const n of [1, 2, 3]) perform(ui.root, "playwright-ui", { step: `fix-${n}`, agent: "pw-ui-fixer" }); // no spec: gate fails
+  for (const n of [1, 2, 3]) {
+    perform(ui.root, "playwright-ui", { step: `review-${n}`, agent: "pw-ui-reviewer" }, () => verdict(ui.root, "changes-required"));
+    perform(ui.root, "playwright-ui", { step: `fix-${n}`, agent: "pw-ui-fixer" });
+  }
   perform(ui.root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" });
 });
 
 test("heal rounds are bounded by limits.heal_rounds", async () => {
   const { root } = startRun();
-  uiCases(root);
-  await renderFoundation(root, ["repo", "ui"]);
-  goodSpec(root);
+  await uiCode(root);
   for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root });
   perform(root, "playwright-ui", { step: "review-1", agent: "pw-ui-reviewer" }, () => verdict(root, "pass"));
   for (const n of [1, 2, 3]) {
