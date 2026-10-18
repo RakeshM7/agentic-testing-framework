@@ -6,9 +6,9 @@
 //   orchestration.mjs next  <product> <domain> <module> [--max N] [--static]
 //        -> {actions: [{step, agent, prompt}], done?: {outcome, review?, run?, summary?}}
 //        The domain's next agent(s) to start, from the flow in scripts/lib/domain-flows.mjs and what is on disk. It
-//        runs the script steps itself (the pre-review gate, the clarification summary), skips steps whose work exists,
-//        and spends review/heal rounds; a done step with a verify rule (the API plan) fails when its output did not
-//        pass its check. Start every returned action, mark each with `step`, then call next again. --static skips the
+//        runs the script steps itself (the pre-review gate, the clarification summary), skips steps whose work is
+//        verified (a foundation whose foundation.mjs check stamp is current, D-054), and spends review/heal rounds; a
+//        done step with a verify rule (the API plan, a foundation) fails when its output did not pass its check. Start every returned action, mark each with `step`, then call next again. --static skips the
 //        gate's compile commands. Clarifications: one row at a time from the rows open when the domain started; a
 //        finished explorer must have left a valid record.json of this run, else the row is retried once and then
 //        recorded blocked (no-valid-record); done adds `deferred` (rows added during the run) and `failedRows`.

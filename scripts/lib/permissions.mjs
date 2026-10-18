@@ -46,7 +46,10 @@ export function resolvePermissions(doc) {
   }
   for (const [name, a] of Object.entries(agents))
     for (const s of a.spawns) if (!agents[s]) errors.push(`${name}: spawns unknown agent '${s}'`);
-  return { errors, resolved: { variables: doc.variables ?? {}, agents } };
+  const managed = doc.managed_files ?? [];
+  if (!Array.isArray(managed) || managed.some((g) => typeof g !== "string")) errors.push("managed_files: must be a list of globs");
+  // managed_files (D-054): rendered by scripts/foundation.mjs from templates/; no agent writes one directly.
+  return { errors, resolved: { variables: doc.variables ?? {}, agents, ...(managed.length ? { managed_files: managed } : {}) } };
 }
 
 // readonly runs cap every agent at read (browser/http) and none (load), whatever the file says.
@@ -121,6 +124,48 @@ export function globToRegExp(glob) {
     else re += esc(part);
   }
   return new RegExp(`^${re}$`);
+}
+
+// A file scripts/foundation.mjs renders from the framework's templates (D-054): no agent writes it directly, whatever
+// its write list says; the owning agent changes its overlay and re-renders.
+// A deny-list must not fail open on a spelling the file system treats as the same file, so the path is normalised the
+// way Windows (and macOS's default volumes) resolve it: case-insensitively, `.` and `..` resolved, trailing dots and
+// spaces of a segment dropped, an NTFS stream suffix (`base.ts::$DATA`, `base.ts:x`) cut off. An 8.3 short name
+// (`AUTH~1.TS`) matches every managed file in that folder whose name starts with its prefix.
+export function normalizeWritePath(relPath) {
+  const segs = [];
+  for (let seg of String(relPath).replaceAll("\\", "/").split("/")) {
+    seg = seg.replace(/:.*$/s, "").replace(/[. ]+$/, (m) => (seg === "." || seg === ".." ? m : ""));
+    if (!seg || seg === ".") continue;
+    if (seg === "..") segs.pop();
+    else segs.push(seg.toLowerCase());
+  }
+  return segs.join("/");
+}
+
+// Segment by segment: `**` spans any number of segments, `*` stays within one. A path segment that is an 8.3 short name
+// (`playwr~1`, `authse~1.ts`) matches every glob segment whose long name starts with its prefix (dots and spaces
+// dropped, as 8.3 names drop them) or that has a wildcard: in any segment, a directory's as much as a file's.
+function segmentOk(seg, glob) {
+  const short = /^([^~]*)~\d+/.exec(seg);
+  if (short) {
+    const prefix = short[1].replace(/[. ]/g, "");
+    return glob.includes("*") || (prefix.length > 0 && glob.replace(/[. ]/g, "").startsWith(prefix));
+  }
+  return new RegExp(`^${glob.split("*").map((p) => p.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join("[^/]*")}$`).test(seg);
+}
+function segmentsMatch(rel, glob, i = 0, j = 0) {
+  if (j === glob.length) return i === rel.length;
+  if (glob[j] === "**") {
+    for (let k = i; k <= rel.length; k++) if (segmentsMatch(rel, glob, k, j + 1)) return true;
+    return false;
+  }
+  return i < rel.length && segmentOk(rel[i], glob[j]) && segmentsMatch(rel, glob, i + 1, j + 1);
+}
+
+export function isManaged(resolved, relPath, values) {
+  const rel = normalizeWritePath(relPath).split("/").filter(Boolean);
+  return (resolved?.managed_files ?? []).some((g) => segmentsMatch(rel, normalizeWritePath(expandGlob(g, resolved.variables ?? {}, values)).split("/").filter(Boolean)));
 }
 
 export function canWrite(row, relPath, variables, values) {

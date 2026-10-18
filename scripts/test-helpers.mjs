@@ -193,3 +193,20 @@ export async function buildCases(root, { product = "acme", module = "contacts", 
   }
   return ids;
 }
+
+// A product's foundations the way the pipeline makes them (D-054): rendered from templates/ by scripts/foundation.mjs
+// and checked, with the compile commands (tsc, playwright --list, k6 inspect) stubbed to pass, so each side's verified
+// stamp is current. overlays: {side: overlay object} written first. -> {side: check output}
+export async function renderFoundation(root, sides = ["repo", "ui", "api", "k6"], { product = "acme", overlays = {} } = {}) {
+  const { main } = await import("./foundation.mjs");
+  const out = {};
+  for (const side of sides) {
+    if (overlays[side]) put(root, `artifacts/${product}/foundation/${side}-overlay.json`, JSON.stringify(overlays[side]));
+    const r = await main(["render", product, "--side", side], { root });
+    if (r.code) throw new Error(`renderFoundation: render ${side}: ${JSON.stringify(r.out)}`);
+    const c = await main(["check", product, "--side", side], { root, exec: () => null });
+    if (c.code) throw new Error(`renderFoundation: check ${side}: ${JSON.stringify(c.out.problems)}`);
+    out[side] = c.out;
+  }
+  return out;
+}

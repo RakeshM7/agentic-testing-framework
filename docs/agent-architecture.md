@@ -19,10 +19,10 @@ Roster v3 ([`decisions.md`](decisions.md) D-043): one fixer per automation domai
 | Product level | `orchestrator-agent` (layer 0) | `knowledge-generator`, `module-explorer`, `report-generator` |
 | Clarification | `clarification-orchestrator` | `clarification-explorer` |
 | Test cases | `testcase-orchestrator` | `testcase-writer`, `testcase-reviewer` |
-| Shared Playwright repo | — (spawned by `orchestrator-agent` for the skeleton, by either Playwright orchestrator for change requests) | `pw-repo-owner` (sole writer of package.json, playwright.config.ts, tsconfig, .env.example, .gitignore, README, utils/shared/) |
-| Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder` (the UI foundation, once per product), `pw-ui-pom-writer`, `pw-ui-tests-writer`, `pw-ui-reviewer`, `pw-ui-fixer`, `pw-ui-test-runner-triager` |
-| Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder` (the API foundation, once per product), `pw-api-client-writer` (the API analogue of the POM), `pw-api-tests-writer`, `pw-api-reviewer`, `pw-api-fixer`, `pw-api-test-runner-triager` |
-| K6 | `k6-orchestrator` | `k6-workload-designer`, `k6-lib-writer` (once per product), `k6-script-writer`, `k6-reviewer`, `k6-fixer`, `k6-runner-triager` |
+| Shared Playwright repo | — (spawned by `orchestrator-agent` for the skeleton, by either Playwright orchestrator for change requests) | `pw-repo-owner` (sole owner of package.json, playwright.config.ts, tsconfig, .env.example, .gitignore, README, utils/shared/, rendered from templates with its cited overlay) |
+| Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder` (the UI foundation's cited overlay, rendered from templates), `pw-ui-pom-writer`, `pw-ui-tests-writer`, `pw-ui-reviewer`, `pw-ui-fixer`, `pw-ui-test-runner-triager` |
+| Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder` (the API foundation's cited overlay, rendered from templates), `pw-api-client-writer` (the API analogue of the POM), `pw-api-tests-writer`, `pw-api-reviewer`, `pw-api-fixer`, `pw-api-test-runner-triager` |
+| K6 | `k6-orchestrator` | `k6-workload-designer`, `k6-lib-writer` (the k6 lib's cited overlay, rendered from templates), `k6-script-writer`, `k6-reviewer`, `k6-fixer`, `k6-runner-triager` |
 | Framework maintenance | — | `feedback-implementor-agent` (existing; fixes agent prompts/framework from `feedback/`) |
 
 ## Layout v2 (decided): everything is product-level, no `artifacts/<run-id>/` directory
@@ -70,14 +70,14 @@ main orchestrator:
         then clarifications-summary.md, rendered from the CSV by the script
         [gate] unresolved rows: human edits the Answer column, re-invoke resumes
   4 testcase-orchestrator: testcase-writer (cases.json; testcases.mjs build/check) -> gate script | testcase-reviewer (a verdict per case; verdict derived) -> testcase-writer (max N rounds); then a human approves cases (approval.csv + testcases.mjs approve), and only approved cases are automated (D-053)
-  5 pw-repo-owner (once per product, any time before step 6): shared repo skeleton for ui + api
+  5 pw-repo-owner (once per product, any time before step 6): shared repo skeleton for ui + api, rendered from templates/ (foundation.mjs, D-054)
   6 playwright-ui-orchestrator and playwright-api-orchestrator (independent; both need testcases + the repo)
-        build:  scaffolder (product-wide foundation; skipped once it exists) -> pom|client writer -> tests-writer
+        build:  scaffolder (cited overlay -> foundation.mjs render + check; skipped while the verified stamp is current) -> pom|client writer -> tests-writer
         review loop: gate script -> (fail: gate findings -> fixer) | reviewer -> findings -> fixer (max N rounds)
         run loop:    runner-triager -> triage.md -> fixer -> re-run (max N rounds)
         every domain orchestrator follows `orchestration.mjs next`, which holds these flows (scripts/lib/domain-flows.mjs)
         API additionally starts with api-discoverer -> api-test-planner
-  7 k6-orchestrator (needs the API plan): workload-designer -> lib-writer (skipped once the lib exists) -> script-writer -> review loop -> run/fix loop
+  7 k6-orchestrator (needs the API plan): workload-designer -> lib-writer (cited overlay -> foundation.mjs render + check; skipped while verified) -> script-writer -> review loop -> run/fix loop
   8 report-generator -> HTML slide deck
 ```
 
@@ -95,7 +95,7 @@ main orchestrator:
 - Writers (one per cell): module-explorer appends new rows and refines Question/Steps of unanswered rows; the per-row clarification-explorer writes its evidence under `clarification-evidence/` and fills its own row's Answer/notes; the script stamps Run ID and renders `clarifications-summary.md`.
 - A script (not an LLM) will own CSV I/O: ID assignment, de-duplication of new rows against existing ones, quoting, and a file lock so two runs can't corrupt the product-level file.
 
-**Playwright repo**: UI and API share `playwright-tests/<product>/`, separated by `tests/ui` and `tests/api` (two Playwright projects in one config). Two orchestrators and two full agent sets are kept. `pw-repo-owner` is the only writer of shared repo files: it creates the skeleton (stage `playwright-repo`) and applies change requests the Playwright orchestrators hand it. The UI and API scaffolders add only their own side's scaffolding, and every other agent writes only inside its own side's folders (ownership table in `config/permissions.yaml`).
+**Playwright repo**: UI and API share `playwright-tests/<product>/`, separated by `tests/ui` and `tests/api` (two Playwright projects in one config). Two orchestrators and two full agent sets are kept. `pw-repo-owner` is the only owner of shared repo files: it creates the skeleton (stage `playwright-repo`) and applies change requests the Playwright orchestrators hand it. **Foundations are script-built (D-054):** every fixed file of the repo, of each side and of the k6 lib is rendered by `scripts/foundation.mjs` from the framework's `templates/`, with a drift check; `pw-repo-owner`, the UI and API scaffolders and `k6-lib-writer` each write only a cited overlay (and their side's extension files), and a gap or change request is a structured overlay entry followed by a re-render. The UI and API scaffolders add only their own side's scaffolding, and every other agent writes only inside its own side's folders (ownership table in `config/permissions.yaml`).
 
 **Run lock**: one active run per product (`state/lock.json`).
 

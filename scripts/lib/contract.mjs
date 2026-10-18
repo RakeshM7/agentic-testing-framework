@@ -106,7 +106,8 @@ export const STAGES = {
     scope: "product",
     orchestrator: "pw-repo-owner",
     needs: [],
-    outputs: [{ path: "playwright-tests/{product}/package.json" }, { path: "playwright-tests/{product}/playwright.config.ts" }],
+    // The shared files are rendered from templates/ (D-054): done needs foundation.mjs check's verified stamp.
+    outputs: [{ path: "playwright-tests/{product}/package.json", check: "foundation-repo" }, { path: "playwright-tests/{product}/playwright.config.ts" }],
   },
   // approval: only human-approved test cases are automated; with none, the stage awaits approval (scripts/run.mjs, D-053).
   "playwright-ui": {
@@ -186,6 +187,12 @@ const CHECKS = {
   "knowledge-module": async (_file, ctx) => {
     const { k, kp, cfg } = await knowledgeLib(ctx);
     return k.checkModule(kp, cfg, ctx.module);
+  },
+  "foundation-repo": async (_file, ctx) => {
+    const f = await import("./foundation.mjs");
+    const p = paths(ctx.product, ctx.root ?? repoRoot);
+    const why = f.foundationUnverified(f.foundationContext({ root: ctx.root ?? repoRoot, product: ctx.product, run: loadJson(p.runFile), cfg: loadJson(p.configFile), productDir: p.productDir, pwProject: p.pwProject, k6Project: p.k6Project }), "repo");
+    return why ? [why] : [];
   },
   explore: async (_file, ctx) => {
     const x = await import("./explore.mjs");

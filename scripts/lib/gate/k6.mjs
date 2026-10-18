@@ -2,9 +2,11 @@
 // in setup(), handleSummary, and `k6 inspect`. Never runs load.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { foundationContext, gateFoundationProblems } from "../foundation.mjs";
 import { finding, hygiene, read, run, walk } from "./common.mjs";
 
-export function gateK6({ k6Project, productDir, module, compile = true }) {
+export function gateK6(ctx) {
+  const { k6Project, productDir, module, compile = true } = ctx;
   const out = [];
   const workloadFile = path.join(productDir, "modules", module, "k6", "workload.json");
   if (!existsSync(workloadFile)) return [finding("blocker", "k6/workload.json", null, "workload", "workload.json is missing", "the workload step must finish first")];
@@ -29,6 +31,9 @@ export function gateK6({ k6Project, productDir, module, compile = true }) {
     if (files.length > 1) out.push(finding("major", files.join(", "), null, "traceability", `${w.id} is implemented by ${files.length} scripts`, "one script per scenario"));
   }
   out.push(...hygiene(k6Project, scripts));
+  // The lib is rendered from templates/ (D-054): once the script rendered it, no lib file may drift from its render.
+  const fctx = foundationContext({ root: ctx.root, product: ctx.product, run: ctx.run, cfg: ctx.cfg, productDir, pwProject: ctx.pwProject, k6Project });
+  for (const d of gateFoundationProblems(fctx, "k6")) out.push(finding("blocker", d.file, null, "foundation", d.problem, `re-render it: node scripts/foundation.mjs render ${ctx.product} --side k6 (a needed change goes into the k6 overlay or lib/ext/)`));
 
   if (compile) for (const f of scripts) {
     const err = run("k6", ["inspect", f], k6Project);

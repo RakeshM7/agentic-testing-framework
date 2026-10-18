@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
 import { toolCall } from "./lib/tool-call.mjs";
@@ -45,7 +45,8 @@ test("filesystem writes are limited to the agent's allow-list, with ${product}/$
   assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/pages/contacts.page.ts"), true);
   assert.equal(w("pw-ui-pom-writer", "playwright-tests/acme/tests/api/x.spec.ts"), false);
   assert.equal(w("pw-ui-scaffolder", "playwright-tests/acme/playwright.config.ts"), false, "shared files belong to pw-repo-owner");
-  assert.equal(w("pw-repo-owner", "playwright-tests/acme/playwright.config.ts"), true);
+  assert.equal(w("pw-repo-owner", "playwright-tests/acme/playwright.config.ts"), false, "rendered by foundation.mjs from templates/ (D-054)");
+  assert.equal(w("pw-repo-owner", "artifacts/acme/foundation/repo-overlay.json"), true, "its overlay");
   assert.equal(w("pw-ui-reviewer", "artifacts/acme/results/acme-run-1/contacts/playwright-ui/review-findings.md"), true);
   assert.equal(w("pw-ui-reviewer", "artifacts/acme/results/other-run/contacts/playwright-ui/review-findings.md"), false, "${run_id} is the current run");
   assert.equal(w("pw-ui-tests-writer", "playwright-tests/other-product/tests/ui/a.spec.ts"), false);
@@ -209,6 +210,146 @@ test("testcase-reviewer runs only testcases.mjs review-check and writes only its
   assert.equal(w("artifacts/acme/results/acme-run-1/contacts/testcases/review.json"), true);
   for (const f of ["artifacts/acme/results/acme-run-1/contacts/testcases/review-findings.md", "artifacts/acme/results/acme-run-1/contacts/testcases/gate-findings.md", "artifacts/acme/modules/contacts/testcases/cases.json", "artifacts/acme/results/other-run/contacts/testcases/review.json"])
     assert.equal(w(f), false, f);
+});
+
+test("foundation agents run foundation.mjs only (render for their own side), and write only their overlay and extension files (D-054)", () => {
+  const sides = { "pw-repo-owner": "repo", "pw-ui-scaffolder": "ui", "pw-api-scaffolder": "api", "k6-lib-writer": "k6" };
+  for (const [agent, side] of Object.entries(sides)) {
+    const run = (cmd) => allowed(FULL.root, sh(agent, cmd));
+    assert.equal(run(`node scripts/foundation.mjs render acme --side ${side}`), true, `${agent} renders its side`);
+    for (const other of Object.values(sides).filter((s) => s !== side)) assert.equal(run(`node scripts/foundation.mjs render acme --side ${other}`), false, `${agent} never renders ${other}`);
+    // `render * --side <own>` could match `render acme --side repo --side <own>`: the CLI refuses a second --side
+    // (foundation.test.mjs), so no agent renders another side through it
+    for (const cmd of ["check acme", `check acme --side ${side}`, `check acme --side ${side} --static`, "paths acme"]) assert.equal(run(`node scripts/foundation.mjs ${cmd}`), true, `${agent}: ${cmd}`);
+    assert.equal(run("node scripts/foundation.mjs install acme"), agent === "pw-repo-owner", `${agent}: install`);
+    for (const cmd of ["npx tsc --noEmit", "npm install", "k6 inspect lib/config.js", "node scripts/foundation.mjs render acme --side ui; node -e 1", "echo x > playwright-tests/acme/playwright.config.ts"])
+      assert.equal(run(cmd), false, `${agent}: ${cmd}`);
+    assert.equal(allowed(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, `artifacts/acme/foundation/${side}-overlay.json`) })), true, `${agent} writes its overlay`);
+    for (const other of Object.values(sides).filter((s) => s !== side))
+      assert.equal(allowed(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, `artifacts/acme/foundation/${other}-overlay.json`) })), false, `${agent} never writes the ${other} overlay`);
+    assert.equal(allowed(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, `artifacts/acme/foundation/${side}-manifest.json`) })), false, "the manifest is script-owned");
+  }
+  const w = (agent, rel) => allowed(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, rel) }));
+  assert.equal(w("pw-ui-scaffolder", "playwright-tests/acme/helpers/ui/dates.ts"), true);
+  assert.equal(w("pw-ui-scaffolder", "playwright-tests/acme/fixtures/ui/index.ts"), true, "the extension file the guard fixture is imported into");
+  assert.equal(w("pw-api-scaffolder", "playwright-tests/acme/helpers/api/pagination.ts"), true);
+  assert.equal(w("pw-api-scaffolder", "playwright-tests/acme/helpers/api/schema.ts"), false, "schema.ts is managed");
+  assert.equal(w("k6-lib-writer", "k6-tests/acme/lib/ext/paging.js"), true);
+  assert.equal(w("k6-lib-writer", "k6-tests/acme/lib/config.js"), false);
+});
+
+test("no agent can write a managed foundation file directly, whatever its write list says (D-054)", async () => {
+  const { managedTargets } = await import("./lib/foundation.mjs");
+  const agents = Object.keys(JSON.parse(readFileSync(path.join(FULL.root, "artifacts/acme/state/permissions.resolved.json"), "utf8")).agents);
+  const managed = [
+    ...["repo", "ui", "api"].flatMap((s) => managedTargets(s)).map((f) => `playwright-tests/acme/${f}`),
+    "playwright-tests/acme/package-lock.json",
+    ...managedTargets("k6").map((f) => `k6-tests/acme/${f}`),
+  ];
+  assert.ok(managed.length >= 25);
+  for (const root of [FULL.root, RO.root])
+    for (const agent of agents)
+      for (const f of managed) {
+        const v = checkTool(call(agent, "Write", { file_path: path.join(root, f) }), root, {});
+        assert.equal(v.allowed, false, `${agent} may not write ${f}`);
+      }
+  // the fixers and writers keep their own folders, only the managed files are carved out
+  const ok = (agent, rel) => allowed(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, rel) }));
+  assert.equal(ok("pw-ui-fixer", "playwright-tests/acme/fixtures/ui/index.ts"), true);
+  assert.equal(ok("pw-ui-pom-writer", "playwright-tests/acme/fixtures/ui/index.ts"), true);
+  assert.equal(ok("pw-api-tests-writer", "playwright-tests/acme/helpers/api/contacts.payloads.ts"), true);
+  assert.equal(ok("k6-fixer", "k6-tests/acme/scripts/contacts-smoke.js"), true);
+  assert.equal(checkTool(call("pw-ui-fixer", "Write", { file_path: path.join(FULL.root, "playwright-tests/acme/fixtures/ui/base.ts") }), FULL.root, {}).rule, "managed-file");
+  // a host that can't name the caller gets the run's combined ceiling (D-035): still no managed file
+  const copilot = { ...call("pw-ui-fixer", "Write", { file_path: path.join(FULL.root, "playwright-tests/acme/fixtures/ui/base.ts") }), agent: undefined, host: "copilot-cli" };
+  assert.equal(checkTool(copilot, FULL.root, {}).allowed, false);
+});
+
+test("managed foundation files: another spelling of the same file is still managed (case, trailing dots and spaces, NTFS streams, ./.., 8.3 names)", () => {
+  const w = (agent, rel) => checkTool(call(agent, "Write", { file_path: path.join(FULL.root, rel) }), FULL.root, {});
+  for (const [agent, rel] of [
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/Base.ts"],
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/base.ts."],
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/base.ts .."],
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/base.ts::$DATA"],
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/base.ts:hidden"],
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/auth.setup.TS"],
+    ["pw-ui-fixer", "playwright-tests/acme/FIXTURES/UI/BASE.TS"],
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/./base.ts"],
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/../ui/base.ts"],
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/AUTH~1.TS"],
+    ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/BASE~1.TS"],
+    ["k6-fixer", "k6-tests/acme/LIB/config.js"],
+    ["k6-fixer", "k6-tests/acme/lib/Config.JS"],
+    ["k6-fixer", "k6-tests/acme/lib/CONFIG~1.JS"],
+    ["pw-api-fixer", "playwright-tests/acme/helpers/api/Schema.ts"],
+  ]) {
+    const v = w(agent, rel);
+    assert.equal(v.allowed, false, `${agent} may not write ${rel}`);
+    assert.equal(v.rule, "managed-file", rel);
+  }
+  // other files in the same folders stay the agents'
+  assert.equal(w("pw-ui-fixer", "playwright-tests/acme/fixtures/ui/index.ts").allowed, true);
+  assert.equal(w("pw-ui-fixer", "playwright-tests/acme/fixtures/ui/INDEX~1.TS").allowed, true, "a short name of index.ts is not a managed file");
+  assert.equal(w("k6-fixer", "k6-tests/acme/lib/ext/config.js").allowed, true);
+});
+
+test("managed foundation files: a junction or symlink inside a writable folder can't reach one", (t) => {
+
+  const pw = (rel) => path.join(FULL.root, "playwright-tests/acme", rel);
+  mkdirSync(pw("fixtures/ui"), { recursive: true });
+  mkdirSync(pw("helpers/ui"), { recursive: true });
+  try {
+    symlinkSync(pw("fixtures/ui"), pw("helpers/ui/link"), "junction");
+  } catch (e) {
+    t.skip(`this OS can't create a junction or symlink here: ${e.code}`);
+    return;
+  }
+  for (const agent of ["pw-ui-fixer", "pw-ui-tests-writer", "pw-ui-scaffolder", undefined]) {
+    const v = checkTool({ ...call(agent, "Write", { file_path: pw("helpers/ui/link/base.ts") }), ...(agent ? {} : { agent: undefined, host: "copilot-cli" }) }, FULL.root, {});
+    assert.equal(v.allowed, false, `${agent ?? "unnamed"} through the link`);
+    assert.equal(v.rule, "managed-file");
+  }
+  assert.equal(allowed(FULL.root, call("pw-ui-tests-writer", "Write", { file_path: pw("helpers/ui/link/../dates.ts") })), true, "the rest of the folder stays writable");
+});
+
+test("managed foundation files: directory short names, \\\\?\\ and \\\\.\\ prefixes and UNC paths to this machine reach no managed file", () => {
+  const unnamed = (file, r = RO) => checkTool({ ...call(undefined, "Write", { file_path: file }), agent: undefined, host: "copilot-cli" }, r.root, {});
+  const named = (file) => checkTool(call("pw-ui-fixer", "Write", { file_path: file }), FULL.root, {});
+  for (const rel of ["PLAYWR~1/acme/fixtures/ui/base.ts", "playwright-tests/acme/FIXTUR~1/ui/base.ts", "playwright-tests/acme/fixtures/ui/BASE~1.TS", "PLAYWR~2/ACME/FIXTUR~1/UI/AUTHSE~1.TS", "K6-TES~1/acme/lib/config.js", "playwright-tests/acme/utils/SHARED~1/env.ts"]) {
+    assert.equal(unnamed(path.join(RO.root, rel)).rule, "managed-file", rel);
+    assert.equal(named(path.join(FULL.root, rel)).allowed, false, rel);
+  }
+  assert.equal(unnamed(path.join(RO.root, "PLAYWR~1/acme/fixtures/ui/index.ts")).allowed, true, "an extension file keeps the mode rules");
+  if (process.platform !== "win32") return;
+  const abs = path.join(RO.root, "playwright-tests", "acme", "fixtures", "ui", "base.ts");
+  const [drive, rest] = [abs[0], abs.slice(3)];
+  for (const p of [`\\\\?\\${abs}`, `\\\\.\\${abs}`, `//?/${abs.replaceAll("\\", "/")}`, `\\\\localhost\\${drive}$\\${rest}`, `\\\\127.0.0.1\\${drive.toLowerCase()}$\\${rest}`, `\\\\?\\UNC\\localhost\\${drive}$\\${rest}`]) {
+    const v = unnamed(p);
+    assert.equal(v.allowed, false, p);
+    assert.equal(v.rule, "managed-file", p);
+  }
+  assert.equal(unnamed(`\\\\?\\${path.join(RO.root, "playwright-tests", "acme", "fixtures", "ui", "index.ts")}`).allowed, true, "a device prefix on an extension file keeps the mode rules");
+});
+
+test("managed foundation files: unnamed callers can't write them either, in every mode (D-054)", async () => {
+  const file = (root) => path.join(root, "playwright-tests/acme/fixtures/ui/base.ts");
+  const unnamed = (root, host) => ({ ...call(undefined, "Write", { file_path: file(root) }), agent: undefined, host });
+  for (const r of [RO, FULL])
+    for (const host of ["copilot-cli", "claude-code", "vscode-agent-host"]) {
+      const v = checkTool(unnamed(r.root, host), r.root, {});
+      assert.equal(v.allowed, false, `${host} in ${r === RO ? "readonly" : "full-run"}`);
+      assert.equal(v.rule, "managed-file");
+    }
+  assert.equal(checkTool(unnamed(RO.root, "copilot-cli"), RO.root, {}).allowed, false);
+  assert.equal(checkTool({ ...unnamed(RO.root, "copilot-cli"), paths: [path.join(RO.root, "playwright-tests/acme/fixtures/ui/index.ts")] }, RO.root, {}).allowed, true, "an extension file keeps the mode rules");
+  // with two active runs, the other product's run can't let it through
+  const two = startRun();
+  const { initRun } = await import("./run.mjs");
+  const { writeConfig } = await import("./test-helpers.mjs");
+  const beta = initRun(writeConfig(two.root, { product: "beta" }), { root: two.root, runId: "beta-run-1", env: { CLAUDECODE: "1" } });
+  assert.deepEqual(beta.errors ?? [], []);
+  assert.equal(checkTool(unnamed(two.root, "copilot-cli"), two.root, {}).allowed, false);
 });
 
 test("testcase-writer runs testcases.mjs build/check/paths only and writes only its cases overlay", () => {

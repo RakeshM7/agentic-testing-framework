@@ -81,6 +81,14 @@ test("citations: each prefix holds when its target exists and is refused when it
   assert.equal(citationProblem("observation:explore/network-inventory.json#NI-contacts-3", ctx), null);
   assert.equal(citationProblem("observation:explore/network-inventory.json#/0", ctx), null);
   assert.match(citationProblem("observation:explore/network-inventory.json#NI-contacts-9", ctx), /no entry NI-contacts-9/);
+  // no path citation escapes its base folder, even to a file that exists (D-054 fix)
+  put(root, "acme/state/config.resolved.json", "{}");
+  put(root, "acme/modules/contacts/api/secret.json", "{}");
+  for (const c of ["knowledge:../state/config.resolved.json", "knowledge:modules/../../state/config.resolved.json", "knowledge:..", "knowledge:", "spec:../clarifications.csv",
+    "observation:../../state/config.resolved.json", "observation:explore/../../../state/config.resolved.json", `knowledge:${path.join(root, "acme/state/config.resolved.json")}`, "knowledge:/etc/passwd", "knowledge:C:/Windows/win.ini", "spec:secret.json:stream"])
+    assert.match(citationProblem(c, ctx) ?? "", /must stay inside/, c);
+  assert.equal(citationProblem("observation:explore/./flows.md", ctx), null, "a path that stays inside is fine");
+  assert.equal(citationProblem("spec:secret.json", ctx), null);
 });
 
 test("verified: a stamp holds until an input changes, then gives a reason", () => {

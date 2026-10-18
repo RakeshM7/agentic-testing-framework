@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "foundation-ui-overlay.schema.json",
+  "title": "artifacts/<product>/foundation/ui-overlay.json: pw-ui-scaffolder's cited UI judgments, rendered into config/ui/settings.ts, config/ui/README.md and fixtures/ui/auth.setup.ts by scripts/foundation.mjs (D-054). Selectors are an exploration snapshot's own roles and names.",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "cite": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^(clarification|testcase|knowledge|spec|observation):\\S+$" } },
+    "module": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "number": {
+      "type": "object",
+      "required": ["value", "cite"],
+      "additionalProperties": false,
+      "properties": { "value": { "type": "integer" }, "module": { "$ref": "#/$defs/module" }, "cite": { "$ref": "#/$defs/cite" } }
+    },
+    "observed": {
+      "type": "object",
+      "required": ["role", "name", "module", "cite"],
+      "additionalProperties": false,
+      "properties": {
+        "role": { "enum": ["alert", "alertdialog", "banner", "button", "checkbox", "dialog", "link", "progressbar", "region", "status"] },
+        "name": { "type": "string", "minLength": 1 },
+        "module": { "$ref": "#/$defs/module" },
+        "cite": { "$ref": "#/$defs/cite" }
+      }
+    },
+    "control": {
+      "type": "object",
+      "required": ["role", "name"],
+      "additionalProperties": false,
+      "properties": { "role": { "enum": ["textbox", "combobox", "button"] }, "name": { "type": "string", "minLength": 1 } }
+    },
+    "note": {
+      "type": "object",
+      "required": ["topic", "text", "cite"],
+      "additionalProperties": false,
+      "properties": { "topic": { "type": "string", "minLength": 1 }, "text": { "type": "string", "minLength": 1 }, "module": { "$ref": "#/$defs/module" }, "cite": { "$ref": "#/$defs/cite" } }
+    },
+    "request": {
+      "type": "object",
+      "required": ["kind", "text", "files", "exports", "cite"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "gap" },
+        "text": { "type": "string", "minLength": 1, "description": "The gap as the worker reported it." },
+        "requestedBy": { "type": "string" },
+        "files": { "type": "array", "items": { "type": "string" }, "description": "The extension files that fill it (fixtures/ui/index.ts, helpers/ui/**)." },
+        "exports": { "type": "array", "items": { "type": "string", "pattern": "^[A-Za-z_$][\\w$]*$" }, "description": "What they export for the gap; check keeps them exported." },
+        "module": { "$ref": "#/$defs/module" },
+        "cite": { "$ref": "#/$defs/cite" }
+      }
+    }
+  },
+  "properties": {
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "actionTimeoutMs": { "$ref": "#/$defs/number" },
+        "navigationTimeoutMs": { "$ref": "#/$defs/number" },
+        "viewport": {
+          "type": "object",
+          "required": ["value", "cite"],
+          "additionalProperties": false,
+          "properties": {
+            "value": {
+              "type": "object",
+              "required": ["width", "height"],
+              "additionalProperties": false,
+              "properties": { "width": { "type": "integer", "minimum": 320, "maximum": 3840 }, "height": { "type": "integer", "minimum": 320, "maximum": 2160 } }
+            },
+            "module": { "$ref": "#/$defs/module" },
+            "cite": { "$ref": "#/$defs/cite" }
+          }
+        },
+        "loadingIndicator": { "$ref": "#/$defs/observed" },
+        "cookieBanner": { "$ref": "#/$defs/observed" }
+      }
+    },
+    "login": {
+      "type": "object",
+      "required": ["module", "state", "cite", "username", "password", "submit"],
+      "additionalProperties": false,
+      "description": "A plain login form the exploration recorded as a state: its snapshot is cited and shows the three controls verbatim.",
+      "properties": {
+        "module": { "$ref": "#/$defs/module" },
+        "state": { "type": "string", "pattern": "^ST-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+        "cite": { "$ref": "#/$defs/cite" },
+        "username": { "$ref": "#/$defs/control" },
+        "password": { "$ref": "#/$defs/control" },
+        "submit": { "$ref": "#/$defs/control" }
+      }
+    },
+    "notes": { "type": "array", "items": { "$ref": "#/$defs/note" } },
+    "requests": { "type": "array", "items": { "$ref": "#/$defs/request" } }
+  }
+}

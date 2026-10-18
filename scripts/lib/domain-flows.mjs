@@ -4,9 +4,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { planPaths, planUnverified } from "./api-plan.mjs";
+import { foundationContext, foundationUnverified } from "./foundation.mjs";
 import { reviewResult, testcaseContext, testcaseTotals, testcasesUnverified } from "./testcases.mjs";
 
-const exists = (dir, ...files) => files.every((f) => existsSync(path.join(dir, f)));
 const json = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null);
 
 // An empty catalogue is either "nothing there" or "could not see" (coverage.json status blocked, D-045); the two must
@@ -17,6 +17,16 @@ function noApiSurface(c) {
   const cov = json(path.join(api, "coverage.json"));
   return cov?.status === "blocked" ? `API discovery blocked: ${cov.blockedReason ?? "no reason recorded"}` : "no API surface found";
 }
+
+// A side's foundation is rendered from templates/ (D-054): its build step is skipped only while foundation.mjs check's
+// verified stamp is current, and a done step counts only with that stamp. A stale stamp (a hand edit, a changed
+// overlay, template or run-config input) re-runs the side's agent, which re-renders.
+const fCtx = (c) => foundationContext({ root: c.root, product: c.product, run: c.run, cfg: c.cfg, productDir: c.productDir, pwProject: c.pwProject, k6Project: c.k6Project });
+const foundationStep = (side, step, agent, what) => ({
+  step, agent,
+  skip: (c) => !foundationUnverified(fCtx(c), side) && `${what} is verified (foundation.mjs check)`,
+  verify: (c) => foundationUnverified(fCtx(c), side),
+});
 
 const tcCtx = (c) => testcaseContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir });
 
@@ -42,7 +52,7 @@ export const FLOWS = {
   },
   "playwright-ui": {
     build: [
-      { step: "scaffold", agent: "pw-ui-scaffolder", skip: (c) => exists(c.pwProject, "config/ui/settings.ts", "fixtures/ui/index.ts", "fixtures/ui/auth.setup.ts") && "the UI foundation exists" },
+      foundationStep("ui", "scaffold", "pw-ui-scaffolder", "the UI foundation"),
       { step: "pages", agent: "pw-ui-pom-writer" },
       { step: "tests", agent: "pw-ui-tests-writer" },
     ],
@@ -55,7 +65,7 @@ export const FLOWS = {
       // No API surface (or discovery blocked): nothing to plan, build or review; the runner records not-run with the reason.
       // The plan is script-built (D-046): a "done" plan step counts only once api-plan.mjs check passed on what is on disk.
       { step: "plan", agent: "api-test-planner", skipRest: noApiSurface, verify: (c) => planUnverified(planPaths(c.productDir, c.module)) },
-      { step: "scaffold", agent: "pw-api-scaffolder", skip: (c) => exists(c.pwProject, "config/api/settings.ts", "fixtures/api/index.ts", "fixtures/api/auth.setup.ts", "helpers/api/schema.ts") && "the API foundation exists" },
+      foundationStep("api", "scaffold", "pw-api-scaffolder", "the API foundation"),
       { step: "clients", agent: "pw-api-client-writer" },
       { step: "tests", agent: "pw-api-tests-writer" },
     ],
@@ -66,7 +76,7 @@ export const FLOWS = {
     build: [
       { step: "workload", agent: "k6-workload-designer" },
       // Every endpoint excluded: no scripts to write or review; the runner records not-run.
-      { step: "lib", agent: "k6-lib-writer", skipRest: (c) => (json(path.join(c.productDir, "modules", c.module, "k6", "workload.json")) ?? []).filter((w) => w.id !== `K6-${c.module}-0`).length === 0 && "every endpoint excluded from load", skip: (c) => exists(c.k6Project, "lib/config.js") && "the shared lib exists" },
+      { ...foundationStep("k6", "lib", "k6-lib-writer", "the k6 lib"), skipRest: (c) => (json(path.join(c.productDir, "modules", c.module, "k6", "workload.json")) ?? []).filter((w) => w.id !== `K6-${c.module}-0`).length === 0 && "every endpoint excluded from load" },
       { step: "scripts", agent: "k6-script-writer" },
     ],
     review: { reviewer: "k6-reviewer", fixer: "k6-fixer" },

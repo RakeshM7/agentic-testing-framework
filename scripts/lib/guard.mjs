@@ -9,18 +9,20 @@
 //   - caller:       the call's `agent` (set by the adapter only from a trusted source) and `host`
 // The env var AUTHORIZATIONS_MODE=readonly can only downgrade. No active run => readonly, no per-agent rules.
 // One rule holds for every call, in or out of a run, whoever calls: test case approval is human-only (humanOnly()).
+// During a run, no caller (named or not, in any mode) writes a managed foundation file directly (managedPath(), D-054).
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
 // On a host that cannot name the calling agent (scripts/lib/hosts.mjs), a full-run call gets what at least one of the
 // run's agents may do (runCeiling, D-035): every call there comes from one of the run's agents.
 //
 // Dependency-free (imported by a PreToolUse hook on every guarded tool call).
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import { hostname } from "node:os";
 import path from "node:path";
 import { isMutatingBrowserTool } from "./browser-tools.mjs";
 import { canIdentify, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
-import { atLeast, canWrite, effectiveLiveTarget, runCeiling, shellAllowed } from "./permissions.mjs";
+import { atLeast, canWrite, effectiveLiveTarget, isManaged, runCeiling, shellAllowed } from "./permissions.mjs";
 
 const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 
@@ -135,6 +137,50 @@ function checkShell(cmd, run, row) {
   return ALLOW;
 }
 
+// Stricter only (D-054): the repo-relative path of a managed foundation file the call would write, else null.
+// The path is tested as written and as the file system resolves it, so neither a device prefix (`\\?\C:\…`), a UNC
+// path to this machine (`\\localhost\C$\…`, `\\?\UNC\…`), a directory short name nor a junction or symlink inside a
+// writable folder (helpers/ui/link -> fixtures/ui) reaches a managed file. Resolution only adds candidates: when it
+// fails, the string check still applies.
+const LOCAL_HOSTS = () => new Set(["localhost", "127.0.0.1", "[::1]", "::1", ".", "?", hostname().toLowerCase()]);
+function devicePath(p) {
+  let s = String(p);
+  if (/^[\\/]{2}[?.][\\/]unc[\\/]/i.test(s)) s = `\\\\${s.slice(8)}`; // \\?\UNC\host\share\… -> \\host\share\…
+  else if (/^[\\/]{2}[?.][\\/]/.test(s)) s = s.slice(4); // \\?\C:\… -> C:\…
+  const unc = /^[\\/]{2}([^\\/]+)[\\/]([a-z])\$(?:[\\/](.*))?$/i.exec(s); // \\localhost\C$\… -> C:\…
+  if (unc && LOCAL_HOSTS().has(unc[1].toLowerCase())) s = `${unc[2]}:\\${unc[3] ?? ""}`;
+  return s;
+}
+function realOf(abs) {
+  const rest = [];
+  let dir = abs;
+  try {
+    while (!existsSync(dir)) {
+      const up = path.dirname(dir);
+      if (up === dir) return null;
+      rest.unshift(path.basename(dir));
+      dir = up;
+    }
+    return path.join(realpathSync.native(dir), ...rest);
+  } catch {
+    return null;
+  }
+}
+function managedPath(file, run) {
+  const values = { product: run.product, run_id: run.runId };
+  const roots = [...new Set([run.root, realOf(run.root)].filter(Boolean))];
+  const abs = path.resolve(run.root, devicePath(file));
+  // a UNC path to another host is never inside the repo; don't touch the network to resolve it
+  const real = /^[\\/]{2}/.test(abs) ? null : realOf(abs);
+  for (const target of [...new Set([abs, real].filter(Boolean))])
+    for (const root of roots) {
+      const rel = path.relative(root, target).replaceAll("\\", "/");
+      if (rel.startsWith("..") || path.isAbsolute(rel)) continue;
+      if (isManaged(run.permissions, rel, values)) return rel;
+    }
+  return null;
+}
+
 function checkWrite(file, run, row) {
   const abs = path.resolve(run.root, file);
   const rel = path.relative(run.root, abs).replaceAll("\\", "/");
@@ -201,6 +247,13 @@ export function checkTool(call, root, env = process.env) {
   if (humanOnly(call)) return deny("human-only", HUMAN_ONLY_REASON);
   const runs = findActiveRuns(root, env);
   if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHosts: [] }, null) : ALLOW;
+  // Managed foundation files (D-054) are rendered by scripts/foundation.mjs through node, never by a hooked write: no
+  // caller writes one directly, named or not, in any mode, whichever active run's product it belongs to.
+  if (call.kind === "write")
+    for (const r of runs) {
+      const managed = r.permissions ? (call.paths ?? []).map((f) => managedPath(f, r)).find(Boolean) : null;
+      if (managed) return deny("managed-file", `${managed} is rendered by scripts/foundation.mjs from templates/: change the side's overlay (artifacts/<product>/foundation/) and run foundation.mjs render`);
+    }
   const verdicts = runs.map((r) => evaluate(call, r));
   if (call.kind === "write") return verdicts.find((v) => v.allowed) ?? verdicts[0];
   return firstDenied(verdicts);

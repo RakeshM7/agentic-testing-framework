@@ -5,7 +5,8 @@
 //   knowledge:<path>       a file under the product's knowledge/
 //   spec:<path>            a file under the module's api/
 //   observation:<path>     a file under the module
-// A path may carry a #fragment; only the file part must exist, except explore/network-inventory.json#NI-<m>-<n>,
+// A path must stay inside its base folder (no absolute path, `..` out of it, drive or stream suffix). A path may carry
+// a #fragment; only the file part must exist, except explore/network-inventory.json#NI-<m>-<n>,
 // whose entry must exist too (D-052).
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -13,6 +14,13 @@ import { isAnswered } from "./clarifications.mjs";
 
 export const CITATION_KINDS = ["clarification", "testcase", "knowledge", "spec", "observation"];
 export const CITATION_PREFIXES = CITATION_KINDS.map((k) => `${k}:`);
+
+// true when `file` (relative) names something strictly inside `base`.
+function inside(base, file) {
+  if (!file || path.isAbsolute(file) || /^[a-z]:/i.test(file) || file.includes(":") || /^[\\/]/.test(file)) return false;
+  const rel = path.relative(path.resolve(base), path.resolve(base, file));
+  return Boolean(rel) && !rel.startsWith("..") && !path.isAbsolute(rel);
+}
 
 // ctx: {rows (clarifications.csv rows), cases (Map or Set of test case ids), productDir, moduleDir, apiDir?}
 // -> null when the citation holds, else why not.
@@ -26,6 +34,9 @@ export function citationProblem(c, ctx) {
     return isAnswered(row) ? null : `'${c}': the row is not answered yet`;
   }
   if (kind === "testcase") return ctx.cases.has(ref) ? null : `'${c}': no such test case`;
+  // A path citation stays inside its base folder: no absolute path, no `..` out of it, no drive or stream prefix.
+  const bases = { knowledge: ["knowledge/", path.join(ctx.productDir, "knowledge")], spec: ["api/", ctx.apiDir ?? path.join(ctx.moduleDir, "api")], observation: ["the module", ctx.moduleDir] };
+  if (bases[kind] && !inside(bases[kind][1], file)) return `'${c}': the path must stay inside ${bases[kind][0]}`;
   if (kind === "knowledge") return existsSync(path.join(ctx.productDir, "knowledge", file)) ? null : `'${c}': no such file under knowledge/`;
   if (kind === "spec") return existsSync(path.join(ctx.apiDir ?? path.join(ctx.moduleDir, "api"), file)) ? null : `'${c}': no such file under api/`;
   if (kind === "observation") {

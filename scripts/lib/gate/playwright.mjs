@@ -6,6 +6,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
+import { SETUP_FILE, foundationContext, gateFoundationProblems } from "../foundation.mjs";
 import { approvalSummary } from "../testcases.mjs";
 import { finding, hygiene, matches, read, run, testTitles, walk } from "./common.mjs";
 
@@ -167,8 +168,10 @@ export function listedTests(report) {
 
 // The listed tests against the cases: no case id in a title path, or an unapproved case not parked as a fixme
 // "awaiting approval", is a major finding. root: the Playwright project, which an absolute listed file is reported
-// relative to; dir: the module's spec folder, for a relative file or none.
-export function listFindings(tests, { idRe, unapproved, what, root, dir }) {
+// relative to; dir: the module's spec folder, for a relative file or none. setupFile: the side's rendered
+// fixtures/<side>/auth.setup.ts (D-054), whose setup test Playwright lists as the side project's dependency; it is not a
+// case. Only that one file is exempt, and the gate flags any other setup file and any drift from its render.
+export function listFindings(tests, { idRe, unapproved, what, root, dir, setupFile = null }) {
   const out = [];
   let base = root;
   try {
@@ -179,6 +182,7 @@ export function listFindings(tests, { idRe, unapproved, what, root, dir }) {
     const file = !t.file ? dir
       : path.isAbsolute(t.file) && base ? path.relative(base, t.file).replaceAll("\\", "/")
       : path.posix.join(dir, t.file.replaceAll("\\", "/").split("/").pop());
+    if (setupFile && file === setupFile) continue;
     const ids = title.match(new RegExp(idRe.source, "g")) ?? [];
     if (!ids.length) out.push(finding("major", file, t.line, "traceability", `Playwright lists "${title}", which carries no ${what} id`, `start the test (or its describe) title with its ${what} id, or remove a test that has no ${what}`));
     for (const id of ids)
@@ -205,7 +209,8 @@ function listJson(cwd, side, module) {
   }
 }
 
-export function gatePlaywright({ pwProject, productDir, module, side, compile = true }) {
+export function gatePlaywright(ctx) {
+  const { pwProject, productDir, module, side, compile = true } = ctx;
   const idRe = new RegExp(`${side === "ui" ? "TC" : "API"}-${module}-\\d+`, "g");
   const what = side === "ui" ? "test case" : "plan scenario";
   const objects = side === "ui" ? `pages/${module}` : `clients/${module}`;
@@ -260,13 +265,19 @@ export function gatePlaywright({ pwProject, productDir, module, side, compile = 
   }
   out.push(...hygiene(pwProject, files));
 
+  // The foundation (D-054), once the script rendered this side: no managed file (the side's, or the repo's shared
+  // files) drifted from its render between renders, and the extension files keep the guard.
+  const fctx = foundationContext({ root: ctx.root, product: ctx.product, run: ctx.run, cfg: ctx.cfg, productDir, pwProject, k6Project: ctx.k6Project });
+  const rendered = existsSync(fctx.fp.manifest(side));
+  for (const d of gateFoundationProblems(fctx, side)) out.push(finding("blocker", d.file, null, "foundation", d.problem, `re-render it: node scripts/foundation.mjs render ${ctx.product} --side <side> (a needed change goes into that side's overlay)`));
+
   if (project) {
     const tsc = run("npx", ["tsc", "--noEmit"], pwProject);
     if (tsc) out.push(finding("blocker", "tsconfig.json", null, "typecheck", `npx tsc --noEmit failed: ${tsc}`, "fix the type errors"));
     // no specs: nothing to list (Playwright would fail with "No tests found"); a missing spec is the blocker above
     const listed = specs.length ? listJson(pwProject, side, module) : null;
     if (listed?.error) out.push(finding("blocker", `tests/${side}/${module}/`, null, "list", `playwright --list failed: ${listed.error}`, "fix the specs so Playwright can load them"));
-    else if (listed) out.push(...listFindings(listedTests(listed.report), { idRe, unapproved, what, root: pwProject, dir: `tests/${side}/${module}` }));
+    else if (listed) out.push(...listFindings(listedTests(listed.report), { idRe, unapproved, what, root: pwProject, dir: `tests/${side}/${module}`, setupFile: rendered ? SETUP_FILE(side) : null }));
   }
   return out;
 }

@@ -49,19 +49,54 @@ variables:
 # module-explorer: explore.mjs owns the state machine; the agent writes flows, summary, questions, overlay, captures (D-052)
 # testcase-writer: testcases.mjs build/check/paths only, writes cases.json only; `testcases.mjs approve` and the approval
 #   sheet (approval.csv, approvals.json) are human-only: no agent's row may grant them, and the guard denies them anyway
+# foundations (D-054): pw-repo-owner, the scaffolders and k6-lib-writer run only foundation.mjs and write only their
+#   overlay and extension files; every managed foundation file is in managed_files, and no agent writes one
 # Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
 #
 # ---- Shared-repo ownership inside ${pw_project} (UI and API agents write into the same repo) -------------
-#   pw-repo-owner      the ONLY agent that writes shared repo files: package.json/lock, playwright.config.ts (defines
+#   pw-repo-owner      the ONLY owner of the shared repo files: package.json/lock, playwright.config.ts (defines
 #                      BOTH the `ui` and `api` Playwright projects), tsconfig, .env.example, .gitignore, README,
-#                      utils/shared/. Creates the skeleton (stage `playwright-repo`, spawned by orchestrator-agent)
-#                      and applies change requests later (spawned by either Playwright orchestrator, never both at once).
-#   pw-ui-scaffolder   the UI side's product-wide foundation, once (config/ui/, base fixtures/ui/, generic helpers/ui/).
-#   pw-api-scaffolder  the API side's product-wide foundation, once (config/api/, base fixtures/api/, helpers/api/schema.ts).
+#                      utils/shared/. They are rendered from templates/ by `foundation.mjs render --side repo`, which
+#                      only pw-repo-owner may run, with its repo overlay (D-054). Creates the skeleton (stage
+#                      `playwright-repo`, spawned by orchestrator-agent) and applies change requests later (spawned by
+#                      either Playwright orchestrator, never both at once) as structured overlay entries.
+#   pw-ui-scaffolder   the UI side's product-wide foundation (config/ui/, fixtures/ui/base.ts + auth.setup.ts), rendered
+#                      from its cited UI overlay; it writes only that overlay, fixtures/ui/index.ts and helpers/ui/.
+#   pw-api-scaffolder  the API side's (config/api/, fixtures/api/base.ts + auth.setup.ts, helpers/api/schema.ts), likewise.
+#   k6-lib-writer      the k6 lib (lib/*.js, README, .gitignore), likewise; hand-written additions only in lib/ext/.
 #   ui side owns:  pages/, tests/ui/, helpers/ui/, fixtures/ui/, config/ui/
 #   api side owns: clients/, tests/api/, helpers/api/, fixtures/api/, config/api/
 #   Nobody edits another side's folders or the shared files; a needed shared change is a request the domain
 #   orchestrator passes to pw-repo-owner (file hand-off, no agent-to-agent messaging).
+
+# ---- Managed foundation files (D-054) ------------------------------------------------------------------
+# Rendered by scripts/foundation.mjs from the framework's templates/: NO agent writes one directly, whatever its
+# write list says (the guard denies it). The owning agent writes its overlay (artifacts/<product>/foundation/) and
+# re-renders; `foundation.mjs check` and the gate fail on a hand edit. scripts/guard.test.mjs keeps this list in step
+# with the templates (every rendered file is denied to every agent). Matching ignores case, trailing dots and spaces,
+# NTFS stream suffixes and ./.. segments, and covers 8.3 short names; no caller, named or not, writes one.
+managed_files:
+  - "${pw_project}/package.json"
+  - "${pw_project}/package-lock.json"
+  - "${pw_project}/playwright.config.ts"
+  - "${pw_project}/tsconfig.json"
+  - "${pw_project}/.gitignore"
+  - "${pw_project}/.env.example"
+  - "${pw_project}/README.md"
+  - "${pw_project}/.foundation-managed.json"
+  - "${pw_project}/utils/shared/**"
+  - "${pw_project}/config/ui/settings.ts"
+  - "${pw_project}/config/ui/README.md"
+  - "${pw_project}/fixtures/ui/base.ts"
+  - "${pw_project}/fixtures/ui/auth.setup.ts"
+  - "${pw_project}/config/api/settings.ts"
+  - "${pw_project}/config/api/README.md"
+  - "${pw_project}/fixtures/api/base.ts"
+  - "${pw_project}/fixtures/api/auth.setup.ts"
+  - "${pw_project}/helpers/api/schema.ts"
+  - "${k6_project}/lib/*.js"
+  - "${k6_project}/README.md"
+  - "${k6_project}/.gitignore"
 
 profiles:
   # Reusable bundles; an agent lists `profile:` and any per-agent overrides replace the profile's keys.
@@ -192,15 +227,17 @@ agents:
     filesystem: { read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/testcases/gate-findings.md"], write: ["${results}/${module}/testcases/review.json"] }
 
   # ======================= Shared Playwright repo owner (repo: ${pw_project}) =============================
-  pw-repo-owner:                # sole writer of shared repo files (see ownership table in the header)
-    layer: 2
-    profile: code_writer
+  pw-repo-owner:                # sole owner of the shared repo files (ownership table in the header). D-054: they are
+    layer: 2                    # rendered from templates/ with its repo overlay; only it may render --side repo
+    live_target: { browser: none, http: none, load: none }
     web_research: allowed       # framework best-practice research for the skeleton
+    shell: restricted
+    shell_allow: ["node scripts/foundation.mjs render * --side repo", "node scripts/foundation.mjs check *",
+                  "node scripts/foundation.mjs paths *", "node scripts/foundation.mjs install *"]
     filesystem:
-      read: ["${pw_project}/**", "${knowledge}/**", "${state}/orchestration/**"]
-      write: ["${pw_project}/package.json", "${pw_project}/package-lock.json", "${pw_project}/playwright.config.ts",
-              "${pw_project}/tsconfig.json", "${pw_project}/.env.example", "${pw_project}/.gitignore",
-              "${pw_project}/README.md", "${pw_project}/utils/shared/**"]
+      read: ["${pw_project}/**", "${knowledge}/**", "${state}/orchestration/**", "${product_dir}/foundation/**",
+             "${state}/config.resolved.json"]
+      write: ["${product_dir}/foundation/repo-overlay.json"]
 
   # ======================= Playwright UI domain (repo: ${pw_project}) =====================================
   playwright-ui-orchestrator:
@@ -210,13 +247,16 @@ agents:
              pw-ui-test-runner-triager]
     filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-ui/**"], write: ["${state}/orchestration/playwright-ui-${module}.json"] }
 
-  pw-ui-scaffolder:             # the UI side's product-wide foundation, once; shared files belong to pw-repo-owner
+  pw-ui-scaffolder:             # D-054: the UI foundation is rendered from templates/ with its cited UI overlay
     layer: 2
-    profile: code_writer
+    live_target: { browser: none, http: none, load: none }
     web_research: allowed
+    shell: restricted
+    shell_allow: ["node scripts/foundation.mjs render * --side ui", "node scripts/foundation.mjs check *",
+                  "node scripts/foundation.mjs paths *"]
     filesystem:
-      read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
-      write: ["${pw_project}/config/ui/**", "${pw_project}/fixtures/ui/**", "${pw_project}/helpers/ui/**"]
+      read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
+      write: ["${product_dir}/foundation/ui-overlay.json", "${pw_project}/fixtures/ui/index.ts", "${pw_project}/helpers/ui/**"]
   pw-ui-pom-writer:             # page objects, plus one fixture per page object in fixtures/ui/index.ts
     layer: 2
     profile: code_writer
@@ -265,13 +305,16 @@ agents:
     shell: restricted
     shell_allow: ["node scripts/api-plan.mjs *"]
     filesystem: { read: ["${modules}/**", "${knowledge}/**"], write: ["${modules}/api/plan-overlay.json"] }
-  pw-api-scaffolder:            # the API side's product-wide foundation, once; shared files belong to pw-repo-owner
+  pw-api-scaffolder:            # D-054: the API foundation is rendered from templates/ with its cited API overlay
     layer: 2
-    profile: code_writer
+    live_target: { browser: none, http: none, load: none }
     web_research: allowed
+    shell: restricted
+    shell_allow: ["node scripts/foundation.mjs render * --side api", "node scripts/foundation.mjs check *",
+                  "node scripts/foundation.mjs paths *"]
     filesystem:
-      read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
-      write: ["${pw_project}/config/api/**", "${pw_project}/fixtures/api/**", "${pw_project}/helpers/api/**"]
+      read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
+      write: ["${product_dir}/foundation/api-overlay.json", "${pw_project}/fixtures/api/index.ts", "${pw_project}/helpers/api/**"]
   pw-api-client-writer:        # API equivalent of the POM: typed clients per resource, their schemas, one fixture per client
     layer: 2
     profile: code_writer
@@ -312,10 +355,16 @@ agents:
     web_research: none
     shell: none
     filesystem: { read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/playwright-api/**"], write: ["${modules}/k6/workload.json"] }
-  k6-lib-writer:
+  k6-lib-writer:                # D-054: the k6 lib is rendered from templates/ with its cited k6 overlay
     layer: 2
-    profile: code_writer
-    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${k6_project}/lib/**", "${k6_project}/README.md"] }
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: restricted           # check --side k6 runs k6 inspect through its own temp file
+    shell_allow: ["node scripts/foundation.mjs render * --side k6", "node scripts/foundation.mjs check *",
+                  "node scripts/foundation.mjs paths *"]
+    filesystem:
+      read: ["${k6_project}/**", "${modules}/**", "${knowledge}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
+      write: ["${product_dir}/foundation/k6-overlay.json", "${k6_project}/lib/ext/**"]
   k6-script-writer:
     layer: 2
     profile: code_writer

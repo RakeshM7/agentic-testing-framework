@@ -7,7 +7,7 @@ import path from "node:path";
 import { next, show, step } from "./orchestration.mjs";
 import { append, csvPath, readRows, record, recordOutcome } from "./lib/clarifications.mjs";
 import { paths } from "./lib/contract.mjs";
-import { buildCases, humanEdit, markApproved, put, startRun } from "./test-helpers.mjs";
+import { buildCases, humanEdit, markApproved, put, renderFoundation, startRun } from "./test-helpers.mjs";
 
 const RESULTS = "artifacts/acme/results/acme-run-1/contacts";
 const go = (root, domain, opts = {}) => next("acme", domain, "contacts", { root, compile: false, ...opts });
@@ -32,10 +32,15 @@ const verdict = (root, v) => put(root, `${RESULTS}/playwright-ui/review-findings
 const triage = (root, framework, healable) =>
   put(root, `${RESULTS}/${framework}/triage.md`, ["# Triage", "| Test | File | Classification | Healable | Evidence | Suggested action |", "|---|---|---|---|---|---|", ...(healable ? ["| TC-contacts-1 | c.spec.ts | test-bug | yes | x | fix locator |"] : []), ""].join("\n"));
 
-test("Playwright UI: build, a failing gate goes straight to the fixer, review, run, heal, re-run, done", () => {
+test("Playwright UI: build, a failing gate goes straight to the fixer, review, run, heal, re-run, done", async () => {
   const { root } = startRun();
   uiCases(root);
-  perform(root, "playwright-ui", { step: "scaffold", agent: "pw-ui-scaffolder" });
+  // the scaffolder renders and checks the UI foundation (D-054); its done step counts only with the verified stamp
+  const sc = go(root, "playwright-ui").actions[0];
+  assert.deepEqual({ step: sc.step, agent: sc.agent }, { step: "scaffold", agent: "pw-ui-scaffolder" });
+  step("acme", "playwright-ui", "contacts", "scaffold", "start", undefined, { root });
+  await renderFoundation(root, ["repo", "ui"]);
+  step("acme", "playwright-ui", "contacts", "scaffold", "done", undefined, { root });
   perform(root, "playwright-ui", { step: "pages", agent: "pw-ui-pom-writer" });
   perform(root, "playwright-ui", { step: "tests", agent: "pw-ui-tests-writer" }, () =>
     put(root, "playwright-tests/acme/tests/ui/contacts/c.spec.ts", "test('TC-contacts-1 lists @p1', async ({ page }) => { await page.waitForTimeout(9); });\n"));
@@ -62,12 +67,16 @@ test("Playwright UI: build, a failing gate goes straight to the fixer, review, r
   assert.deepEqual(go(root, "playwright-ui").done.outcome, "complete", "asking again after the end is stable");
 });
 
-test("an interrupted step is offered again, and an existing foundation is skipped", () => {
+test("an interrupted step is offered again, and a verified foundation is skipped", async () => {
   const { root } = startRun();
-  for (const f of ["config/ui/settings.ts", "fixtures/ui/index.ts", "fixtures/ui/auth.setup.ts"]) put(root, `playwright-tests/acme/${f}`, "export {};\n");
+  // files that merely exist are no foundation: only foundation.mjs check's current stamp is (D-054)
+  for (const f of ["config/ui/settings.ts", "fixtures/ui/auth.setup.ts"]) put(root, `playwright-tests/acme/${f}`, "export {};\n");
+  assert.equal(go(root, "playwright-ui").actions[0].step, "scaffold");
+  await renderFoundation(root, ["repo", "ui"]);
   const r = go(root, "playwright-ui");
   assert.equal(r.actions[0].step, "pages");
   assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps.scaffold.status, "skipped");
+  assert.match(show("acme", "playwright-ui", "contacts", { root }).steps.scaffold.note, /the UI foundation is verified/);
   step("acme", "playwright-ui", "contacts", "pages", "start", undefined, { root });
   assert.equal(go(root, "playwright-ui").actions[0].step, "pages", "a step left running (crash) is resumed");
   step("acme", "playwright-ui", "contacts", "pages", "fail", "pom-writer could not ground locators", { root });
@@ -131,17 +140,19 @@ test("test cases: a review missing a verdict for a case, or from another round, 
   assert.match(readFileSync(path.join(again.root, RESULTS, "testcases/review-findings.md"), "utf8"), /^Verdict: pass$/m);
 });
 
-test("review rounds are bounded: automation still runs the suite", () => {
+test("review rounds are bounded: automation still runs the suite", async () => {
   const ui = startRun();
   uiCases(ui.root);
+  await renderFoundation(ui.root, ["repo", "ui"]);
   for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root: ui.root });
   for (const n of [1, 2, 3]) perform(ui.root, "playwright-ui", { step: `fix-${n}`, agent: "pw-ui-fixer" }); // no spec: gate fails
   perform(ui.root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" });
 });
 
-test("heal rounds are bounded by limits.heal_rounds", () => {
+test("heal rounds are bounded by limits.heal_rounds", async () => {
   const { root } = startRun();
   uiCases(root);
+  await renderFoundation(root, ["repo", "ui"]);
   goodSpec(root);
   for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root });
   perform(root, "playwright-ui", { step: "review-1", agent: "pw-ui-reviewer" }, () => verdict(root, "pass"));

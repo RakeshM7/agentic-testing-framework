@@ -1,0 +1,7 @@
+// Hand-written extension file: register one fixture per page object here (base.extend below), and never build on
+// @playwright/test directly. The mutation guard lives in ./base, which scripts/foundation.mjs renders.
+import { test as base } from './base';
+
+export const test = base.extend<{}>({});
+
+export { expect, waitForReady } from './base';

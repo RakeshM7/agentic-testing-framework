@@ -19,7 +19,7 @@ You model the module's screens as page objects the tests use.
 - One class per screen the test cases touch: `pages/<m>/<page-slug>.page.ts`, constructor `(page: Page)`, a `goto()` when the screen has its own URL (path relative to `BASE_URL`), locators as `readonly` properties, user actions as async methods named for intent (`createContact(data)`, `openFilters()`), and a `waitUntilReady()` using a locator — **no assertions**, no `waitForTimeout`.
 - Locator priority: `getByRole(name)` → `getByLabel` → `getByPlaceholder` → `getByTestId` → CSS (comment why). Names/labels copied **verbatim** from the DOM snapshots; if the snapshot is ambiguous, say so in your report rather than guessing.
 - Shared widgets (date picker, modal, table) used by several pages: `pages/<m>/components/<name>.component.ts`.
-- Register one fixture per page object in `fixtures/ui/index.ts` (add to the existing `base.extend`; never remove other modules' fixtures and never touch the mutation guard). If that file or the guard is missing, report it as a foundation gap instead of creating it.
+- Register one fixture per page object in `fixtures/ui/index.ts`: add to its existing `base.extend`, where `base` is the `test` imported from `./base`, and never remove other modules' fixtures. The mutation guard lives in the rendered `fixtures/ui/base.ts`, which you never edit; never import `test` or `expect` from `@playwright/test` in `index.ts`. If `index.ts` or `base.ts` is missing, report it as a foundation gap instead of creating it.
 - Verify `npx tsc --noEmit`.
 
 ## Return

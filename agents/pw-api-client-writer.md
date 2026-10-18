@@ -23,7 +23,7 @@ You wrap each resource's endpoints in a typed client the tests call.
 - `config/api/schemas/<resource>.json` for each of this module's resources whose JSON schema the spec provides (keep other modules' schema files untouched); tests validate responses against them.
 - Raw-request escape hatch for negative tests (`send(method, path, body?)`) so tests can send invalid input without bypassing the fixture's guard.
 - **No assertions**, no retries hiding failures, no auth values in code.
-- Register one fixture per client in `fixtures/api/index.ts`, built on the guarded `api` context (add to the existing `base.extend`; never remove other modules' fixtures and never touch the guard). If that file or the guard is missing, report it as a foundation gap instead of creating it.
+- Register one fixture per client in `fixtures/api/index.ts`, built on the guarded `api` context: add to its existing `base.extend`, where `base` is the `test` imported from `./base`, and never remove other modules' fixtures. The guard (`guarded()`, `api`, `noAuth`, `malformedAuth`, `identity`) lives in the rendered `fixtures/api/base.ts`, which you never edit; never import `test` or `expect` from `@playwright/test` in `index.ts`. If `index.ts` or `base.ts` is missing, report it as a foundation gap instead of creating it.
 - Verify `npx tsc --noEmit`.
 
 ## Return

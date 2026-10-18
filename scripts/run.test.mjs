@@ -4,7 +4,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { endRun, initRun, makeRunId, next, setStage, status, validateProduct } from "./run.mjs";
 import { loadJson, paths } from "./lib/contract.mjs";
-import { markApproved, put, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
+import { markApproved, put, renderFoundation, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
 
 const SITEMAP = JSON.stringify([{ url: "https://app.acme.test/contacts", slug: "contacts-list", title: "Contacts" }]);
 const CSV_HEADER = "ID,Module,Question,Steps to execute,Answer,Clarification agent notes,Run ID\r\n";
@@ -91,8 +91,7 @@ test("awaiting-approval: with no human-approved test case the automation stages 
   // contacts' test cases are written and reviewed, and the shared repo exists
   put(root, "artifacts/acme/modules/contacts/testcases/contacts-testcases.feature", "Feature: C\n  @TC-contacts-1 @p1 @functional\n  Scenario: list\n    Given x\n");
   put(root, "artifacts/acme/modules/contacts/testcases/testcases-summary.md", "Total test cases: 1\n");
-  put(root, "playwright-tests/acme/package.json", "{}");
-  put(root, "playwright-tests/acme/playwright.config.ts", "export default {};\n");
+  await renderFoundation(root, ["repo"]); // the shared files, rendered from templates/ and checked (D-054)
   const run = loadJson(p.runFile);
   run.stages["contacts/testcases"] = { status: "done", attempts: 1 };
   run.stages["_product/playwright-repo"] = { status: "done", attempts: 1 };
