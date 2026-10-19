@@ -41,7 +41,7 @@ Start a run with the **orchestrator-agent** as the session's agent (Claude Code:
 
 ### 3. Start the run
 1. Run `make run PRODUCT=<slug>` when you have `config/<slug>.yaml` (hand-written or drafted by `make interview`, which already offers to start the run). It opens an **orchestrator-agent** session on Claude Code with the run-config as its first prompt. On another host, start the session yourself (host commands are above) and give it `config/<product>.yaml`, or pass `AGENT="copilot --agent orchestrator-agent"` to make.
-2. The agent runs `node scripts/run.mjs init` (takes the product lock, freezes permissions), then the guard check (`run.mjs guard-check <product>`). It then loops over `run.mjs next <product>`, starting the right agent for each stage.
+2. The agent runs `node scripts/run.mjs init` (takes the product lock, freezes permissions), then the guard check (`run.mjs guard-check <product>`) and the dependency check (`run.mjs doctor <product>`; run `make doctor PRODUCT=<slug>` yourself any time to check and install what each stage needs). It then loops over `run.mjs next <product>`, starting the right agent for each stage.
 
 #### Pick up from the middle (a later day, after a human step)
 Run state lives in `artifacts/<product>/state/`, and a finished stage stays done while the run is active. `make` never ends a run, so there is no need to redo earlier stages. Just don't run `run.mjs end` until you're finished.

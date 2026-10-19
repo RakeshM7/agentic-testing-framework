@@ -44,6 +44,7 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     permissions.resolved.json         # frozen copy of config/permissions.yaml for the current run
     orchestration/<domain>-<module>.json   # domain orchestrators' loop counters (review/heal rounds)
     guard-check/                      # guard liveness records for the current session (run.mjs guard-check)
+    doctor.json                       # the current session's dependency check (run.mjs doctor, D-064)
     history/<run-id>.json             # summary of every ended run
   results/<run-id>/                   # per-run archive: <module>/{testcases,playwright-ui,playwright-api,k6}/..., report/
 playwright-tests/<product>/           # ONE Playwright repo: tests/ui + tests/api
@@ -57,6 +58,7 @@ There is no `artifacts/<run-id>/` directory. Run ids are `<product>-<YYYYMMDD>-<
 ```bash
 node scripts/run.mjs init config/<product>.yaml [--resume]   # validate config + permissions, take the lock, write state/
 node scripts/run.mjs guard-check <product>                   # liveness canary: a working guard BLOCKS this
+node scripts/run.mjs doctor <product>                        # what each stage needs on this machine; {checks, blockedStages}
 node scripts/run.mjs next <product>                          # {actions: [{stage, module, agent, prompt, attempt, retry}], concurrency, end?}
 node scripts/run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]
 node scripts/run.mjs status <product>                        # every stage with output verification
@@ -68,6 +70,7 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 - `config/permissions.yaml` is validated and frozen into `state/permissions.resolved.json` at `init`; edits take effect on the next run.
 - `init` records `startedOnHost`.
 - Guard liveness: `init` and `--resume` clear `state/guard-check/`; the orchestrator then runs `run.mjs guard-check <product>`, which every working hook blocks — the hook entry records the blocking host/agent there; if the command runs instead, it records `absent.json`. `stage … start` refuses until a record fits the mode. Any hook's record counts, with one exception: a full-run on VS Code's local agent needs a record from an agent's own hook.
+- Dependencies (D-064): `init` and `--resume` also clear `state/doctor.json`; the orchestrator then runs `run.mjs doctor <product>`. `stage … start` refuses a stage while a check it needs fails (`STAGE_NEEDS` in `scripts/lib/doctor.mjs`), or once the product repo was built after the check. A human fixes it (`make doctor PRODUCT=<product>` applies the safe installs), then the check runs again.
 
 ### Stages (the main orchestrator's view — one per domain)
 

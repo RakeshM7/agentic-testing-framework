@@ -7,6 +7,8 @@
 //                                                         awaiting-approval, the new run adopts the stages that run completed whose
 //                                                         product-level outputs still verify (carriedFrom), so it continues at the cases a human approved
 //   run.mjs guard-check <product>                         liveness canary: a working guard BLOCKS this (lib/guard-check.mjs)
+//   run.mjs doctor <product>                              dependency check for every stage (lib/doctor.mjs, D-064): records
+//                                                         state/doctor.json; {checks, blockedStages}; exit 1 if a stage is blocked
 //   run.mjs status <product>                              per-stage status + output verification
 //   run.mjs next <product>                                {actions: [{stage, module, agent, prompt, attempt, retry}], concurrency, end?}:
 //                                                         the stages to start, each with the agent and the exact prompt (run id, mode,
@@ -15,7 +17,7 @@
 //                                                         never offered, no attempt spent. With nothing left to start, `end` says how
 //                                                         the run ends: completed, awaiting-approval (with the approval sheets to review;
 //                                                         the report stage is offered before that) or incomplete (failed and blocked stages)
-//   run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]   (start needs a verified guard)
+//   run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]   (start needs a verified guard and a passing dependency check)
 //                                                         done is refused with the problems and, the first time, a `retry` {agent, prompt}
 //                                                         to give the same agent once; the second refusal fails the stage itself (D-011).
 //                                                         A domain whose review used up its rounds is failed (reviewFailed, with its open
@@ -36,6 +38,7 @@ import { read as readLedger } from "./lib/ledger.mjs";
 import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
 import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs";
+import { GROUPS, STAGE_NEEDS, clearDoctor, doctorStatus, failures, recordDoctor, runChecks } from "./lib/doctor.mjs";
 import { detectShellHost } from "./lib/hosts.mjs";
 import { approvalSummary, testcasePaths } from "./lib/testcases.mjs";
 
@@ -58,6 +61,7 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
     const lock = loadJson(p.lockFile);
     if (resume) {
       clearGuardChecks(cfg.product, root); // a resumed session must verify its own guard
+      clearDoctor(cfg.product, root); // ... and check its own machine
       return { resumed: true, product: cfg.product, run: loadJson(p.runFile) };
     }
     return { errors: [`run ${lock.runId} is active for product '${cfg.product}' (started ${lock.createdAt}). Use --resume, or end it: run.mjs end ${cfg.product} --abandon`] };
@@ -87,6 +91,7 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
     stages: {},
   };
   clearGuardChecks(cfg.product, root);
+  clearDoctor(cfg.product, root);
   writeJson(p.lockFile, { runId: id, createdAt: run.createdAt, configPath: run.configPath });
   writeJson(p.runFile, run);
   writeJson(p.configFile, cfg);
@@ -238,6 +243,18 @@ export async function nextStep(product, { root = repoRoot } = {}) {
   throw new Error("next: knowledge reuse did not settle");
 }
 
+// The dependency check for every stage of the active run, recorded for `stage … start` (D-064). Fixing is the human's
+// (make doctor PRODUCT=<p>); the result names each fix and the stages that wait for it.
+export async function doctor(product, { root = repoRoot, ...opts } = {}) {
+  const ctx = ctxFor(product, root);
+  if (!ctx.active) return { errors: [`run ${ctx.runId} has ended; start a new run`] };
+  const groups = GROUPS.filter((g) => g !== "codegen");
+  const checks = await runChecks(loadJson(ctx.p.configFile), groups, { root, ...opts });
+  recordDoctor(product, root, { groups, checks });
+  const blockedStages = Object.keys(STAGE_NEEDS).filter((s) => failures(checks, STAGE_NEEDS[s]).length);
+  return { checks: checks.map(({ autofix, ...c }) => c), blockedStages, ...(blockedStages.length ? { fix: `tell the human each failing check and its fix; they run make doctor PRODUCT=${product} (it applies the safe installs), then run.mjs doctor ${product} again. Stages not listed can start now.` } : {}) };
+}
+
 export async function setStage(product, stage, module, action, error, { root = repoRoot, reused = false } = {}) {
   if (!STAGES[stage]) return { errors: [`unknown stage '${stage}' (one of ${Object.keys(STAGES).join(", ")})`] };
   const ctx = ctxFor(product, root);
@@ -251,6 +268,8 @@ export async function setStage(product, stage, module, action, error, { root = r
       return { errors: [`${key} is awaiting approval: ${approvalSummary(ctx.p.productDir, module).built ? `no test case of ${module} is approved by a human yet (testcases/approval.csv, then node scripts/testcases.mjs approve in a terminal)` : `the test cases of ${module} predate scripts/testcases.mjs, so none can be approved: rebuild them (rerun the testcases stage), then a human approves them`}; a later run picks it up. No attempt was spent.`] };
     const guard = guardStatus(product, ctx.run.mode, root);
     if (!guard.ready) return { errors: [`guard not verified: ${guard.reason}`] };
+    const deps = doctorStatus(product, stage, root);
+    if (!deps.ready) return { errors: [`dependencies not ready: ${deps.reason}`] };
     if (prev.status === "failed" && prev.reviewFailed) return { errors: [`${key} failed its review this run (${prev.error}); its dependants are blocked`] };
     if (prev.status === "failed" && (prev.attempts ?? 0) >= MAX_ATTEMPTS) return { errors: [`${key} already failed ${MAX_ATTEMPTS} times this run`] };
     ctx.run.stages[key] = { status: "running", startedAt: now(), attempts: (prev.attempts ?? 0) + 1 };
@@ -384,19 +403,22 @@ async function main() {
     process.exit(code);
   };
   if (!cmd || !a) {
-    console.error("usage: run.mjs init|guard-check|status|next|stage|end|validate ... (see header comment)");
+    console.error("usage: run.mjs init|guard-check|doctor|status|next|stage|end|validate ... (see header comment)");
     process.exit(2);
   }
   try {
     if (cmd === "init") {
       const r = initRun(a, { resume: v.resume, runId: v["run-id"] });
       const carried = r.errors || r.resumed ? null : await carryForward(r.product);
-      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, resumed: !!r.resumed, ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: `node scripts/run.mjs guard-check ${r.product}` }, r.errors ? 1 : 0);
+      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, resumed: !!r.resumed, ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: [`node scripts/run.mjs guard-check ${r.product}`, `node scripts/run.mjs doctor ${r.product}`] }, r.errors ? 1 : 0);
     } else if (cmd === "guard-check") {
       // Reaching this line means no hook blocked the command: the guard is not active in this session.
       if (!SLUG_RE.test(a) || !existsSync(paths(a).state)) out({ errors: [`no run state for product '${a}'`] }, 1);
       markAbsent(a, repoRoot);
       out({ errors: ["the framework guard did NOT block guard-check: hooks are not active in this session, so nothing enforces the run's mode or permissions. Stop and fix the host's hook setup (docs/platforms.md), then run `node scripts/run.mjs guard-check <product>` again."] }, 1);
+    } else if (cmd === "doctor") {
+      const r = await doctor(a);
+      out(r, r.errors || r.blockedStages.length ? 1 : 0);
     } else if (cmd === "status") out(await status(a));
     else if (cmd === "next") out(await nextStep(a));
     else if (cmd === "stage") {

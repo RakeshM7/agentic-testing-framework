@@ -6,6 +6,8 @@
 #   make interview                                    or: the orchestrator asks a few questions and writes the config for you
 #   make login  PRODUCT=acme-crm                      log in once in a browser and save the session
 #   make validate PRODUCT=acme-crm                    check the run-config
+#   make doctor PRODUCT=acme-crm                      check (and install what it safely can) what every stage needs on this
+#                                                     machine; login, run, resume and automate run it first (FIX=no: report only)
 #   make check                                        drift check + tests (what CI runs)
 #
 # Running and resuming (start the run in a session of the orchestrator-agent; a finished stage stays done):
@@ -34,6 +36,7 @@ URL     ?=
 STAGE   ?=
 LOGIN   ?= yes
 MODULE  ?=
+FIX     ?= yes
 
 # The command that opens an orchestrator-agent session with a first prompt. Claude Code by default; for Copilot CLI
 # use make ... AGENT="copilot --agent orchestrator-agent" (check your CLI for how it takes an initial prompt).
@@ -42,17 +45,20 @@ STAGES   = knowledge module-knowledge playwright-repo explore clarifications tes
 
 CONFIG  = config/$(PRODUCT).yaml
 AUTH    = playwright-tests/$(PRODUCT)/.auth/state.json
+# The dependency check (scripts/doctor.mjs, D-064). FIX=yes runs the installs it names (npm install, npx playwright
+# install chromium, k6 through winget or Homebrew); a config, session or credential problem is reported for you to fix.
+DOCTOR  = node scripts/doctor.mjs $(CONFIG)$(if $(filter yes,$(FIX)), --fix)
 
-.PHONY: help setup config interview login validate build-agents check test run resume status next explore clarifications testcases automate k6 report approve
+.PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve
 
 help:
-	@echo "make setup | config | interview | login | validate | build-agents | check | test"
+	@echo "make setup | config | interview | login | validate | doctor | build-agents | check | test"
 	@echo "make run | resume | status | next | explore | clarifications | testcases | approve | automate | k6 | report"
-	@echo "config, login and validate need PRODUCT=<slug>; config also needs URL=<target url>"
+	@echo "config, login, validate and doctor need PRODUCT=<slug>; config also needs URL=<target url>"
 
 setup:
 	npm install
-	npx --yes playwright install chromium
+	npx playwright install chromium
 
 require-product:
 	@test -n "$(PRODUCT)" || { echo "Set PRODUCT=<slug>, e.g. make $(MAKECMDGOALS) PRODUCT=acme-crm"; exit 1; }
@@ -73,14 +79,21 @@ interview:
 # Opens a browser: log in yourself (CAPTCHA/MFA included), then close the window to save the session.
 login: require-product
 	@test -f "$(CONFIG)" || { echo "Run make config PRODUCT=$(PRODUCT) URL=<target url> first"; exit 1; }
+	$(DOCTOR) --for login
 	@mkdir -p playwright-tests/$(PRODUCT)/.auth
-	npx --yes playwright codegen --save-storage=$(AUTH) "$$(sed -n 's|^  url: *||p' $(CONFIG) | head -1)"
+	npx playwright codegen --save-storage=$(AUTH) "$$(sed -n 's|^  url: *||p' $(CONFIG) | head -1)"
 	@test -s "$(AUTH)" || { echo "No session saved: close the browser window after logging in, then run make login again"; exit 1; }
 	sed -e 's|^  authenticated_crawl:.*|  authenticated_crawl: true|' -e 's|^  session_state_file:.*|  session_state_file: $(AUTH)|' $(CONFIG) > $(CONFIG).tmp && mv $(CONFIG).tmp $(CONFIG)
 	@echo "Saved $(AUTH) (git-ignored; holds live cookies, never share it) and set it in $(CONFIG)."
 
 validate: require-product
 	node scripts/run-config.mjs validate $(CONFIG)
+
+# Every stage's needs; exit 1 if any is missing. Inside a run the orchestrator runs run.mjs doctor, and a stage whose
+# needs are missing is refused at its start, so a run never breaks halfway through a stage over a missing install.
+doctor: require-product
+	@test -f "$(CONFIG)" || { echo "No $(CONFIG)"; exit 1; }
+	$(DOCTOR)
 
 build-agents:
 	npm run build-agents
@@ -104,12 +117,14 @@ next: require-product
 
 run: require-product
 	@test -f "$(CONFIG)" || { echo "No $(CONFIG). Run make config PRODUCT=$(PRODUCT) URL=<target url>, or make interview to be asked instead"; exit 1; }
+	$(DOCTOR) --warn-only
 	$(AGENT) "Start or resume the run for $(CONFIG): node scripts/run.mjs init $(CONFIG) (add --resume when a run is active), then follow run.mjs next. Finished stages stay done."
 
 resume: require-product
 	@test -f "$(CONFIG)" || { echo "No $(CONFIG)"; exit 1; }
 	@test -n "$(STAGE)" || { echo "Set STAGE=<one of: $(STAGES)>, or use make run to continue wherever the run stands"; exit 1; }
 	@echo "$(STAGES)" | tr ' ' '\n' | grep -qx "$(STAGE)" || { echo "Unknown STAGE=$(STAGE). One of: $(STAGES)"; exit 1; }
+	$(DOCTOR) --stage $(STAGE)
 	$(AGENT) "Resume the active run for $(CONFIG) (node scripts/run.mjs init $(CONFIG) --resume; if none is active, start one). Do not redo completed stages. Start only the $(STAGE) stage$(if $(MODULE), for module $(MODULE)) and the stages that depend on it, following run.mjs next; skip every other stage."
 
 # Per-stage shortcuts: each sets STAGE for the resume target (no recursive make, which breaks on a path with spaces).
@@ -122,6 +137,8 @@ explore clarifications testcases k6 report: resume
 
 # Both Playwright domains are separate stages, so one prompt names them together.
 automate: require-product
+	@test -f "$(CONFIG)" || { echo "No $(CONFIG)"; exit 1; }
+	$(DOCTOR) --stage playwright-ui,playwright-api
 	$(AGENT) "Resume the active run for $(CONFIG) (node scripts/run.mjs init $(CONFIG) --resume). Do not redo completed stages. Start only the playwright-ui and playwright-api stages$(if $(MODULE), for module $(MODULE)) and what they unlock, following run.mjs next. A module with no human-approved test case is awaiting-approval: report it, do not force it."
 
 # Human only: the guard refuses this for agents. Fill testcases/approval.csv first, then type the module slug to confirm.

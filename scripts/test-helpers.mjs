@@ -8,6 +8,7 @@ import { paths, repoRoot } from "./lib/contract.mjs";
 import { parseCsv, serializeCsv } from "./lib/csv.mjs";
 import { knowledgePaths, mergeGlossary, registerSource, render, runCheck, storeSnapshot } from "./lib/knowledge.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
+import { GROUPS, recordDoctor } from "./lib/doctor.mjs";
 import { initRun } from "./run.mjs";
 
 export function tempRoot() {
@@ -35,12 +36,14 @@ export function writeConfig(root, { mode = "readonly", policy, product = "acme",
   return file;
 }
 
-// A started run whose session has passed the guard liveness check (as on Claude Code), unless `verified: false`.
+// A started run whose session has passed the guard liveness check (as on Claude Code) and the dependency check, unless
+// `verified: false` (no guard record) or `doctored: false` (no dependency record).
 export function startRun(opts = {}) {
   const root = tempRoot();
   const r = initRun(writeConfig(root, opts), { root, runId: opts.runId ?? "acme-run-1", env: { CLAUDECODE: "1" } });
   if (r.errors) throw new Error(r.errors.join("\n"));
   if (opts.verified !== false) recordCanary(r.product, root, { host: "claude-code", agent: "orchestrator-agent" });
+  if (opts.doctored !== false) recordDoctor(r.product, root, { groups: GROUPS, checks: [] });
   return { root, run: r.run, product: r.product };
 }
 
