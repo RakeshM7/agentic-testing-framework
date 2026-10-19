@@ -724,9 +724,11 @@ export function workloadRules(wl, cov, reg, catalogue) {
 const verifiedInputs = (wp, runId) => ({ workload: wp.workload, catalogue: wp.catalogue, plan: wp.plan, results: wp.results(runId), overlay: wp.overlay });
 
 // For the domain flow (S7-3): null when the workload on disk passed check and nothing changed since, else why not.
-export function workloadUnverified(wp) {
+// runId (the active run, D-6 of G7): a workload built from another run is not this run's, whatever its stamp says.
+export function workloadUnverified(wp, runId) {
   const cov = readJson(wp.coverage, null);
   const wl = readJson(wp.workload, null);
   if (!cov || !wl) return "k6/workload.json or workload-coverage.json is missing: the designer must finish with workload.mjs check";
+  if (runId && wl.runId !== runId) return `workload.json was built from run ${wl.runId}, not ${runId}, the active run: rebuild with that run (workload.mjs build <product> <module> --run ${runId}), then check`;
   return unverifiedReason(cov.verified, verifiedInputs(wp, wl.runId), { unstamped: "the workload did not pass workload.mjs check", changed: "the workload or one of its inputs changed after workload.mjs check" });
 }

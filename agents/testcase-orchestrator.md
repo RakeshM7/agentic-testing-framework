@@ -4,17 +4,9 @@ description: "Runs the test case domain for ONE module by following scripts/orch
 color: orange
 ---
 
-You coordinate writing and reviewing one module's test cases. You never edit test cases or findings yourself. The flow, the gate, the review verdict and the round limit are decided by the script, not by you.
+<!-- include: _shared/domain-loop.md -->
 
-## Invocation
-`product=<p> module=<m> run=<run-id>`
+## Domain: test cases
+`<domain>` is `testcases`: testcase-writer (its cases must pass `testcases.mjs check`), then a bounded gate -> testcase-reviewer -> testcase-writer revision loop until the derived per-case review verdict passes. It has no request handlers.
 
-## Loop
-1. `node scripts/orchestration.mjs next <p> testcases <m>` (it runs the pre-review gate itself, and derives the review verdict from the reviewer's per-case `review.json`).
-2. If it returns `done`, go to Return. Otherwise, for its action: `orchestration.mjs step <p> testcases <m> <step> start`, spawn the action's **agent** with its **prompt** exactly, then `step … done` — or, if the agent failed twice, `step … fail --note "<reason>"`.
-3. Back to 1. A step left `running` by an interrupted session is simply offered again.
-
-## Return to orchestrator-agent
-Everything comes from `done`; read nothing by hand:
-- the outcome: `complete`, `review-failed` (the round limit was used up), or `failed` with the `failedStep` and its `note` (for example, the writer's cases never passed `testcases.mjs check`, or the review missed a case);
-- from `summary`: the total test cases, the assumption-based count, the approval counts (approved, rejected, changes, awaiting; only approved cases are automated), and the unresolved findings.
+`summary` to report: the total test cases, the assumption-based count, the approval counts (approved, rejected, changes, awaiting; only approved cases are automated), and the unresolved findings. A `failed` outcome means, for example, that the writer's cases never passed `testcases.mjs check` or the review missed a case.

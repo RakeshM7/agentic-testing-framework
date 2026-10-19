@@ -358,7 +358,7 @@ The fixed files of the Playwright repo and the k6 lib are rendered by `node scri
 | `fixtures/<side>/index.ts`: generated from the module registrations (D-056), managed | `foundation.mjs` `renderIndex`, written by `render` and the code scripts' builds |
 | `helpers/<side>/` (not `helpers/api/schema.ts`), `lib/ext/` | the side's agents, as in the conventions |
 
-**Gap and change requests.** A worker's foundation gap (or missing lib export, or shared-file change) goes to the owning agent through its orchestrator. The agent adds a structured entry to its overlay, writes any extension file, re-renders and checks; `check` keeps every export a request lists. pw-repo-owner refuses a change the overlay can't express.
+**Gap and change requests.** A worker's foundation gap (or missing lib export, or shared-file change) is recorded in `requests.json` (§13) and reaches the owning agent as a step `orchestration.mjs next` offers. The agent adds a structured entry to its overlay, writes any extension file, re-renders and checks; `check` keeps every export a request lists. pw-repo-owner refuses a change the overlay can't express.
 
 **Check.** `foundation.mjs check <p> --side <side>` fails on an invalid or uncited overlay value, a hand-edited managed file (package.json's dependency versions and `package-lock.json` excepted), a missing guard fixture or one not `auto`, a guard that lets a non-GET through in readonly, a weakened `grepInvert`, a hard-coded URL, credential or token, an `auth.setup.ts` with credential login and no cited login state, a k6 lib without `assertAllowedHost` or `requireFullRun`, an `index.ts` that is not its render, or a compile failure (`npx tsc --noEmit` and `playwright test --list`, or `k6 inspect` of a temporary script). A full pass writes the stamp; a failure clears it.
 
@@ -401,3 +401,19 @@ Generated (D-056): `node scripts/api-code.mjs build|check|paths <product> <m>` (
 - **`check [--clients] [--static]`** lists every problem as `<file>:<line> [<rule>] <problem> -- <fix>`, with the rules of playwright-conventions.md, plus every gate rule for a full check. `--clients` covers the generated client files, the overlay, the composite helpers, the registration and `tsc`. A full check covers everything, `tsc` and `playwright --list`, and the list must hold each scenario exactly once. A pass stamps `verified.clients` (and `verified.tests` for a full check); a failure clears it; `--static` stamps nothing. A changed input (the catalogue, the plan, the approvals, an overlay) makes the build stale until it is rebuilt, and an unverified plan fails `check`.
 - **The flow.** The `clients` and `tests` steps of `FLOWS["playwright-api"]` verify the two stamps once, when each step is first seen done (`verifyOnce`, as for the UI code); later rounds start with the gate, which runs the same rules.
 - **Reports.** pw-api-client-writer returns the clients and methods, the overlay entries with their citations, the composite helpers and any foundation gap. pw-api-tests-writer returns the builders and glue written, the tests generated, blocked and parked (with reasons), the composite helpers it is missing (the orchestrator routes them to pw-api-client-writer) and any foundation gap.
+
+## 13. Worker requests (every asking worker → `requests.mjs` → its domain orchestrator's handler)
+
+`results/<run>/<m>/<domain>/requests.json` (schema `requests`; `<domain>` is `playwright-ui`, `playwright-api` or `k6`; D-060) is written only by `scripts/requests.mjs` and `orchestration.mjs`; no agent writes it.
+
+```bash
+node scripts/requests.mjs add  <p> <domain> <m> --from <agent> --kind K --target T --summary S [--detail D] [--files a,b]
+node scripts/requests.mjs add  <p> <domain> <m> --from <agent> --file entries.json   # a JSON list of {kind, target, summary, detail?, files?}
+node scripts/requests.mjs list <p> <domain> <m>
+node scripts/requests.mjs check <p> <domain> <m>
+```
+
+- **Entry.** `{id, kind, from, target, summary, detail?, files?, status, note?}`. The id is `RQ-` plus a hash of kind, target and summary, so the same request is never added twice (a duplicate is reported with the existing id and status). `status` is `pending`, `handled` or `declined`.
+- **Kinds and handlers.** `repo-change` → pw-repo-owner (UI and API domains); `missing-method` → pw-ui-pom-writer or pw-api-client-writer; `foundation-gap` → pw-ui-scaffolder or pw-api-scaffolder (k6: k6-lib-writer); `lib-export` → k6-lib-writer. A kind a domain has no handler for is refused when added.
+- **Handling.** `orchestration.mjs next` offers a `req-<n>` step per handler with `requests=<path> ids=<ids>` in its prompt (pw-repo-owner adds `task=change`); the step ending `done` marks the requests `handled`, a failed step `declined` with a note. Limits per run and domain: a foundation gap once, the other kinds twice, kept in the domain state (a request over its limit is declined). A pw-repo-owner step takes the product-level lock `state/orchestration/_repo-owner-lock.json`; another domain gets `waiting` until it is released. When its requests are settled, a worker that asked and is not stale is run once more (`redo-<step>`, `resolved=<ids>`).
+- **Report.** `done` returns `requests`: totals, and the entries that were not handled with their notes.

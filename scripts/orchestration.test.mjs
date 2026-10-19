@@ -2,7 +2,7 @@
 // orchestrator uses it: ask next, start the agent, mark the step, repeat. Gate compile commands are skipped here.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { next, show, step } from "./orchestration.mjs";
 import { reviewCheck } from "./lib/review.mjs";
@@ -10,6 +10,7 @@ import { requiredEntries } from "./lib/fix.mjs";
 import { healableRows } from "./lib/domain-flows.mjs";
 import { append, csvPath, readRows, record, recordOutcome } from "./lib/clarifications.mjs";
 import { paths } from "./lib/contract.mjs";
+import { main as requestsMain } from "./requests.mjs";
 import { buildCases, humanEdit, put, renderFoundation, scaffoldUiCode, startRun } from "./test-helpers.mjs";
 
 const RESULTS = "artifacts/acme/results/acme-run-1/contacts";
@@ -138,7 +139,8 @@ test("an interrupted step is offered again, and a verified foundation is skipped
   step("acme", "playwright-ui", "contacts", "pages", "start", undefined, { root });
   assert.equal(go(root, "playwright-ui").actions[0].step, "pages", "a step left running (crash) is resumed");
   step("acme", "playwright-ui", "contacts", "pages", "fail", "pom-writer could not ground locators", { root });
-  assert.deepEqual(go(root, "playwright-ui").done, { outcome: "failed", failedStep: "pages", note: "pom-writer could not ground locators" });
+  const failed = go(root, "playwright-ui").done;
+  assert.deepEqual([failed.outcome, failed.failedStep, failed.note], ["failed", "pages", "pom-writer could not ground locators"]);
 });
 
 // The reviewer's per-case verdicts for round n (D-053): every case of the module, with `finding` for the ones listed.
@@ -198,7 +200,7 @@ test("test cases: a review missing a verdict for a case, or from another round, 
   assert.match(readFileSync(path.join(again.root, RESULTS, "testcases/review-findings.md"), "utf8"), /^Verdict: pass$/m);
 });
 
-test("review rounds are bounded: automation still runs the suite", async () => {
+test("review rounds are bounded: a review that never passes ends the domain review-failed with its open findings, and no suite runs (G10)", async () => {
   const ui = startRun();
   await uiCode(ui.root);
   for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root: ui.root });
@@ -206,7 +208,14 @@ test("review rounds are bounded: automation still runs the suite", async () => {
     perform(ui.root, "playwright-ui", { step: `review-${n}`, agent: "pw-ui-reviewer" }, () => verdict(ui.root, "changes-required", n));
     perform(ui.root, "playwright-ui", { step: `fix-${n}`, agent: "pw-ui-fixer" }, () => answer(ui.root, n));
   }
-  perform(ui.root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" });
+  const done = go(ui.root, "playwright-ui");
+  assert.deepEqual(done.actions, []);
+  assert.equal(done.done.outcome, "review-failed");
+  assert.equal(show("acme", "playwright-ui", "contacts", { root: ui.root }).steps["run-1"], undefined, "the runner is never offered");
+  assert.deepEqual(done.done.reviewFailure, { rounds: 3, file: `${RESULTS}/playwright-ui/review-findings.md`, total: 1, findings: [{ n: 1, severity: "major", rule: "intent", problem: "TC-contacts-1: the test proves something adjacent" }] });
+  assert.deepEqual(done.done.summary.unresolved, done.done.reviewFailure.findings);
+  assert.equal(done.done.summary.results, null);
+  assert.deepEqual(show("acme", "playwright-ui", "contacts", { root: ui.root }).reviewFailure, done.done.reviewFailure, "kept in the state for run.mjs");
 });
 
 test("a heal round starts only from a verified triage; locator-drift rows heal like test-bug rows (D-058)", async () => {
@@ -360,4 +369,216 @@ test("a fixer round is verified by fix.mjs check: a missing report fails the ste
   done = go(root, "playwright-ui");
   assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "heal-1"]);
   assert.match(done.done.note, /fix-report.json is missing/);
+});
+
+// ---- G10: worker requests, once-limits, the repo-owner lock, heal gate, summaries, run id ------------------------------
+const ask = async (root, domain, from, entry) => {
+  const r = await requestsMain(["add", "acme", domain, "contacts", "--from", from, ...Object.entries(entry).flatMap(([k, v]) => [`--${k}`, v])], { root });
+  assert.equal(r.code, 0, JSON.stringify(r.out));
+  return r.out;
+};
+const reqs = (root, domain) => JSON.parse(readFileSync(path.join(root, RESULTS, `${domain}/requests.json`), "utf8")).requests;
+async function builtUi() {
+  const { root } = startRun();
+  await uiCases(root);
+  await renderFoundation(root, ["repo", "ui"]);
+  await performAsync(root, "playwright-ui", { step: "pages", agent: "pw-ui-pom-writer" }, () => scaffoldUiCode(root, { scope: "pages" }));
+  await performAsync(root, "playwright-ui", { step: "tests", agent: "pw-ui-tests-writer" }, () => scaffoldUiCode(root));
+  return root;
+}
+
+test("requests.mjs: stable ids, dedupe whatever the status, kinds per domain, schema-checked file", async () => {
+  const { root } = startRun();
+  const a = await ask(root, "playwright-ui", "pw-ui-tests-writer", { kind: "missing-method", target: "ContactsPage.openFirst()", summary: "Open the first row", files: "pages/contacts/list.page.ts" });
+  assert.match(a.added[0], /^RQ-[0-9a-f]{8}$/);
+  const again = await ask(root, "playwright-ui", "pw-ui-reviewer", { kind: "missing-method", target: "contactspage.openfirst()", summary: "open the  first row." });
+  assert.deepEqual([again.added, again.duplicates], [[], [{ id: a.added[0], status: "pending" }]], "same kind, target and summary after normalising: the same request");
+  const bad = await requestsMain(["add", "acme", "k6", "contacts", "--from", "k6-script-writer", "--kind", "repo-change", "--target", "package.json", "--summary", "x"], { root });
+  assert.equal(bad.code, 1);
+  assert.match(bad.out.errors[0], /k6 has no handler for kind 'repo-change'/);
+  assert.equal((await requestsMain(["add", "acme", "playwright-ui", "contacts", "--from", "w", "--kind", "nope", "--target", "t", "--summary", "s"], { root })).code, 1);
+  assert.deepEqual((await requestsMain(["check", "acme", "playwright-ui", "contacts"], { root })).out.problems, []);
+  assert.equal((await requestsMain(["list", "acme", "playwright-ui", "contacts"], { root })).out.requests.length, 1);
+  // --file of a non-JSON file is refused without echoing any of its content (D6)
+  put(root, "notes.env", "DB_PASSWORD=hunter2-secret\n");
+  const leak = await requestsMain(["add", "acme", "playwright-ui", "contacts", "--from", "pw-ui-tests-writer", "--file", "notes.env"], { root });
+  assert.equal(leak.code, 1);
+  assert.deepEqual(leak.out.errors, ["--file: not valid JSON"]);
+  assert.ok(!JSON.stringify(leak.out).includes("DB_PASS"));
+});
+
+test("a build worker's missing-method request: handler step, then the worker once more; duplicates and over-limit requests are not re-queued, also after a resume", async () => {
+  const root = await builtUi();
+  const { added } = await ask(root, "playwright-ui", "pw-ui-tests-writer", { kind: "missing-method", target: "ContactsPage.openFirst()", summary: "Open the first row" });
+  const h = perform(root, "playwright-ui", { step: "req-1", agent: "pw-ui-pom-writer" });
+  assert.equal(h.prompt, `product=acme module=contacts requests=${RESULTS}/playwright-ui/requests.json ids=${added[0]}`);
+  const redo = perform(root, "playwright-ui", { step: "redo-tests", agent: "pw-ui-tests-writer" });
+  assert.equal(redo.prompt, `product=acme module=contacts requests=${RESULTS}/playwright-ui/requests.json resolved=${added[0]}`);
+  assert.deepEqual([reqs(root, "playwright-ui")[0].status, reqs(root, "playwright-ui")[0].step], ["handled", "req-1"]);
+  // the same request again (any worker): a duplicate, nothing queued; the flow moves on to the review
+  const dup = await ask(root, "playwright-ui", "pw-ui-fixer", { kind: "missing-method", target: "ContactsPage.openFirst()", summary: "Open the first row" });
+  assert.deepEqual(dup.duplicates, [{ id: added[0], status: "handled" }]);
+  assert.equal(go(root, "playwright-ui").actions[0].step, "review-1");
+
+  // a foundation gap gets one round per build: the first runs, the second (a different gap) is declined with the reason
+  await ask(root, "playwright-ui", "pw-ui-tests-writer", { kind: "foundation-gap", target: "config/ui/settings.ts", summary: "No loading indicator configured" });
+  const g = perform(root, "playwright-ui", { step: "req-2", agent: "pw-ui-scaffolder" });
+  assert.match(g.prompt, /ids=RQ-/);
+  const second = await ask(root, "playwright-ui", "pw-ui-tests-writer", { kind: "foundation-gap", target: "config/ui/settings.ts", summary: "Cookie banner is not dismissed" });
+  // the counters live in the orchestration state: a fresh read (a resumed session) sees the round spent
+  assert.equal(show("acme", "playwright-ui", "contacts", { root }).req.rounds["foundation-gap"], 1);
+  assert.equal(go(root, "playwright-ui").actions[0].step, "review-1", "the second gap is not offered");
+  const declined = reqs(root, "playwright-ui").find((r) => r.id === second.added[0]);
+  assert.equal(declined.status, "declined");
+  assert.match(declined.note, /limit: 1 foundation-gap round\(s\) already spent in this run/);
+  step("acme", "playwright-ui", "contacts", "review-1", "start", undefined, { root });
+  step("acme", "playwright-ui", "contacts", "review-1", "fail", "stop here", { root });
+  const done = go(root, "playwright-ui");
+  assert.equal(done.done.outcome, "failed");
+  assert.deepEqual([done.done.requests.total, done.done.requests.handled, done.done.requests.declined], [3, 2, 1]);
+  assert.equal(done.done.requests.open[0].id, second.added[0]);
+});
+
+test("a request handler that fails declines its requests with the reason; the domain goes on", async () => {
+  const root = await builtUi();
+  await ask(root, "playwright-ui", "pw-ui-tests-writer", { kind: "missing-method", target: "ContactsPage.openFirst()", summary: "Open the first row" });
+  const [a] = go(root, "playwright-ui").actions;
+  step("acme", "playwright-ui", "contacts", a.step, "start", undefined, { root });
+  step("acme", "playwright-ui", "contacts", a.step, "fail", "cannot ground the locator", { root });
+  assert.equal(go(root, "playwright-ui").actions[0].step, "review-1", "no re-run of the worker, the loop continues");
+  const r = reqs(root, "playwright-ui")[0];
+  assert.equal(r.status, "declined");
+  assert.match(r.note, /pw-ui-pom-writer did not finish: cannot ground the locator/);
+});
+
+test("pw-repo-owner calls are serialized across the UI and API domains by a lock in the product's orchestration state", async () => {
+  const { root } = startRun();
+  await ask(root, "playwright-ui", "pw-ui-scaffolder", { kind: "repo-change", target: "package.json", summary: "Add dependency x" });
+  await ask(root, "playwright-api", "pw-api-scaffolder", { kind: "repo-change", target: "playwright.config.ts", summary: "Add an api project timeout" });
+  const ui = go(root, "playwright-ui").actions[0];
+  assert.deepEqual([ui.step, ui.agent], ["req-1", "pw-repo-owner"]);
+  assert.match(ui.prompt, /^product=acme module=contacts task=change requests=.*playwright-ui\/requests\.json ids=RQ-/);
+  step("acme", "playwright-ui", "contacts", "req-1", "start", undefined, { root });
+  const api = go(root, "playwright-api");
+  assert.deepEqual(api.actions, []);
+  assert.deepEqual([api.waiting.on, api.waiting.heldBy, api.waiting.attempt], ["pw-repo-owner", "playwright-ui/contacts", 1]);
+  assert.equal(go(root, "playwright-ui").actions[0].step, "req-1", "the holder's interrupted step is offered again");
+  step("acme", "playwright-ui", "contacts", "req-1", "done", undefined, { root });
+  const next2 = go(root, "playwright-api").actions[0];
+  assert.deepEqual([next2.step, next2.agent], ["req-1", "pw-repo-owner"]);
+  assert.equal(show("acme", "playwright-api", "contacts", { root }).req.waits, 0, "the wait counter resets once it was served");
+  const lock = path.join(root, "artifacts/acme/state/orchestration/_repo-owner-lock.json");
+  assert.equal(JSON.parse(readFileSync(lock, "utf8")).holder, "playwright-api/contacts");
+  step("acme", "playwright-api", "contacts", "req-1", "start", undefined, { root });
+  step("acme", "playwright-api", "contacts", "req-1", "fail", "crashed", { root });
+  assert.equal(existsSync(lock), false, "released when the step settled");
+});
+
+test("the pw-repo-owner lock is taken when the step is handed out: a second domain waits while the first has not started; a stale offer expires (D2)", async () => {
+  const { root } = startRun();
+  await ask(root, "playwright-ui", "pw-ui-scaffolder", { kind: "repo-change", target: "package.json", summary: "Add dependency x" });
+  await ask(root, "playwright-api", "pw-api-scaffolder", { kind: "repo-change", target: "playwright.config.ts", summary: "Add an api project timeout" });
+  const ui = go(root, "playwright-ui").actions[0];
+  assert.equal(ui.step, "req-1");
+  // the UI step was handed out but never started: the API domain must not get pw-repo-owner too
+  const api = go(root, "playwright-api");
+  assert.deepEqual(api.actions, []);
+  assert.equal(api.waiting.heldBy, "playwright-ui/contacts");
+  // the re-offer returns the same step, with no second round spent (D3)
+  assert.equal(go(root, "playwright-ui").actions[0].step, "req-1");
+  const s = show("acme", "playwright-ui", "contacts", { root }).req;
+  assert.deepEqual([s.calls, s.rounds["repo-change"], Object.keys(s.steps)], [1, 1, ["req-1"]]);
+  // a handed-out step that never started expires: the other domain takes the lock after the TTL
+  const lockFile = path.join(root, "artifacts/acme/state/orchestration/_repo-owner-lock.json");
+  const l = JSON.parse(readFileSync(lockFile, "utf8"));
+  writeFileSync(lockFile, JSON.stringify({ ...l, at: new Date(Date.now() - 11 * 60 * 1000).toISOString() }));
+  const took = go(root, "playwright-api").actions[0];
+  assert.deepEqual([took.step, took.agent], ["req-1", "pw-repo-owner"]);
+  assert.equal(JSON.parse(readFileSync(lockFile, "utf8")).holder, "playwright-api/contacts");
+});
+
+test("a requested step handed out but never started does not spend its kind's once-limit; the resumed session is offered the same step (D3)", async () => {
+  const root = await builtUi();
+  await ask(root, "playwright-ui", "pw-ui-tests-writer", { kind: "foundation-gap", target: "config/ui/settings.ts", summary: "No loading indicator configured" });
+  const first = go(root, "playwright-ui").actions[0];
+  assert.equal(first.agent, "pw-ui-scaffolder");
+  // the session dies before `step start`; the resumed one is offered the same step, the request is not declined
+  const again = go(root, "playwright-ui").actions[0];
+  assert.deepEqual([again.step, again.prompt], [first.step, first.prompt]);
+  assert.equal(reqs(root, "playwright-ui")[0].status, "pending");
+  assert.equal(show("acme", "playwright-ui", "contacts", { root }).req.rounds["foundation-gap"], 1);
+});
+
+test("a domain that waits too long for pw-repo-owner declines the request instead of looping forever (D-011)", async () => {
+  const { root } = startRun();
+  await ask(root, "playwright-ui", "pw-ui-scaffolder", { kind: "repo-change", target: "package.json", summary: "Add dependency x" });
+  await ask(root, "playwright-api", "pw-api-scaffolder", { kind: "repo-change", target: "playwright.config.ts", summary: "Add timeout" });
+  go(root, "playwright-ui");
+  step("acme", "playwright-ui", "contacts", "req-1", "start", undefined, { root });
+  for (let i = 1; i <= 20; i++) assert.equal(go(root, "playwright-api").waiting.attempt, i);
+  const r = go(root, "playwright-api");
+  assert.equal(r.waiting, undefined);
+  assert.equal(r.actions[0].step, "discover", "declined; the domain's own flow goes on");
+  assert.match(reqs(root, "playwright-api")[0].note, /pw-repo-owner stayed busy with playwright-ui\/contacts for 20 asks/);
+});
+
+test("a heal fix passes the gate (after at most one gate fix) before the runner starts again (G10)", async () => {
+  const setup = async () => {
+    const r = startRun();
+    await uiCode(r.root);
+    for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root: r.root });
+    perform(r.root, "playwright-ui", { step: "review-1", agent: "pw-ui-reviewer" }, () => verdict(r.root, "pass"));
+    perform(r.root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" }, () => triage(r.root, "playwright-ui", true));
+    return r.root;
+  };
+  // the heal fix breaks a gate rule: the gate's findings go back to the fixer, then the runner may start
+  let root = await setup();
+  perform(root, "playwright-ui", { step: "heal-1", agent: "pw-ui-fixer" }, () => { editSpec(root, "await page.goto('/');", "await page.waitForTimeout(9);"); answer(root, 1, "triage", true); });
+  const gf = perform(root, "playwright-ui", { step: "heal-1-gate-fix", agent: "pw-ui-fixer" }, () => { editSpec(root, "await page.waitForTimeout(9);", "await page.goto('/#top');"); answer(root, 1, "triage", true); });
+  assert.equal(gf.prompt, `product=acme module=contacts findings=${RESULTS}/playwright-ui/gate-findings.md triage=${RESULTS}/playwright-ui/triage.json round=1`);
+  assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps["gate-heal-1"].note, "changes-required");
+  assert.equal(go(root, "playwright-ui").actions[0].step, "run-2", "the second gate passes: the runner starts");
+  assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps["gate-heal-1-2"].note, "pass");
+
+  // a heal fix that passes the gate goes straight to the runner
+  root = await setup();
+  perform(root, "playwright-ui", { step: "heal-1", agent: "pw-ui-fixer" }, () => answer(root, 1, "triage"));
+  assert.equal(go(root, "playwright-ui").actions[0].step, "run-2");
+  assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps["gate-heal-1"].note, "pass");
+
+  // still failing after the gate fix: the domain fails with the findings in the note
+  root = await setup();
+  perform(root, "playwright-ui", { step: "heal-1", agent: "pw-ui-fixer" }, () => { editSpec(root, "await page.goto('/');", "await page.waitForTimeout(9);"); answer(root, 1, "triage", true); });
+  perform(root, "playwright-ui", { step: "heal-1-gate-fix", agent: "pw-ui-fixer" }, () => { editSpec(root, "await page.waitForTimeout(9);", "await page.waitForTimeout(8);"); answer(root, 1, "triage", true); });
+  const done = go(root, "playwright-ui");
+  assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "gate-heal-1-2"]);
+  assert.match(done.done.note, /the gate still fails after the heal fix of round 1 and its gate fix/);
+});
+
+test("automationSummary: totals, product bugs, failures by class, healed rows, from files only", async () => {
+  const { automationSummary } = await import("./lib/domain-flows.mjs");
+  const { root } = startRun();
+  const p = paths("acme", root);
+  const c = { productDir: p.productDir, module: "contacts", run: { runId: "acme-run-1" } };
+  put(root, `${RESULTS}/playwright-api/results.json`, JSON.stringify({ status: "ran", totals: { total: 5, passed: 3, failed: 1, flaky: 1, skipped: 0 } }));
+  put(root, `${RESULTS}/playwright-api/triage.json`, JSON.stringify({ rows: [
+    { key: "api:API-contacts-1", title: "a", scenarioId: "API-contacts-1", class: "product-bug", healable: false, cluster: "BUG-1" },
+    { key: "api:API-contacts-2", title: "b", class: "flaky", healable: false },
+    { key: "api:API-contacts-4", title: "d", class: "test-bug", healable: true },
+  ] }));
+  const s = automationSummary(c, { triageDomain: "api" }, null, { healKeys: ["api:API-contacts-3", "api:API-contacts-4"], rounds: { heal: 1 } });
+  assert.deepEqual(s.results, { status: "ran", total: 5, passed: 3, failed: 1, flaky: 1, skipped: 0 });
+  assert.deepEqual(s.productBugs, [{ key: "api:API-contacts-1", id: "API-contacts-1", title: "a", cluster: "BUG-1" }]);
+  assert.deepEqual(s.failuresByClass, { "product-bug": 1, flaky: 1, "test-bug": 1 });
+  assert.deepEqual([s.healRounds, s.healed, s.healableLeft], [1, 1, 1]);
+});
+
+test("k6: a workload built from an older run is refused by the flow even with a current stamp (G10, D-6 of G7)", () => {
+  const { root } = startRun();
+  put(root, "artifacts/acme/modules/contacts/k6/workload.json", JSON.stringify({ runId: "acme-run-0", scenarios: [] }));
+  put(root, "artifacts/acme/modules/contacts/k6/workload-coverage.json", JSON.stringify({ verified: {} }));
+  perform(root, "k6", { step: "workload", agent: "k6-workload-designer" });
+  const done = go(root, "k6");
+  assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "workload"]);
+  assert.match(done.done.note, /workload\.json was built from run acme-run-0, not acme-run-1, the active run/);
 });

@@ -148,6 +148,8 @@ managed_files:
   - "${results}/*/*/review-check.json"
   - "${results}/*/*/fix-snapshot.json"
   - "${results}/*/*/review-findings.md"
+  # worker requests (G10, D-060): written only by scripts/requests.mjs (workers add through it) and orchestration.mjs
+  - "${results}/*/*/requests.json"
 
 profiles:
   # Reusable bundles; an agent lists `profile:` and any per-agent overrides replace the profile's keys.
@@ -156,7 +158,7 @@ profiles:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/run.mjs status *", "node scripts/ledger.mjs list *"]
+    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/requests.mjs list *", "node scripts/run.mjs status *", "node scripts/ledger.mjs list *"]
   code_writer:            # writes generated test code only, no product access
     live_target: { browser: none, http: none, load: none }
     web_research: none
@@ -287,7 +289,7 @@ agents:
                   "node scripts/foundation.mjs paths *", "node scripts/foundation.mjs install *"]
     filesystem:
       read: ["${pw_project}/**", "${knowledge}/**", "${state}/orchestration/**", "${product_dir}/foundation/**",
-             "${state}/config.resolved.json"]
+             "${state}/config.resolved.json", "${results}/*/*/requests.json"]
       write: ["${product_dir}/foundation/repo-overlay.json"]
 
   # ======================= Playwright UI domain (repo: ${pw_project}) =====================================
@@ -304,7 +306,7 @@ agents:
     web_research: allowed
     shell: restricted
     shell_allow: ["node scripts/foundation.mjs render * --side ui", "node scripts/foundation.mjs check *",
-                  "node scripts/foundation.mjs paths *"]
+                  "node scripts/foundation.mjs paths *", "node scripts/requests.mjs add *"]
     filesystem:
       read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
       write: ["${product_dir}/foundation/ui-overlay.json", "${pw_project}/helpers/ui/**"]
@@ -312,13 +314,13 @@ agents:
     layer: 2
     profile: code_writer
     shell: restricted           # tsc and playwright --list run inside `ui-code.mjs check` (a restricted row can't vouch for npx in the product's repo)
-    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *"]
+    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *", "node scripts/requests.mjs add *"]
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/pages/${module}/**"] }
   pw-ui-tests-writer:           # D-055: fills the step regions of the generated cases spec, plus the module's data builders
     layer: 2
     profile: code_writer
     shell: restricted
-    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *"]
+    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *", "node scripts/requests.mjs add *"]
     # the generated smoke (tests/ui/<m>/_locators.smoke.spec.ts) and registration (fixtures/ui/pages/<m>.ts) are the script's
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/ui/${module}/cases.spec.ts", "${pw_project}/helpers/ui/${module}.data.ts"] }
   pw-ui-reviewer:                  # D-059: writes only its per-test verdicts; review.mjs check derives the verdict and review-findings.md
@@ -374,7 +376,7 @@ agents:
     web_research: allowed
     shell: restricted
     shell_allow: ["node scripts/foundation.mjs render * --side api", "node scripts/foundation.mjs check *",
-                  "node scripts/foundation.mjs paths *"]
+                  "node scripts/foundation.mjs paths *", "node scripts/requests.mjs add *"]
     filesystem:
       read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
       write: ["${product_dir}/foundation/api-overlay.json", "${pw_project}/helpers/api/**"]
@@ -382,7 +384,7 @@ agents:
     layer: 2
     profile: code_writer
     shell: restricted           # tsc runs inside `api-code.mjs check` (a restricted row can't vouch for npx in the product's repo)
-    shell_allow: ["node scripts/api-code.mjs build *", "node scripts/api-code.mjs check *", "node scripts/api-code.mjs paths *"]
+    shell_allow: ["node scripts/api-code.mjs build *", "node scripts/api-code.mjs check *", "node scripts/api-code.mjs paths *", "node scripts/requests.mjs add *"]
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${knowledge}/**"]
       write: ["${modules}/api-code/client-overlay.json", "${pw_project}/helpers/api/${module}.composite.ts"]
@@ -390,7 +392,7 @@ agents:
     layer: 2
     profile: code_writer
     shell: restricted           # tsc and playwright --list run inside `api-code.mjs check`
-    shell_allow: ["node scripts/api-code.mjs build *", "node scripts/api-code.mjs check *", "node scripts/api-code.mjs paths *"]
+    shell_allow: ["node scripts/api-code.mjs build *", "node scripts/api-code.mjs check *", "node scripts/api-code.mjs paths *", "node scripts/requests.mjs add *"]
     # the generated specs (tests/api/<m>/) are managed files: the slots live in the two helper files
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${knowledge}/**"]
@@ -451,7 +453,7 @@ agents:
     layer: 2
     profile: code_writer
     shell: restricted           # k6 inspect runs inside `k6-code.mjs check`
-    shell_allow: ["node scripts/k6-code.mjs build *", "node scripts/k6-code.mjs check *", "node scripts/k6-code.mjs paths *"]
+    shell_allow: ["node scripts/k6-code.mjs build *", "node scripts/k6-code.mjs check *", "node scripts/k6-code.mjs paths *", "node scripts/requests.mjs add *"]
     filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${k6_project}/scripts/slots/${module}.js"] }
   k6-reviewer:                  # D-059: writes only its per-test verdicts; review.mjs check derives the verdict and review-findings.md
     layer: 2

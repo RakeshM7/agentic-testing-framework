@@ -83,6 +83,7 @@ export const FLOWS = {
     ],
     review: { reviewer: "pw-ui-reviewer", fixer: "pw-ui-fixer", verdict: (c, round) => codeVerdict(c, "playwright-ui", round) },
     run: { runner: "pw-ui-test-runner-triager", fixer: "pw-ui-fixer", framework: "playwright-ui", triageDomain: "ui" },
+    done: (c, lastFindings, state) => automationSummary(c, FLOWS["playwright-ui"].run, lastFindings, state),
   },
   "playwright-api": {
     build: [
@@ -96,18 +97,42 @@ export const FLOWS = {
     ],
     review: { reviewer: "pw-api-reviewer", fixer: "pw-api-fixer", verdict: (c, round) => codeVerdict(c, "playwright-api", round) },
     run: { runner: "pw-api-test-runner-triager", fixer: "pw-api-fixer", framework: "playwright-api", triageDomain: "api" },
+    done: (c, lastFindings, state) => automationSummary(c, FLOWS["playwright-api"].run, lastFindings, state),
   },
   k6: {
     build: [
-      { step: "workload", agent: "k6-workload-designer", args: (c) => ({ run: c.run.runId }), verify: (c) => workloadUnverified(workloadPaths(c.productDir, c.module)) },
+      { step: "workload", agent: "k6-workload-designer", args: (c) => ({ run: c.run.runId }), verify: (c) => workloadUnverified(workloadPaths(c.productDir, c.module), c.run.runId) },
       // Every endpoint excluded: no scripts to write or review; the runner records not-run.
       { ...foundationStep("k6", "lib", "k6-lib-writer", "the k6 lib"), skipRest: (c) => (workloadScenarios(path.join(c.productDir, "modules", c.module, "k6", "workload.json")) ?? []).length === 0 && "every endpoint excluded from load" },
       { step: "scripts", agent: "k6-script-writer", verify: (c) => k6CodeUnverified(kcCtx(c)), verifyOnce: true },
     ],
     review: { reviewer: "k6-reviewer", fixer: "k6-fixer", verdict: (c, round) => codeVerdict(c, "k6", round) },
     run: { runner: "k6-runner-triager", fixer: "k6-fixer", framework: "k6", triageDomain: "k6" },
+    done: (c, lastFindings, state) => automationSummary(c, FLOWS["k6"].run, lastFindings, state),
   },
 };
+
+// What done reports for an automation domain, so the orchestrator reads nothing by hand (G10): the results' totals, the
+// product-bug rows, the failures by class, how many healable rows the heal rounds fixed (state.healKeys: the rows asked for;
+// healed = no longer in the final triage), and the review findings still open.
+export function automationSummary(c, run, lastFindings, state) {
+  const tp = triagePaths(c.productDir, c.module, c.run.runId, run.triageDomain);
+  const results = json(tp.results);
+  const rows = json(tp.triage)?.rows ?? [];
+  const byClass = {};
+  for (const r of rows) byClass[r.class ?? "unclassified"] = (byClass[r.class ?? "unclassified"] ?? 0) + 1;
+  const left = new Set(rows.map((r) => r.key));
+  const asked = state?.healKeys ?? [];
+  return {
+    results: results ? { status: results.status, ...(results.reason ? { reason: results.reason } : {}), ...results.totals } : null,
+    productBugs: rows.filter((r) => r.class === "product-bug").map((r) => ({ key: r.key, id: r.tcId ?? r.scenarioId ?? r.k6Id ?? r.tcIds?.[0] ?? null, title: r.title, cluster: r.cluster ?? null })),
+    failuresByClass: byClass,
+    healRounds: state?.rounds?.heal ?? 0,
+    healed: asked.filter((k) => !left.has(k)).length,
+    healableLeft: rows.filter((r) => r.healable === true).length,
+    unresolved: lastFindings ? unresolvedFindings(lastFindings) : [],
+  };
+}
 
 // The run loop's triage (D-058): triage.json's path and why it cannot be trusted (null when triage.mjs check's verified
 // stamp is current). A heal round never starts from an unverified triage.

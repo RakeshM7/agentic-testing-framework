@@ -587,7 +587,7 @@ function writeIfChanged(file, text) {
 }
 
 const workloadGate = (ctx) => {
-  const why = workloadUnverified(ctx.wp);
+  const why = workloadUnverified(ctx.wp, ctx.runId);
   return why ? `the workload is not verified (${why}): run node scripts/workload.mjs build ${ctx.product} ${ctx.module}, then node scripts/workload.mjs check ${ctx.product} ${ctx.module}` : null;
 };
 
@@ -768,7 +768,7 @@ export async function check(ctx, validate, { inspect = defaultInspect() } = {}) 
 
 // For the domain flow (S7-3): null when the scripts passed k6-code.mjs check and nothing they rest on changed since.
 export function k6CodeUnverified(ctx) {
-  const w = workloadUnverified(ctx.wp);
+  const w = workloadUnverified(ctx.wp, ctx.runId);
   if (w) return `the workload is not verified: ${w}`;
   const plan = readJson(ctx.codePlan, null);
   if (!plan) return "k6/code-plan.json is missing: the script-writer must finish with k6-code.mjs check";

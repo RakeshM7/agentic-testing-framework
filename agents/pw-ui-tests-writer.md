@@ -13,7 +13,7 @@ You turn the module's approved test cases into working tests. `scripts/ui-code.m
 You write the step bodies and the module's test data.
 
 ## Invocation
-`product=<p> module=<m>`
+`product=<p> module=<m>`. On the re-run after its requests were handled the prompt adds `requests=<path> resolved=<ids>`: those requests are done, so rebuild and use what they added.
 
 ## Inputs
 - `node scripts/ui-code.mjs paths <p> <m>`: the spec, the data file, the page objects.
@@ -72,6 +72,6 @@ You don't redo any of this:
 From the last `build` and `check` output, report:
 - the data builders written;
 - the cases implemented, the cases parked with `test.fixme` (and why), and the cases awaiting approval;
-- the page-object methods you are missing;
-- any foundation gap;
+- the page-object methods you are missing, each recorded with `node scripts/requests.mjs add <p> playwright-ui <m> --from pw-ui-tests-writer --kind missing-method --target 'pw-ui-pom-writer' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
+- any foundation gap, recorded the same way with `--kind foundation-gap --target 'pw-ui-scaffolder'`, and a shared-file change with `--kind repo-change --target 'pw-repo-owner'`;
 - the check result.

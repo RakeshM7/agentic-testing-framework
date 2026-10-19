@@ -98,7 +98,7 @@ The single reference for turning an agent's bookkeeping into a script (D-002, D-
 
 ### Shared fragments (D-059)
 
-An agent source includes a shared fragment with one line, `<!-- include: _shared/<file>.md -->`, which the build replaces with the contents of `agents/_shared/<file>.md` (no frontmatter, no nested include; an unknown target or a missing file is a build error). The body limit and the platform-neutrality lint run on the expanded body, and the generated files hold the expanded text, so a change to a fragment is drift in every includer until `npm run build-agents` runs. A fragment is never an agent. The three fixers share `_shared/fixer.md`.
+An agent source includes a shared fragment with one line, `<!-- include: _shared/<file>.md -->`, which the build replaces with the contents of `agents/_shared/<file>.md` (no frontmatter, no nested include; an unknown target or a missing file is a build error). The body limit and the platform-neutrality lint run on the expanded body, and the generated files hold the expanded text, so a change to a fragment is drift in every includer until `npm run build-agents` runs. A fragment is never an agent. The three fixers share `_shared/fixer.md`; the five domain orchestrators share `_shared/domain-loop.md` (D-060).
 
 ### Files one refactor touches
 

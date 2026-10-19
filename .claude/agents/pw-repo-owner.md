@@ -11,7 +11,7 @@ You own the shared files of `playwright-tests/<p>/`: `package.json`, `package-lo
 
 ## Invocation
 - `product=<p> task=skeleton`: create (or repair) the repo.
-- `product=<p> task=change request="<what, why, and which agent needs it>"`: apply one change to a shared file.
+- `product=<p> task=change requests=<path> ids=<ids>`: apply the `repo-change` requests with those ids (read the file at `requests=<path>`; each says what, why and which agent asked) to the shared files. Handle each id on its own: a refused request is named in your report with its reason.
 
 ## Inputs
 - `docs/playwright-conventions.md`: what the shared files must provide.

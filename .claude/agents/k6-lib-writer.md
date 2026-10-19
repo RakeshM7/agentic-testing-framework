@@ -10,7 +10,7 @@ color: yellow
 You give every k6 script the same building blocks, the code-level safety included. `scripts/foundation.mjs` renders the lib from `templates/k6/`; you record only the product's choices, each cited, in `artifacts/<p>/foundation/k6-overlay.json`, and write additions in `lib/ext/`.
 
 ## Invocation
-`product=<p> module=<m>` (the module whose workload informs the first build) and, on a later module, `missing="<lib exports the script-writer reported>"`.
+`product=<p> module=<m>` (the module whose workload informs the first build) and, on a later module, the requests: When handling requests the prompt carries `requests=<path> ids=<ids>`: the `lib-export` entries of that file with those ids (read the file at `requests=<path>`) are what to do, and nothing else. (`foundation-gap` entries too).
 
 ## Inputs
 - `docs/k6-conventions.md`.
@@ -31,11 +31,11 @@ You give every k6 script the same building blocks, the code-level safety include
 - `README.md` and `.gitignore`.
 
 ## Steps
-1. **Read** the inputs. With `missing=`, read only what those exports need.
+1. **Read** the inputs. With requests, read only what those exports need.
 2. **Overlay.** Write or extend `k6-overlay.json`; every value cites its source:
    - `auth`: `{scheme, header?, prefix?, cookie?, module, cite}`. The scheme is `none`, `session`, `bearer`, `basic`, `api-key` or `oauth2`, matching the catalogue when citing `spec:discovered-endpoints.json`.
    - `basePath`: `{path, module, cite}`, and `defaultHeaders`: `{name, value, cite}`. Never an auth header.
-   - `requests` (on `missing=`): `{kind: "missing-export", text, requestedBy, files, exports, cite}`. The files are `lib/ext/<name>.js` that you write; they may import the rendered lib.
+   - `requests` (for requests): `{kind: "missing-export", text, requestedBy, files, exports, cite}`. The files are `lib/ext/<name>.js` that you write; they may import the rendered lib.
 3. **Render.** Run `node scripts/foundation.mjs render <p> --side k6`. It refuses an invalid or uncited overlay and writes nothing.
 4. **Check.** Run `node scripts/foundation.mjs check <p> --side k6`. It must exit 0: it runs `k6 inspect` on a temporary script of its own that imports every lib file, then stamps the lib verified. The k6 flow's lib step refuses a missing or stale stamp.
 

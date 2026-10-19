@@ -35,7 +35,12 @@
           "attempts": { "type": "integer", "minimum": 0 },
           "startedAt": { "type": "string" },
           "finishedAt": { "type": "string" },
-          "error": { "type": "string" }
+          "error": { "type": "string" },
+          "reviewFailed": { "type": "boolean", "description": "the domain's review used up its rounds with findings open: final, dependants are blocked (G10)" },
+          "findings": { "type": "array", "items": { "type": "object" }, "description": "the open blocker/major findings of a failed review" },
+          "doneRefusals": { "type": "integer", "minimum": 0 },
+          "reused": { "type": "boolean", "description": "done by run.mjs next: the knowledge was reused" },
+          "carriedFrom": { "type": "string", "description": "adopted from this earlier run, which ended awaiting-approval" }
         }
       }
     }

@@ -56,7 +56,7 @@ There is no `artifacts/<run-id>/` directory. Run ids are `<product>-<YYYYMMDD>-<
 ```bash
 node scripts/run.mjs init config/<product>.yaml [--resume]   # validate config + permissions, take the lock, write state/
 node scripts/run.mjs guard-check <product>                   # liveness canary: a working guard BLOCKS this
-node scripts/run.mjs next <product>                          # stages ready to run (dependencies complete)
+node scripts/run.mjs next <product>                          # {actions: [{stage, module, agent, prompt, attempt, retry}], concurrency, end?}
 node scripts/run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]
 node scripts/run.mjs status <product>                        # every stage with output verification
 node scripts/run.mjs end <product> [--abandon]               # history/<run-id>.json, release the lock
@@ -85,9 +85,11 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 
 A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. Sub-steps inside a domain (build steps, gate → reviewer → fixer, runner-triager → fixer) belong to the domain orchestrator, not this table: it follows `node scripts/orchestration.mjs next <product> <domain> <module>`, which reads the domain's flow from `scripts/lib/domain-flows.mjs` and the files on disk, runs the script steps itself (the pre-review gate, the clarification summary), and spends the bounded review and heal rounds.
 
+`next` returns, per stage, the agent and the exact prompt (run id, mode, test case format, module), marks reusable knowledge done itself (`reused`), and, with nothing left to start, `end`: `completed`, `awaiting-approval` (with `sheets`) or `incomplete` (`failed`, `blocked`, `running`). A refused `done` returns `retry: {agent, prompt}` the first time and fails the stage the second (`doneRefusals`; a clarifications refusal waits for a human instead). A domain whose review used up its rounds is failed at `done` (`reviewFailed`, `findings`) and blocks its dependants at once.
+
 Each stage gets at most **two attempts** per run (`attempts` in `run.json`); a stage that failed twice is *exhausted*, everything depending on it is *blocked*, and `next` no longer offers either — so the report still becomes ready and states what did not run.
 
-**`awaiting-approval` (D-053).** Once a module's test cases are complete, its `playwright-ui` and `playwright-api` stages (and `k6`, which needs the API stage) are `awaiting-approval` while no case of the module is approved by a human. Such a stage is never offered, `stage … start` refuses it without spending an attempt, and it counts as settled, so the report still runs; `end` reports the run `awaiting-approval` when nothing else is left. A later run picks the module up once cases are approved.
+**`awaiting-approval` (D-053).** Once a module's test cases are complete, its `playwright-ui` and `playwright-api` stages (and `k6`, which needs the API stage) are `awaiting-approval` while no case of the module is approved by a human. Such a stage is never offered, `stage … start` refuses it without spending an attempt, and it counts as settled, so the report still runs; `next` offers the report stage, and `end` reports the run `awaiting-approval` (listing the approval sheets) when nothing else is left. A new run for the product then adopts that run's complete stages whose product-level outputs still verify (`carriedFrom`, D-060; consistent with D-003: the first run has ended and released the lock). A later run picks the module up once cases are approved.
 
 ## Knowledge base
 

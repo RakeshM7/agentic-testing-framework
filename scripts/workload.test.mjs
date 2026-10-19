@@ -551,6 +551,10 @@ test("D-6: check binds the build to its run: a workload built from another run f
   assert.equal((await s.cli("build", "--run", "acme-run-0")).code, 0);
   assert.equal(s.wl().runId, "acme-run-0");
   assert.equal((await s.cli("check", "--run", "acme-run-0")).code, 0);
+  // the domain flow passes the active run id: an older run's workload is not accepted whatever its stamp says (G10)
+  assert.equal(workloadUnverified(s.wp), null, "stamped for acme-run-0");
+  assert.match(workloadUnverified(s.wp, "acme-run-1"), /workload.json was built from run acme-run-0, not acme-run-1, the active run: rebuild with that run/);
+  assert.equal(workloadUnverified(s.wp, "acme-run-0"), null);
   const c = await s.cli("check");
   assert.equal(c.code, 1);
   assert.match(c.out.problems.join("\n"), /workload\.json was built from run acme-run-0, not acme-run-1, the run being checked: rebuild with that run \(workload\.mjs build <product> <module> --run acme-run-1\)/);

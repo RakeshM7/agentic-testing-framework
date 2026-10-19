@@ -16,9 +16,12 @@ flowchart LR
   CFG[config/&lt;product&gt;.yaml] --> INIT[scripts/run.mjs init]
   PERM[config/permissions.yaml] --> INIT
   INIT --> STATE[(artifacts/&lt;product&gt;/state/)]
-  MAIN[orchestrator-agent] -->|run.mjs next / stage| STATE
+  MAIN[orchestrator-agent] -->|run.mjs next: agent + prompt, stage| STATE
   MAIN --> DOM[domain orchestrators]
+  DOM -->|orchestration.mjs next: agent + prompt, step| STATE
   DOM --> W[workers]
+  W -->|requests.mjs add| REQ[(results/&lt;run&gt;/&lt;m&gt;/&lt;domain&gt;/requests.json)]
+  REQ -->|req-n steps| DOM
   W -->|declared outputs| ART[(artifacts/&lt;product&gt;/modules, knowledge, results)]
   W -->|clarifications.mjs| CSV[(modules/&lt;m&gt;/clarifications.csv)]
   W -->|ledger.mjs add / owns| LED[(state/ledger.jsonl)]
@@ -48,3 +51,7 @@ flowchart LR
 - **Done:** all other agents bottom-up to `orchestrator-agent`; `scripts/build-agents.mjs` (frontmatter from permissions + models), `orchestration.mjs`, `results.mjs`, `report-data.mjs`; stage attempts and blocked-dependency handling in `run.mjs`.
 - **Done:** GitHub Copilot support from the same sources (VS Code Copilot Chat, Copilot CLI, cloud coding agent), one hook entry for every host, the decision log and its confirmation hook, CI running `npm run check`.
 - **Next:** verify the Copilot runtime facts listed in `docs/platforms.md` on live sessions, a first end-to-end run against a real product, per-role models in `config/models.yaml`.
+
+## Control flow (D-060)
+
+Both orchestrator levels are pure loops over a script's decision. `orchestrator-agent` repeats `run.mjs next`, which returns the stages to start with the agent and the exact prompt of each (run id, mode, test case format and module come from the run state; reusable knowledge is marked done by the script); it starts each agent, then calls `stage ... done`, which on a refusal returns one `retry` (agent and prompt) and fails the stage on the second. A domain orchestrator (one shared body, `agents/_shared/domain-loop.md`) repeats `orchestration.mjs next`: it starts the agent with its prompt and marks the step. A worker that needs a shared-file change, a missing method or export or a foundation gap records it with `requests.mjs add`; `next` turns each request into a handler step with a once-limit kept in state, takes the pw-repo-owner lock so the UI and API domains never use it together, and re-runs the worker that asked. A review that fails its rounds fails the stage and blocks its dependants. When only stages waiting for a human's test case sign-off are left, `run.mjs next` offers the report, then `end` says `awaiting-approval` with the sheets to review; the next run continues from what that run completed (`carriedFrom`).

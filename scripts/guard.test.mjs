@@ -658,3 +658,28 @@ test("test case approval is human-only: no agent can run approve or write approv
     assert.ok(!a.filesystem.write.some((g) => /approval|testcases\/\*\*|modules\}\/\*\*/.test(g)), `no write glob reaches the approval files: ${a.filesystem.write}`);
   }
 });
+
+test("worker requests (G10, D-060): only the askers run requests.mjs add; nobody writes requests.json; the repo owner reads every module's", () => {
+  const cmdOk = (agent, cmd) => allowed(FULL.root, sh(agent, cmd));
+  const R = "artifacts/acme/results/acme-run-1/contacts";
+  const w = (agent, rel, run = FULL) => allowed(run.root, call(agent, "Write", { file_path: path.join(run.root, rel) }));
+  const perms = JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents;
+  const askers = [["pw-ui-tests-writer", "playwright-ui"], ["pw-ui-pom-writer", "playwright-ui"], ["pw-ui-scaffolder", "playwright-ui"], ["pw-api-tests-writer", "playwright-api"], ["pw-api-client-writer", "playwright-api"], ["pw-api-scaffolder", "playwright-api"], ["k6-script-writer", "k6"]];
+  for (const [agent, dom] of askers) {
+    assert.equal(cmdOk(agent, `node scripts/requests.mjs add acme ${dom} contacts --from ${agent} --kind missing-method --target 'x' --summary 'y'`), true, `${agent} adds a request`);
+    assert.equal(cmdOk(agent, `node scripts/requests.mjs list acme ${dom} contacts`), false, `${agent} only adds`);
+    assert.equal(w(agent, `${R}/${dom}/requests.json`), false, `${agent} never writes requests.json itself`);
+  }
+  for (const agent of ["pw-ui-reviewer", "k6-fixer", "k6-lib-writer", "pw-repo-owner", "testcase-writer", "report-generator", "playwright-ui-orchestrator"])
+    assert.equal(cmdOk(agent, "node scripts/requests.mjs add acme playwright-ui contacts --from x --kind repo-change --target 't' --summary 's'"), false, `${agent} may not add requests`);
+  // the domain orchestrators may list them; the main orchestrator reaches the script through run.mjs only
+  for (const agent of ["playwright-ui-orchestrator", "playwright-api-orchestrator", "k6-orchestrator"]) assert.equal(cmdOk(agent, "node scripts/requests.mjs list acme playwright-ui contacts"), true, `${agent} lists requests`);
+  // nobody, named or not, writes the file: the scripts do
+  for (const agent of [...Object.keys(perms), undefined])
+    for (const dom of ["playwright-ui", "playwright-api", "k6"]) {
+      const v = checkTool(call(agent, "Write", { file_path: path.join(FULL.root, `${R}/${dom}/requests.json`) }), FULL.root, {});
+      assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${dom}/requests.json`);
+      assert.equal(v.rule, "managed-file");
+    }
+  assert.ok(perms["pw-repo-owner"].filesystem.read.some((g) => g.endsWith("/*/*/requests.json")), "the repo owner reads the requests of any module");
+});

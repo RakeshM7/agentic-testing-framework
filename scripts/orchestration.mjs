@@ -25,13 +25,17 @@ import { gate } from "./gate.mjs";
 import { csvPath, isAnswered, isAuthoritative, readRecord, readRows, record, renderSummary } from "./lib/clarifications.mjs";
 import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
 import { withFileLock, writeAtomic } from "./lib/csv.mjs";
-import { FLOWS, healableRows, runTriage } from "./lib/domain-flows.mjs";
+import { FLOWS, healableRows, runTriage, unresolvedFindings } from "./lib/domain-flows.mjs";
 import { fixCheck, fixSnapshot } from "./lib/fix.mjs";
 import { fixContext } from "./fix.mjs";
 import { REVIEW_DOMAINS } from "./lib/review.mjs";
+import { HANDLERS, KIND_LIMITS, REPO_OWNER, acquireRepoOwner, pendingRequests, releaseRepoOwner, requestsPath, requestsSummary, resolveRequests } from "./lib/requests.mjs";
 
 export const DOMAINS = ["clarifications", "testcases", "playwright-ui", "playwright-api", "k6"];
 const LIMIT_KEY = { review: "review_rounds", heal: "heal_rounds" };
+const REPO_OWNER_OFFER_TTL_MS = 10 * 60 * 1000; // a handed-out pw-repo-owner step that never started holds the lock this long
+const REPO_OWNER_WAITS = 20; // asks a domain makes while another domain's pw-repo-owner step holds the lock, then its request is declined (D-011)
+const repoOwnerLock = (product, root) => path.join(paths(product, root).orchestrationDir, "_repo-owner-lock.json");
 
 function context(product, domain, module, root) {
   if (!DOMAINS.includes(domain)) throw new Error(`domain must be one of [${DOMAINS}]`);
@@ -63,6 +67,8 @@ export function step(product, domain, module, name, action, note, { root = repoR
     s.steps[name] = { status: { start: "running", done: "done", fail: "failed", skip: "skipped" }[action], at: new Date().toISOString(), ...(note ? { note } : {}) };
     if (note) s.notes.push(`${name}: ${note}`);
     writeAtomic(c.file, JSON.stringify(s, null, 2) + "\n");
+    // the pw-repo-owner lock (product-level) is held for the length of one request step
+    if (action !== "start" && s.req?.steps?.[name]?.agent === REPO_OWNER) releaseRepoOwner(repoOwnerLock(product, root), c.run.runId, `${domain}/${module}`);
     return s;
   });
 }
@@ -101,10 +107,25 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
     if (!n || s.steps.review?.status === "done") return null;
     return path.join(dir, s.steps[`gate-${n}`]?.note === "pass" ? "review-findings.md" : "gate-findings.md");
   };
+  const patch = (fn) =>
+    withFileLock(c.file, () => {
+      const s = load(c.file, c.run, domain, module);
+      fn(s);
+      writeAtomic(c.file, JSON.stringify(s, null, 2) + "\n");
+    });
+  const reqFile = requestsPath(p.productDir, runId, module, domain);
+  // done returns every number the orchestrator reports (G10): the domain's summary, the worker requests that did not end
+  // handled, and, for a failed review, what is still open.
   const finish = (outcome, extra = {}) => {
     const s = S();
-    const summary = FLOWS[domain]?.done?.(ctx, lastFindings());
-    return { actions: [], done: { outcome, ...(s.steps.review ? { review: s.steps.review } : {}), ...(s.steps.run ? { run: s.steps.run } : {}), ...(summary ? { summary } : {}), ...extra } };
+    const summary = FLOWS[domain]?.done?.(ctx, lastFindings(), s);
+    return {
+      actions: [],
+      done: {
+        outcome, ...(s.steps.review ? { review: s.steps.review } : {}), ...(s.steps.run ? { run: s.steps.run } : {}), ...(summary ? { summary } : {}),
+        ...(HANDLERS[domain] ? { requests: requestsSummary(reqFile, domain, module) } : {}), ...(s.reviewFailure ? { reviewFailure: s.reviewFailure } : {}), ...extra,
+      },
+    };
   };
   const failed = (name) => finish("failed", { failedStep: name, note: S().steps[name]?.note ?? "" });
 
@@ -132,12 +153,6 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
   // ---- clarifications: one explorer per open row, each checked, then the summary (D-048) -----------------------
   if (domain === "clarifications") {
     const file = csvPath(p.productDir, module);
-    const patch = (fn) =>
-      withFileLock(c.file, () => {
-        const s = load(c.file, c.run, domain, module);
-        fn(s);
-        writeAtomic(c.file, JSON.stringify(s, null, 2) + "\n");
-      });
     const rowsById = () => new Map(readRows(file).map((r) => [r.id.trim(), r]));
     // The rows open when the domain started. Rows added later (an explorer's follow-up questions) wait for the next run.
     if (!S().rows) patch((s) => Object.assign(s, { rows: readRows(file).filter((r) => !isAnswered(r)).map((r) => r.id.trim()), attempts: {} }));
@@ -196,6 +211,116 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
   }
 
   const flow = FLOWS[domain];
+
+  // ---- worker requests (G10): pending requests.json entries become handler steps -----------------------------------
+  // One step per handler agent per call (`req-<n>`), each kind spending one of its KIND_LIMITS rounds (kept in state, so a
+  // resumed session cannot spend it twice). A pw-repo-owner step holds the product-level lock, so the UI and API
+  // domains never ask it at the same time. A build worker that asked is run once more after its requests were handled
+  // (`redo-<step>`), like the orchestrator used to by hand. Requests that cannot be handled are declined, never dropped.
+  const requestsFlow = () => {
+    const handlers = HANDLERS[domain];
+    if (!handlers) return null;
+    const rq = () => S().req ?? { calls: 0, waits: 0, rounds: {}, steps: {}, redone: {} };
+    const settled = (name) => SETTLED.includes(S().steps[name]?.status);
+    const running = Object.entries(S().steps).find(([, v]) => v.status === "running");
+    if (running) return rq().steps[running[0]] ? { actions: [{ step: running[0], agent: rq().steps[running[0]].agent, prompt: rq().steps[running[0]].prompt }] } : null; // a normal step: the flow re-offers it
+    if (Object.entries(S().steps).some(([k, v]) => v.status === "failed" && !rq().steps[k])) return null; // the flow ends the domain
+    // finished request steps: record how each request ended
+    for (const [name, rec] of Object.entries(rq().steps)) {
+      if (rec.applied || !settled(name)) continue;
+      const st = S().steps[name];
+      if (!rec.redo) resolveRequests(reqFile, domain, module, rec.ids, st.status === "done" ? "handled" : "declined", { step: name, ...(st.status === "done" ? {} : { note: `${rec.agent} did not finish: ${st.note ?? st.status}` }) });
+      patch((s) => (s.req.steps[name].applied = true));
+      if (rec.redo && st.status === "failed") return failed(name);
+    }
+    // The lock is taken when the pw-repo-owner step is handed out, not when it starts, so two domains never both get one. A step
+    // handed out but never started counts as active for REPO_OWNER_OFFER_TTL_MS (refreshed on every re-offer), then it is stale.
+    const holder = `${domain}/${module}`;
+    const takeLock = (name) =>
+      acquireRepoOwner(repoOwnerLock(product, root), runId, holder, name, {
+        isActive: (cur) => {
+          const [d, m] = cur.holder.split("/");
+          const f = path.join(p.orchestrationDir, `${d}-${m}.json`);
+          if (!existsSync(f)) return false;
+          const o = loadJson(f);
+          const st = o.steps?.[cur.step]?.status;
+          if (st) return st === "running";
+          return Date.now() - Date.parse(cur.at) < REPO_OWNER_OFFER_TTL_MS;
+        },
+      });
+    const waitFor = (lock) => {
+      const waits = rq().waits + 1;
+      if (waits > REPO_OWNER_WAITS) return null;
+      patch((s) => (s.req = { ...rq(), waits }));
+      return { actions: [], waiting: { on: REPO_OWNER, heldBy: lock.heldBy.holder, step: lock.heldBy.step, attempt: waits, of: REPO_OWNER_WAITS, note: "another domain's pw-repo-owner step is running or about to start: ask again once it is done" } };
+    };
+    // A step handed out but never started is offered again as it was: no new step, no second round spent (D3).
+    const offered = Object.entries(rq().steps).find(([n, v]) => !v.applied && !S().steps[n]);
+    if (offered) {
+      const [name, rec] = offered;
+      if (rec.agent === REPO_OWNER) {
+        const lock = takeLock(name);
+        if (!lock.acquired) {
+          const w = waitFor(lock);
+          if (w) return w;
+          mark(name, "skip", `${REPO_OWNER} stayed busy with ${lock.heldBy.holder} for ${REPO_OWNER_WAITS} asks`);
+          patch((s) => (s.req = { ...rq(), waits: 0 }));
+          return requestsFlow();
+        }
+      }
+      return { actions: [{ step: name, agent: rec.agent, prompt: rec.prompt }] };
+    }
+    // requests over their kind's round limit are declined
+    for (const r of pendingRequests(reqFile, domain, module)) {
+      if ((rq().rounds[r.kind] ?? 0) >= KIND_LIMITS[r.kind]) resolveRequests(reqFile, domain, module, [r.id], "declined", { note: `limit: ${KIND_LIMITS[r.kind]} ${r.kind} round(s) already spent in this run` });
+    }
+    const todo = pendingRequests(reqFile, domain, module);
+    if (todo.length) {
+      const agent = handlers[todo[0].kind];
+      const group = todo.filter((r) => handlers[r.kind] === agent);
+      const n = rq().calls + 1;
+      const name = `req-${n}`;
+      if (agent === REPO_OWNER) {
+        const lock = takeLock(name);
+        if (!lock.acquired) {
+          const w = waitFor(lock);
+          if (w) return w;
+          resolveRequests(reqFile, domain, module, group.map((r) => r.id), "declined", { note: `${REPO_OWNER} stayed busy with ${lock.heldBy.holder} for ${REPO_OWNER_WAITS} asks` });
+          patch((s) => (s.req = { ...rq(), waits: 0 }));
+          return requestsFlow();
+        }
+      }
+      const ids = group.map((r) => r.id);
+      const args = { product, module, ...(agent === REPO_OWNER ? { task: "change" } : {}), requests: rel(reqFile), ids: ids.join(",") };
+      const redoFor = flow.build.filter((b) => group.some((r) => r.from === b.agent) && S().steps[b.step]?.status === "done" && !rq().redone[b.step]).map((b) => b.step);
+      patch((s) => {
+        const q = (s.req = { ...rq(), waits: 0 });
+        q.calls = n;
+        for (const k of new Set(group.map((r) => r.kind))) q.rounds[k] = (q.rounds[k] ?? 0) + 1;
+        q.steps[name] = { agent, prompt: prompt(args), ids, kinds: [...new Set(group.map((r) => r.kind))], redoFor };
+      });
+      return { actions: [{ step: name, agent, prompt: prompt(args) }] };
+    }
+    // every request is settled: the workers that asked and are not stale run once more
+    for (const [name, rec] of Object.entries(rq().steps)) {
+      if (rec.redo || S().steps[name]?.status !== "done") continue;
+      for (const step of rec.redoFor ?? []) {
+        if (rq().redone[step]) continue;
+        const b = flow.build.find((x) => x.step === step);
+        const rname = `redo-${step}`;
+        const rprompt = prompt({ product, module, ...(b.args?.(ctx) ?? {}), requests: rel(reqFile), resolved: rec.ids.join(",") });
+        patch((s) => {
+          s.req.redone[step] = true;
+          s.req.steps[rname] = { agent: b.agent, prompt: rprompt, ids: rec.ids, redo: true };
+        });
+        return { actions: [{ step: rname, agent: b.agent, prompt: rprompt }] };
+      }
+    }
+    return null;
+  };
+  const viaRequests = requestsFlow();
+  if (viaRequests) return viaRequests;
+
   // ---- build ---------------------------------------------------------------------------------------------------
   for (const [i, b] of flow.build.entries()) {
     const status = S().steps[b.step]?.status;
@@ -245,6 +370,9 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
       const r = round(product, domain, module, "review", { root });
       if (!r.allowed) {
         mark("review", "fail", `${r.limit} review rounds used and findings remain`);
+        // what is still open goes into the state, for the stage record (run.mjs) and the report
+        const open = lastFindings() ? unresolvedFindings(lastFindings()) : [];
+        patch((s) => (s.reviewFailure = { rounds: r.limit, file: lastFindings() ? rel(lastFindings()) : null, total: open.length, findings: open.slice(0, 20) }));
         break;
       }
       n = r.round;
@@ -274,7 +402,9 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
     snapshotFix(n, "review");
     return spawn(`fix-${n}`, R.fixer, { findings: rel(findings), round: n, ...(R.fixerArgs?.(ctx) ?? {}) });
   }
-  if (!flow.run) return finish(S().steps.review.status === "done" ? "complete" : "review-failed");
+  // a review that used up its rounds failed: the stage fails and its dependants are blocked (G10), whatever the domain
+  if (S().steps.review?.status === "failed") return finish("review-failed");
+  if (!flow.run) return finish("complete");
 
   // ---- run loop: runner-triager -> fixer on healable rows, bounded by limits.heal_rounds ---------------------------
   const RN = flow.run;
@@ -290,6 +420,26 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
     }
     const bad = fixProblem(`heal-${h}`, h, "triage");
     if (bad) return bad;
+    // a heal fix passes the gate (once more after one gate-driven fix) before the runner starts again (D-011)
+    const g1 = `gate-heal-${h}`;
+    if (!S().steps[g1]) mark(g1, "done", gate(product, module, domain, { root, compile }).verdict);
+    if (S().steps[g1].note !== "pass") {
+      const gf = `heal-${h}-gate-fix`;
+      const gs = S().steps[gf]?.status;
+      if (gs === "failed") return failed(gf);
+      if (gs !== "done") {
+        snapshotFix(h, "triage");
+        return spawn(gf, RN.fixer, { findings: rel(path.join(dir, "gate-findings.md")), triage: rel(triage), round: h });
+      }
+      const gbad = fixProblem(gf, h, "triage");
+      if (gbad) return gbad;
+      const g2 = `gate-heal-${h}-2`;
+      if (!S().steps[g2]) {
+        const v2 = gate(product, module, domain, { root, compile }).verdict;
+        mark(g2, v2 === "pass" ? "done" : "fail", v2 === "pass" ? "pass" : `the gate still fails after the heal fix of round ${h} and its gate fix: ${unresolvedFindings(path.join(dir, "gate-findings.md")).length} blocker/major finding(s) in gate-findings.md`);
+      }
+      if (S().steps[g2].status === "failed") return failed(g2);
+    }
   }
   const k = h + 1;
   const rs = S().steps[`run-${k}`]?.status;
@@ -312,6 +462,9 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
     return finish("heal-limit");
   }
   snapshotFix(r.round, "triage");
+  // the rows a heal round was asked to fix, so done can report how many were healed
+  const keys = (loadJson(triage).rows ?? []).filter((x) => x.healable === true).map((x) => x.key);
+  patch((s) => (s.healKeys = [...new Set([...(s.healKeys ?? []), ...keys])]));
   return spawn(`heal-${r.round}`, RN.fixer, { triage: rel(triage), round: r.round });
 }
 

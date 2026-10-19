@@ -11,6 +11,7 @@
 // Playwright scripts      *.spec.ts under playwright-tests/<product>/tests/{ui,api}/<module>/
 // k6 scripts              *.js under k6-tests/<product>/scripts/ named <module>-*.js
 // execution results       results/<run-id>/<module>/<framework>/results.json
+// failed stages          stages of run.json that failed, a failed review with its open findings (G10)
 // triage                  results/<run-id>/<module>/<framework>/triage.json (script-built, D-058): class counts and the
 //                         product-bug clusters with their bug drafts; G11 renders them
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -141,6 +142,10 @@ export function collect(product, { root = repoRoot } = {}) {
       execution: fwTotals,
       triage: { byClass: classCounts, bugClusters },
     },
+    // stages that failed this run; a failed review carries its open findings (G10)
+    failedStages: Object.entries(run.stages)
+      .filter(([, s]) => s.status === "failed")
+      .map(([key, s]) => ({ key, error: s.error ?? null, attempts: s.attempts ?? 0, ...(s.reviewFailed ? { reviewFailed: true, findings: s.findings ?? [] } : {}) })),
     modules: perModule,
   };
 }

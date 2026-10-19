@@ -14,7 +14,7 @@ You model the screens the module's approved test cases use as page objects. `scr
 You write the locators and the actions.
 
 ## Invocation
-`product=<p> module=<m>` and, on a second pass, `missing="<page-object methods the tests-writer reported>"`.
+`product=<p> module=<m>`. When handling requests the prompt carries `requests=<path> ids=<ids>`: the `missing-method` entries of that file with those ids (read the file at `requests=<path>`) are what to do, and nothing else.
 
 ## Inputs
 - `node scripts/ui-code.mjs paths <p> <m>`: the plan, every required object's file, class, fixture and its snapshots.
@@ -40,7 +40,7 @@ You don't redo any of this:
      - **Runtime data.** A locator for data (the row a test created, a record's link) is a non-async method that only returns a grounded locator, refined by the value: `row(name: string): Locator { return this.table.getByRole('row', { name, exact: true }); }`, or `.filter({ hasText: name })` on a grounded container. No other use of a string parameter in a locator is allowed. Each call site passes either a literal from a snapshot, or a name from the test's data region: the tests-writer builds it there with a run-unique builder (`uniqueName`). An action method may pass its own string parameter on, as in `async openContact(name: string) { await this.row(name).click(); }`.
      - CSS, XPath, a page script, or Playwright's selector API on the page (`locator('…')`, `frameLocator`, `$`, `evaluate`, `this.page.click('…')`, `fill`, `textContent` …) only when nothing else can work. It needs a literal selector and a cited reason on or above the line: `// locator: css because <reason> [observation:explore/pages/<slug>/states/<ST>.md]`. Cite a snapshot of this object's own template. A field passed to `locator(…)` must hold a locator, never a selector string.
    - **Actions:** async methods named for intent, e.g. `createContact(data)` or `openFilters()`. They use the locators; there are no assertions and no fixed waits. Add a `goto()` when the template has its own URL: a path relative to `BASE_URL`, never a full URL. Add `waitUntilReady()` using a locator.
-   - **Second pass:** add exactly the methods in `missing`, grounded the same way.
+   - **Second pass:** add exactly the methods of those requests, grounded the same way.
 3. **Rebuild.** Run `build` again: the smoke follows your page objects. Repeat step 2 at most twice more (at most 3 builds).
 4. **Finish.** Run `node scripts/ui-code.mjs check <p> <m> --pages`. It must exit 0. It checks your objects, the registration and the smoke, runs `tsc`, and stamps the page objects verified. The flow's `pages` step refuses a missing or stale stamp.
 
@@ -58,5 +58,5 @@ From the last `build` and `check` output, report:
 - the page objects and components, with their public locators and methods;
 - the cases awaiting approval;
 - any locator you could not ground in a snapshot, and why;
-- any foundation gap;
+- any foundation gap, recorded with `node scripts/requests.mjs add <p> playwright-ui <m> --from pw-ui-pom-writer --kind foundation-gap --target 'pw-ui-scaffolder' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
 - the check result.
