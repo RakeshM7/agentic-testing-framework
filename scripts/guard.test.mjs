@@ -739,7 +739,7 @@ test("feedback-implementor-agent writes the G0-G11 framework files and never a s
 test("every framework script is writable by feedback-implementor-agent or deliberately carved out, so a new file forces a decision (D-062)", () => {
   const carved = new Set([
     "scripts/feedback.mjs", "scripts/ledger.mjs", "scripts/feedback.test.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs",
-    ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "agent-scope", "feedback"].map((n) => `scripts/lib/${n}.mjs`),
+    ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "hook-log", "agent-scope", "feedback"].map((n) => `scripts/lib/${n}.mjs`),
   ]);
   const files = [];
   const walk = (dir) => {

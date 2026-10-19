@@ -118,6 +118,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-062 | Feedback resolutions are script-checked: per-finding resolution, test per code change, decision-aware triage | Accepted | 2026-10-19 |
 | D-063 | The orchestrator can draft the run-config from a one-message interview; the script writes it, readonly | Accepted | 2026-10-19 |
 | D-064 | Each stage's machine dependencies are checked by script before it starts; make applies the safe installs | Accepted | 2026-10-19 |
+| D-065 | Hook errors are logged with their stack to artifacts/hook-errors.jsonl | Accepted | 2026-10-19 |
 
 ## Decisions
 
@@ -1322,3 +1323,14 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - The orchestrator's hand-made storage-state pre-flight becomes one of the checks, run the same way on every host.
 - **Affects:** `scripts/lib/doctor.mjs`, `scripts/doctor.mjs`, `scripts/doctor.test.mjs`, `scripts/run.mjs`, `agents/orchestrator-agent.md`, `Makefile`, `package.json`
 - **Confirmed by the user on:** 2026-10-19. This extends D-002 and D-037 (a second session check before a stage starts) without weakening any decision; agents gain no install or write permission.
+
+### D-065 · Hook errors are logged with their stack to artifacts/hook-errors.jsonl
+- **Status:** Accepted · **Date:** 2026-10-19 · **Source:** conversation with the user, 2026-10-19. They found no detailed logs for errors of the PreToolUse and PostToolUse hooks: the PreToolUse entry kept only the error's message, and only when it blocked; with no run active, and in the PostToolUse entry, an error left no trace at all.
+- **Decision:**
+  - Both hook entries append one JSON line per error to `artifacts/hook-errors.jsonl` (`scripts/lib/hook-log.mjs`). Each line holds the time, hook, host, agent, tool name, the tool input's keys, session, cwd, the outcome (`blocked: a run is active`, `allowed: no active run`, `ignored: confirmation not remembered`), the message and the stack.
+  - Tool input values are never logged, because they can hold file contents. The raw payload is logged, cut to 500 characters, only when it could not be parsed. Past 1 MB the log moves to `hook-errors.jsonl.1`, and only one old generation is kept.
+  - The hook's stderr and the deny reason name the log file. Even when no run is active, a PreToolUse error now says on stderr that the call was allowed.
+  - The logger is imported dynamically inside its own `try`. A broken or failing logger changes no verdict, so D-007 (fail closed) and the PostToolUse hook's never-block rule (D-042) hold.
+- **Why:** A host shows a hook's stderr briefly. For Claude Code's async PostToolUse hook it shows nothing at all. A guard error with no stack and no context can't be diagnosed after the fact.
+- **Affects:** `scripts/lib/hook-log.mjs`, `scripts/hooks/pretooluse.mjs`, `scripts/hooks/posttooluse.mjs`, `scripts/hooks.test.mjs`
+- **Confirmed by the user on:** 2026-10-19 (requested). This extends D-007 and D-020 without weakening them.

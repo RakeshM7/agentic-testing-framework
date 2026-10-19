@@ -535,7 +535,7 @@ agents:
     # G12 (D-062): the write list is enumerated because a glob has no exclude; it covers the scripts, libs, gate rules,
     # fixtures, schemas and templates of G0-G11 and leaves out the safety files below, which stay human-only.
     # Never config/ (permissions, models, platforms, MCP servers), the safety code (scripts/lib/{guard,permissions,ledger,
-    # hosts,tool-call,browser-tools,guard-check,decisions,hook-registrations,agent-scope}.mjs, scripts/hooks/, scripts/lib/agents/),
+    # hosts,tool-call,browser-tools,guard-check,decisions,hook-registrations,hook-log,agent-scope}.mjs, scripts/hooks/, scripts/lib/agents/),
     # the checker it is checked by (scripts/{feedback,ledger}.mjs, scripts/lib/feedback.mjs, scripts/{feedback,guard,hooks,roster}.test.mjs),
     # the hook registrations or editor settings
     # (.claude/settings.json, .github/hooks/, .vscode/) or the generated agent/MCP files (rebuilt from agents/ by

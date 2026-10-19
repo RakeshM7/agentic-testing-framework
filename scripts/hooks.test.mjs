@@ -6,6 +6,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from "
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
 import { guardStatus, markAbsent, recordCanary } from "./lib/guard-check.mjs";
+import { logHookError } from "./lib/hook-log.mjs";
 import { repoRoot } from "./lib/contract.mjs";
 import { initRun, setStage } from "./run.mjs";
 import * as claude from "./hooks/hosts/claude.mjs";
@@ -186,6 +187,34 @@ test("hook entry fails closed on garbage while a run is active, and stays out of
   const v = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "vscode"], { input: "not json", cwd: FULL.root, encoding: "utf8" });
   assert.deepEqual([v.status, JSON.parse(v.stdout).hookSpecificOutput.permissionDecision], [0, "deny"], "VS Code: in its own format");
   assert.equal(hook(["--host", "nonsense"], { cwd: FULL.root, tool_name: "Bash", tool_input: {} }, { CLAUDE_PROJECT_DIR: FULL.root }).status, 2);
+});
+
+test("hook errors are logged with their stack and context, blocked or not, PreToolUse and PostToolUse (D-065)", () => {
+  const entries = (root) => readFileSync(path.join(root, "artifacts", "hook-errors.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const { root } = startRun();
+  const r = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /details in .*hook-errors\.jsonl/);
+  const [blocked] = entries(root);
+  assert.deepEqual([blocked.hook, blocked.host, blocked.outcome, blocked.raw], ["pretooluse", "copilot", "blocked: a run is active", "not json"]);
+  assert.match(blocked.stack, /SyntaxError/);
+
+  const idle = tempRoot();
+  const i = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: idle, encoding: "utf8", env: { PATH: process.env.PATH } });
+  assert.equal(i.status, 0);
+  assert.match(i.stderr, /no run is active, so the call is allowed; details in/);
+  assert.equal(entries(idle)[0].outcome, "allowed: no active run");
+
+  const post = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "nonsense"], { input: "{}", cwd: idle, encoding: "utf8", env: { PATH: process.env.PATH } });
+  assert.equal(post.status, 0, "PostToolUse never blocks");
+  const logged = entries(idle)[1];
+  assert.deepEqual([logged.hook, logged.host, logged.outcome], ["posttooluse", "nonsense", "ignored: confirmation not remembered"]);
+  assert.match(logged.error, /unknown --host 'nonsense'/);
+
+  logHookError(idle, { hook: "posttooluse", args: { host: "claude-code" }, error: new Error("boom"), payload: { session_id: "s1", tool_name: "Write", tool_input: { file_path: "x", content: "secret" } }, raw: "secret" });
+  const parsed = entries(idle)[2];
+  assert.deepEqual([parsed.tool, parsed.inputKeys, parsed.sessionId, parsed.raw], ["Write", ["file_path", "content"], "s1", undefined]);
+  assert.equal(JSON.stringify(parsed).includes("secret"), false, "input values are never logged");
 });
 
 test("hook entry fails closed even when no adapter loads, in a form the asserted host honours", () => {

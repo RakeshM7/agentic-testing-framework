@@ -5,6 +5,7 @@ The single definition of where things live, how stages hand off, and how state a
 ## Layout: everything is product-level
 
 ```
+artifacts/hook-errors.jsonl           # every PreToolUse/PostToolUse hook error, with its stack (D-065; one .1 generation)
 artifacts/<product>/                  # git-ignored; accumulates across runs
   knowledge/                          # knowledge-generator: reusable, cited product knowledge (see below)
     overview.md glossary.md           # the agent's (product pass)
