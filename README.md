@@ -18,29 +18,48 @@ Start a run with the **orchestrator-agent** as the session's agent (Claude Code:
 ## Quick start: step by step
 
 ### 1. Set up once
-1. Install Node.js, then run `npm install` in the repo root. Install `k6` too if you want load tests.
-2. Pick a host and follow its setup in [`docs/platforms.md`](docs/platforms.md). In VS Code, trust the workspace first, or the guard check (step 3) stops the run.
-3. Live browser work (exploration, clarifications) needs an interactive Playwright MCP session on Claude Code or VS Code.
+1. Install Node.js and `make` (on Windows, `make` comes with Git Bash tooling, GnuWin32 or `choco install make`). Install `k6` too if you want load tests.
+2. Run `make setup`. It installs the npm dependencies and a Playwright browser.
+3. Pick a host and follow its setup in [`docs/platforms.md`](docs/platforms.md). In VS Code, trust the workspace first, or the guard check (step 3) stops the run.
+4. Live browser work (exploration, clarifications) needs an interactive Playwright MCP session on Claude Code or VS Code.
 
 ### 2. Prepare the run-config
-1. Copy the example: `cp config/run-config.example.yaml config/<product>.yaml`. [`config/run-config.freshsales.yaml`](config/run-config.freshsales.yaml) is a filled-in sample.
-2. Fill in:
-   - `product`: the slug used for every folder;
-   - `target.url`;
+1. Create it: `make config PRODUCT=<slug> URL=<target url>`. It writes `config/<slug>.yaml` from the example, with `product` and `target.url` set and `authorizations.mode: readonly`. [`config/run-config.freshsales.yaml`](config/run-config.freshsales.yaml) is a filled-in sample.
+2. Open the file and fill in what only you know:
    - `modules`: slug, name, `entry_url` and `nav_path` for each. You list the modules, the agents don't pick them;
    - `knowledge.references`: vendor docs and help centres the knowledge base cites;
    - `testcases.output_format`: `markdown-table`, `gherkin`, `csv` or `testrail`.
-3. Set `authorizations.mode`:
-   - `readonly` (default) is non-mutating everywhere.
-   - `full-run` only for a target you own or are authorized to test.
-4. For a logged-in product, a human logs in once, out-of-band (including any CAPTCHA/MFA), and saves the Playwright `storageState` to `session_state_file` (for example `playwright-tests/<product>/.auth/state.json`, which is git-ignored). Set `authenticated_crawl: true`.
+3. Set `authorizations.mode: full-run` only for a target you own or are authorized to test. `readonly` (the default) is non-mutating everywhere.
+4. If the product needs a login, run `make login PRODUCT=<slug>`:
+   - a browser opens: log in yourself (CAPTCHA and MFA included), then **close the browser window**;
+   - the session is saved to `playwright-tests/<slug>/.auth/state.json` and set in the config, along with `authenticated_crawl: true`;
+   - the file is git-ignored and holds live cookies, so never share it. Run `make login` again when the session expires.
 5. Credentials and API tokens are always a path (`credentials_file`) or a variable name (`api.auth_header`), never a value.
-6. Validate it: `node scripts/run-config.mjs validate config/<product>.yaml`.
+6. Check it: `make validate PRODUCT=<slug>`.
 
 ### 3. Start the run
-1. Start a session with **orchestrator-agent** (host commands are above).
-2. Give it `config/<product>.yaml`.
-3. It runs `node scripts/run.mjs init` (takes the product lock, freezes permissions), then the guard check (`run.mjs guard-check <product>`). It then loops over `run.mjs next <product>`, starting the right agent for each stage. Use `--resume` to continue an active run.
+1. Run `make run PRODUCT=<slug>`. It opens an **orchestrator-agent** session on Claude Code with the run-config as its first prompt. On another host, start the session yourself (host commands are above) and give it `config/<product>.yaml`, or pass `AGENT="copilot --agent orchestrator-agent"` to make.
+2. The agent runs `node scripts/run.mjs init` (takes the product lock, freezes permissions), then the guard check (`run.mjs guard-check <product>`). It then loops over `run.mjs next <product>`, starting the right agent for each stage.
+
+#### Pick up from the middle (a later day, after a human step)
+Run state lives in `artifacts/<product>/state/`, and a finished stage stays done while the run is active. `make` never ends a run, so there is no need to redo earlier stages. Just don't run `run.mjs end` until you're finished.
+
+| You want to | Run |
+|---|---|
+| See where the run stands | `make status PRODUCT=<slug>` |
+| Continue wherever it stopped | `make run PRODUCT=<slug>` |
+| Continue from exploration | `make explore PRODUCT=<slug>` |
+| Continue from clarifications (you answered the CSV) | `make clarifications PRODUCT=<slug>` |
+| Continue from test case generation | `make testcases PRODUCT=<slug>` |
+| Sign off a module's test cases (human only) | `make approve PRODUCT=<slug> MODULE=<module>` |
+| Generate and run Playwright UI + API tests | `make automate PRODUCT=<slug>` |
+| Run load tests, or build the report | `make k6 PRODUCT=<slug>` or `make report PRODUCT=<slug>` |
+| Any stage, for one module | `make resume PRODUCT=<slug> STAGE=<stage> MODULE=<module>` |
+
+Rules that apply:
+- Each target opens a session whose first prompt names the stage. The orchestrator only starts a stage whose prerequisites are done, so asking for `testcases` before `clarifications` finishes does nothing useful.
+- The guard check runs again in each new session.
+- If the run was ended (`run.mjs end`) the next `make run` starts a new run. It adopts finished stages only after a run that ended `awaiting-approval`, and otherwise redoes everything except unchanged knowledge. There is no make target to redo a finished stage. The run offers a stage again only when its declared outputs are gone (see `docs/artifact-contract.md`), and deleting outputs can destroy your answers or approvals, so ask before doing that by hand.
 
 ### 4. What the pipeline does
 Per product, then per module, in this order:
