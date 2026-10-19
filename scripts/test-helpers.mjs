@@ -254,3 +254,37 @@ export async function scaffoldUiCode(root, { product = "acme", module = "contact
   if (c.code) throw new Error(`scaffoldUiCode: check: ${JSON.stringify(c.out.problems)}`);
   return c.out;
 }
+
+// A module's API code the way pw-api-client-writer and pw-api-tests-writer make it (D-056): api-code.mjs build, the
+// module's client fixtures registered in the generated fixtures/api/index.ts, every payload and glue slot filled (scope "tests"),
+// and check (scope "clients": check --clients) with the compile commands stubbed to pass, so the scope's verified stamp
+// is current. The module's API plan must be checked and the API foundation rendered.
+export const API_INDEX = (module = "contacts") =>
+  `import { test as base } from './base';\nimport { ${module}Clients, type ${module[0].toUpperCase()}${module.slice(1)}Clients } from './clients/${module}';\n\nexport const test = base.extend<${module[0].toUpperCase()}${module.slice(1)}Clients>({ ...${module}Clients });\n\nexport { expect } from './base';\n`;
+export async function scaffoldApiCode(root, { product = "acme", module = "contacts", scope = "tests", fill } = {}) {
+  const { main } = await import("./api-code.mjs");
+  const { apiCodeContext, parseSlots, renderGlue, renderPayloads } = await import("./lib/api-code.mjs");
+  const ac = (...args) => main(args, { root, exec: () => null, listTests: listSpecTitles });
+  const b = await ac("build", product, module);
+  if (b.code) throw new Error(`scaffoldApiCode: build: ${JSON.stringify(b.out.problems)}`);
+  const p = paths(product, root);
+  const ctx = apiCodeContext({ root, product, module, run: JSON.parse(readFileSync(p.runFile, "utf8")), cfg: JSON.parse(readFileSync(p.configFile, "utf8")), productDir: p.productDir });
+  const model = JSON.parse(readFileSync(ctx.ap.plan, "utf8"));
+  if (scope === "tests") {
+    const pf = path.join(ctx.pwProject, model.files.payloads);
+    const { regions } = parseSlots(readFileSync(pf, "utf8"));
+    for (const x of model.payloads) regions.set(`payload ${x.name}`, fill?.(x) ?? ["  return { name: uniqueName('contact') };"]);
+    writeFileSync(pf, renderPayloads(ctx, model, regions));
+    if (model.glue.length) {
+      const gf = path.join(ctx.pwProject, model.files.glue);
+      const g = parseSlots(readFileSync(gf, "utf8")).regions;
+      const create = model.clients.flatMap((c) => c.methods.filter((m) => m.crud === "create").map((m) => [c.fixture, m])).find(([, m]) => model.payloads.some((x) => x.endpoint === m.endpoint && x.kind === "body"));
+      const builder = model.payloads.find((x) => x.endpoint === create[1].endpoint && x.kind === "body").name;
+      for (const x of model.glue) g.set(`glue ${x.name}`, [`  const res = await c.clients.${create[0]}.${create[1].name}({ body: payloads.${builder}() });`, "  c.track(res);", "  return {};"]);
+      writeFileSync(gf, renderGlue(ctx, model, g, new Map((JSON.parse(readFileSync(ctx.ap.testsOverlay, "utf8")).glue ?? []).map((x) => [x.scenario, x.reason]))));
+    }
+  }
+  const c = await ac("check", product, module, ...(scope === "clients" ? ["--clients"] : []));
+  if (c.code) throw new Error(`scaffoldApiCode: check: ${JSON.stringify(c.out.problems)}`);
+  return { ctx, model, out: c.out };
+}

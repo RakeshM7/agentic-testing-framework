@@ -25,7 +25,7 @@ You coordinate the API automation of one module. You never write plans, code, fi
 
 ## Between steps (from the worker's report)
 - A shared-file change request → spawn **pw-repo-owner** (`product=<p> task=change request="<exact request, and which agent needs it>"`) before continuing; a refusal marks the current step `fail`.
-- Missing client methods from **pw-api-tests-writer** → spawn **pw-api-client-writer** (`product=<p> module=<m> missing="<that list>"`), then **pw-api-tests-writer** (`product=<p> module=<m>`) again — once each.
+- Composite helpers **pw-api-tests-writer** reports missing (the clients themselves are generated) → spawn **pw-api-client-writer** (`product=<p> module=<m> missing="<that list>"`), then **pw-api-tests-writer** (`product=<p> module=<m>`) again — once each.
 - A foundation gap → spawn **pw-api-scaffolder** (`product=<p> module=<m> gap="<the exact report>"`), then the reporting worker again — once per build.
 
 ## Return to orchestrator-agent

@@ -18,7 +18,7 @@
 //     hooks, helpers) and one region per test step; a rebuild keeps every region's body           (pw-ui-tests-writer)
 //   helpers/ui/<m>.data.ts                                                                         (pw-ui-tests-writer)
 //   pages/<m>/**: the page objects; `build` seeds a class shell once when one is missing           (pw-ui-pom-writer)
-//   fixtures/ui/index.ts: imports and spreads the module's fixtures                                (pw-ui-pom-writer)
+//   (fixtures/ui/index.ts is generated from every module's registration: foundation.mjs renderIndex, D-056)
 //
 // The generated/agent split is marked regions in ONE spec file: the script owns every line outside the regions (the
 // imports, the describe, each test's literal title and tags, its fixtures, one test.step per case step and one for the
@@ -32,6 +32,8 @@ import { citationProblem } from "./citations.mjs";
 import { writeAtomic } from "./csv.mjs";
 import { explorePaths, extractControls, mutatesControl, parseAction, parseSnapshot } from "./explore.mjs";
 import { finding, walk } from "./gate/common.mjs";
+import { indexProblem, writeIndex } from "./foundation.mjs";
+import { callArgs, functionsOf, isClose, isOpen, matchClose, matchOpen, scanTs } from "./ts-scan.mjs";
 import { DEFAULT_MAX_CASES, PRIORITIES, approvalStatus, readApprovals, testcasePaths } from "./testcases.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 
@@ -124,242 +126,9 @@ export function uiCodeContext({ root, product, module, run, cfg = {}, productDir
 }
 const pw = (ctx, f) => path.join(ctx.pwProject, f);
 
-// ---------- a TypeScript scanner (enough for locator calls; no compiler needed) ----------
+// ---------- the TypeScript scanner: scripts/lib/ts-scan.mjs (shared with scripts/lib/api-code.mjs) ----------
 
-// -> [{type: ident|str|tpl|regex|num|punct|comment, value, line, start, end}]. Strings are cooked (escapes resolved);
-// a template literal without ${} is a str, with one a tpl. Comments are kept, for the reason rule.
-export function scanTs(src) {
-  const toks = [];
-  const n = src.length;
-  let i = 0;
-  let line = 1;
-  const prevSig = () => {
-    for (let k = toks.length - 1; k >= 0; k--) if (toks[k].type !== "comment") return toks[k];
-    return null;
-  };
-  const regexOk = () => {
-    const p = prevSig();
-    if (!p) return true;
-    if (p.type === "punct") return !/^[)\]}]$/.test(p.value);
-    if (p.type === "ident") return /^(return|typeof|instanceof|in|of|new|delete|void|throw|case|do|else|yield|await)$/.test(p.value);
-    return false;
-  };
-  const cook = (c) => ({ n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", v: "\v", 0: "\0" })[c] ?? c;
-  // A template literal from its opening backtick: -> {end, cooked, dynamic}
-  const template = (from) => {
-    let j = from + 1;
-    let cooked = "";
-    let dynamic = false;
-    while (j < n && src[j] !== "`") {
-      if (src[j] === "\\") {
-        cooked += cook(src[j + 1]);
-        j += 2;
-      } else if (src[j] === "$" && src[j + 1] === "{") {
-        dynamic = true;
-        let depth = 1;
-        j += 2;
-        while (j < n && depth) {
-          const c = src[j];
-          if (c === "`") j = template(j).end;
-          else if (c === "'" || c === '"') {
-            j++;
-            while (j < n && src[j] !== c && src[j] !== "\n") j += src[j] === "\\" ? 2 : 1;
-            j++;
-          } else {
-            if (c === "{") depth++;
-            else if (c === "}") depth--;
-            j++;
-          }
-        }
-      } else cooked += src[j++];
-    }
-    return { end: j + 1, cooked, dynamic };
-  };
-  while (i < n) {
-    const c = src[i];
-    const start = i;
-    const at = line;
-    const push = (type, value) => {
-      line += (src.slice(start, i).match(/\n/g) ?? []).length;
-      toks.push({ type, value, line: at, start, end: i });
-    };
-    if (c === "\n") {
-      line++;
-      i++;
-    } else if (/\s/.test(c)) i++;
-    else if (c === "/" && src[i + 1] === "/") {
-      while (i < n && src[i] !== "\n") i++;
-      push("comment", src.slice(start, i));
-    } else if (c === "/" && src[i + 1] === "*") {
-      const e = src.indexOf("*/", i + 2);
-      i = e < 0 ? n : e + 2;
-      push("comment", src.slice(start, i));
-    } else if (c === "'" || c === '"') {
-      i++;
-      let v = "";
-      while (i < n && src[i] !== c && src[i] !== "\n") {
-        if (src[i] === "\\") {
-          v += cook(src[i + 1]);
-          i += 2;
-        } else v += src[i++];
-      }
-      i++;
-      push("str", v);
-    } else if (c === "`") {
-      const t = template(i);
-      i = t.end;
-      push(t.dynamic ? "tpl" : "str", t.dynamic ? src.slice(start, i) : t.cooked);
-    } else if (c === "/" && regexOk()) {
-      i++;
-      let cls = false;
-      while (i < n && src[i] !== "\n" && (cls || src[i] !== "/")) {
-        if (src[i] === "\\") i++;
-        else if (src[i] === "[") cls = true;
-        else if (src[i] === "]") cls = false;
-        i++;
-      }
-      i++;
-      while (i < n && /[a-z]/i.test(src[i])) i++;
-      push("regex", src.slice(start, i));
-    } else if (/[A-Za-z_$]/.test(c)) {
-      while (i < n && /[\w$]/.test(src[i])) i++;
-      push("ident", src.slice(start, i));
-    } else if (/\d/.test(c)) {
-      while (i < n && /[\w.]/.test(src[i])) i++;
-      push("num", src.slice(start, i));
-    } else if (src.startsWith("?.", i) && !/\d/.test(src[i + 2] ?? "")) {
-      i += 2;
-      push("punct", ".");
-    } else if (src.startsWith("...", i) || src.startsWith("=>", i)) {
-      i += src[i] === "." ? 3 : 2;
-      push("punct", src.slice(start, i));
-    } else if ("=!<>".includes(c)) {
-      while (i < n && "=!<>".includes(src[i])) i++;
-      push("punct", src.slice(start, i));
-    } else {
-      i++;
-      push("punct", c);
-    }
-  }
-  return toks;
-}
-
-// The arguments of the call whose "(" is sig[open]: [[tokens]] (top-level commas split them), and the index of ")".
-function callArgs(sig, open) {
-  const args = [[]];
-  let depth = 0;
-  for (let k = open + 1; k < sig.length; k++) {
-    const t = sig[k];
-    if (t.type === "punct" && "([{".includes(t.value)) depth++;
-    if (t.type === "punct" && ")]}".includes(t.value)) {
-      if (depth === 0) return { args: args.filter((a, x) => a.length || x === 0), close: k };
-      depth--;
-    }
-    if (depth === 0 && t.type === "punct" && t.value === ",") args.push([]);
-    else args.at(-1).push(t);
-  }
-  return { args, close: sig.length };
-}
-const isOpen = (t) => t?.type === "punct" && "([{".includes(t.value);
-const isClose = (t) => t?.type === "punct" && ")]}".includes(t.value);
-function matchClose(sig, open) {
-  let d = 0;
-  for (let k = open; k < sig.length; k++) {
-    if (isOpen(sig[k])) d++;
-    else if (isClose(sig[k]) && --d === 0) return k;
-  }
-  return sig.length;
-}
-function matchOpen(sig, close) {
-  let d = 0;
-  for (let k = close; k >= 0; k--) {
-    if (isClose(sig[k])) d++;
-    else if (isOpen(sig[k]) && --d === 0) return k;
-  }
-  return -1;
-}
-
-const CONTROL_KW = new Set(["if", "for", "while", "switch", "catch", "with", "return", "typeof", "await", "new", "super", "import", "else", "do", "yield", "in", "of"]);
-const MODIFIERS = new Set(["public", "private", "protected", "readonly", "override"]);
-
-// The parameters between sig[open] "(" and sig[close] ")": [{name, string}] (string: typed exactly `string`).
-function paramsOf(sig, open, close) {
-  const out = [];
-  let cur = [];
-  let d = 0;
-  const flush = () => {
-    const toks = cur.filter((t, i) => !(i === 0 && MODIFIERS.has(t.value)) && !(MODIFIERS.has(t.value) && cur.slice(0, i).every((x) => MODIFIERS.has(x.value))));
-    const first = toks[0];
-    if (first) {
-      const colon = toks.findIndex((t) => t.value === ":");
-      const eq = toks.findIndex((t) => t.value === "=");
-      const type = colon < 0 ? [] : toks.slice(colon + 1, eq < 0 ? undefined : eq);
-      out.push({ name: first.type === "ident" ? first.value : null, string: type.length === 1 && type[0].value === "string" });
-    }
-    cur = [];
-  };
-  for (let k = open + 1; k < close; k++) {
-    const t = sig[k];
-    if (isOpen(t)) d++;
-    if (isClose(t)) d--;
-    if (d === 0 && t.value === ",") flush();
-    else cur.push(t);
-  }
-  flush();
-  return out;
-}
-
-// Every function of a file: methods, functions and arrows. -> [{name|null, params, async, from, to, returnsOnly}], with
-// from..to the body's token range; returnsOnly: a block body that is only `return <expression>`.
-export function functionsOf(sig) {
-  const fns = [];
-  for (let k = 0; k < sig.length; k++) {
-    const t = sig[k];
-    if (t.type !== "punct") continue;
-    if (t.value === "=>") {
-      const p = sig[k - 1];
-      let params = [];
-      const name = null;
-      let async = false;
-      if (p?.value === ")") {
-        const o = matchOpen(sig, k - 1);
-        params = paramsOf(sig, o, k - 1);
-        async = sig[o - 1]?.value === "async";
-        // an arrow stays anonymous: its call sites (`pick(…)`, `this.pick(…)` of a field) can't be traced like a
-        // method's, so a locator built from its parameter is a finding; data-driven locators are methods
-      } else if (p?.type === "ident") params = [{ name: p.value, string: false }];
-      if (sig[k + 1]?.value === "{") {
-        const to = matchClose(sig, k + 1);
-        fns.push({ name, params, async, from: k + 2, to, returnsOnly: sig[k + 2]?.value === "return" });
-      } else {
-        let d = 0;
-        let j = k + 1;
-        for (; j < sig.length; j++) {
-          if (isOpen(sig[j])) d++;
-          else if (isClose(sig[j])) {
-            if (d === 0) break;
-            d--;
-          } else if (d === 0 && [",", ";"].includes(sig[j].value)) break;
-        }
-        fns.push({ name, params, async, from: k + 1, to: j, returnsOnly: true });
-      }
-      continue;
-    }
-    if (t.value !== "{") continue;
-    // a method or function body: `name(params)[: ReturnType] {`
-    let j = k - 1;
-    for (let n = 0; j >= 0 && n < 40 && sig[j].value !== ")"; j--, n++) if ([";", "{", "}", "="].includes(sig[j].value)) break;
-    if (sig[j]?.value !== ")" || (j !== k - 1 && sig[j + 1]?.value !== ":")) continue;
-    const o = matchOpen(sig, j);
-    const nameTok = sig[o - 1];
-    if (!nameTok || nameTok.type !== "ident" || CONTROL_KW.has(nameTok.value)) continue;
-    const name = nameTok.value === "function" ? null : nameTok.value;
-    const async = [sig[o - 2]?.value, sig[o - 3]?.value].includes("async");
-    const to = matchClose(sig, k);
-    fns.push({ name, params: paramsOf(sig, o, j), async, from: k + 1, to, returnsOnly: sig[k + 1]?.value === "return" });
-  }
-  return fns;
-}
+export { functionsOf, scanTs };
 
 // An identifier used as a locator name: a `string` parameter of the innermost named method that declares it (traced to
 // its call sites), else an expression the check can't verify.
@@ -1044,7 +813,7 @@ export function renderRegistration(ctx, plan) {
   const { type, value } = plan.registration;
   const L = [
     `// ${HEADER} Rebuilt from artifacts/${ctx.product}/modules/${module}/ui-code/plan.json by \`node scripts/ui-code.mjs build ${ctx.product} ${module}\`.`,
-    `// The module's page-object fixtures. Register them once in fixtures/ui/index.ts (it builds on ./base):`,
+    `// The module's page-object fixtures. fixtures/ui/index.ts (generated, D-056) spreads them on ./base:`,
     `//   import { ${value}, type ${type} } from './pages/${module}';`,
     `//   export const test = base.extend<${type}>({ ...${value} });   (combine modules with & and more spreads)`,
     "import type { Page } from '@playwright/test';",
@@ -1250,6 +1019,10 @@ export async function build(ctx, validate) {
       }
     }
     if (writeIfChanged(pw(ctx, plan.files.registration), renderRegistration(ctx, plan))) written.push(plan.files.registration);
+    // fixtures/ui/index.ts spreads every module's registration: generated, the same bytes whoever writes it (D-056)
+    const index = writeIndex(ctx.pwProject, "ui", path.join(ctx.productDir, "foundation"));
+    if (index.written) written.push(INDEX_FILE);
+    if (index.legacy) warnings.push(`fixtures/ui/index.ts is now generated (D-056): the previous hand-written one is kept in ${rel(ctx.root, index.legacy)}`);
     if (writeIfChanged(pw(ctx, plan.files.smoke), renderSmoke(ctx, plan))) written.push(plan.files.smoke);
   }
   const planBad = await validate("ui-code-plan", plan);
@@ -1344,11 +1117,9 @@ export function uiCodeFindings(ctx, { scope = "tests" } = {}) {
     const have = readText(pw(ctx, file));
     if (have !== want) out.push(finding("major", file, null, "generated", `${what} ${have === null ? "is missing" : "is out of date or was edited"}`, `run ${rebuild} (it is script-owned; never edit it)`));
   }
-  const index = readText(pw(ctx, INDEX_FILE));
-  const { type, value } = plan.registration;
-  const imports = index !== null && new RegExp(`import\\s*\\{[^}]*\\b${value}\\b[^}]*\\}\\s*from\\s*['"]\\./pages/${module}(\\.ts)?['"]`).test(index);
-  if (plan.objects.length && !(imports && new RegExp(`\\.\\.\\.\\s*${value}\\b`).test(index)))
-    out.push(finding("major", INDEX_FILE, null, "fixture-registration", `${INDEX_FILE} does not register the module's page-object fixtures (${plan.objects.map((o) => o.fixture).join(", ")})`, `add: import { ${value}, type ${type} } from './pages/${module}'; and spread ...${value} into base.extend<${type}>({ … })`));
+  // fixtures/ui/index.ts is generated from the module registrations (D-056): byte-identical to its render
+  const indexWhy = indexProblem(ctx.pwProject, "ui");
+  if (indexWhy) out.push(finding("major", INDEX_FILE, null, "fixture-registration", indexWhy, `run ${rebuild} (it is generated; never edit it)`));
 
   if (scope === "pages") return out;
 

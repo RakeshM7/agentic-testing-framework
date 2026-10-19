@@ -1,8 +1,0 @@
-// Hand-written extension file: register one fixture per API client here (base.extend below), built on the guarded
-// `api` context, and never build on @playwright/test directly. The guard lives in ./base, rendered by
-// scripts/foundation.mjs.
-import { test as base } from './base';
-
-export const test = base.extend<{}>({});
-
-export { expect } from './base';

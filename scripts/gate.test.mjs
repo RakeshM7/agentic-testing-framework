@@ -163,7 +163,7 @@ test("Playwright UI, syntax fallback: renamed imports, namespaces, bracket acces
   assert.deepEqual(declarations(), [], "a RegExp .test() in a helper is not a test");
 });
 
-test("Playwright API: plan scenarios are traced and mutating specs record what they create", () => {
+test("Playwright API: hand-written specs are not traced any more; a module whose API code was never generated is a blocker (D-056)", () => {
   const { root } = startRun();
   put(root, "artifacts/acme/modules/contacts/api/plan.json", JSON.stringify([{ id: "API-contacts-1", mutates: false }, { id: "API-contacts-2", mutates: true }]));
   put(root, "playwright-tests/acme/tests/api/contacts/contacts.spec.ts", [
@@ -171,7 +171,9 @@ test("Playwright API: plan scenarios are traced and mutating specs record what t
     "test.fixme('API-contacts-2 creates @p1 @mutates -- needs a writable tenant', async () => {});",
   ].join("\n"));
   const r = gate("acme", "contacts", "playwright-api", { root, compile: false });
-  assert.deepEqual([...rules(root, r)], ["ledger"]);
+  assert.deepEqual([...rules(root, r)], ["traceability"]);
+  assert.equal(r.verdict, "changes-required");
+  assert.match(readFileSync(path.join(root, r.file), "utf8"), /the module's API code was never generated for its 2 plan scenarios/);
   assert.throws(() => gate("acme", "billing", "playwright-api", { root }), /module must be one of/);
   assert.throws(() => gate("acme", "contacts", "report", { root }), /domain must be one of/);
 });

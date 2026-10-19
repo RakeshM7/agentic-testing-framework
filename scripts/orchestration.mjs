@@ -8,7 +8,7 @@
 //        The domain's next agent(s) to start, from the flow in scripts/lib/domain-flows.mjs and what is on disk. It
 //        runs the script steps itself (the pre-review gate, the clarification summary), skips steps whose work is
 //        verified (a foundation whose foundation.mjs check stamp is current, D-054), and spends review/heal rounds; a
-//        done step with a verify rule (the API plan, a foundation, the UI code's pages and tests steps -- those once,
+//        done step with a verify rule (the API plan, a foundation, the UI code's pages and tests steps, the API code's clients and tests steps -- those once,
 //        when first seen done) fails when its output did not pass its check. Start every returned action, mark each with `step`, then call next again. --static skips the
 //        gate's compile commands. Clarifications: one row at a time from the rows open when the domain started; a
 //        finished explorer must have left a valid record.json of this run, else the row is retried once and then
@@ -176,7 +176,7 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
   for (const [i, b] of flow.build.entries()) {
     const status = S().steps[b.step]?.status;
     if (status === "done") {
-      // verifyOnce (the UI code, D-055): checked when the done step is first seen; later rounds' fixes are the gate's
+      // verifyOnce (the UI code, D-055; the API code, D-056): checked when the done step is first seen; later rounds' fixes are the gate's
       if (b.verifyOnce && S().steps[b.step].verified) continue;
       const unverified = b.verify?.(ctx);
       if (unverified) {

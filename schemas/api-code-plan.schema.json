@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-code-plan.schema.json",
+  "title": "api-code/plan.json: a module's generated API code (D-056), written only by scripts/api-code.mjs build: one client per resource with one method per catalogue endpoint, one test per plan scenario (runnable, or blocked/parked as a test.fixme with the reason), the payload slots the runnable tests need and the glue slots the tests overlay asked for.",
+  "type": "object",
+  "required": ["module", "runId", "files", "registration", "facade", "clients", "tests", "references", "payloads", "glue", "parked", "blocked", "deferred"],
+  "additionalProperties": false,
+  "$defs": {
+    "ident": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$" },
+    "ep": { "type": "string", "pattern": "^EP-" },
+    "api": { "type": "string", "pattern": "^API-" },
+    "reasoned": { "type": "array", "items": { "type": "object", "required": ["id", "reason"], "additionalProperties": false, "properties": { "id": { "$ref": "#/$defs/api" }, "reason": { "type": "string" } } } }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": ["string", "null"] },
+    "files": {
+      "type": "object",
+      "required": ["types", "support", "sender", "facade", "registration", "payloads", "glue", "composite", "index", "specs"],
+      "additionalProperties": false,
+      "description": "Paths relative to playwright-tests/<product>/.",
+      "properties": {
+        "types": { "type": "string" }, "support": { "type": "string" }, "sender": { "type": "string" }, "facade": { "type": "string" }, "registration": { "type": "string" }, "payloads": { "type": "string" },
+        "glue": { "type": "string" }, "composite": { "type": "string" }, "index": { "type": "string" }, "specs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "registration": { "type": "object", "required": ["type", "value"], "additionalProperties": false, "properties": { "type": { "$ref": "#/$defs/ident" }, "value": { "$ref": "#/$defs/ident" } } },
+    "references": { "type": "object", "description": "X3 (D-056 round 3): the names a request field references an entity by (a catalogue resource or path parameter, singular, lowercase), each with its ledger type or null; the sender checks them at run time.", "additionalProperties": { "type": ["string", "null"] } },
+    "facade": { "type": "object", "required": ["type", "value"], "additionalProperties": false, "description": "The client facade glue and composite helpers get: reads and plain creates only (D-056).", "properties": { "type": { "$ref": "#/$defs/ident" }, "value": { "$ref": "#/$defs/ident" } } },
+    "clients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["resource", "class", "file", "schemaFile", "fixture", "methods"],
+        "additionalProperties": false,
+        "properties": {
+          "resource": { "type": "string" }, "class": { "$ref": "#/$defs/ident" }, "file": { "type": "string" }, "schemaFile": { "type": "string" }, "fixture": { "$ref": "#/$defs/ident" },
+          "methods": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["endpoint", "name", "kind", "method", "path", "crud", "mutates", "pathParams", "query", "body", "types"],
+              "properties": { "endpoint": { "$ref": "#/$defs/ep" }, "name": { "$ref": "#/$defs/ident" }, "kind": { "enum": ["rest", "graphql"] }, "method": { "type": "string" }, "path": { "type": "string" }, "crud": { "type": "string" }, "mutates": { "type": "boolean" } }
+            }
+          }
+        }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "file", "resource", "endpoint", "rule", "type", "title", "tags", "literal", "kind", "mutates", "identities", "testcases", "payloads", "glue", "gone", "creates", "cleanup"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/api" }, "file": { "type": "string" }, "resource": { "type": "string" }, "endpoint": { "$ref": "#/$defs/ep" }, "rule": { "type": "string" }, "type": { "type": "string" },
+          "title": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string", "pattern": "^@" } }, "literal": { "type": "string", "description": "The test's literal title: the id, the title, then the tags." },
+          "kind": { "enum": ["test", "blocked", "parked"] }, "reason": { "type": "string" },
+          "mutates": { "type": "boolean" }, "identities": { "type": "array", "items": { "type": "string" } }, "testcases": { "type": "array", "items": { "type": "string", "pattern": "^TC-" } },
+          "payloads": { "type": "array", "items": { "type": "string" } }, "glue": { "type": ["string", "null"] }, "creates": { "type": "boolean" },
+          "gone": { "type": ["object", "null"], "description": "U3: an unknown id on a request that changes data is an entity this test creates (create) and deletes (delete, deleteParam) first.", "required": ["create", "delete", "deleteParam", "param"], "properties": { "create": { "$ref": "#/$defs/ep" }, "delete": { "$ref": "#/$defs/ep" }, "deleteParam": { "type": "string" }, "param": { "type": "string" } } },
+          "cleanup": { "type": "array", "items": { "type": "object", "required": ["creator", "type", "pointer", "delete"], "additionalProperties": false, "properties": { "creator": { "$ref": "#/$defs/ep" }, "type": { "type": "string" }, "pointer": { "type": "string" }, "delete": { "type": ["object", "null"] } } } }
+        }
+      }
+    },
+    "payloads": {
+      "type": "array",
+      "items": { "type": "object", "required": ["name", "kind", "endpoint", "type", "scenarios"], "additionalProperties": false, "properties": { "name": { "$ref": "#/$defs/ident" }, "kind": { "enum": ["body", "changed", "query", "headers", "variables", "parts"] }, "endpoint": { "$ref": "#/$defs/ep" }, "type": { "type": "string" }, "scenarios": { "type": "array", "items": { "$ref": "#/$defs/api" } } } }
+    },
+    "glue": { "type": "array", "items": { "type": "object", "required": ["name", "scenario", "endpoint", "given", "bodyType"], "additionalProperties": false, "properties": { "name": { "$ref": "#/$defs/ident" }, "scenario": { "$ref": "#/$defs/api" }, "endpoint": { "$ref": "#/$defs/ep" }, "given": { "type": "array", "items": { "type": "string" }, "description": "The setup path values the glue gets." }, "bodyType": { "type": ["string", "null"], "description": "The request type whose fields the glue may return." } } } },
+    "parked": { "$ref": "#/$defs/reasoned" },
+    "blocked": { "$ref": "#/$defs/reasoned" },
+    "deferred": { "type": "array", "items": { "type": "string" }, "description": "Plan coverage items over api.plan_budget (D-050): no scenario, so no test." }
+  }
+}

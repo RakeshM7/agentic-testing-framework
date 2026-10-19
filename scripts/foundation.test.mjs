@@ -273,9 +273,10 @@ test("check rules: the guard fixtures, grepInvert, hard-coded URLs and secrets, 
   assert.match(r, /helpers\/ui\/session\.ts:2: hard-coded credential or token/);
   assert.match(r, /helpers\/ui\/session\.ts:3: hard-coded credential or token/);
   put(root, "playwright-tests/acme/helpers/ui/session.ts", "export const home = (base: string) => `${base}/home`;\n");
+  // fixtures/ui/index.ts is generated (D-056): any hand edit, a guard bypass first of all, is drift; a render restores it
   put(root, "playwright-tests/acme/fixtures/ui/index.ts", "import { test as base } from '@playwright/test';\nexport const test = base.extend({});\n");
-  await expectProblem("ui", /fixtures\/ui\/index\.ts must build on \.\/base/);
-  put(root, "playwright-tests/acme/fixtures/ui/index.ts", "import { test as base } from './base';\nexport const test = base.extend({});\nexport { expect } from './base';\n");
+  await expectProblem("ui", /fixtures\/ui\/index\.ts differs from its render: it is generated from the module registrations/);
+  assert.equal((await run(root, "render", "acme", "--side", "ui")).code, 0);
   put(root, "playwright-tests/acme/fixtures/ui/extra.setup.ts", "export {};\n");
   await expectProblem("ui", /fixtures\/ui\/extra\.setup\.ts: only the rendered auth\.setup\.ts may be a setup file/);
   unlinkSync(pw(root, "fixtures/ui/extra.setup.ts"));
@@ -314,7 +315,7 @@ test("check rules: the guard fixtures, grepInvert, hard-coded URLs and secrets, 
   assert.equal(statik.out.stamped, false);
 });
 
-test("check closes the bypasses: index.ts taking test or expect from @playwright/test any way, URLs in pieces, secret header values, non-registry versions", async () => {
+test("check closes the bypasses: a hand-written index.ts in any form (it is generated, D-056), URLs in pieces, secret header values, non-registry versions", async () => {
   const { root } = startRun();
   put(root, "artifacts/acme/knowledge/overview.md", "# Acme\n");
   await renderFoundation(root, ["repo", "ui", "api"]);
@@ -336,12 +337,16 @@ test("check closes the bypasses: index.ts taking test or expect from @playwright
     ["a dynamic import of a subpath", "const pw = import(`@playwright/test/reporter`);\n"],
   ]) {
     put(root, "playwright-tests/acme/fixtures/ui/index.ts", base + extra);
-    assert.match(await problems("ui"), /fixtures\/ui\/index\.ts must build on \.\/base/, what);
+    assert.match(await problems("ui"), /fixtures\/ui\/index\.ts differs from its render/, what);
   }
   put(root, "playwright-tests/acme/fixtures/ui/index.ts", "import { expect } from './base';\nimport { base } from './elsewhere';\nexport const test = base.extend({});\nexport { expect };\n");
-  assert.match(await problems("ui"), /it does not import \{ test \} from '\.\/base'/, "test must come from ./base");
-  put(root, "playwright-tests/acme/fixtures/ui/index.ts", base + "import type { Page } from '@playwright/test';\nimport { type Locator } from '@playwright/test';\nimport type { Browser } from 'playwright';\nexport { expect, waitForReady } from './base';\n");
-  assert.equal((await check(root, "ui")).valid, true, "type-only imports from @playwright/test are fine");
+  assert.match(await problems("ui"), /fixtures\/ui\/index\.ts differs from its render/, "test must come from ./base");
+  // the old seed, hand-written before D-056: a render replaces it and keeps the old text with a rebuild hint
+  put(root, "playwright-tests/acme/fixtures/ui/index.ts", base + "export { expect, waitForReady } from './base';\n");
+  const re = await run(root, "render", "acme", "--side", "ui");
+  assert.match(re.out.note, /fixtures\/ui\/index\.ts is now generated from the module registrations \(D-056\): the previous hand-written one is kept in artifacts\/acme\/foundation\/ui-index\.legacy\.ts; rebuild each module's code/);
+  assert.equal(read(path.join(root, "artifacts/acme/foundation/ui-index.legacy.ts")), base + "export { expect, waitForReady } from './base';\n");
+  assert.equal((await check(root, "ui")).valid, true, "the render is the index");
 
   for (const [what, code] of [
     ["protocol-relative", "export const cdn = '//cdn.acme.test/app.js';\n"],
@@ -392,14 +397,13 @@ test("a gap or missing-export request extends the extension files without breaki
   const { root } = startRun();
   put(root, "artifacts/acme/knowledge/overview.md", "# Acme\nDates show as 18 Oct 2026.\n");
   await renderFoundation(root, ["repo", "ui", "k6"]);
-  // a page object fixture registered in the seeded index.ts survives a re-render
-  const index = "import { test as base } from './base';\nimport { ListPage } from '../../pages/contacts/list.page';\nexport const test = base.extend<{ listPage: ListPage }>({ listPage: async ({ page }, use) => use(new ListPage(page)) });\nexport { expect } from './base';\n";
-  put(root, "playwright-tests/acme/fixtures/ui/index.ts", index);
+  // fixtures/ui/index.ts is generated from the module registrations (D-056): a re-render keeps it as rendered
+  const index = read(pw(root, "fixtures/ui/index.ts"));
   put(root, "playwright-tests/acme/helpers/ui/dates.ts", "export function formatDate(d: Date): string { return d.toISOString().slice(0, 10); }\n");
   const gap = { kind: "gap", text: "pw-ui-pom-writer: no date formatter for the list's dates", requestedBy: "pw-ui-pom-writer", files: ["helpers/ui/dates.ts"], exports: ["formatDate"], cite: ["knowledge:overview.md"] };
   overlay(root, "ui", { requests: [gap] });
   assert.equal((await run(root, "render", "acme", "--side", "ui")).code, 0);
-  assert.equal(read(pw(root, "fixtures/ui/index.ts")), index, "the extension file is the writers'");
+  assert.equal(read(pw(root, "fixtures/ui/index.ts")), index, "the generated index is stable");
   assert.match(read(pw(root, "config/ui/README.md")), /gap from pw-ui-pom-writer: .*-> helpers\/ui\/dates\.ts \(exports formatDate\)/);
   assert.equal((await check(root, "ui")).valid, true);
   // a second gap extends; the first one's exports must stay
@@ -472,7 +476,7 @@ test("the stage and the flows: playwright-repo needs the verified stamp; the CLI
   const p = (await run(root, "paths", "acme", "--side", "api")).out;
   assert.equal(p.overlay, "artifacts/acme/foundation/api-overlay.json");
   assert.ok(p.managed.includes("helpers/api/schema.ts"));
-  assert.deepEqual(p.extensions, ["fixtures/api/index.ts", "helpers/api/**"]);
+  assert.deepEqual(p.extensions, ["helpers/api/**"], "fixtures/api/index.ts is generated (D-056), no longer an extension file");
   const calls = [];
   const inst = await main(["install", "acme"], { root, exec: (cmd, args, cwd) => (calls.push([cmd, ...args, path.relative(root, cwd).replaceAll("\\", "/")].join(" ")), null) });
   assert.equal(inst.code, 0);

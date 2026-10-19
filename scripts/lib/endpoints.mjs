@@ -138,11 +138,20 @@ export function leafResource(p) {
   return lits.at(-1) ?? null;
 }
 
+// Words that make a POST to a collection an action, never a plain create (D-056): what it does is destructive or acts
+// on existing entities. The catalogue reads them in the path only (bulk-delete, purge, remove, cancel); a summary or an
+// operationId never changes an endpoint's crud, so a create stays a recorded create whatever it is called (round 3).
+// api-code.mjs also reads them in the summary and the operationId, only to keep such creates out of the glue's facade.
+export const ACTION_LIKE = new Set(["delete", "remove", "purge", "destroy", "erase", "wipe", "truncate", "clear", "reset", "revoke", "cancel", "archive", "unarchive", "restore", "disable", "deactivate", "ban", "block", "bulk", "batch", "merge", "move", "approve", "reject", "close", "lock", "unlock", "expire", "invalidate", "void", "refund", "transfer", "assign", "unassign", "detach", "attach", "sync"]);
+export const actionLike = (...texts) => texts.some((t) => words(t ?? "").some((w) => ACTION_LIKE.has(w.toLowerCase())));
+
+// By the path only: an action word as the last segment, an action segment after an id (/{id}/archive), or a POST whose
+// last segment is destructive or action-like (bulk-delete, purge).
 export function crudOf(method, p) {
   const segs = segments(p);
   const last = segs.at(-1) ?? "";
   const lastIsParam = PARAM.test(last);
-  const action = !lastIsParam && (ACTION_WORDS.has(last.toLowerCase()) || (segs.length > 1 && PARAM.test(segs.at(-2)) && literalSegments(p).length > 1 && method === "POST"));
+  const action = !lastIsParam && (ACTION_WORDS.has(last.toLowerCase()) || (segs.length > 1 && PARAM.test(segs.at(-2)) && literalSegments(p).length > 1 && method === "POST") || (method === "POST" && actionLike(last)));
   if (action) return "action";
   if (method === "GET") return lastIsParam ? "read" : "list";
   if (method === "POST") return lastIsParam ? "action" : "create";

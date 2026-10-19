@@ -13,7 +13,7 @@ import { paths } from "./lib/contract.mjs";
 import { apiPaths, build as buildCatalogue, saveSource, writeJson } from "./lib/endpoints.mjs";
 import { INTROSPECTION_QUERY } from "./lib/graphql.mjs";
 import { validateRunConfig } from "./run-config.mjs";
-import { markApproved, put, startRun } from "./test-helpers.mjs";
+import { markApproved, put, renderFoundation, startRun } from "./test-helpers.mjs";
 
 const MOD = "artifacts/acme/modules/contacts";
 const CONTACT = {
@@ -360,13 +360,21 @@ test("orchestration: the plan step counts as done only after api-plan.mjs check 
   assert.equal(go2().actions[0].step, "scaffold");
 });
 
-test("gate: a scenario that needs an identity must carry @identity-<name> in its test title", async () => {
+test("gate: a scenario that needs an identity carries @identity-<name> in its generated title; a title without it is drift (D-056)", async () => {
   const s = setup({ identities: [{ name: "peer", role: "peer", session_state_file: "x.json" }] });
   await s.run("build");
-  const bola = s.plan().find((x) => x.rule === "bola");
-  const title = (x) => `${x.id} t${x.mutates ? " @mutates" : ""}`;
-  put(s.root, "playwright-tests/acme/tests/api/contacts/c.spec.ts", s.plan().map((x) => `test('${title(x)}', async () => { recordCreated(); });`).join("\n") + "\n");
+  s.overlay(LINK_TC(s));
+  await s.run("build");
+  await renderFoundation(s.root, ["repo", "api"]);
+  const { main: apiCode } = await import("./api-code.mjs");
+  assert.equal((await apiCode(["build", "acme", "contacts"], { root: s.root })).code, 0);
+  const bola = s.plan().find((x) => x.rule === "bola" && x.endpoint === s.ep("GET", "/api/v1/contacts/{contactId}"));
+  const spec = path.join(s.root, "playwright-tests/acme/tests/api/contacts/contacts.spec.ts");
+  const text = readFileSync(spec, "utf8");
+  const literal = new RegExp(`test\\((['"])(${bola.id} .*?)\\1, async`).exec(text)?.[2];
+  assert.match(literal, / @identity-peer\b/, "the generated title carries @identity-peer");
+  writeFileSync(spec, text.replace(literal, literal.replace(" @identity-peer", "")));
   gate("acme", "contacts", "playwright-api", { root: s.root, compile: false });
   const findings = readFileSync(path.join(s.p.results("acme-run-1"), "contacts", "playwright-api", "gate-findings.md"), "utf8");
-  assert.match(findings, new RegExp(`${bola.id} needs identity 'peer' but its title lacks @identity-peer`));
+  assert.match(findings, new RegExp(`title-drift \\| ${bola.id}: the title or tags differ from the plan`));
 });

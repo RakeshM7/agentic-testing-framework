@@ -3,6 +3,7 @@
 // domains, the bounded run loop (runner-triager -> fixer). The clarification domain is one explorer per open row.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { apiCodeContext, apiCodeUnverified } from "./api-code.mjs";
 import { planPaths, planUnverified } from "./api-plan.mjs";
 import { foundationContext, foundationUnverified } from "./foundation.mjs";
 import { reviewResult, testcaseContext, testcaseTotals, testcasesUnverified } from "./testcases.mjs";
@@ -35,6 +36,10 @@ const tcCtx = (c) => testcaseContext({ root: c.root, product: c.product, module:
 // the page objects) stamped what is on disk. Verified once, when the step is first seen done (verifyOnce): the review
 // and heal loops' fixer edits the same files afterwards, and the gate re-checks every rule each round.
 const ucCtx = (c) => uiCodeContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir, pwProject: c.pwProject });
+
+// The API code is generated (D-056): a done clients or tests step counts only once `api-code.mjs check` (--clients for
+// the clients) stamped what is on disk; verified once, like the UI code, because the fixer edits the same files later.
+const acCtx = (c) => apiCodeContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir, pwProject: c.pwProject });
 
 // The blocker and major rows of a findings file (docs/agent-handoffs.md §6): what is still unresolved.
 export function unresolvedFindings(file) {
@@ -73,8 +78,8 @@ export const FLOWS = {
       // The plan is script-built (D-046): a "done" plan step counts only once api-plan.mjs check passed on what is on disk.
       { step: "plan", agent: "api-test-planner", skipRest: noApiSurface, verify: (c) => planUnverified(planPaths(c.productDir, c.module)) },
       foundationStep("api", "scaffold", "pw-api-scaffolder", "the API foundation"),
-      { step: "clients", agent: "pw-api-client-writer" },
-      { step: "tests", agent: "pw-api-tests-writer" },
+      { step: "clients", agent: "pw-api-client-writer", verify: (c) => apiCodeUnverified(acCtx(c), "clients"), verifyOnce: true },
+      { step: "tests", agent: "pw-api-tests-writer", verify: (c) => apiCodeUnverified(acCtx(c), "tests"), verifyOnce: true },
     ],
     review: { reviewer: "pw-api-reviewer", fixer: "pw-api-fixer" },
     run: { runner: "pw-api-test-runner-triager", fixer: "pw-api-fixer", framework: "playwright-api" },
