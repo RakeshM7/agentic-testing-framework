@@ -242,3 +242,32 @@ test("hook registrations: every host runs the same entry with a valid --host", (
   for (const c of commands) assert.match(c, /scripts\/hooks\/(pre|post)tooluse\.mjs"? --host (claude-code|vscode|copilot)$/, c);
   assert.ok(!existsSync(path.join(repoRoot, ".claude", "hooks")), "the old Claude-only hook is gone");
 });
+
+test("hook registrations: the .claude/settings.json command reaches the entry from bash and from PowerShell", () => {
+  // Copilot CLI and VS Code's Copilot CLI engine also run it ("repo settings"), through PowerShell on Windows, from the
+  // repo root and without CLAUDE_PROJECT_DIR. A bash-only path there crashed node before the guard ran ("hook errored").
+  const { hooks } = JSON.parse(readFileSync(path.join(repoRoot, ".claude", "settings.json"), "utf8"));
+  const command = hooks.PreToolUse[0].hooks[0].command;
+  const input = JSON.stringify({ tool_name: "Read", tool_input: { file_path: "README.md" } });
+  const { CLAUDE_PROJECT_DIR, ...env } = process.env;
+  const reached = (r, shell) => {
+    assert.doesNotMatch(r.stderr ?? "", /Cannot find module/, `${shell}: ${r.stderr}`);
+    assert.notEqual(r.status, 1, `${shell}: ${r.stderr}`);
+  };
+  const gitBash = path.join(process.env.ProgramFiles ?? "C:\\Program Files", "Git", "bin", "bash.exe");
+  const bash = process.platform === "win32" ? (existsSync(gitBash) ? gitBash : undefined) : "bash";
+  if (bash) reached(spawnSync(bash, ["-c", command], { cwd: tempRoot(), input, encoding: "utf8", env: { ...env, CLAUDE_PROJECT_DIR: repoRoot } }), "bash");
+  if (process.platform === "win32")
+    reached(spawnSync("powershell.exe", ["-NoProfile", "-Command", command], { cwd: repoRoot, input, encoding: "utf8", env }), "powershell");
+});
+
+test("hook entries read a payload that starts with a BOM (Windows PowerShell 5.1 relays stdin with one)", () => {
+  const bom = (payload) => `\uFEFF${JSON.stringify(payload)}`;
+  const r = hook(["--host", "claude-code"], bom({ tool_name: "Bash", tool_input: { command: "curl -X POST https://x/api" } }), { CLAUDE_PROJECT_DIR: FULL.root, AUTHORIZATIONS_MODE: "readonly" });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /http-mutate/, "judged by the guard, not failed closed");
+  const root = tempRoot();
+  const post = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "copilot"], { input: bom({ cwd: root, toolName: "bash", toolArgs: {} }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
+  assert.equal(post.status, 0);
+  assert.ok(!existsSync(path.join(root, "artifacts", "hook-errors.jsonl")), post.stderr);
+});
