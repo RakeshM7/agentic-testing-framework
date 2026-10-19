@@ -26,13 +26,13 @@ Start a run with the **orchestrator-agent** as the session's agent (Claude Code:
 ### 2. Prepare the run-config
 **Either let the orchestrator interview you**: run `make interview`. It asks, in one message, for the product name (public or internal tool), its URL and a short description or overview link, the modules to run, links and file paths it can read (documents, sheets; export Office files to .md, .csv or .pdf), and optionally an API host or spec and whether a login is needed. It never asks for a secret. It then writes `config/<slug>.yaml` (always `readonly`), shows you a summary, and starts the run if you say so. If it needs a login it tells you to run `make login` first. **Or write the file by hand**, as below; both end in the same file.
 
-1. Create it: `make config PRODUCT=<slug> URL=<target url>`. It writes `config/<slug>.yaml` from the example, with `product` and `target.url` set and `authorizations.mode: readonly`. [`config/run-config.freshsales.yaml`](config/run-config.freshsales.yaml) is a filled-in sample.
+1. Create it: `make config PRODUCT=<slug> URL=<target url>`. It writes `config/<slug>.yaml` from the example, with `product` and `target.url` set and `authorizations.mode: readonly`, then runs `make login` for you (step 4). Add `LOGIN=no` for a product that needs no login. [`config/run-config.freshsales.yaml`](config/run-config.freshsales.yaml) is a filled-in sample.
 2. Open the file and fill in what only you know:
    - `modules`: slug, name, `entry_url` and `nav_path` for each. You list the modules, the agents don't pick them;
    - `knowledge.references`: vendor docs and help centres the knowledge base cites;
    - `testcases.output_format`: `markdown-table`, `gherkin`, `csv` or `testrail`.
 3. Set `authorizations.mode: full-run` only for a target you own or are authorized to test. `readonly` (the default) is non-mutating everywhere.
-4. If the product needs a login, run `make login PRODUCT=<slug>`:
+4. Log in (`make config` already did this unless you passed `LOGIN=no`; run `make login PRODUCT=<slug>` yourself to log in again):
    - a browser opens: log in yourself (CAPTCHA and MFA included), then **close the browser window**;
    - the session is saved to `playwright-tests/<slug>/.auth/state.json` and set in the config, along with `authenticated_crawl: true`;
    - the file is git-ignored and holds live cookies, so never share it. Run `make login` again when the session expires.

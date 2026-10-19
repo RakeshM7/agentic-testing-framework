@@ -1,7 +1,8 @@
 # One-time setup helpers. Everything else is driven by the orchestrator-agent (see README.md).
 #
 #   make setup                                        install dependencies and a browser
-#   make config PRODUCT=acme-crm URL=https://...      create config/acme-crm.yaml from the example
+#   make config PRODUCT=acme-crm URL=https://...      create config/acme-crm.yaml from the example, then log in (make login)
+#                                                     add LOGIN=no for a product that needs no login
 #   make interview                                    or: the orchestrator asks a few questions and writes the config for you
 #   make login  PRODUCT=acme-crm                      log in once in a browser and save the session
 #   make validate PRODUCT=acme-crm                    check the run-config
@@ -31,6 +32,7 @@ endif
 PRODUCT ?=
 URL     ?=
 STAGE   ?=
+LOGIN   ?= yes
 MODULE  ?=
 
 # The command that opens an orchestrator-agent session with a first prompt. Claude Code by default; for Copilot CLI
@@ -61,6 +63,7 @@ config: require-product
 	sed -e 's|^product:.*|product: $(PRODUCT)|' -e 's|^  url:.*|  url: $(URL)|' -e 's|^  name: Acme CRM|  name: $(PRODUCT)|' config/run-config.example.yaml > $(CONFIG)
 	@echo "Created $(CONFIG). Still to fill in by hand: modules, knowledge.references, testcases.output_format."
 	@echo "authorizations.mode stays readonly; set full-run yourself only for a target you are authorized to test."
+	@if [ "$(LOGIN)" != no ]; then "$(MAKE)" login PRODUCT=$(PRODUCT); fi
 
 # Opens an orchestrator-agent session that interviews you (a few questions, one message) and drafts config/<product>.yaml
 # (readonly) through scripts/run-config.mjs draft, then offers to start the run. Needs no PRODUCT.
