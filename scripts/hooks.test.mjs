@@ -8,7 +8,7 @@ import { checkTool } from "./lib/guard.mjs";
 import { guardStatus, markAbsent, recordCanary } from "./lib/guard-check.mjs";
 import { logHookError } from "./lib/hook-log.mjs";
 import { repoRoot } from "./lib/contract.mjs";
-import { initRun, setStage } from "./run.mjs";
+import { initRun, setStage, status } from "./run.mjs";
 import * as claude from "./hooks/hosts/claude.mjs";
 import * as copilot from "./hooks/hosts/copilot.mjs";
 import { startRun, tempRoot, writeConfig } from "./test-helpers.mjs";
@@ -102,6 +102,15 @@ test("an unmapped tool fails closed for a managed agent during a run, and only t
   assert.equal(allowed(tempRoot(), unknown("pw-ui-fixer")), true, "no active run");
   const noPath = vscode("pw-ui-fixer", { tool_name: "create_file", tool_input: {} });
   assert.equal(checkTool(noPath, FULL.root, {}).rule, "fs-write", "a write whose target is unknown is refused");
+});
+
+test("a Copilot block of the canary (exit 2, shown by the host as 'hook errored') shows as guard.ready in run.mjs status", async () => {
+  const { root } = startRun({ verified: false });
+  assert.equal((await status("acme", { root })).guard.ready, false, "nothing recorded yet");
+  const r = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: JSON.stringify({ cwd: root, toolName: "powershell", toolArgs: { command: "node scripts/run.mjs guard-check acme" } }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /\(canary\)/);
+  assert.deepEqual((await status("acme", { root })).guard, { ready: true });
 });
 
 test("liveness canary: always blocked; the session is verified per mode; init and resume reset it", () => {
