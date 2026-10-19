@@ -61,6 +61,10 @@ variables:
 #   k6-script-writer runs only k6-code.mjs build/check/paths (k6 inspect runs inside check) and writes only its slot file
 #   scripts/slots/<m>.js; workload.json, its coverage and registry, the generated scripts, code-plan.json, parked.json
 #   and legacy/ are managed files no caller writes
+# triage (D-058): the three runner-triagers run triage.mjs prepare/build/check/paths and write only their
+#   triage-overlay.json (classes, fix hints and the bug drafts); results.json, triage.json, triage.md, the BUG registry and
+#   the human-only known-issues.json are managed files no caller writes. `prepare` only clears this module's stale run
+#   output inside the paths the triager may already write (test-results/<side>/, k6 results/<m>-*)
 # fixtures/<side>/index.ts (D-056): generated on both sides from the module registrations (foundation.mjs renderIndex,
 #   written by foundation.mjs render and by ui-code.mjs / api-code.mjs build); managed, in no agent's write list
 # Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
@@ -128,6 +132,13 @@ managed_files:
   - "${product_dir}/modules/*/k6/parked.json"
   - "${product_dir}/modules/*/k6/legacy/**"
   - "${k6_project}/scripts/*.js"
+  # triage (D-058): results.json by scripts/results.mjs; triage.json, triage.md and the BUG registry by scripts/triage.mjs
+  # (the triager writes only triage-overlay.json); known-issues.json is edited by a human only
+  - "${results}/*/*/results.json"
+  - "${results}/*/*/triage.json"
+  - "${results}/*/*/triage.md"
+  - "${product_dir}/modules/*/triage/**"
+  - "${product_dir}/known-issues.json"
 
 profiles:
   # Reusable bundles; an agent lists `profile:` and any per-agent overrides replace the profile's keys.
@@ -313,14 +324,15 @@ agents:
     shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *"]
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-ui/review-findings.md",
-             "${results}/${module}/playwright-ui/gate-findings.md", "${results}/${module}/playwright-ui/triage.md"]
+             "${results}/${module}/playwright-ui/gate-findings.md", "${results}/${module}/playwright-ui/triage.md", "${results}/${module}/playwright-ui/triage.json"]
       write: ["${pw_project}/pages/**", "${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**"]
   pw-ui-test-runner-triager:
     layer: 2
     live_target: { browser: mutate, http: none, load: none }   # runs the ui project; mutating specs only in full-run, ledger-scoped
     web_research: none
-    shell: project
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-ui/results.json", "${results}/${module}/playwright-ui/triage.md", "${pw_project}/test-results/ui/**"] }
+    shell: project              # runs the suite; listed for the record and the run's combined ceiling
+    shell_allow: ["node scripts/triage.mjs prepare *", "node scripts/triage.mjs build *", "node scripts/triage.mjs check *", "node scripts/triage.mjs paths *"]
+    filesystem: { read: ["${pw_project}/**", "${modules}/**", "${product_dir}/known-issues.json"], write: ["${results}/${module}/playwright-ui/triage-overlay.json", "${pw_project}/test-results/ui/**"] }
 
   # ======================= Playwright API domain (same repo: ${pw_project}) ===============================
   playwright-api-orchestrator:
@@ -383,7 +395,7 @@ agents:
     shell_allow: ["node scripts/api-code.mjs build *", "node scripts/api-code.mjs check *", "node scripts/api-code.mjs paths *"]
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-api/review-findings.md",
-             "${results}/${module}/playwright-api/gate-findings.md", "${results}/${module}/playwright-api/triage.md"]
+             "${results}/${module}/playwright-api/gate-findings.md", "${results}/${module}/playwright-api/triage.md", "${results}/${module}/playwright-api/triage.json"]
       # D-056: the API code is generated; the fixer edits only what an agent may write there: the slots of the
       # payload and glue files, the composite helpers and the scaffolder's helpers/api/<topic>.ts files
       write: ["${pw_project}/helpers/api/**"]
@@ -392,7 +404,8 @@ agents:
     live_target: { browser: none, http: mutate, load: none }   # runs the api project; mutating tests only in full-run, ledger-scoped
     web_research: none
     shell: project
-    filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${results}/${module}/playwright-api/results.json", "${results}/${module}/playwright-api/triage.md", "${pw_project}/test-results/api/**"] }
+    shell_allow: ["node scripts/triage.mjs prepare *", "node scripts/triage.mjs build *", "node scripts/triage.mjs check *", "node scripts/triage.mjs paths *"]
+    filesystem: { read: ["${pw_project}/**", "${modules}/**", "${product_dir}/known-issues.json"], write: ["${results}/${module}/playwright-api/triage-overlay.json", "${pw_project}/test-results/api/**"] }
 
   # ======================= K6 domain (repo: ${k6_project}) ================================================
   k6-orchestrator:
@@ -439,14 +452,15 @@ agents:
     shell_allow: ["node scripts/k6-code.mjs build *", "node scripts/k6-code.mjs check *", "node scripts/k6-code.mjs paths *"]
     filesystem:
       read: ["${k6_project}/**", "${modules}/**", "${results}/${module}/k6/review-findings.md", "${results}/${module}/k6/gate-findings.md",
-             "${results}/${module}/k6/triage.md"]
+             "${results}/${module}/k6/triage.md", "${results}/${module}/k6/triage.json"]
       write: ["${k6_project}/scripts/slots/${module}.js", "${k6_project}/lib/ext/**"]
   k6-runner-triager:
     layer: 2
     live_target: { browser: none, http: none, load: run }   # live load only in full-run; BASE_URL must be on K6_ALLOWED_HOSTS
     web_research: none
     shell: project
-    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${results}/${module}/k6/results.json", "${results}/${module}/k6/triage.md", "${k6_project}/results/**"] }
+    shell_allow: ["node scripts/triage.mjs prepare *", "node scripts/triage.mjs build *", "node scripts/triage.mjs check *", "node scripts/triage.mjs paths *"]
+    filesystem: { read: ["${k6_project}/**", "${modules}/**", "${product_dir}/known-issues.json"], write: ["${results}/${module}/k6/triage-overlay.json", "${k6_project}/results/**"] }
 
   # ======================= Reporting and framework maintenance ===========================================
   report-generator:

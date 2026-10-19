@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "triage.schema.json",
+  "title": "Triage (results/<run>/<m>/<framework>/triage.json) -- script-owned: scripts/triage.mjs build writes it, check stamps `verified`",
+  "type": "object",
+  "required": ["module", "domain", "framework", "runId", "mode", "inputs", "summary", "rows", "clusters", "notFailures"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "domain": { "enum": ["ui", "api", "k6"] },
+    "framework": { "enum": ["playwright-ui", "playwright-api", "k6"] },
+    "runId": { "type": "string" },
+    "mode": { "enum": ["readonly", "full-run"] },
+    "inputs": {
+      "type": "object",
+      "required": ["results"],
+      "properties": { "results": { "type": ["string", "null"] }, "knownIssues": { "type": ["string", "null"] }, "overlay": { "type": ["string", "null"] } }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["rows", "open", "byClass", "clusters"],
+      "properties": {
+        "rows": { "type": "integer" }, "open": { "type": "integer" }, "clusters": { "type": "integer" },
+        "byClass": { "type": "object" }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "title", "status", "class", "classSource", "healable"],
+        "properties": {
+          "key": { "type": "string" },
+          "title": { "type": "string" },
+          "file": { "type": "string" },
+          "status": { "enum": ["failed", "flaky", "skipped", "hidden", "unapproved", "missing"] },
+          "tcId": { "type": "string" },
+          "scenarioId": { "type": "string" },
+          "tcIds": { "type": "array", "items": { "type": "string" } },
+          "k6Id": { "type": "string" },
+          "attempts": { "type": "integer" },
+          "passedOnRetry": { "type": "boolean" },
+          "error": { "type": "string" },
+          "signature": { "type": ["string", "null"] },
+          "evidence": { "type": "array", "items": { "type": "string" } },
+          "class": { "enum": ["product-bug", "test-bug", "locator-drift", "flaky", "environment", "blocked-by-mode", "awaiting-approval", "known-issue", null] },
+          "classSource": { "enum": ["rule", "agent", null] },
+          "rule": { "type": ["string", "null"] },
+          "reason": { "type": ["string", "null"] },
+          "cite": { "type": ["string", "null"] },
+          "healable": { "type": "boolean" },
+          "fixHint": { "type": ["string", "null"] },
+          "expectation": { "type": ["string", "null"] },
+          "knownIssue": { "type": ["string", "null"] },
+          "note": { "type": ["string", "null"] },
+          "cluster": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "clusters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "signature", "rows", "ids"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" }, "signature": { "type": "string" },
+          "rows": { "type": "array", "items": { "type": "string" } },
+          "ids": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "notFailures": { "type": "array", "items": { "type": "object", "required": ["key", "reason"], "properties": { "key": { "type": "string" }, "reason": { "type": "string" } } } },
+    "verified": { "type": "object", "description": "stamped by a passing triage.mjs check" }
+  }
+}

@@ -19,7 +19,7 @@ export default defineConfig({
   grepInvert: fullRun ? undefined : /@mutates/,
   use: {
     baseURL: process.env.BASE_URL,
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
   },
   projects: [
     { name: 'setup-ui', testDir: './fixtures/ui', testMatch: /.*\.setup\.ts/ },

@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { next, show, step } from "./orchestration.mjs";
+import { healableRows } from "./lib/domain-flows.mjs";
 import { append, csvPath, readRows, record, recordOutcome } from "./lib/clarifications.mjs";
 import { paths } from "./lib/contract.mjs";
 import { buildCases, humanEdit, put, renderFoundation, scaffoldUiCode, startRun } from "./test-helpers.mjs";
@@ -32,8 +33,10 @@ async function uiCode(root) {
 const SPEC = "playwright-tests/acme/tests/ui/contacts/cases.spec.ts";
 const editSpec = (root, from, to) => put(root, SPEC, readFileSync(path.join(root, SPEC), "utf8").replace(from, to));
 const verdict = (root, v) => put(root, `${RESULTS}/playwright-ui/review-findings.md`, `# Review\nVerdict: ${v}\n| # | Severity | File | Line | Rule | Problem | Required fix |\n|---|---|---|---|---|---|---|\n`);
-const triage = (root, framework, healable) =>
-  put(root, `${RESULTS}/${framework}/triage.md`, ["# Triage", "| Test | File | Classification | Healable | Evidence | Suggested action |", "|---|---|---|---|---|---|", ...(healable ? ["| TC-contacts-1 | c.spec.ts | test-bug | yes | x | fix locator |"] : []), ""].join("\n"));
+// A verified triage.json (D-058): no results, known issues or overlay on disk, so the stamp is all nulls and stays current.
+const stamp = { results: null, knownIssues: null, overlay: null };
+const triage = (root, framework, healable, { verified = stamp, cls = "test-bug" } = {}) =>
+  put(root, `${RESULTS}/${framework}/triage.json`, JSON.stringify({ module: "contacts", rows: healable ? [{ key: "ui:TC-contacts-1", class: cls, healable: true }, { key: "ui:TC-contacts-2", class: "flaky", healable: false }] : [{ key: "ui:TC-contacts-2", class: "flaky", healable: false }], verified }));
 // The single returned action, started; `work` (async) produces its files; then marked done.
 async function performAsync(root, domain, expect, work) {
   const [a] = go(root, domain).actions;
@@ -67,7 +70,7 @@ test("Playwright UI: build (verified by ui-code.mjs check), review, a failing ga
   const run = perform(root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" }, () => triage(root, "playwright-ui", true));
   assert.equal(run.prompt, "product=acme module=contacts run=acme-run-1 mode=readonly round=1");
   const heal = perform(root, "playwright-ui", { step: "heal-1", agent: "pw-ui-fixer" });
-  assert.equal(heal.prompt, `product=acme module=contacts triage=${RESULTS}/playwright-ui/triage.md`);
+  assert.equal(heal.prompt, `product=acme module=contacts triage=${RESULTS}/playwright-ui/triage.json`);
   perform(root, "playwright-ui", { step: "run-2", agent: "pw-ui-test-runner-triager" }, () => triage(root, "playwright-ui", false));
 
   const done = go(root, "playwright-ui");
@@ -184,6 +187,40 @@ test("review rounds are bounded: automation still runs the suite", async () => {
     perform(ui.root, "playwright-ui", { step: `fix-${n}`, agent: "pw-ui-fixer" });
   }
   perform(ui.root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" });
+});
+
+test("a heal round starts only from a verified triage; locator-drift rows heal like test-bug rows (D-058)", async () => {
+  const setup = async () => {
+    const r = startRun();
+    await uiCode(r.root);
+    for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root: r.root });
+    perform(r.root, "playwright-ui", { step: "review-1", agent: "pw-ui-reviewer" }, () => verdict(r.root, "pass"));
+    return r.root;
+  };
+  // the rows exist, but triage.mjs check never stamped them: no heal round, the run step fails with the reason
+  const a = await setup();
+  perform(a, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" }, () => triage(a, "playwright-ui", true, { verified: null }));
+  let done = go(a, "playwright-ui");
+  assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "run-1"]);
+  assert.match(done.done.note, /did not pass triage\.mjs check/);
+  assert.equal(show("acme", "playwright-ui", "contacts", { root: a }).steps["heal-1"], undefined);
+
+  // a stamp the results no longer match is no stamp either
+  const b = await setup();
+  perform(b, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" }, () => {
+    triage(b, "playwright-ui", true, { cls: "locator-drift" });
+    put(b, `${RESULTS}/playwright-ui/results.json`, "{}");
+  });
+  done = go(b, "playwright-ui");
+  assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "run-1"]);
+  assert.match(done.done.note, /changed after triage\.mjs check/);
+
+  // verified, with a locator-drift row marked healable: the fixer is offered triage.json
+  const c = await setup();
+  perform(c, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" }, () => triage(c, "playwright-ui", true, { cls: "locator-drift" }));
+  assert.equal(go(c, "playwright-ui").actions[0].step, "heal-1");
+  assert.equal(healableRows(path.join(c, RESULTS, "playwright-ui/triage.json")), 1, "only the healable row counts; a flaky row never does");
+  assert.equal(healableRows(path.join(c, RESULTS, "playwright-ui/missing.json")), 0);
 });
 
 test("heal rounds are bounded by limits.heal_rounds", async () => {

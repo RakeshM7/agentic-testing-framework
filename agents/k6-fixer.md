@@ -9,7 +9,7 @@ You fix what the reviewer or the triager found — nothing more. You repair scri
 ## Invocation
 `product=<p> module=<m>` plus exactly one of:
 - `findings=<path to review-findings.md or gate-findings.md>` (format `docs/agent-handoffs.md` §6), or
-- `triage=<path to triage.md>` (format §7; only rows with `Healable: yes`).
+- `triage=<path to triage.json>` (script-built, `docs/agent-handoffs.md` §7; only the rows with `healable: true`, class `test-bug`, each with its `fixHint`).
 
 ## Inputs
 The findings or triage file; `docs/k6-conventions.md`; `k6-tests/<p>/lib/`, `scripts/<m>-*.js` and the slot file `scripts/slots/<m>.js`; for triage, `results/*.summary.json`; `artifacts/<p>/modules/<m>/k6/workload.json` (ground truth for options and thresholds), `k6/code-plan.json` and `api/discovered-endpoints.json`.

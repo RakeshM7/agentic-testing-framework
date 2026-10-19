@@ -86,6 +86,30 @@ test("report data counts what exists, from files, per module", () => {
   assert.equal(d.totals.k6Scripts, 2);
   assert.equal(d.totals.execution["playwright-ui"].failed, 1);
   assert.equal(d.totals.execution["playwright-ui"].modulesRun, 1);
+  assert.deepEqual(d.totals.triage, { byClass: {}, bugClusters: [] }, "no triage.json yet");
+  assert.equal(d.modules[0].triage["playwright-ui"], null);
+});
+
+test("report data carries the triage's class counts and product-bug clusters from triage.json (D-058)", () => {
+  const { root } = startRun();
+  const dir = "artifacts/acme/results/acme-run-1/contacts/playwright-ui";
+  put(root, `${dir}/triage.json`, JSON.stringify({
+    summary: { rows: 3, open: 0, clusters: 2, byClass: { "product-bug": 1, flaky: 1, "locator-drift": 1 } },
+    rows: [
+      { key: "ui:TC-contacts-1", class: "product-bug", cluster: "BUG-contacts-1", healable: false },
+      { key: "ui:TC-contacts-2", class: "flaky", cluster: "BUG-contacts-2", healable: false },
+      { key: "ui:TC-contacts-3", class: "locator-drift", healable: true },
+    ],
+    clusters: [{ id: "BUG-contacts-1", signature: "s1", rows: 1, ids: ["TC-contacts-1"] }, { id: "BUG-contacts-2", signature: "s2", rows: 1, ids: ["TC-contacts-2"] }],
+    verified: { results: null, knownIssues: null, overlay: null },
+  }));
+  put(root, `${dir}/triage-overlay.json`, JSON.stringify({ bugs: [{ cluster: "BUG-contacts-1", title: "Save loses the phone", severity: "major", evidence: ["e.png"] }] }));
+  const d = collect("acme", { root });
+  const t = d.modules[0].triage["playwright-ui"];
+  assert.deepEqual([t.healable, t.byClass["locator-drift"]], [1, 1]);
+  assert.equal(t.verified, false, "the overlay changed after the stamp (written here after it)");
+  assert.deepEqual(d.totals.triage.byClass, { "product-bug": 1, flaky: 1, "locator-drift": 1 });
+  assert.deepEqual(d.totals.triage.bugClusters.map((c) => [c.module, c.framework, c.id, c.title, c.severity]), [["contacts", "playwright-ui", "BUG-contacts-1", "Save loses the phone", "major"]], "only product-bug clusters, with their drafts");
 });
 
 test("init creates a header-only clarifications.csv per module", () => {

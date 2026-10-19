@@ -5,7 +5,7 @@ Status: **implemented** — all 34 agents, written once in `agents/` and generat
 ## Principles (decided)
 1. One job per agent, with declared inputs and outputs; small prompts; paths in, never pasted content.
 2. **Hierarchy via native nested subagents** (Claude Code: default; VS Code Copilot Chat: `chat.subagents.allowInvocationsFromSubagents`): layer 0 main orchestrator → layer 1 domain orchestrators and product-level workers → layer 2 workers. Workers get no subagent tool.
-3. **No agent talks to a sibling.** Every hand-off goes through the parent orchestrator, using files as the medium (e.g. triager writes `triage.md`; the orchestrator then starts the fixer with that path).
+3. **No agent talks to a sibling.** Every hand-off goes through the parent orchestrator, using files as the medium (e.g. the triager's `triage.mjs` writes `triage.json`; the orchestrator then starts the fixer with that path).
 4. Permissions per agent live in `config/permissions.yaml` and are enforced in code (generated tool lists and subagent allow-lists per platform; the guard keyed on the calling agent, which each host adapter learns from a trusted source; write allow-list), not only in prompts.
 5. Single writer per file/cell wherever possible; agents never overwrite human-entered answers.
 6. Concurrency is **sequential by default**, configurable in the run-config.
@@ -45,7 +45,7 @@ artifacts/<product>/
     orchestration/<domain>-<module>.json   # loop counters (review/heal rounds, max 3 each)
     config.resolved.json
     history/<run-id>.json            # compact summary per finished run
-  results/<run-id>/                  # per-run archive (still no top-level run-id dir): <module>/{testcases,playwright-ui,playwright-api,k6}/{review-findings.md, results.json, triage.md}, report/
+  results/<run-id>/                  # per-run archive (still no top-level run-id dir): <module>/{testcases,playwright-ui,playwright-api,k6}/{review-findings.md, results.json, triage.json, triage-overlay.json, triage.md}, report/
 playwright-tests/<product>/          # ONE repo: tests/ui + tests/api (plus pages/, clients/, helpers/{ui,api}/, fixtures/{ui,api}/, config/api/)
 k6-tests/<product>/                  # lib/, scripts/, results/
 ```
@@ -78,7 +78,7 @@ main orchestrator:
                  API: api-code.mjs build generates the clients and one test per plan scenario; the writers fill
                  the overlays and slots and end with api-code.mjs check, whose stamp the step needs, D-056)
         review loop: gate script -> (fail: gate findings -> fixer) | reviewer -> findings -> fixer (max N rounds)
-        run loop:    runner-triager -> triage.md -> fixer -> re-run (max N rounds)
+        run loop:    runner-triager -> [script] triage.json, verified by triage.mjs check -> fixer on healable rows -> re-run (max N rounds)
         every domain orchestrator follows `orchestration.mjs next`, which holds these flows (scripts/lib/domain-flows.mjs)
         API additionally starts with api-discoverer -> api-test-planner
   7 k6-orchestrator (needs the API plan): workload-designer (cited overlay -> workload.mjs build + check, run=<run-id>) -> lib-writer (cited overlay -> foundation.mjs render + check; skipped while verified) -> script-writer (slots -> k6-code.mjs build + check) -> review loop -> run/fix loop

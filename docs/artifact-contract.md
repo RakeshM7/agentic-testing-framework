@@ -31,6 +31,8 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     k6/                               # workload.mjs (D-057): workload.json workload-coverage.json workload-registry.json;
                                       # workload-overlay.json is the k6-workload-designer's
                                       # k6-code.mjs: code-plan.json parked.json legacy/ -- all script-owned
+    triage/                           # triage.mjs (D-058): triage-registry.json (the BUG ids), script-owned
+  known-issues.json                   # HUMAN-edited (schema known-issues): signatures of defects already tracked; no agent writes it
   foundation/                         # foundation.mjs (D-054): <side>-manifest.json (rendered files, verified stamp);
                                       # <side>-overlay.json for side repo|ui|api|k6 is that side's agent's
   state/
@@ -275,6 +277,22 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 - **Managed.** The script-owned files above are in `config/permissions.yaml` `managed_files`: during a run the guard denies every caller a direct write.
 - **Verified.** A passing `workload.mjs check` stamps `workload-coverage.json`; a passing `k6-code.mjs check` stamps `code-plan.json` (over the workload, its coverage, the catalogue, the plan, the k6 overlay, the slots and every script). The k6 flow's `workload` and `scripts` steps refuse a missing or stale stamp, and the k6 gate requires the scripts' stamp to be current on every review round.
 
+## Triage
+
+`node scripts/triage.mjs prepare|build|check|paths <product> <module> --domain ui|api|k6` (`scripts/lib/triage.mjs`, D-058) triages a run's results. The format, the classes and the rules are in [`agent-handoffs.md`](agent-handoffs.md) §7.
+
+| File | Owner |
+|---|---|
+| `results/<run>/<m>/<framework>/results.json` (schema `results`), with ids, attempts and `passedOnRetry` | the script (results.mjs) |
+| `results/<run>/<m>/<framework>/triage.json` (schema `triage`) and the rendered `triage.md` | the script (triage.mjs) |
+| `results/<run>/<m>/<framework>/triage-overlay.json` (schema `triage-overlay`): classes, fix hints, bug drafts | the runner-triager |
+| `modules/<m>/triage/triage-registry.json`: the stable `BUG-<m>-<n>` ids, keyed by domain and signature | the script (triage.mjs) |
+| `known-issues.json` (schema `known-issues`) | a human only |
+
+- **`prepare`** clears the module's stale output before a run: k6 `results/<m>-*.{summary,created,untracked}.json` (another module's files, even of a longer name, are left alone) and the module's `test-results/<side>/<m>/` and `<m>-report.json` (the run passes `--output=test-results/<side>/<m>`, so other modules' evidence stays). It removes only paths the triager may already write.
+- **Managed.** `results.json`, `triage.json`, `triage.md`, the registry and `known-issues.json` are in `managed_files`: no agent writes them.
+- **Verified.** A passing `check` stamps `triage.json` (over the results, the overlay and `known-issues.json`). `orchestration.mjs next` fails the run step while the stamp is missing or stale, so a heal round never starts from an unverified triage. `report-data.mjs` carries the class counts and the product-bug clusters.
+
 ## Safety: mode × permissions, enforced in code
 
 - **Mode** — `authorizations.mode` → `state/run.json`. `readonly` caps every agent at read (browser/http) and none (load), whatever the permissions file says; `full-run` applies `config/permissions.yaml` as written, and gives every agent that has browser access (`read` or `mutate`) the full browser. `AUTHORIZATIONS_MODE=readonly` in the environment can downgrade; nothing can upgrade.
@@ -293,4 +311,4 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest,ui-code-plan,ui-code-coverage,ui-code-parked,api-code-plan,api-code-coverage,api-code-parked,api-code-client-overlay,api-code-tests-overlay,workload,workload-coverage,workload-overlay,k6-code-plan,k6-code-parked}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest,ui-code-plan,ui-code-coverage,ui-code-parked,api-code-plan,api-code-coverage,api-code-parked,api-code-client-overlay,api-code-tests-overlay,workload,workload-coverage,workload-overlay,k6-code-plan,k6-code-parked,triage,triage-overlay,known-issues}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.

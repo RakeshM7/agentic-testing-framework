@@ -207,22 +207,21 @@ export function sizing(peakRps, expectedIterationS) {
 }
 
 // ---------- results -> plan scenarios -> endpoints ----------
-const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-// A generated API test's title carries exactly one API-<m>-<n> (D-056). -> {byScenario: Map(id -> passed|failed|skipped),
-// unmapped: [title]} (no id, several ids, or an id the plan does not have).
+// A generated API test's results item carries its plan scenario id (results.mjs scenarioId, parsed from the literal title,
+// D-056/D-058). -> {byScenario: Map(id -> passed|failed|skipped), unmapped: [title]} (no scenarioId, an id of another
+// module, or an id the plan does not have): conservative, never guessed from the title.
 export function mapResults(results, module, planIds) {
-  const re = new RegExp(`(?<![A-Za-z0-9-])API-${escRe(module)}-(\\d+)(?![0-9])`, "g");
   const byScenario = new Map();
   const unmapped = [];
   for (const it of results?.items ?? []) {
-    const ids = [...new Set([...String(it.title ?? "").matchAll(re)].map((m) => `API-${module}-${m[1]}`))];
-    if (ids.length !== 1 || !planIds.has(ids[0])) {
+    const id = it.scenarioId;
+    if (typeof id !== "string" || !id.startsWith(`API-${module}-`) || !planIds.has(id)) {
       unmapped.push(it.title);
       continue;
     }
     const st = it.status === "failed" || it.status === "flaky" ? "failed" : it.status === "passed" ? "passed" : "skipped";
-    const before = byScenario.get(ids[0]);
-    byScenario.set(ids[0], before === "failed" || st === "failed" ? "failed" : before === "passed" || st === "passed" ? "passed" : "skipped");
+    const before = byScenario.get(id);
+    byScenario.set(id, before === "failed" || st === "failed" ? "failed" : before === "passed" || st === "passed" ? "passed" : "skipped");
   }
   return { byScenario, unmapped };
 }
@@ -434,7 +433,7 @@ export function compute(wp, { module, cfg, mode, runId, cases = new Map(), regis
   const { byScenario, unmapped } = mapResults(results, module, planIds);
   if (!results) notes.push(`no playwright-api results.json for run ${runId}: no endpoint has passing functional evidence`);
   else if (results.status === "not-run") notes.push(`the playwright-api tests of run ${runId} did not run: ${results.reason ?? "no reason recorded"}`);
-  if (unmapped.length) notes.push(`${unmapped.length} playwright-api result(s) name no single plan scenario and were not mapped (G8 adds explicit ids)`);
+  if (unmapped.length) notes.push(`${unmapped.length} playwright-api result(s) name no single plan scenario and were not mapped (no scenarioId in results.json: record them with results.mjs)`);
   const scenariosOf = new Map(catalogue.map((e) => [e.id, []]));
   for (const s of plan) for (const id of touches(s)) scenariosOf.get(id)?.push(s);
 

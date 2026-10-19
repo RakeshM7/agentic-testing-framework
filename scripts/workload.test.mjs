@@ -39,7 +39,7 @@ const PLAN = () => [
 const RESULTS = (over = {}) => ({
   framework: "playwright-api", module: "contacts", runId: "acme-run-1", mode: "readonly", recordedAt: "2026-10-19T00:00:00Z", status: "ran",
   totals: { total: 0, passed: 0, failed: 0, flaky: 0, skipped: 0 }, durationMs: 0,
-  items: [1, 2, 3, 4, 5, 7, 8, 9, 10].map((n) => ({ title: `contacts.spec.ts > API-contacts-${n} scenario ${n} @p2 @functional`, status: over[n] ?? (n === 5 ? "failed" : "passed") })),
+  items: [1, 2, 3, 4, 5, 7, 8, 9, 10].map((n) => ({ title: `contacts.spec.ts > API-contacts-${n} scenario ${n} @p2 @functional`, scenarioId: `API-contacts-${n}`, status: over[n] ?? (n === 5 ? "failed" : "passed") })),
 });
 
 function setup({ mode = "readonly", k6, catalogue = CATALOGUE(), plan = PLAN(), results = RESULTS(), overlay } = {}) {
@@ -114,19 +114,18 @@ test("the ledger: every catalogue endpoint loaded, excluded with a reason, or de
   assert.equal(workloadScenarios(n.wp.workload).length, 0);
 });
 
-test("results map to plan scenarios by the one API id in the title; anything else is unmapped", () => {
+test("results map to plan scenarios by the explicit scenarioId; an item without a valid one is unmapped", () => {
   const ids = new Set(["API-contacts-1", "API-contacts-12"]);
   const r = mapResults({ items: [
-    { title: "a > API-contacts-1 list @p1", status: "passed" },
-    { title: "API-contacts-12 x", status: "flaky" },
-    { title: "API-contacts-1 and API-contacts-12", status: "failed" },
-    { title: "API-contacts-sub-1 other module", status: "failed" },
-    { title: "XAPI-contacts-1 lookalike", status: "failed" },
-    { title: "API-contacts-99 unknown", status: "failed" },
+    { title: "a > API-contacts-1 list @p1", scenarioId: "API-contacts-1", status: "passed" },
+    { title: "API-contacts-12 x", scenarioId: "API-contacts-12", status: "flaky" },
+    { title: "API-contacts-1 title id only", status: "failed" },
+    { title: "other module", scenarioId: "API-sub-1", status: "failed" },
+    { title: "API-contacts-99 unknown", scenarioId: "API-contacts-99", status: "failed" },
   ] }, "contacts", ids);
   assert.equal(r.byScenario.get("API-contacts-1"), "passed");
   assert.equal(r.byScenario.get("API-contacts-12"), "failed"); // flaky counts as failed
-  assert.equal(r.unmapped.length, 4);
+  assert.equal(r.unmapped.length, 3);
 });
 
 test("stable K6 ids: keyed by endpoint key + type, never shifted by input changes", async () => {
@@ -391,7 +390,7 @@ const FLOW_CATALOGUE = () => [
   ep(16, "DELETE", "/api/v1/contacts/{id}/notes/{noteId}", { resource: "notes" }),
 ];
 const FLOW_PLAN = () => [...PLAN(), ...[10, 11, 12, 13, 14, 15, 16].map((n) => sc(n + 10, n))];
-const FLOW_RESULTS = () => ({ ...RESULTS(), items: FLOW_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, status: "passed" })) });
+const FLOW_RESULTS = () => ({ ...RESULTS(), items: FLOW_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, scenarioId: s.id, status: "passed" })) });
 const B = (from, pointer = "/id", param = "id") => ({ param, from, pointer });
 const flowSetup = (steps, extra = {}) => setup({ mode: "full-run", catalogue: FLOW_CATALOGUE(), plan: FLOW_PLAN(), results: FLOW_RESULTS(), overlay: { flows: [{ name: "f", steps, citations: [CITE] }] }, ...extra });
 const E = (n, bind) => ({ endpoint: `EP-contacts-${n}`, ...(bind ? { bind } : {}) });
@@ -505,7 +504,7 @@ const ACTION_CATALOGUE = () => [
   { ...ep(18, "POST", "/api/v1/contacts/{id}/archive", { crud: "action" }), queryLike: { evidence: "overlay: archive is a filter", source: "overlay" } },
 ];
 const ACTION_PLAN = () => [...FLOW_PLAN(), sc(27, 17), sc(28, 18)];
-const actionSetup = (steps, extra = {}) => flowSetup(steps, { catalogue: ACTION_CATALOGUE(), plan: ACTION_PLAN(), results: { ...RESULTS(), items: ACTION_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, status: "passed" })) }, ...extra });
+const actionSetup = (steps, extra = {}) => flowSetup(steps, { catalogue: ACTION_CATALOGUE(), plan: ACTION_PLAN(), results: { ...RESULTS(), items: ACTION_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, scenarioId: s.id, status: "passed" })) }, ...extra });
 
 test("N-1: only a DELETE on the created entity's item path is the flow's cleanup; a sub-path DELETE is a write step", async () => {
   const s = actionSetup([E(2), E(9, B(0)), E(17, B(0))]);

@@ -25,7 +25,7 @@ import { gate } from "./gate.mjs";
 import { csvPath, isAnswered, isAuthoritative, readRecord, readRows, record, renderSummary } from "./lib/clarifications.mjs";
 import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
 import { withFileLock, writeAtomic } from "./lib/csv.mjs";
-import { FLOWS, healableRows, verdictOf } from "./lib/domain-flows.mjs";
+import { FLOWS, healableRows, runTriage, verdictOf } from "./lib/domain-flows.mjs";
 
 export const DOMAINS = ["clarifications", "testcases", "playwright-ui", "playwright-api", "k6"];
 const LIMIT_KEY = { review: "review_rounds", heal: "heal_rounds" };
@@ -249,7 +249,7 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
 
   // ---- run loop: runner-triager -> fixer on healable rows, bounded by limits.heal_rounds ---------------------------
   const RN = flow.run;
-  const triage = path.join(p.results(runId), module, RN.framework, "triage.md");
+  const triage = runTriage(ctx, RN).file; // triage.json (D-058)
   if (SETTLED.includes(S().steps.run?.status)) return finish(S().steps.run.status === "done" ? "complete" : "heal-limit");
   const h = S().rounds.heal;
   if (h > 0) {
@@ -261,6 +261,12 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
   const rs = S().steps[`run-${k}`]?.status;
   if (rs === "failed") return failed(`run-${k}`);
   if (rs !== "done") return spawn(`run-${k}`, RN.runner, { run: runId, mode, round: k });
+  // the end, or a heal round, rests on a triage that passed triage.mjs check against these results (D-058)
+  const unverified = runTriage(ctx, RN).unverified;
+  if (unverified) {
+    mark(`run-${k}`, "fail", unverified);
+    return failed(`run-${k}`);
+  }
   const healable = healableRows(triage);
   if (!healable) {
     mark("run", "done", `nothing healable after run ${k}`);

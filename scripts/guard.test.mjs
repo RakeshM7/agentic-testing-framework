@@ -433,6 +433,40 @@ test("nobody writes the k6 workload or the generated k6 code directly, in any mo
   assert.equal(ok("k6-runner-triager", "k6-tests/acme/results/contacts-smoke-1.summary.json"), true);
 });
 
+test("the runner-triagers write only their triage overlay; results, triage, the BUG registry and known-issues are nobody's to write (D-058)", () => {
+  const agents = Object.keys(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents);
+  const managed = [
+    ...["playwright-ui", "playwright-api", "k6"].flatMap((fw) => ["results.json", "triage.json", "triage.md"].map((f) => `artifacts/acme/results/acme-run-1/contacts/${fw}/${f}`)),
+    "artifacts/acme/modules/contacts/triage/triage-registry.json",
+    "artifacts/acme/known-issues.json",
+  ];
+  for (const { root } of [FULL, RO])
+    for (const agent of [...agents, undefined])
+      for (const f of managed) {
+        const v = checkTool(call(agent, "Write", { file_path: path.join(root, f) }), root, {});
+        assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${f}`);
+        assert.equal(v.rule, "managed-file", `${agent}: ${f}`);
+      }
+  const ok = (agent, rel) => allowed(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, rel) }));
+  const R = "artifacts/acme/results/acme-run-1/contacts";
+  for (const [agent, fw] of [["pw-ui-test-runner-triager", "playwright-ui"], ["pw-api-test-runner-triager", "playwright-api"], ["k6-runner-triager", "k6"]]) {
+    assert.equal(ok(agent, `${R}/${fw}/triage-overlay.json`), true, `${agent} writes its overlay`);
+    for (const other of ["playwright-ui", "playwright-api", "k6"].filter((x) => x !== fw)) assert.equal(ok(agent, `${R}/${other}/triage-overlay.json`), false, `${agent} may not write ${other}'s overlay`);
+  }
+  assert.equal(ok("k6-runner-triager", "k6-tests/acme/results/contacts-smoke-1.summary.json"), true, "the k6 summaries stay the runner's");
+  assert.equal(ok("pw-ui-test-runner-triager", "playwright-tests/acme/test-results/ui/contacts-report.json"), true);
+  assert.equal(ok("pw-ui-test-runner-triager", "playwright-tests/acme/test-results/api/contacts-report.json"), false);
+  assert.equal(ok("pw-ui-fixer", `${R}/playwright-ui/triage-overlay.json`), false, "no fixer writes a triage overlay");
+  const perms = JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents;
+  for (const a of ["pw-ui-test-runner-triager", "pw-api-test-runner-triager", "k6-runner-triager"]) {
+    for (const cmd of ["prepare", "build", "check", "paths"]) assert.ok(perms[a].shell_allow.includes(`node scripts/triage.mjs ${cmd} *`), `${a}: triage.mjs ${cmd}`);
+    assert.ok(perms[a].filesystem.read.some((g) => g.endsWith("known-issues.json")), `${a} reads the known issues`);
+    assert.ok(!perms[a].filesystem.write.some((g) => /known-issues|triage\.(json|md)|results\.json/.test(g)), `${a} writes none of them`);
+  }
+  // the three fixers read the script-built triage
+  for (const a of ["pw-ui-fixer", "pw-api-fixer", "k6-fixer"]) assert.ok(perms[a].filesystem.read.some((g) => g.endsWith("/triage.json")), `${a} reads triage.json`);
+});
+
 test("testcase-writer runs testcases.mjs build/check/paths only and writes only its cases overlay", () => {
   const run = (cmd) => allowed(FULL.root, sh("testcase-writer", cmd));
   for (const cmd of ["build acme contacts", "check acme contacts", "paths acme contacts"]) assert.equal(run(`node scripts/testcases.mjs ${cmd}`), true, cmd);

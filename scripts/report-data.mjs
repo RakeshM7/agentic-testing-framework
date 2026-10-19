@@ -11,6 +11,8 @@
 // Playwright scripts      *.spec.ts under playwright-tests/<product>/tests/{ui,api}/<module>/
 // k6 scripts              *.js under k6-tests/<product>/scripts/ named <module>-*.js
 // execution results       results/<run-id>/<module>/<framework>/results.json
+// triage                  results/<run-id>/<module>/<framework>/triage.json (script-built, D-058): class counts and the
+//                         product-bug clusters with their bug drafts; G11 renders them
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,7 +20,9 @@ import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
 import { csvPath, status as csvStatus } from "./lib/clarifications.mjs";
 import { FRAMEWORKS } from "./results.mjs";
 import { approvalSummary } from "./lib/testcases.mjs";
+import { triagePaths, triageUnverified } from "./lib/triage.mjs";
 
+const TRIAGE_DOMAIN = { "playwright-ui": "ui", "playwright-api": "api", k6: "k6" };
 const TOTAL_RE = /^Total test cases:\s*(\d+)\s*$/im;
 
 function walk(dir, pred) {
@@ -33,6 +37,37 @@ export function testcaseTotal(summaryFile) {
   if (!existsSync(summaryFile)) return null;
   const m = TOTAL_RE.exec(readFileSync(summaryFile, "utf8"));
   return m ? Number(m[1]) : null;
+}
+
+// Class counts and product-bug clusters of one framework's triage.json, or null when there is none. `verified` says
+// whether triage.mjs check passed against the results on disk.
+export function triageSummary(productDir, module, runId, fw) {
+  const tp = triagePaths(productDir, module, runId, TRIAGE_DOMAIN[fw]);
+  if (!existsSync(tp.triage)) return null;
+  let t;
+  try {
+    t = loadJson(tp.triage);
+  } catch {
+    return null;
+  }
+  let drafts = [];
+  try {
+    drafts = existsSync(tp.overlay) ? (loadJson(tp.overlay).bugs ?? []) : [];
+  } catch {}
+  const bugClusters = (t.clusters ?? [])
+    .filter((c) => t.rows.some((r) => r.cluster === c.id && r.class === "product-bug"))
+    .map((c) => {
+      const d = drafts.find((b) => b.cluster === c.id);
+      return { id: c.id, ids: c.ids, signature: c.signature, title: d?.title ?? null, severity: d?.severity ?? null, evidence: d?.evidence ?? [] };
+    });
+  return {
+    verified: triageUnverified(tp) === null,
+    rows: t.summary?.rows ?? t.rows.length,
+    open: t.summary?.open ?? 0,
+    byClass: t.summary?.byClass ?? {},
+    healable: t.rows.filter((r) => r.healable).length,
+    bugClusters,
+  };
 }
 
 export function collect(product, { root = repoRoot } = {}) {
@@ -52,6 +87,7 @@ export function collect(product, { root = repoRoot } = {}) {
         return [fw, existsSync(f) ? (({ status, reason, totals, durationMs }) => ({ status, reason, totals, durationMs }))(loadJson(f)) : null];
       })
     );
+    const triage = Object.fromEntries(FRAMEWORKS.map((fw) => [fw, triageSummary(p.productDir, m, run.runId, fw)]));
     return {
       module: m,
       explored,
@@ -62,6 +98,7 @@ export function collect(product, { root = repoRoot } = {}) {
       playwrightApiSpecs: walk(path.join(p.pwProject, "tests", "api", m), (n) => n.endsWith(".spec.ts")).length,
       k6Scripts: walk(path.join(p.k6Project, "scripts"), (n) => n.startsWith(`${m}-`) && n.endsWith(".js")).length,
       results,
+      triage,
     };
   });
   const sum = (k) => perModule.reduce((n, r) => n + (r[k] ?? 0), 0);
@@ -78,6 +115,14 @@ export function collect(product, { root = repoRoot } = {}) {
       return [fw, t];
     })
   );
+  const classCounts = {};
+  const bugClusters = [];
+  for (const r of perModule)
+    for (const [fw, t] of Object.entries(r.triage)) {
+      if (!t) continue;
+      for (const [cls, n] of Object.entries(t.byClass)) classCounts[cls] = (classCounts[cls] ?? 0) + n;
+      for (const c of t.bugClusters) bugClusters.push({ module: r.module, framework: fw, ...c });
+    }
   return {
     product,
     runId: run.runId,
@@ -94,6 +139,7 @@ export function collect(product, { root = repoRoot } = {}) {
       playwrightApiSpecs: sum("playwrightApiSpecs"),
       k6Scripts: sum("k6Scripts"),
       execution: fwTotals,
+      triage: { byClass: classCounts, bugClusters },
     },
     modules: perModule,
   };

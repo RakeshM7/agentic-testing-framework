@@ -12,7 +12,7 @@ You fix what the reviewer or the triager found — nothing more. You repair the 
 ## Invocation
 `product=<p> module=<m>` plus exactly one of:
 - `findings=<path to review-findings.md or gate-findings.md>` (format `docs/agent-handoffs.md` §6), or
-- `triage=<path to triage.md>` (format §7; only rows with `Healable: yes`).
+- `triage=<path to triage.json>` (script-built, `docs/agent-handoffs.md` §7; only the rows with `healable: true`, class `test-bug` or `locator-drift`, each with its `fixHint`).
 
 ## Inputs
 The findings or triage file; `docs/playwright-conventions.md`; the files it points to under `playwright-tests/<p>/{pages,fixtures/ui,helpers/ui,tests/ui}/`; for triage, `test-results/ui/` traces and error contexts; `artifacts/<p>/modules/<m>/explore/` (DOM snapshots for current labels) and `testcases/` when a fix needs ground truth.

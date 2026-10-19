@@ -295,15 +295,20 @@ Severity `blocker | major | minor`. `Verdict: pass` exactly when there is no blo
 
 ## 7. Triage (every runner-triager → its domain orchestrator → fixer)
 
-`results/<run>/<m>/<framework>/triage.md`:
+Script-built (D-058): `node scripts/triage.mjs prepare|build|check|paths <p> <m> --domain ui|api|k6`. Files in `results/<run>/<m>/<framework>/`:
 
-```
-# Triage -- <framework> / <m> -- heal round <n>
-Run: <command>   Totals: <passed>/<total> passed, <failed> failed, <flaky> flaky, <skipped> skipped
-| Test | File | Classification | Healable | Evidence | Suggested action |
-|---|---|---|---|---|---|
-```
-Classification: `test-bug` (wrong selector/assertion/wait/data in the test) · `flaky` (passes on retry, timing) · `data` (test data conflict) · `product-bug` (the product contradicts a confirmed clarification or test case) · `environment` (network, auth expiry, target down) · `blocked-by-mode` (skipped because the run is readonly). `Healable: yes` only for `test-bug`, `flaky`, `data`. Product bugs are reported, never "fixed" by changing the expectation.
+| File | Owner | Content |
+|---|---|---|
+| `results.json` | `results.mjs` | Items with ids: UI `tcId`; API `scenarioId` and `tcIds`; k6 `k6Id`; all: `attempts`, `passedOnRetry`, `project`, `frames`, `attachments`, `skipReason`, `smoke`. Playwright retries a failed test twice (`retries: 2`, `trace: 'on-first-retry'`); a failed k6 smoke is re-run once, as the summary `<script>.retry`. |
+| `triage.json` | `triage.mjs build` (schema `triage`) | One row per non-passed item, plus a row for each item the report never showed (a hidden `@mutates` test in a readonly run, an unapproved case or scenario, a k6 scenario of a readonly run). Row: `key`, `title`, `status`, ids, `attempts`, `error`, `signature`, `evidence`, `class`, `classSource` (`rule` or `agent`), `rule`, `reason`, `cite`, `healable`, `fixHint`, `expectation`, `knownIssue`, `cluster`. Also `summary`, `clusters` (`BUG-<m>-<n>`, signature, ids) and `notFailures`. `check` adds the `verified` stamp. |
+| `triage-overlay.json` | the runner-triager (schema `triage-overlay`) | `rows`: `{key, class, reason, cite?, healable?, fixHint?, evidence?, expectation?}` for every open row, and for an override of a rule's class (reason and `cite` required). `bugs`: one draft per product-bug cluster: `{cluster, title, steps, expected: {text, source}, actual: {quote}, evidence, affected, severity}`. |
+| `triage.md` | `triage.mjs build` | The rendered table (Test, File, Classification, Healable, Evidence, Suggested action), the classes, the clusters and the bug drafts, for humans and the report. No agent reads it for data. |
+| `artifacts/<p>/modules/<m>/triage/triage-registry.json` | `triage.mjs build` | The stable `BUG-<m>-<n>` ids, keyed `<domain>\|<signature>`. |
+| `artifacts/<p>/known-issues.json` | a human (schema `known-issues`) | `{issues: [{id, signature, title, reference, module?}]}`. A failure whose signature equals an entry's is `known-issue` by rule. No agent writes it. |
+
+Classes: `product-bug` · `test-bug` (healable) · `locator-drift` (healable) · `flaky` · `environment` · `blocked-by-mode` · `awaiting-approval` · `known-issue`. The script decides, in this order: `awaiting-approval`, `blocked-by-mode` (neither can be overridden), `flaky` (pass on retry; never a product bug), `known-issue`, `environment`, `locator-drift` (a UI smoke locator count of 0, or a timeout on a page-object locator), and the API class-only rule (an actual in the class is no failure, outside it a candidate `product-bug`). The agent classes every other row (skipped and parked items included) and judges a candidate. A `product-bug` row needs evidence that exists (a trace, screenshot or response capture) and an `expectation` source (`scenario:<API or K6 id>`, which for k6 needs a failed `slo:` threshold, `testcase:<TC id>`, `clarification:<id>` or `knowledge:<path>`). Healable only `test-bug` and `locator-drift`. Product bugs are reported, never "fixed" by changing the expectation.
+
+Signature: `errorClass | message (ids, UUIDs, hex and numbers erased, 200 chars) | first frame outside tests/ (no line) | step` (UI locator, API endpoint id, k6 failed metrics). `check` fails on an unclassified row, a product bug without evidence or expectation, a product-bug cluster without a draft (or a draft for none), an override without reason and citation, a triage that differs from a fresh build, or results changed since the build. The heal loop starts only from a verified triage.
 
 ## 8. Results (`runner-triagers` → report)
 

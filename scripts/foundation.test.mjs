@@ -66,7 +66,7 @@ test("render is deterministic: the same inputs give the same bytes, a re-render 
   assert.deepEqual(Object.keys(pkg.scripts), ["test:ui", "test:api", "typecheck", "list"]);
   // the fixed files the conventions require
   const config = read(pw(a.root, "playwright.config.ts"));
-  for (const p of ["setup-ui", "'ui'", "setup-api", "'api'", "grepInvert: fullRun ? undefined : /@mutates/", "fullyParallel: false", "retries: 1", "retain-on-failure", "reporter: 'list'"]) assert.ok(config.includes(p), p);
+  for (const p of ["setup-ui", "'ui'", "setup-api", "'api'", "grepInvert: fullRun ? undefined : /@mutates/", "fullyParallel: false", "retries: 2", "on-first-retry", "reporter: 'list'"]) assert.ok(config.includes(p), p);
   for (const n of ["BASE_URL=", "API_BASE_URL=", "STORAGE_STATE=", "ATF_MODE=", "ATF_PRODUCT=", "ATF_RUN_ID=", "ATF_REPO_ROOT="]) assert.match(read(pw(a.root, ".env.example")), new RegExp(`^${n}$`, "m"));
   for (const x of ["recordCreated", "owns", "recordDeleted"]) assert.match(read(pw(a.root, "utils/shared/ledger.ts")), new RegExp(`export function ${x}\\(`));
   assert.match(read(pw(a.root, "utils/shared/data.ts")), /export function uniqueName\(prefix: string\)/);
@@ -493,7 +493,7 @@ test("the gate: a freshly rendered foundation passes; drift between renders and 
   const ui = g("playwright-ui");
   assert.equal(ui.verdict, "pass", rules(ui).join("\n"));
   writeFileSync(pw(root, "fixtures/ui/auth.setup.ts"), read(pw(root, "fixtures/ui/auth.setup.ts")).replace("STORAGE_STATE;", "STORAGE_STATE ?? '';"));
-  writeFileSync(pw(root, "playwright.config.ts"), read(pw(root, "playwright.config.ts")).replace("retries: 1", "retries: 0"));
+  writeFileSync(pw(root, "playwright.config.ts"), read(pw(root, "playwright.config.ts")).replace("retries: 2", "retries: 0"));
   put(root, "playwright-tests/acme/fixtures/ui/index.ts", "import { test as base } from '@playwright/test';\nexport const test = base.extend({});\nexport { expect } from '@playwright/test';\n");
   assert.deepEqual(rules(g("playwright-ui")).sort(), ["blocker fixtures/ui/auth.setup.ts foundation", "blocker fixtures/ui/index.ts foundation", "blocker playwright.config.ts foundation"]);
   // k6: the rendered lib must not drift

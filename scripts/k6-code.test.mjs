@@ -41,7 +41,7 @@ const PLAN = () => [
 const RESULTS = () => ({
   framework: "playwright-api", module: "contacts", runId: "acme-run-1", mode: "readonly", recordedAt: "2026-10-19T00:00:00Z", status: "ran",
   totals: { total: 0, passed: 0, failed: 0, flaky: 0, skipped: 0 }, durationMs: 0,
-  items: [1, 2, 3, 4, 5, 7, 8, 9, 10].map((n) => ({ title: `contacts.spec.ts > API-contacts-${n} scenario ${n} @p2 @functional`, status: n === 5 ? "failed" : "passed" })),
+  items: [1, 2, 3, 4, 5, 7, 8, 9, 10].map((n) => ({ title: `contacts.spec.ts > API-contacts-${n} scenario ${n} @p2 @functional`, scenarioId: `API-contacts-${n}`, status: n === 5 ? "failed" : "passed" })),
 });
 const FLOW = { name: "contact-lifecycle", steps: [{ endpoint: "EP-contacts-2" }, { endpoint: "EP-contacts-3", bind: { param: "id", from: 0, pointer: "/id" } }, { endpoint: "EP-contacts-9", bind: { param: "id", from: 0, pointer: "/id" } }, { endpoint: "EP-contacts-4", bind: { param: "id", from: 0, pointer: "/id" } }], citations: [CITE] };
 const OVERLAY = {
@@ -535,7 +535,7 @@ const NESTED_CATALOGUE = () => [
   ep(16, "DELETE", "/api/v1/contacts/{id}/notes/{noteId}", { resource: "notes" }),
 ];
 const NESTED_PLAN = () => [...PLAN(), sc(24, 14), sc(25, 15, ok(200)), sc(26, 16, ok(204))];
-const NESTED_RESULTS = () => ({ ...RESULTS(), items: NESTED_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, status: s.id === "API-contacts-5" ? "failed" : "passed" })) });
+const NESTED_RESULTS = () => ({ ...RESULTS(), items: NESTED_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, scenarioId: s.id, status: s.id === "API-contacts-5" ? "failed" : "passed" })) });
 const NB = (from, param = "id") => ({ param, from, pointer: "/id" });
 const NESTED_FLOW = { name: "notes", steps: [{ endpoint: "EP-contacts-2" }, { endpoint: "EP-contacts-14", bind: NB(0) }, { endpoint: "EP-contacts-15", bind: [NB(0), NB(1, "noteId")] }, { endpoint: "EP-contacts-16", bind: [NB(0), NB(1, "noteId")] }, { endpoint: "EP-contacts-4", bind: NB(0) }], citations: [CITE] };
 const nestedSetup = () => setup({ catalogue: NESTED_CATALOGUE(), plan: NESTED_PLAN(), results: NESTED_RESULTS(), overlay: { flows: [NESTED_FLOW] } });
@@ -620,7 +620,7 @@ const ACTION_CATALOGUE = () => [
   { ...ep(18, "POST", "/api/v1/contacts/{id}/archive", { crud: "action" }), queryLike: { evidence: "overlay: archive is a filter", source: "overlay" } },
 ];
 const ACTION_PLAN = () => [...PLAN(), sc(27, 17, ok(204)), sc(28, 18, ok(200))];
-const ACTION_RESULTS = () => ({ ...RESULTS(), items: ACTION_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, status: s.id === "API-contacts-5" ? "failed" : "passed" })) });
+const ACTION_RESULTS = () => ({ ...RESULTS(), items: ACTION_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, scenarioId: s.id, status: s.id === "API-contacts-5" ? "failed" : "passed" })) });
 const actionSetup = (steps) => setup({ catalogue: ACTION_CATALOGUE(), plan: ACTION_PLAN(), results: ACTION_RESULTS(), overlay: { flows: [{ name: "assign", steps, citations: [CITE] }] } });
 
 test("N-1: a DELETE on an action sub-path is a write, never the cleanup: no trackDeleted, the entity stays a leftover", async () => {

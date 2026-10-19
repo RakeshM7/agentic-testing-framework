@@ -7,7 +7,7 @@ lib/                 k6-lib-writer      config.js, auth.js, checks.js, data.js, 
 lib/ext/             k6-lib-writer      hand-written additions for missing exports
 scripts/<m>-*.js     scripts/k6-code.mjs  one generated script per workload scenario (K6-<m>-<n>), never edited
 scripts/slots/<m>.js k6-script-writer   the slots of the module's scripts: data, path, query, body, checks
-results/             k6-runner-triager  <script>.summary.json, <script>.created.json (git-ignored)
+results/             k6-runner-triager  <script>.summary.json, <script>.created.json, <script>.retry.summary.json, <script>.retry.created.json and <script>.retry.untracked.json (the smoke re-run; its leftovers go to the ledger too) (git-ignored)
 README.md            k6-lib-writer      how to run, env vars (rendered)
 ```
 
@@ -64,7 +64,10 @@ The k6-script-writer writes only the slot bodies of `scripts/slots/<m>.js` (`// 
 ## Running (k6-runner-triager only)
 
 ```
+node <repo>/scripts/triage.mjs prepare <p> <m> --domain k6          # clears the module's stale summaries
 ATF_MODE=full-run BASE_URL=<target> K6_ALLOWED_HOSTS=<target host> K6_SCRIPT=<m>-<scenario> k6 run scripts/<m>-<scenario>.js
 node <repo>/scripts/results.mjs k6 <p> <m> k6-tests/<p>/results/<m>-*.summary.json
 ```
+A failed smoke is re-run once with `K6_SCRIPT=<script>.retry` (summary `<script>.retry.summary.json`, which the `results.mjs` glob picks up): passing on the re-run is `flaky` by rule; no other script is re-run (D-058). The run is then triaged with `triage.mjs build` and `check` (`docs/agent-handoffs.md` §7): a failure against an `assumed` threshold is not a product bug by itself, and `results.mjs` maps results to workload scenarios by their `K6-` id.
+
 Readonly run: `node <repo>/scripts/results.mjs not-run <p> <m> k6 --reason "readonly run: load tests only run in full-run"`.

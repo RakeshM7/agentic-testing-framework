@@ -48,7 +48,7 @@ const KEEP = {
   k6: ["scripts/.gitkeep", "results/.gitkeep"],
 };
 const DEFAULTS = {
-  repo: { testTimeoutMs: 30000, expectTimeoutMs: 5000, retries: 1, workers: null, fullyParallel: false },
+  repo: { testTimeoutMs: 30000, expectTimeoutMs: 5000, retries: 2, workers: null, fullyParallel: false },
   ui: { actionTimeoutMs: 15000, navigationTimeoutMs: 30000, viewport: { width: 1280, height: 720 } },
   api: { timeoutMs: 30000, defaultHeaders: { Accept: "application/json" } },
   k6: { defaultHeaders: { Accept: "application/json" } },

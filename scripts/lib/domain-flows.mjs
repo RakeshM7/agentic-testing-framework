@@ -9,6 +9,7 @@ import { foundationContext, foundationUnverified } from "./foundation.mjs";
 import { reviewResult, testcaseContext, testcaseTotals, testcasesUnverified } from "./testcases.mjs";
 import { noUiCases, uiCodeContext, uiCodeUnverified } from "./ui-code.mjs";
 import { k6CodeContext, k6CodeUnverified } from "./k6-code.mjs";
+import { triagePaths, triageUnverified } from "./triage.mjs";
 import { workloadPaths, workloadScenarios, workloadUnverified } from "./workload.mjs";
 
 const json = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null);
@@ -76,7 +77,7 @@ export const FLOWS = {
       { step: "tests", agent: "pw-ui-tests-writer", verify: (c) => uiCodeUnverified(ucCtx(c), "tests"), verifyOnce: true },
     ],
     review: { reviewer: "pw-ui-reviewer", fixer: "pw-ui-fixer" },
-    run: { runner: "pw-ui-test-runner-triager", fixer: "pw-ui-fixer", framework: "playwright-ui" },
+    run: { runner: "pw-ui-test-runner-triager", fixer: "pw-ui-fixer", framework: "playwright-ui", triageDomain: "ui" },
   },
   "playwright-api": {
     build: [
@@ -89,7 +90,7 @@ export const FLOWS = {
       { step: "tests", agent: "pw-api-tests-writer", verify: (c) => apiCodeUnverified(acCtx(c), "tests"), verifyOnce: true },
     ],
     review: { reviewer: "pw-api-reviewer", fixer: "pw-api-fixer" },
-    run: { runner: "pw-api-test-runner-triager", fixer: "pw-api-fixer", framework: "playwright-api" },
+    run: { runner: "pw-api-test-runner-triager", fixer: "pw-api-fixer", framework: "playwright-api", triageDomain: "api" },
   },
   k6: {
     build: [
@@ -99,7 +100,7 @@ export const FLOWS = {
       { step: "scripts", agent: "k6-script-writer", verify: (c) => k6CodeUnverified(kcCtx(c)), verifyOnce: true },
     ],
     review: { reviewer: "k6-reviewer", fixer: "k6-fixer" },
-    run: { runner: "k6-runner-triager", fixer: "k6-fixer", framework: "k6" },
+    run: { runner: "k6-runner-triager", fixer: "k6-fixer", framework: "k6", triageDomain: "k6" },
   },
 };
 
@@ -109,12 +110,19 @@ export function verdictOf(file) {
   return /^Verdict:\s*(pass|changes-required)\b/m.exec(readFileSync(file, "utf8"))?.[1] ?? null;
 }
 
-// Rows of a triage table (docs/agent-handoffs.md §7) whose Healable column is yes.
+// The run loop's triage (D-058): triage.json's path and why it cannot be trusted (null when triage.mjs check's verified
+// stamp is current). A heal round never starts from an unverified triage.
+export function runTriage(c, run) {
+  const tp = triagePaths(c.productDir, c.module, c.run.runId, run.triageDomain);
+  return { file: tp.triage, unverified: triageUnverified(tp) };
+}
+
+// Healable rows of triage.json (docs/agent-handoffs.md §7): the test-bug and locator-drift rows marked healable.
 export function healableRows(file) {
   if (!existsSync(file)) return 0;
-  const lines = readFileSync(file, "utf8").split(/\r?\n/).filter((l) => l.trim().startsWith("|"));
-  const cells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim().toLowerCase());
-  const col = lines.length ? cells(lines[0]).indexOf("healable") : -1;
-  if (col < 0) return 0;
-  return lines.slice(1).filter((l) => !/^\|?\s*:?-{3,}/.test(l.trim()) && cells(l)[col] === "yes").length;
+  try {
+    return (JSON.parse(readFileSync(file, "utf8")).rows ?? []).filter((r) => r.healable === true).length;
+  } catch {
+    return 0;
+  }
 }
