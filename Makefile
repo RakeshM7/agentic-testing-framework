@@ -22,6 +22,9 @@ ifeq ($(OS),Windows_NT)
 GIT_SH := $(firstword $(wildcard $(subst \,/,$(LOCALAPPDATA))/Programs/Git/bin/sh.exe C:/PROGRA~1/Git/bin/sh.exe C:/Git/bin/sh.exe))
 ifneq ($(GIT_SH),)
 SHELL := $(GIT_SH)
+# make runs a simple recipe line (no shell metacharacters) directly, without the shell, so mkdir, sed and the rest
+# must also be on make's own PATH.
+export PATH := $(patsubst %/bin/sh.exe,%/usr/bin,$(GIT_SH));$(PATH)
 endif
 endif
 
