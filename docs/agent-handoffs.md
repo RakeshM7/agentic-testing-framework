@@ -250,9 +250,32 @@ What the fields mean:
 
 `api-test-plan.md` is rendered from these files. It sets out the scenarios, readonly versus full-run, documented-only endpoints, data left behind, blocked scenarios, class-only expectations, questions, drift and what is not covered.
 
-## 5. Load workload (`k6-workload-designer` → k6 writers)
+## 5. Load workload and k6 scripts (`workload.mjs` → `k6-workload-designer`; `k6-code.mjs` → `k6-script-writer` → reviewer, runner)
 
-`modules/<m>/k6/workload.json`: `[{id: "K6-<m>-<n>", name, endpoints: ["EP-..."], executor, profile: {vus?, duration?, stages?[], rate?}, thresholds: {"http_req_duration": ["p(95)<..."], "http_req_failed": ["rate<..."], ...}, mutates: bool, rationale}]`
+Script-built (D-057). The rules (test types, open model, sizing, caps, thresholds, writes) are in [`k6-conventions.md`](k6-conventions.md).
+
+**The workload**: `node scripts/workload.mjs build|check|paths <product> <m> [--run <run-id>]` (`scripts/lib/workload.mjs`) owns these files in `modules/<m>/k6/`; the designer writes only the overlay.
+- **`workload.json`** (schema `workload`): `{module, runId (the results run), mode, types[], notes[], scenarios[]}`. Each scenario:
+  - `id` (`K6-<m>-<n>`), `key` (`<endpoint key>|<type>`, `mix:<name>|<type>` or `flow:<name>|<type>`), `name` (`<type>-<n>`; its script is `<m>-<name>.js`), `type`, `kind` (`endpoint`, `mix` or `flow`), `endpoints[]`;
+  - `weights` and `citation` (mix); `flow` `{name, steps[{endpoint, method, path, bind?{param, from, pointer}}], citations}` and `cleanup` `{endpoint (the delete step, or null), trackLeftover: true}` (flow);
+  - `mutates`, and `queryLike: true` for a query-like POST;
+  - `executor`, `load` `{rps (peak), averageRps, capSource, rateLimitCapRps?, durationS}`, `sizing` `{peakRps, expectedIterationS, headroom, preAllocatedVUs, maxVUs}`;
+  - `thinkTimeMs`, `thinkTimeCitation?`, `data[]` `{target, need, citation}`;
+  - `thresholds[]` `{metric, endpoint?, stat, limit, expr, source, assumed, abortOnFail?}`;
+  - `options`: the exact k6 object `{scenarios: {<name>: …}, thresholds: {<metric>: [expr | {threshold, abortOnFail}]}}`, which the script copies verbatim.
+- **`workload-coverage.json`** (schema `workload-coverage`): the ledger over every catalogue endpoint: `loaded[{endpoint, key, ids}]`, `excluded[{endpoint, key, reason, detail, citation?}]` (reasons in order: `not-planned`, `overlay-excluded`, `mutating-readonly`, `failed-functional`, `blocked`, `untested-functional`, `rate-limited`, `no-safe-data`), `deferred` (`budget`); plus `skippedTypes`, `notes`, `unmappedResults` (results items with no single `API-<m>-<n>` title id), `inputs` and `verified`.
+- **`workload-registry.json`**: the stable ids (`lib/registry.mjs`, prefix `K6`, field `scenarios`).
+- **`workload-overlay.json`** (schema `workload-overlay`, k6-workload-designer): `{priorities: {<EP id>: {priority, citation}}, mixes: [{name, endpoints: [{endpoint, weight}], citation}], thinkTime: {<EP id>|mix:<name>|flow:<name>: {ms, citation}}, data: [{target, need, citation}], exclude: [{endpoint, reason, citation}], flows: [{name, steps: [{endpoint, bind?}], citations}]}`. Citations are checked by `lib/citations.mjs`.
+- **`check`** compares both files with a fresh build (against a copy of the registry, so it never assigns ids), applies the open-model and safety rules, and stamps `workload-coverage.json` `verified`; the flow's `workload` step refuses a missing or stale stamp. The designer is invoked with `run=<run-id>` and passes `--run`.
+- **Reports.** The designer returns the scenarios (id, type, kind, peak rps, VUs, mutates), the skipped types, the exclusions by reason, the deferred count, the assumed thresholds and its overlay entries.
+
+**The scripts**: `node scripts/k6-code.mjs build [--adopt]|check|paths <product> <m>` (`scripts/lib/k6-code.mjs`) needs a verified workload, and writes one managed script per scenario, `k6-tests/<p>/scripts/<m>-<name>.js`, the slot skeleton `k6-tests/<p>/scripts/slots/<m>.js`, and in `modules/<m>/k6/`:
+- **`code-plan.json`** (schema `k6-code-plan`): `{module, runId, mode, basePath (the k6 overlay's), files, scripts[{id, name, file, type, kind, endpoints, mutates, queryLike?, weights?, requests[{endpoint, method, path, urlPath? (relative to basePath), pathParams, expect {status | statusIn | statusClass: 2xx, source}, slots, bind?}], trackLeftover? {type, pointer, assumed}, cleanup? {endpoint}, thinkTimeMs}], slots[{key, function, kind, endpoint?, needed, usedBy, filled}], verified?}`.
+- **`parked.json`** (schema `k6-code-parked`): `{module, regions: {<slot key>: {lines, run}}}`, bodies of slots no longer generated, restored when the slot returns.
+- **`legacy/`**: hand-written `<m>-*.js` that `build --adopt` moved out of `scripts/`.
+- **Slot keys**: `data`, `path:<EP>`, `query:<EP>`, `body:<EP>`, `checks:<EP>`.
+- **`check`** lists every problem as `<file> [<rule>] <problem>` and stamps `code-plan.json` `verified` over the workload, its coverage, the catalogue, the plan, the k6 overlay, the slots and every script; the flow's `scripts` step verifies it once (`verifyOnce`), and the gate requires it to be current on every round.
+- **Reports.** The script-writer returns the scripts (file → K6 id), the slots filled and any needed slot still empty, the missing lib exports (the orchestrator routes them to k6-lib-writer), and the check result.
 
 ## 6. Review findings (every reviewer → its domain orchestrator → fixer)
 

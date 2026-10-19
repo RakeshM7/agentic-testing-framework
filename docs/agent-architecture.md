@@ -22,7 +22,7 @@ Roster v3 ([`decisions.md`](decisions.md) D-043): one fixer per automation domai
 | Shared Playwright repo | — (spawned by `orchestrator-agent` for the skeleton, by either Playwright orchestrator for change requests) | `pw-repo-owner` (sole owner of package.json, playwright.config.ts, tsconfig, .env.example, .gitignore, README, utils/shared/, rendered from templates with its cited overlay) |
 | Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder` (the UI foundation's cited overlay, rendered from templates), `pw-ui-pom-writer` (the page objects `ui-code.mjs` requires), `pw-ui-tests-writer` (the step bodies of the generated skeleton), `pw-ui-reviewer`, `pw-ui-fixer`, `pw-ui-test-runner-triager` |
 | Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder` (the API foundation's cited overlay, rendered from templates), `pw-api-client-writer` (a cited overlay and composite helpers over the clients `api-code.mjs` generates), `pw-api-tests-writer` (the payload and glue slots of the tests `api-code.mjs` generates, one per plan scenario), `pw-api-reviewer`, `pw-api-fixer`, `pw-api-test-runner-triager` |
-| K6 | `k6-orchestrator` | `k6-workload-designer`, `k6-lib-writer` (the k6 lib's cited overlay, rendered from templates), `k6-script-writer`, `k6-reviewer`, `k6-fixer`, `k6-runner-triager` |
+| K6 | `k6-orchestrator` | `k6-workload-designer` (a cited overlay over the workload `workload.mjs` builds), `k6-lib-writer` (the k6 lib's cited overlay, rendered from templates), `k6-script-writer` (the data slots of the scripts `k6-code.mjs` generates, one per workload scenario), `k6-reviewer`, `k6-fixer`, `k6-runner-triager` |
 | Framework maintenance | — | `feedback-implementor-agent` (existing; fixes agent prompts/framework from `feedback/`) |
 
 ## Layout v2 (decided): everything is product-level, no `artifacts/<run-id>/` directory
@@ -37,7 +37,7 @@ artifacts/<product>/
     clarifications-summary.md
     testcases/                       # testcases.mjs output; the writer's cases.json; the human's approval.csv
     api/                             # discovered-endpoints.json, coverage.json, drift.json, registry.json, sources/ (endpoints.mjs), overlay.json (api-discoverer), plan.json, plan-coverage.json, plan-registry.json, api-test-plan.md (api-plan.mjs), plan-overlay.json (api-test-planner)
-    k6/                              # workload.json
+    k6/                              # workload.json, workload-coverage.json, workload-registry.json (workload.mjs); workload-overlay.json (k6-workload-designer); code-plan.json, parked.json, legacy/ (k6-code.mjs)
   state/
     run.json                         # current run: id, mode, stage status      (replaces artifacts/<run-id>/run.json)
     ledger.jsonl                     # created entities, each entry tagged with runId; deletes scoped to the CURRENT run's entries
@@ -81,7 +81,7 @@ main orchestrator:
         run loop:    runner-triager -> triage.md -> fixer -> re-run (max N rounds)
         every domain orchestrator follows `orchestration.mjs next`, which holds these flows (scripts/lib/domain-flows.mjs)
         API additionally starts with api-discoverer -> api-test-planner
-  7 k6-orchestrator (needs the API plan): workload-designer -> lib-writer (cited overlay -> foundation.mjs render + check; skipped while verified) -> script-writer -> review loop -> run/fix loop
+  7 k6-orchestrator (needs the API plan): workload-designer (cited overlay -> workload.mjs build + check, run=<run-id>) -> lib-writer (cited overlay -> foundation.mjs render + check; skipped while verified) -> script-writer (slots -> k6-code.mjs build + check) -> review loop -> run/fix loop
   8 report-generator -> HTML slide deck
 ```
 

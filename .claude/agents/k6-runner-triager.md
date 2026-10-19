@@ -18,7 +18,7 @@ Do not run anything live. Validate with `k6 inspect` on each `scripts/<m>-*.js`,
 
 ## Full-run
 1. For each script, from `k6-tests/<p>/`: `ATF_MODE=full-run BASE_URL=<target url> K6_ALLOWED_HOSTS=<target host> K6_SCRIPT=<name> k6 run scripts/<file>.js` (credentials only via env from the `.env` file the run-config points to). Run scripts one at a time, smoke scenario first; if smoke fails hard (target errors, auth failure), do not run the heavier ones for that module.
-2. Leftovers: for every entry in `results/<script>.created.json`, `node scripts/ledger.mjs add <p> --type <type> --ref <ref> --module <m> --stage k6 --agent k6-runner-triager`.
+2. Leftovers: for every entry in `results/<script>.created.json`, `node scripts/ledger.mjs add <p> --type <type> --ref <ref> --module <m> --stage k6 --agent k6-runner-triager`. Every entry in `results/<script>.untracked.json` is a create that succeeded but whose id no iteration could read: never guess an id for the ledger; list each one (type, status, count) in `triage.md` as an untracked leftover that needs manual cleanup.
 3. `node scripts/results.mjs k6 <p> <m> k6-tests/<p>/results/<m>-*.summary.json`.
 
 ## Triage

@@ -66,7 +66,22 @@ test("shell: none / restricted / project", () => {
   assert.equal(allowed(FULL.root, sh("testcase-writer", "ls")), false);
   assert.equal(allowed(FULL.root, sh("orchestrator-agent", "node scripts/run.mjs next acme")), true);
   assert.equal(allowed(FULL.root, sh("orchestrator-agent", "npm test")), false);
-  assert.equal(allowed(FULL.root, sh("k6-script-writer", "npx tsc --noEmit")), true, "a code writer with shell: project");
+  assert.equal(allowed(FULL.root, sh("pw-ui-fixer", "npx tsc --noEmit")), true, "a fixer with shell: project");
+  // S7-F1 (D-4): the k6-fixer's shell is the k6-script-writer's, so no shell command writes a generated script
+  for (const run of [RO, FULL]) {
+    assert.equal(allowed(run.root, sh("k6-fixer", "node scripts/k6-code.mjs check acme contacts")), true);
+    assert.equal(allowed(run.root, sh("k6-fixer", "node scripts/k6-code.mjs build acme contacts")), true);
+    for (const cmd of [
+      "npx tsc --noEmit",
+      "node -e \"require('fs').writeFileSync('k6-tests/acme/scripts/contacts-smoke-1.js', 'x')\"",
+      "cp /tmp/x.js k6-tests/acme/scripts/contacts-smoke-1.js",
+      "echo x > k6-tests/acme/scripts/contacts-smoke-1.js",
+      "sed -i s/a/b/ k6-tests/acme/scripts/contacts-smoke-1.js",
+      "node scripts/k6-code.mjs check acme contacts && echo x > k6-tests/acme/scripts/contacts-smoke-1.js",
+    ])
+      assert.equal(allowed(run.root, sh("k6-fixer", cmd)), false, `k6-fixer: ${cmd}`);
+  }
+  assert.equal(allowed(FULL.root, sh("k6-script-writer", "npx tsc --noEmit")), false, "D-057: the k6 script-writer runs only k6-code.mjs");
   assert.equal(allowed(FULL.root, sh("pw-api-tests-writer", "npx tsc --noEmit")), false, "D-056: the API writers run tsc through api-code.mjs check");
   assert.equal(allowed(FULL.root, sh("pw-ui-tests-writer", "npx tsc --noEmit")), false, "D-055: the UI writers run tsc through ui-code.mjs check");
 });
@@ -267,7 +282,8 @@ test("no agent can write a managed foundation file directly, whatever its write 
       assert.equal(v.rule, "managed-file", f);
     }
   assert.equal(ok("pw-api-tests-writer", "playwright-tests/acme/helpers/api/contacts.payloads.ts"), true);
-  assert.equal(ok("k6-fixer", "k6-tests/acme/scripts/contacts-smoke.js"), true);
+  assert.equal(ok("k6-fixer", "k6-tests/acme/scripts/slots/contacts.js"), true);
+  assert.equal(ok("k6-fixer", "k6-tests/acme/lib/ext/dates.js"), true);
   assert.equal(checkTool(call("pw-ui-fixer", "Write", { file_path: path.join(FULL.root, "playwright-tests/acme/fixtures/ui/base.ts") }), FULL.root, {}).rule, "managed-file");
   // a host that can't name the caller gets the run's combined ceiling (D-035): still no managed file
   const copilot = { ...call("pw-ui-fixer", "Write", { file_path: path.join(FULL.root, "playwright-tests/acme/fixtures/ui/base.ts") }), agent: undefined, host: "copilot-cli" };
@@ -360,6 +376,61 @@ test("managed foundation files: unnamed callers can't write them either, in ever
   const beta = initRun(writeConfig(two.root, { product: "beta" }), { root: two.root, runId: "beta-run-1", env: { CLAUDECODE: "1" } });
   assert.deepEqual(beta.errors ?? [], []);
   assert.equal(checkTool(unnamed(two.root, "copilot-cli"), two.root, {}).allowed, false);
+});
+
+test("k6-workload-designer runs workload.mjs build/check/paths only and writes only its workload overlay (D-057)", () => {
+  const run = (cmd) => allowed(FULL.root, sh("k6-workload-designer", cmd));
+  for (const cmd of ["build", "check", "paths"]) assert.equal(run(`node scripts/workload.mjs ${cmd} acme contacts --run acme-run-1`), true, cmd);
+  for (const cmd of [
+    "node scripts/workload.mjs build acme contacts && node scripts/k6-code.mjs build acme contacts",
+    "node scripts/workload.mjs check acme contacts; k6 run k6-tests/acme/scripts/contacts-smoke-1.js",
+    "node scripts/workload.mjs build acme contacts | tee artifacts/acme/modules/contacts/k6/workload.json",
+    "node scripts/k6-code.mjs build acme contacts",
+    "k6 inspect k6-tests/acme/scripts/contacts-smoke-1.js",
+    "node scripts/run.mjs status acme",
+  ])
+    assert.equal(run(cmd), false, cmd);
+  const w = (rel) => allowed(FULL.root, call("k6-workload-designer", "Write", { file_path: path.join(FULL.root, "artifacts/acme/modules/contacts/k6", rel) }));
+  assert.equal(w("workload-overlay.json"), true);
+  for (const f of ["workload.json", "workload-coverage.json", "workload-registry.json", "code-plan.json"]) assert.equal(w(f), false, `${f} is script-managed`);
+});
+
+test("k6-script-writer runs k6-code.mjs build/check/paths only and writes only its slot file (D-057)", () => {
+  const run = (cmd) => allowed(FULL.root, sh("k6-script-writer", cmd));
+  for (const cmd of ["build", "check", "paths"]) assert.equal(run(`node scripts/k6-code.mjs ${cmd} acme contacts`), true, cmd);
+  assert.equal(run("node scripts/k6-code.mjs build acme contacts --adopt"), true);
+  for (const cmd of ["k6 inspect k6-tests/acme/scripts/contacts-smoke-1.js", "k6 run k6-tests/acme/scripts/contacts-smoke-1.js", "node scripts/workload.mjs build acme contacts", "node scripts/k6-code.mjs check acme contacts && k6 run x.js"])
+    assert.equal(run(cmd), false, cmd);
+  const w = (rel) => allowed(FULL.root, call("k6-script-writer", "Write", { file_path: path.join(FULL.root, rel) }));
+  assert.equal(w("k6-tests/acme/scripts/slots/contacts.js"), true);
+  for (const f of ["k6-tests/acme/scripts/contacts-smoke-1.js", "k6-tests/acme/scripts/helper.js", "k6-tests/acme/lib/config.js", "k6-tests/acme/lib/ext/x.js",
+    "artifacts/acme/modules/contacts/k6/code-plan.json", "artifacts/acme/modules/contacts/k6/parked.json", "artifacts/acme/modules/contacts/k6/workload.json"])
+    assert.equal(w(f), false, f);
+});
+
+test("nobody writes the k6 workload or the generated k6 code directly, in any mode (D-057)", () => {
+  const agents = Object.keys(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents);
+  const managed = [
+    "k6-tests/acme/scripts/contacts-smoke-1.js",
+    "k6-tests/acme/scripts/contacts-average-load-2.js",
+    ...["workload.json", "workload-coverage.json", "workload-registry.json", "code-plan.json", "parked.json", "legacy/contacts-old.js"].map((f) => `artifacts/acme/modules/contacts/k6/${f}`),
+    "artifacts/acme/modules/deals/k6/code-plan.json",
+  ];
+  for (const { root } of [FULL, RO])
+    for (const agent of [...agents, undefined])
+      for (const f of managed) {
+        const v = checkTool(call(agent, "Write", { file_path: path.join(root, f) }), root, {});
+        assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${f}`);
+        assert.equal(v.rule, "managed-file", `${agent}: ${f}`);
+      }
+  const msg = (f) => checkTool(call("k6-fixer", "Write", { file_path: path.join(FULL.root, f) }), FULL.root, {}).reason;
+  assert.match(msg("k6-tests/acme/scripts/contacts-smoke-1.js"), /generated by scripts\/k6-code\.mjs/);
+  assert.match(msg("artifacts/acme/modules/contacts/k6/workload.json"), /written by scripts\/workload\.mjs/);
+  // the agents' own files stay writable
+  const ok = (agent, rel) => allowed(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, rel) }));
+  assert.equal(ok("k6-script-writer", "k6-tests/acme/scripts/slots/contacts.js"), true);
+  assert.equal(ok("k6-workload-designer", "artifacts/acme/modules/contacts/k6/workload-overlay.json"), true);
+  assert.equal(ok("k6-runner-triager", "k6-tests/acme/results/contacts-smoke-1.summary.json"), true);
 });
 
 test("testcase-writer runs testcases.mjs build/check/paths only and writes only its cases overlay", () => {

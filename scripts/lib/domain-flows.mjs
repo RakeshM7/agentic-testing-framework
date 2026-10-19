@@ -8,6 +8,8 @@ import { planPaths, planUnverified } from "./api-plan.mjs";
 import { foundationContext, foundationUnverified } from "./foundation.mjs";
 import { reviewResult, testcaseContext, testcaseTotals, testcasesUnverified } from "./testcases.mjs";
 import { noUiCases, uiCodeContext, uiCodeUnverified } from "./ui-code.mjs";
+import { k6CodeContext, k6CodeUnverified } from "./k6-code.mjs";
+import { workloadPaths, workloadScenarios, workloadUnverified } from "./workload.mjs";
 
 const json = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null);
 
@@ -40,6 +42,11 @@ const ucCtx = (c) => uiCodeContext({ root: c.root, product: c.product, module: c
 // The API code is generated (D-056): a done clients or tests step counts only once `api-code.mjs check` (--clients for
 // the clients) stamped what is on disk; verified once, like the UI code, because the fixer edits the same files later.
 const acCtx = (c) => apiCodeContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir, pwProject: c.pwProject });
+
+// The k6 workload and scripts are script-built (D-057): a done workload step counts only once `workload.mjs check`
+// stamped it; a done scripts step only once `k6-code.mjs check` did, verified once (the fixer edits the slot file later,
+// and the gate re-checks every round). The designer gets the run id: workload.mjs build reads that run's results.
+const kcCtx = (c) => k6CodeContext({ root: c.root, product: c.product, module: c.module, run: c.run, productDir: c.productDir, k6Project: c.k6Project });
 
 // The blocker and major rows of a findings file (docs/agent-handoffs.md §6): what is still unresolved.
 export function unresolvedFindings(file) {
@@ -86,10 +93,10 @@ export const FLOWS = {
   },
   k6: {
     build: [
-      { step: "workload", agent: "k6-workload-designer" },
+      { step: "workload", agent: "k6-workload-designer", args: (c) => ({ run: c.run.runId }), verify: (c) => workloadUnverified(workloadPaths(c.productDir, c.module)) },
       // Every endpoint excluded: no scripts to write or review; the runner records not-run.
-      { ...foundationStep("k6", "lib", "k6-lib-writer", "the k6 lib"), skipRest: (c) => (json(path.join(c.productDir, "modules", c.module, "k6", "workload.json")) ?? []).filter((w) => w.id !== `K6-${c.module}-0`).length === 0 && "every endpoint excluded from load" },
-      { step: "scripts", agent: "k6-script-writer" },
+      { ...foundationStep("k6", "lib", "k6-lib-writer", "the k6 lib"), skipRest: (c) => (workloadScenarios(path.join(c.productDir, "modules", c.module, "k6", "workload.json")) ?? []).length === 0 && "every endpoint excluded from load" },
+      { step: "scripts", agent: "k6-script-writer", verify: (c) => k6CodeUnverified(kcCtx(c)), verifyOnce: true },
     ],
     review: { reviewer: "k6-reviewer", fixer: "k6-fixer" },
     run: { runner: "k6-runner-triager", fixer: "k6-fixer", framework: "k6" },

@@ -11,7 +11,7 @@ import { UNRESOLVED_POLICIES } from "./lib/clarifications.mjs";
 
 const MODES = ["readonly", "full-run"];
 const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
-const KNOWN = ["product", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git"];
+const KNOWN = ["product", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
 const posInt = (v) => Number.isInteger(v) && v > 0;
 const strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
 const httpUrl = (v) => {
@@ -25,6 +25,62 @@ const httpUrl = (v) => {
 export const EXPLORE_DEFAULTS = { max_pages: 40, max_states: 150 };
 // Test cases (scripts/testcases.mjs): the rendered format, and the budget of coverage items per module that need a case.
 export const TESTCASES_DEFAULTS = { output_format: "gherkin", max_cases: 200 };
+// k6 workloads (scripts/workload.mjs, G7): load units per module, the average-load caps, SLOs and opt-in test types.
+export const K6_DEFAULTS = { budget: 10, caps: { rps: 10, duration_s: 120, soak_duration_s: 1800 }, slo: {}, modules: {} };
+export const K6_OPT_IN_TYPES = ["stress", "spike", "soak", "breakpoint"];
+const SLO_KEYS = ["p95_ms", "p99_ms", "error_rate", "rps"];
+const isMap = (v) => v && typeof v === "object" && !Array.isArray(v);
+
+// One SLO mapping (k6.slo, k6.modules.<m>.slo, or one of its endpoints): p95/p99 in ms, an error rate in (0, 1), a
+// target rps. -> errors[]
+function sloErrors(slo, where, { endpoints = false } = {}) {
+  if (!isMap(slo)) return [`${where}: must be a mapping of ${SLO_KEYS.join(", ")}${endpoints ? ", endpoints" : ""}`];
+  const errors = [];
+  for (const k of Object.keys(slo)) if (!SLO_KEYS.includes(k) && !(endpoints && k === "endpoints")) errors.push(`${where}.${k}: unknown key`);
+  for (const k of ["p95_ms", "p99_ms"]) if (slo[k] !== undefined && !posInt(slo[k])) errors.push(`${where}.${k}: must be a positive integer (milliseconds)`);
+  if (posInt(slo.p95_ms) && posInt(slo.p99_ms) && slo.p99_ms < slo.p95_ms) errors.push(`${where}.p99_ms: must not be below p95_ms`);
+  if (slo.error_rate !== undefined && !(typeof slo.error_rate === "number" && slo.error_rate > 0 && slo.error_rate < 1)) errors.push(`${where}.error_rate: must be a number between 0 and 1 (e.g. 0.01 for 1%)`);
+  if (slo.rps !== undefined && !(typeof slo.rps === "number" && slo.rps > 0)) errors.push(`${where}.rps: must be a positive number (requests per second)`);
+  if (endpoints && slo.endpoints !== undefined) {
+    if (!isMap(slo.endpoints)) errors.push(`${where}.endpoints: must be a mapping of endpoint key or EP id -> SLO`);
+    else for (const [k, v] of Object.entries(slo.endpoints)) errors.push(...sloErrors(v, `${where}.endpoints['${k}']`));
+  }
+  return errors;
+}
+
+function k6Errors(k6, slugs) {
+  if (!isMap(k6)) return ["k6: must be a mapping"];
+  const errors = [];
+  for (const k of Object.keys(k6)) if (!(k in K6_DEFAULTS)) errors.push(`k6.${k}: unknown key`);
+  if (k6.budget !== undefined && !posInt(k6.budget)) errors.push("k6.budget: must be a positive integer (load units per module; the rest are deferred: budget)");
+  if (k6.caps !== undefined) {
+    if (!isMap(k6.caps)) errors.push("k6.caps: must be a mapping");
+    else {
+      for (const k of Object.keys(k6.caps)) if (!(k in K6_DEFAULTS.caps)) errors.push(`k6.caps.${k}: unknown key`);
+      if (k6.caps.rps !== undefined && !(typeof k6.caps.rps === "number" && k6.caps.rps > 0)) errors.push("k6.caps.rps: must be a positive number (the average-load read rate; writes get half)");
+      for (const k of ["duration_s", "soak_duration_s"]) if (k6.caps[k] !== undefined && !posInt(k6.caps[k])) errors.push(`k6.caps.${k}: must be a positive integer (seconds)`);
+    }
+  }
+  if (k6.slo !== undefined) errors.push(...sloErrors(k6.slo, "k6.slo"));
+  if (k6.modules !== undefined) {
+    if (!isMap(k6.modules)) errors.push("k6.modules: must be a mapping of module slug -> {types, slo}");
+    else
+      for (const [m, v] of Object.entries(k6.modules)) {
+        const where = `k6.modules.${m}`;
+        if (!slugs.includes(m)) errors.push(`${where}: not a module of this run-config`);
+        if (!isMap(v)) {
+          errors.push(`${where}: must be a mapping {types, slo}`);
+          continue;
+        }
+        for (const k of Object.keys(v)) if (!["types", "slo"].includes(k)) errors.push(`${where}.${k}: unknown key`);
+        if (v.types !== undefined && !(strList(v.types) && v.types.every((t) => K6_OPT_IN_TYPES.includes(t)) && new Set(v.types).size === v.types.length))
+          errors.push(`${where}.types: a list of distinct [${K6_OPT_IN_TYPES}] (smoke and average-load follow the mode; opt-ins load only in full-run)`);
+        if (v.slo !== undefined) errors.push(...sloErrors(v.slo, `${where}.slo`, { endpoints: true }));
+      }
+  }
+  return errors;
+}
+
 export const API_DEFAULTS = { specs: [], graphql: [], auth_header: null, discovery_budget: 40, probe_budget: 50, probe_delay_ms: 500, plan_budget: 300 };
 
 export function validateRunConfig(cfg) {
@@ -125,6 +181,7 @@ export function validateRunConfig(cfg) {
     errors.push(`clarifications.unresolved_policy: not in [${UNRESOLVED_POLICIES}]`);
   for (const k of ["review_rounds", "heal_rounds"]) if (cfg.limits?.[k] !== undefined && !posInt(cfg.limits[k])) errors.push(`limits.${k}: must be a positive integer`);
   for (const k of ["modules", "clarification_rows"]) if (cfg.concurrency?.[k] !== undefined && !posInt(cfg.concurrency[k])) errors.push(`concurrency.${k}: must be a positive integer`);
+  if (cfg.k6 !== undefined) errors.push(...k6Errors(cfg.k6, Array.isArray(cfg.modules) ? cfg.modules.map((m) => m?.slug) : []));
 
   if (errors.length) return { errors };
   return {
@@ -144,6 +201,7 @@ export function validateRunConfig(cfg) {
       concurrency: { modules: 1, clarification_rows: 1, ...cfg.concurrency },
       feedback_loop: { auto_invoke_implementor: false, ...cfg.feedback_loop },
       git: { auto_commit: false, ...cfg.git },
+      k6: { ...K6_DEFAULTS, ...cfg.k6, caps: { ...K6_DEFAULTS.caps, ...cfg.k6?.caps } },
     },
   };
 }

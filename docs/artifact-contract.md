@@ -1,6 +1,6 @@
 # Artifact contract — layout v2 (implemented: foundation)
 
-The single definition of where things live, how stages hand off, and how state and safety work. It is implemented in code — `scripts/lib/{contract,clarifications,ledger,permissions,guard,csv,endpoints,explore,foundation,ui-code,api-code}.mjs` and the CLIs `scripts/{run,clarifications,ledger,run-config,endpoints,explore,foundation,ui-code,api-code}.mjs` — and validated by JSON Schemas in `schemas/`. Agent prompts must never contradict this file; when they differ, this file and the scripts win. The agent roster and responsibilities are in [`agent-architecture.md`](agent-architecture.md).
+The single definition of where things live, how stages hand off, and how state and safety work. It is implemented in code — `scripts/lib/{contract,clarifications,ledger,permissions,guard,csv,endpoints,explore,foundation,ui-code,api-code,workload,k6-code}.mjs` and the CLIs `scripts/{run,clarifications,ledger,run-config,endpoints,explore,foundation,ui-code,api-code,workload,k6-code}.mjs` — and validated by JSON Schemas in `schemas/`. Agent prompts must never contradict this file; when they differ, this file and the scripts win. The agent roster and responsibilities are in [`agent-architecture.md`](agent-architecture.md).
 
 ## Layout: everything is product-level
 
@@ -28,6 +28,9 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
                                       # overlay.json is the api-discoverer's (see below)
                                       # api-plan.mjs: plan.json plan-coverage.json plan-registry.json api-test-plan.md;
                                       # plan-overlay.json is the api-test-planner's
+    k6/                               # workload.mjs (D-057): workload.json workload-coverage.json workload-registry.json;
+                                      # workload-overlay.json is the k6-workload-designer's
+                                      # k6-code.mjs: code-plan.json parked.json legacy/ -- all script-owned
   foundation/                         # foundation.mjs (D-054): <side>-manifest.json (rendered files, verified stamp);
                                       # <side>-overlay.json for side repo|ui|api|k6 is that side's agent's
   state/
@@ -41,7 +44,7 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     history/<run-id>.json             # summary of every ended run
   results/<run-id>/                   # per-run archive: <module>/{testcases,playwright-ui,playwright-api,k6}/..., report/
 playwright-tests/<product>/           # ONE Playwright repo: tests/ui + tests/api
-k6-tests/<product>/
+k6-tests/<product>/                   # lib/ (rendered), scripts/<m>-*.js (k6-code.mjs), scripts/slots/<m>.js, results/
 ```
 
 There is no `artifacts/<run-id>/` directory. Run ids are `<product>-<YYYYMMDD>-<HHmm>` (suffixed `-2`, `-3`… if reused).
@@ -253,6 +256,25 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 - **Only planned scenarios** get a test, one each; the plan holds only approved test cases (D-053). Blocked and parked scenarios are `test.fixme` with the reason; the plan's coverage items over its budget are `deferred: budget` in the ledger.
 - **Verified.** A passing `check --clients` stamps `verified.clients`; a passing full `check` (every rule and gate rule, `tsc` and `playwright --list`) stamps both. The `playwright-api` flow's `clients` and `tests` steps refuse a missing or stale stamp when they are first seen done; from then on the gate re-checks every rule each review round. `--static` skips the compile commands and stamps nothing. A build whose inputs (the catalogue, the plan, the test cases, the approvals, an overlay, the run-config) changed is stale until rebuilt, and `check` fails while the plan is not verified.
 
+## k6 workload and scripts
+
+`node scripts/workload.mjs build|check|paths <product> <module> [--run <run-id>]` (`scripts/lib/workload.mjs`) builds a module's load workload, and `node scripts/k6-code.mjs build [--adopt]|check|paths <product> <module>` (`scripts/lib/k6-code.mjs`) generates its k6 scripts from the verified workload (formats: [`agent-handoffs.md`](agent-handoffs.md) §5; design: [`k6-conventions.md`](k6-conventions.md) and decision D-057). Neither sends a request to the product or runs load.
+
+| File | Owner |
+|---|---|
+| `modules/<m>/k6/workload.json` (schema `workload`): the scenarios, their sizing, thresholds and exact k6 `options` | the script (workload.mjs) |
+| `modules/<m>/k6/workload-coverage.json` (schema `workload-coverage`): the ledger over every catalogue endpoint, the input digests, the `verified` stamp | the script (workload.mjs) |
+| `modules/<m>/k6/workload-registry.json`: the stable `K6-<m>-<n>` ids | the script (workload.mjs) |
+| `modules/<m>/k6/workload-overlay.json` (schema `workload-overlay`): cited priorities, mixes, think time, data needs, exclusions, write flows | k6-workload-designer |
+| `modules/<m>/k6/code-plan.json` (schema `k6-code-plan`): the scripts, their requests, the slots, the `verified` stamp | the script (k6-code.mjs) |
+| `modules/<m>/k6/parked.json` (schema `k6-code-parked`): slot bodies no longer generated | the script (k6-code.mjs) |
+| `modules/<m>/k6/legacy/**`: hand-written scripts `build --adopt` moved out of `scripts/` | the script (k6-code.mjs) |
+| `k6-tests/<p>/scripts/<m>-*.js`: one generated script per scenario | the script (k6-code.mjs) |
+| `k6-tests/<p>/scripts/slots/<m>.js` outside its slots / inside them | the script / k6-script-writer |
+
+- **Managed.** The script-owned files above are in `config/permissions.yaml` `managed_files`: during a run the guard denies every caller a direct write.
+- **Verified.** A passing `workload.mjs check` stamps `workload-coverage.json`; a passing `k6-code.mjs check` stamps `code-plan.json` (over the workload, its coverage, the catalogue, the plan, the k6 overlay, the slots and every script). The k6 flow's `workload` and `scripts` steps refuse a missing or stale stamp, and the k6 gate requires the scripts' stamp to be current on every review round.
+
 ## Safety: mode × permissions, enforced in code
 
 - **Mode** — `authorizations.mode` → `state/run.json`. `readonly` caps every agent at read (browser/http) and none (load), whatever the permissions file says; `full-run` applies `config/permissions.yaml` as written, and gives every agent that has browser access (`read` or `mutate`) the full browser. `AUTHORIZATIONS_MODE=readonly` in the environment can downgrade; nothing can upgrade.
@@ -271,4 +293,4 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest,ui-code-plan,ui-code-coverage,ui-code-parked,api-code-plan,api-code-coverage,api-code-parked,api-code-client-overlay,api-code-tests-overlay}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest,ui-code-plan,ui-code-coverage,ui-code-parked,api-code-plan,api-code-coverage,api-code-parked,api-code-client-overlay,api-code-tests-overlay,workload,workload-coverage,workload-overlay,k6-code-plan,k6-code-parked}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.

@@ -497,11 +497,13 @@ test("the gate: a freshly rendered foundation passes; drift between renders and 
   put(root, "playwright-tests/acme/fixtures/ui/index.ts", "import { test as base } from '@playwright/test';\nexport const test = base.extend({});\nexport { expect } from '@playwright/test';\n");
   assert.deepEqual(rules(g("playwright-ui")).sort(), ["blocker fixtures/ui/auth.setup.ts foundation", "blocker fixtures/ui/index.ts foundation", "blocker playwright.config.ts foundation"]);
   // k6: the rendered lib must not drift
-  put(root, "artifacts/acme/modules/contacts/k6/workload.json", JSON.stringify([{ id: "K6-contacts-1", name: "smoke" }]));
+  put(root, "artifacts/acme/modules/contacts/k6/workload.json", JSON.stringify({ scenarios: [{ id: "K6-contacts-1", name: "smoke-1" }] }));
   put(root, "k6-tests/acme/scripts/contacts-smoke.js", "// K6-contacts-1\nexport function setup() { assertAllowedHost(); requireFullRun(false); }\nexport { handleSummary } from '../lib/summary.js';\nexport default function () {}\n");
-  assert.equal(g("k6").verdict, "pass");
+  // (the scripts' own rules are k6-code.mjs check's, D-057: this hand-written module has no check stamp)
+  const k6Rules = () => rules(g("k6")).filter((x) => !/ k6-code$/.test(x));
+  assert.deepEqual(k6Rules(), []);
   writeFileSync(k6(root, "lib/checks.js"), read(k6(root, "lib/checks.js")) + "export const loose = true;\n");
-  assert.deepEqual(rules(g("k6")), ["blocker lib/checks.js foundation"]);
+  assert.deepEqual(k6Rules(), ["blocker lib/checks.js foundation"]);
   // compile mode: Playwright lists the side's setup project too; only the rendered auth.setup.ts is exempt
   const real = (rel) => path.join(realpathSync.native(pw(root, "")), rel);
   const listed = [

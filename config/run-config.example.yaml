@@ -94,6 +94,26 @@ limits:
   review_rounds: 3              # reviewer -> fixer loops per domain
   heal_rounds: 3                # runner-triager -> fixer loops per domain
 
+# Optional: k6 load workloads (scripts/workload.mjs). Test types follow the mode: readonly gets smoke only (1 request
+# per second for 30 s), full-run smoke + average-load. Open model only (arrival-rate executors); a documented rate
+# limit caps every type at 50% of it.
+k6:
+  budget: 10                    # load units per module (an endpoint, a mix or a write flow); the rest are deferred: budget
+  caps:
+    rps: 10                     # average-load read rate when no SLO gives one; a write gets half
+    duration_s: 120             # average-load duration
+    soak_duration_s: 1800       # soak duration (opt-in)
+  slo:                          # every module; omitted -> p95 < 1000 ms and error rate < 1%, marked assumed
+    p95_ms: 800
+    error_rate: 0.01
+  modules:
+    contacts:
+      types: [stress]           # opt-ins: stress, spike, soak, breakpoint -- full-run only; ignored (noted) in readonly
+      slo:                      # overrides k6.slo field by field; endpoints override the module
+        p95_ms: 600
+        endpoints:
+          "GET /api/v1/contacts": { p95_ms: 400, p99_ms: 900, rps: 5 }   # endpoint key or EP id
+
 concurrency:
   modules: 1                    # modules explored/processed in parallel (1 = sequential, one browser)
   clarification_rows: 1         # ignored: clarification rows run one at a time, each in a fresh browser session (D-047)

@@ -178,17 +178,19 @@ test("Playwright API: hand-written specs are not traced any more; a module whose
   assert.throws(() => gate("acme", "contacts", "report", { root }), /domain must be one of/);
 });
 
-test("k6: one script per workload scenario, safety calls in setup(), the shared lib present", () => {
+test("k6: the workload's shape, the shared lib present, and a current k6-code.mjs check stamp; the script rules are check's (D-057)", () => {
   const { root } = startRun();
-  put(root, "artifacts/acme/modules/contacts/k6/workload.json", JSON.stringify([
-    { id: "K6-contacts-0", name: "excluded" }, { id: "K6-contacts-1", name: "smoke" }, { id: "K6-contacts-2", name: "ramp" },
-  ]));
-  put(root, "k6-tests/acme/scripts/contacts-smoke.js", "// K6-contacts-1 smoke\nexport function setup() { assertAllowedHost(); }\nexport { handleSummary } from '../lib/summary.js';\n");
+  assert.deepEqual([...rules(root, gate("acme", "contacts", "k6", { root, compile: false }))], ["workload"]);
+  put(root, "artifacts/acme/modules/contacts/k6/workload.json", JSON.stringify([{ id: "K6-contacts-1" }]));
+  assert.deepEqual([...rules(root, gate("acme", "contacts", "k6", { root, compile: false }))], ["workload"], "the legacy array names workload.mjs build");
+  put(root, "artifacts/acme/modules/contacts/k6/workload.json", JSON.stringify({ scenarios: [{ id: "K6-contacts-1", name: "smoke-1" }, { id: "K6-contacts-2", name: "average-load-2" }] }));
+  // a hand-written script with none of the safety calls: the gate no longer reads it rule by rule; check's stamp is missing
+  put(root, "k6-tests/acme/scripts/contacts-smoke.js", "// K6-contacts-1 smoke\nexport default function () {}\n");
   const r = gate("acme", "contacts", "k6", { root, compile: false });
-  assert.deepEqual([...rules(root, r)].sort(), ["full-run", "lib", "traceability"]);
-
-  put(root, "k6-tests/acme/lib/config.js", "export const x = 1;\n");
-  put(root, "k6-tests/acme/scripts/contacts-smoke.js", "// K6-contacts-1\nexport function setup() { assertAllowedHost(); requireFullRun(false); }\nexport { handleSummary } from '../lib/summary.js';\n");
-  put(root, "k6-tests/acme/scripts/contacts-ramp.js", "// K6-contacts-2\nexport function setup() { assertAllowedHost(); requireFullRun(false); }\nexport { handleSummary } from '../lib/summary.js';\n");
-  assert.equal(gate("acme", "contacts", "k6", { root, compile: false }).verdict, "pass");
+  assert.equal(r.verdict, "changes-required");
+  assert.deepEqual([...rules(root, r)].sort(), ["k6-code", "lib"]);
+  assert.match(readFileSync(path.join(root, r.file), "utf8"), /k6-code\.mjs build acme contacts, then node scripts\/k6-code\.mjs check acme contacts/);
+  // the shared hygiene still runs, on the slot file too
+  put(root, "k6-tests/acme/scripts/slots/contacts.js", "const u = 'https://app.acme.test';\n");
+  assert.ok(rules(root, gate("acme", "contacts", "k6", { root, compile: false })).has("no-hardcoded-url"));
 });

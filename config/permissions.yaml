@@ -57,6 +57,10 @@ variables:
 #   playwright --list run inside check); the generated clients, types, schemas, registration and specs are managed
 #   files no caller writes; the client-writer writes its client overlay and helpers/api/<m>.composite.ts, the
 #   tests-writer its tests overlay and the slots of helpers/api/<m>.payloads.ts and .glue.ts
+# k6 (D-057): k6-workload-designer runs only workload.mjs build/check/paths and writes only its workload overlay;
+#   k6-script-writer runs only k6-code.mjs build/check/paths (k6 inspect runs inside check) and writes only its slot file
+#   scripts/slots/<m>.js; workload.json, its coverage and registry, the generated scripts, code-plan.json, parked.json
+#   and legacy/ are managed files no caller writes
 # fixtures/<side>/index.ts (D-056): generated on both sides from the module registrations (foundation.mjs renderIndex,
 #   written by foundation.mjs render and by ui-code.mjs / api-code.mjs build); managed, in no agent's write list
 # Limits: review rounds = 3, heal rounds = 3 | one active run per product (state/lock.json)
@@ -114,6 +118,16 @@ managed_files:
   - "${k6_project}/lib/*.js"
   - "${k6_project}/README.md"
   - "${k6_project}/.gitignore"
+  # k6 (D-057): the workload, written by scripts/workload.mjs (the designer writes only workload-overlay.json), and the
+  # scripts, written by scripts/k6-code.mjs (the script-writer writes only scripts/slots/<m>.js), per module. `*`
+  # stands for the module: a managed glob can't take ${module} (any module's file is managed alike).
+  - "${product_dir}/modules/*/k6/workload.json"
+  - "${product_dir}/modules/*/k6/workload-coverage.json"
+  - "${product_dir}/modules/*/k6/workload-registry.json"
+  - "${product_dir}/modules/*/k6/code-plan.json"
+  - "${product_dir}/modules/*/k6/parked.json"
+  - "${product_dir}/modules/*/k6/legacy/**"
+  - "${k6_project}/scripts/*.js"
 
 profiles:
   # Reusable bundles; an agent lists `profile:` and any per-agent overrides replace the profile's keys.
@@ -386,12 +400,15 @@ agents:
     profile: orchestrator
     spawns: [k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-fixer, k6-runner-triager]
     filesystem: { read: ["${modules}/**", "${k6_project}/**", "${results}/${module}/k6/**"], write: ["${state}/orchestration/k6-${module}.json"] }
-  k6-workload-designer:
+  k6-workload-designer:         # D-057: workload.mjs builds workload.json; it writes a cited overlay
     layer: 2
-    live_target: { browser: none, http: none, load: none }
+    live_target: { browser: none, http: none, load: none }   # never load during design
     web_research: none
-    shell: none
-    filesystem: { read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/playwright-api/**"], write: ["${modules}/k6/workload.json"] }
+    shell: restricted
+    shell_allow: ["node scripts/workload.mjs build *", "node scripts/workload.mjs check *", "node scripts/workload.mjs paths *"]
+    filesystem:
+      read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/playwright-api/**", "${state}/config.resolved.json"]
+      write: ["${modules}/k6/workload-overlay.json"]
   k6-lib-writer:                # D-054: the k6 lib is rendered from templates/ with its cited k6 overlay
     layer: 2
     live_target: { browser: none, http: none, load: none }
@@ -402,10 +419,12 @@ agents:
     filesystem:
       read: ["${k6_project}/**", "${modules}/**", "${knowledge}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
       write: ["${product_dir}/foundation/k6-overlay.json", "${k6_project}/lib/ext/**"]
-  k6-script-writer:
+  k6-script-writer:             # D-057: k6-code.mjs generates one script per workload scenario; it fills the slots
     layer: 2
     profile: code_writer
-    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${k6_project}/scripts/**"] }
+    shell: restricted           # k6 inspect runs inside `k6-code.mjs check`
+    shell_allow: ["node scripts/k6-code.mjs build *", "node scripts/k6-code.mjs check *", "node scripts/k6-code.mjs paths *"]
+    filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${k6_project}/scripts/slots/${module}.js"] }
   k6-reviewer:
     layer: 2
     profile: reviewer
@@ -413,10 +432,15 @@ agents:
   k6-fixer:                     # review findings or healable triage rows
     layer: 2
     profile: fixer
+    # D-057: the scripts are generated; a fix goes in the slot file or lib/ext/, then k6-code.mjs build and check.
+    # S7-F1: shell restricted to the writer's commands, so no shell command can write a generated script. Its full
+    # refactor is G9's.
+    shell: restricted
+    shell_allow: ["node scripts/k6-code.mjs build *", "node scripts/k6-code.mjs check *", "node scripts/k6-code.mjs paths *"]
     filesystem:
       read: ["${k6_project}/**", "${modules}/**", "${results}/${module}/k6/review-findings.md", "${results}/${module}/k6/gate-findings.md",
              "${results}/${module}/k6/triage.md"]
-      write: ["${k6_project}/**"]
+      write: ["${k6_project}/scripts/slots/${module}.js", "${k6_project}/lib/ext/**"]
   k6-runner-triager:
     layer: 2
     live_target: { browser: none, http: none, load: run }   # live load only in full-run; BASE_URL must be on K6_ALLOWED_HOSTS
