@@ -144,7 +144,10 @@ export async function status(product, { root = repoRoot } = {}) {
     row.awaitingApproval = !row.complete && !row.blocked && (own || needs.some((d) => depRows(row, d).some((r) => r.awaitingApproval)));
     if (row.awaitingApproval && row.status !== "running") row.status = "awaiting-approval";
   }
-  return { product, runId: ctx.runId, active: ctx.active, mode: ctx.run.mode, modules: ctx.run.modules, stages: rows };
+  // The guard check's verdict from its records (D-037): hosts word the canary's block differently (Copilot shows exit 2
+  // as "hook errored"), so the orchestrator confirms it here instead of reading the host's message.
+  const guard = guardStatus(product, ctx.run.mode, root);
+  return { product, runId: ctx.runId, active: ctx.active, mode: ctx.run.mode, modules: ctx.run.modules, guard, stages: rows };
 }
 
 export const MAX_ATTEMPTS = 2;
