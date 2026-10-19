@@ -9,7 +9,7 @@ import { next, setStage, status } from "./run.mjs";
 import { checkTestcases } from "./lib/testcases.mjs";
 import { loadJson, paths, validateData } from "./lib/contract.mjs";
 import { append } from "./lib/clarifications.mjs";
-import { put, startRun } from "./test-helpers.mjs";
+import { markApproved, put, startRun } from "./test-helpers.mjs";
 
 test("orchestration rounds are bounded by the run-config limits and reset for a new run", () => {
   const { root } = startRun();
@@ -62,7 +62,7 @@ test("testcases stage: the summary total must match the cases in the configured 
   assert.match(checkTestcases(summary, { module: "contacts", testcasesFormat: "csv" })[0], /missing/);
 });
 
-test("report data counts what exists, from files, per module", () => {
+test("report data counts what exists, from files, per module", async () => {
   const { root } = startRun();
   const p = paths("acme", root);
   put(root, "artifacts/acme/modules/contacts/explore/sitemap.json", JSON.stringify([{ url: "u", slug: "list", title: "List" }]));
@@ -71,18 +71,48 @@ test("report data counts what exists, from files, per module", () => {
   put(root, "playwright-tests/acme/tests/ui/contacts/a.spec.ts", "");
   put(root, "playwright-tests/acme/tests/ui/contacts/b.spec.ts", "");
   put(root, "playwright-tests/acme/tests/api/contacts/c.spec.ts", "");
-  put(root, "k6-tests/acme/scripts/contacts-list.js", "");
-  put(root, "k6-tests/acme/scripts/deals-list.js", "");
+  put(root, "artifacts/acme/modules/contacts/k6/workload.json", JSON.stringify({ scenarios: [{ name: "smoke-1" }, { name: "load-1" }] }));
+  put(root, "artifacts/acme/modules/deals/k6/workload.json", JSON.stringify({ scenarios: [{ name: "smoke-1" }] }));
+  put(root, "k6-tests/acme/scripts/contacts-smoke-1.js", "");
+  put(root, "k6-tests/acme/scripts/contacts-load-1.js", "");
+  put(root, "k6-tests/acme/scripts/deals-smoke-1.js", "");
   record("acme", "contacts", "playwright-ui", { status: "ran", totals: { total: 5, passed: 4, failed: 1, flaky: 0, skipped: 0 }, durationMs: 9, items: [] }, { root });
-  const d = collect("acme", { root });
+  const d = (await collect("acme", { root }));
   assert.equal(d.totals.modulesExplored, 1);
-  assert.deepEqual(d.totals.clarifications, { total: 2, answered: 0, unconfirmed: 2 });
+  assert.deepEqual(d.totals.clarifications, { total: 2, answered: 0, unconfirmed: 2, awaitingApproval: 0 });
   assert.equal(d.totals.testcases, 7);
+  assert.deepEqual(d.totals.approvals, { approved: 0, rejected: 0, changes: 0, awaiting: 0 });
+  markApproved(root, ["TC-contacts-1", "TC-contacts-2"]);
+  assert.deepEqual((await collect("acme", { root })).modules[0].approvals, { approved: 2, rejected: 0, changes: 0, awaiting: 0 }, "approvals are counted per module");
   assert.equal(d.totals.playwrightUiSpecs, 2);
   assert.equal(d.totals.playwrightApiSpecs, 1);
-  assert.equal(d.totals.k6Scripts, 2);
+  assert.equal(d.totals.k6Scripts, 3, "the scripts of each module's workload scenarios");
   assert.equal(d.totals.execution["playwright-ui"].failed, 1);
   assert.equal(d.totals.execution["playwright-ui"].modulesRun, 1);
+  assert.deepEqual(d.totals.triage, { byClass: {}, bugClusters: [], unverified: [] }, "no triage.json yet");
+  assert.equal(d.modules[0].triage["playwright-ui"], null);
+});
+
+test("report data carries the triage's class counts and product-bug clusters from triage.json (D-058)", async () => {
+  const { root } = startRun();
+  const dir = "artifacts/acme/results/acme-run-1/contacts/playwright-ui";
+  put(root, `${dir}/triage.json`, JSON.stringify({
+    summary: { rows: 3, open: 0, clusters: 2, byClass: { "product-bug": 1, flaky: 1, "locator-drift": 1 } },
+    rows: [
+      { key: "ui:TC-contacts-1", class: "product-bug", cluster: "BUG-contacts-1", healable: false },
+      { key: "ui:TC-contacts-2", class: "flaky", cluster: "BUG-contacts-2", healable: false },
+      { key: "ui:TC-contacts-3", class: "locator-drift", healable: true },
+    ],
+    clusters: [{ id: "BUG-contacts-1", signature: "s1", rows: 1, ids: ["TC-contacts-1"] }, { id: "BUG-contacts-2", signature: "s2", rows: 1, ids: ["TC-contacts-2"] }],
+    verified: { results: null, knownIssues: null, overlay: null },
+  }));
+  put(root, `${dir}/triage-overlay.json`, JSON.stringify({ bugs: [{ cluster: "BUG-contacts-1", title: "Save loses the phone", severity: "major", evidence: ["e.png"] }] }));
+  const d = (await collect("acme", { root }));
+  const t = d.modules[0].triage["playwright-ui"];
+  assert.deepEqual([t.healable, t.byClass["locator-drift"]], [1, 1]);
+  assert.equal(t.verified, false, "the overlay changed after the stamp (written here after it)");
+  assert.deepEqual(d.totals.triage.byClass, { "product-bug": 1, flaky: 1, "locator-drift": 1 });
+  assert.deepEqual(d.totals.triage.bugClusters.map((c) => [c.module, c.framework, c.id, c.title, c.severity]), [["contacts", "playwright-ui", "BUG-contacts-1", "Save loses the phone", "major"]], "only product-bug clusters, with their drafts");
 });
 
 test("init creates a header-only clarifications.csv per module", () => {

@@ -2,7 +2,8 @@
 import { closeSync, existsSync, mkdirSync, openSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-export function parseCsv(text) {
+// delimiter: "," (default) or ";" (Excel in locales whose decimal mark is a comma); detectDelimiter() tells which.
+export function parseCsv(text, { delimiter = "," } = {}) {
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // Excel BOM
   const rows = [];
   let row = [];
@@ -18,7 +19,7 @@ export function parseCsv(text) {
         } else inQuotes = false;
       } else field += c;
     } else if (c === '"') inQuotes = true;
-    else if (c === ",") {
+    else if (c === delimiter) {
       row.push(field);
       field = "";
     } else if (c === "\n" || c === "\r") {
@@ -37,26 +38,47 @@ export function parseCsv(text) {
   return rows.filter((r) => !r.every((c) => c === "")); // drop blank lines
 }
 
-export function serializeCsv(rows) {
+export function serializeCsv(rows, { delimiter = "," } = {}) {
   const cell = (v) => {
     const s = String(v ?? "");
-    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    return /[",\r\n]/.test(s) || s.includes(delimiter) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  return rows.map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
+  return rows.map((r) => r.map(cell).join(delimiter)).join("\r\n") + "\r\n";
+}
+
+// The delimiter of a CSV file's header line: ";" when it has more unquoted semicolons than commas, else ",".
+export function detectDelimiter(text) {
+  let comma = 0;
+  let semi = 0;
+  let q = false;
+  for (const c of String(text).replace(/^﻿/, "")) {
+    if (c === '"') q = !q;
+    else if (!q && (c === "\n" || c === "\r")) break;
+    else if (!q && c === ",") comma++;
+    else if (!q && c === ";") semi++;
+  }
+  return semi > comma ? ";" : ",";
 }
 
 export function writeAtomic(file, text) {
   mkdirSync(dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, text, "utf8");
-  try {
-    renameSync(tmp, file);
-  } catch (e) {
-    if (e.code === "EPERM" || e.code === "EBUSY") {
+  // On Windows a rename fails while another process (a virus scanner, an indexer) briefly holds the file: retry a few
+  // times before reporting it as locked (Excel holds it for good).
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync(tmp, file);
+      return;
+    } catch (e) {
+      if (e.code !== "EPERM" && e.code !== "EBUSY") throw e;
+      if (attempt < 10) {
+        sleep(25 * (attempt + 1));
+        continue;
+      }
       unlinkSync(tmp);
       throw new Error(`${file} is locked by another program (is it open in Excel?). Close it and retry.`);
     }
-    throw e;
   }
 }
 

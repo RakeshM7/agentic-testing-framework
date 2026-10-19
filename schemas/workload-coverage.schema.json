@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workload-coverage.schema.json",
+  "title": "The k6 workload coverage ledger (artifacts/<product>/modules/<m>/k6/workload-coverage.json), written only by scripts/workload.mjs: every catalogue endpoint loaded, excluded with a reason, or deferred over k6.budget",
+  "type": "object",
+  "required": ["module", "runId", "mode", "types", "budget", "inputs", "counts", "loaded", "excluded", "deferred", "skippedTypes", "notes", "unmappedResults"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": "string", "description": "The run whose playwright-api results.json was read." },
+    "mode": { "enum": ["readonly", "full-run"] },
+    "types": { "type": "array", "items": { "$ref": "workload.schema.json#/$defs/type" } },
+    "budget": { "type": "integer", "minimum": 1 },
+    "inputs": {
+      "type": "object",
+      "required": ["catalogue", "plan", "results", "overlay"],
+      "additionalProperties": false,
+      "description": "sha256 of each input file (null = missing).",
+      "properties": { "catalogue": { "type": ["string", "null"] }, "plan": { "type": ["string", "null"] }, "results": { "type": ["string", "null"] }, "overlay": { "type": ["string", "null"] } }
+    },
+    "counts": { "type": "object", "required": ["total", "loaded", "excluded", "deferred"], "additionalProperties": false, "properties": { "total": { "type": "integer" }, "loaded": { "type": "integer" }, "excluded": { "type": "integer" }, "deferred": { "type": "integer" } } },
+    "loaded": { "type": "array", "items": { "type": "object", "required": ["endpoint", "key", "ids"], "additionalProperties": false, "properties": { "endpoint": { "type": "string", "pattern": "^EP-" }, "key": { "type": "string" }, "ids": { "type": "array", "minItems": 1, "items": { "$ref": "workload.schema.json#/$defs/id" } } } } },
+    "excluded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["endpoint", "key", "reason", "detail"],
+        "additionalProperties": false,
+        "properties": {
+          "endpoint": { "type": "string", "pattern": "^EP-" },
+          "key": { "type": "string" },
+          "reason": { "enum": ["not-planned", "overlay-excluded", "mutating-readonly", "failed-functional", "blocked", "untested-functional", "rate-limited", "no-safe-data"] },
+          "detail": { "type": "string", "minLength": 1 },
+          "citation": { "type": "string" }
+        }
+      }
+    },
+    "deferred": { "type": "array", "items": { "type": "object", "required": ["endpoint", "key", "reason", "detail"], "additionalProperties": false, "properties": { "endpoint": { "type": "string", "pattern": "^EP-" }, "key": { "type": "string" }, "reason": { "const": "budget" }, "detail": { "type": "string" } } } },
+    "skippedTypes": { "type": "array", "description": "A test type a load unit could not get, and why.", "items": { "type": "object", "required": ["unit", "type", "reason", "detail"], "additionalProperties": false, "properties": { "unit": { "type": "string" }, "type": { "$ref": "workload.schema.json#/$defs/type" }, "reason": { "const": "rate-limited" }, "detail": { "type": "string" } } } },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "unmappedResults": { "type": "array", "items": { "type": "string" }, "description": "playwright-api result titles naming no single plan scenario." },
+    "verified": { "type": "object", "description": "sha256 stamp written by a passing workload.mjs check (D-049)." }
+  }
+}

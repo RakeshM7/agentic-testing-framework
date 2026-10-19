@@ -3,9 +3,16 @@
 // domains, the bounded run loop (runner-triager -> fixer). The clarification domain is one explorer per open row.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { apiCodeContext, apiCodeUnverified } from "./api-code.mjs";
 import { planPaths, planUnverified } from "./api-plan.mjs";
+import { foundationContext, foundationUnverified } from "./foundation.mjs";
+import { reviewVerdict } from "./review.mjs";
+import { reviewResult, testcaseContext, testcaseTotals, testcasesUnverified } from "./testcases.mjs";
+import { noUiCases, uiCodeContext, uiCodeUnverified } from "./ui-code.mjs";
+import { k6CodeContext, k6CodeUnverified } from "./k6-code.mjs";
+import { triagePaths, triageUnverified } from "./triage.mjs";
+import { workloadPaths, workloadScenarios, workloadUnverified } from "./workload.mjs";
 
-const exists = (dir, ...files) => files.every((f) => existsSync(path.join(dir, f)));
 const json = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null);
 
 // An empty catalogue is either "nothing there" or "could not see" (coverage.json status blocked, D-045); the two must
@@ -17,20 +24,66 @@ function noApiSurface(c) {
   return cov?.status === "blocked" ? `API discovery blocked: ${cov.blockedReason ?? "no reason recorded"}` : "no API surface found";
 }
 
-// ctx: {productDir, module, pwProject, k6Project, format}
+// A side's foundation is rendered from templates/ (D-054): its build step is skipped only while foundation.mjs check's
+// verified stamp is current, and a done step counts only with that stamp. A stale stamp (a hand edit, a changed
+// overlay, template or run-config input) re-runs the side's agent, which re-renders.
+const fCtx = (c) => foundationContext({ root: c.root, product: c.product, run: c.run, cfg: c.cfg, productDir: c.productDir, pwProject: c.pwProject, k6Project: c.k6Project });
+const foundationStep = (side, step, agent, what) => ({
+  step, agent,
+  skip: (c) => !foundationUnverified(fCtx(c), side) && `${what} is verified (foundation.mjs check)`,
+  verify: (c) => foundationUnverified(fCtx(c), side),
+});
+
+const tcCtx = (c) => testcaseContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir });
+
+// The UI code is script-scaffolded (D-055): a done pages or tests step counts only once `ui-code.mjs check` (--pages for
+// the page objects) stamped what is on disk. Verified once, when the step is first seen done (verifyOnce): the review
+// and heal loops' fixer edits the same files afterwards, and the gate re-checks every rule each round.
+const ucCtx = (c) => uiCodeContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir, pwProject: c.pwProject });
+
+// The API code is generated (D-056): a done clients or tests step counts only once `api-code.mjs check` (--clients for
+// the clients) stamped what is on disk; verified once, like the UI code, because the fixer edits the same files later.
+const acCtx = (c) => apiCodeContext({ root: c.root, product: c.product, module: c.module, run: c.run, cfg: c.cfg, productDir: c.productDir, pwProject: c.pwProject });
+
+// The k6 workload and scripts are script-built (D-057): a done workload step counts only once `workload.mjs check`
+// stamped it; a done scripts step only once `k6-code.mjs check` did, verified once (the fixer edits the slot file later,
+// and the gate re-checks every round). The designer gets the run id: workload.mjs build reads that run's results.
+const kcCtx = (c) => k6CodeContext({ root: c.root, product: c.product, module: c.module, run: c.run, productDir: c.productDir, k6Project: c.k6Project });
+
+// The blocker and major rows of a findings file (docs/agent-handoffs.md §6): what is still unresolved.
+export function unresolvedFindings(file) {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, "utf8")
+    .split(/\r?\n/)
+    .map((l) => /^\|\s*(\d+)\s*\|\s*(blocker|major)\s*\|[^|]*\|[^|]*\|\s*([^|]*?)\s*\|\s*((?:[^|\\]|\\.)*?)\s*\|/.exec(l))
+    .filter(Boolean)
+    .map((m) => ({ n: Number(m[1]), severity: m[2], rule: m[3], problem: m[4] }));
+}
+
+// The code domains' review verdict is derived by review.mjs check (G9) from the reviewer's per-test review.json and read
+// here only from a stamp that is still fresh; a typed `Verdict:` line is never read.
+const codeVerdict = (c, domain, round) => reviewVerdict({ root: c.root, module: c.module, productDir: c.productDir, runId: c.run.runId, pwProject: c.pwProject, k6Project: c.k6Project }, domain, round);
+
+// ctx: {root, product, run, cfg, productDir, module, pwProject, k6Project, format}
 export const FLOWS = {
+  // The cases are script-built (D-053): a done write step counts only once testcases.mjs check passed on what is on
+  // disk; the review verdict is derived from the reviewer's per-case review.json, never read from a typed line.
   testcases: {
-    build: [{ step: "write", agent: "testcase-writer", args: (c) => ({ format: c.format }) }],
-    review: { reviewer: "testcase-reviewer", fixer: "testcase-writer", reviewerArgs: (c) => ({ format: c.format }), fixerArgs: (c) => ({ format: c.format }) },
+    build: [{ step: "write", agent: "testcase-writer", verify: (c) => testcasesUnverified(tcCtx(c)) }],
+    review: { reviewer: "testcase-reviewer", fixer: "testcase-writer", verdict: (c, round) => reviewResult(tcCtx(c), { round }) },
+    // what done reports, so the orchestrator reads nothing by hand: totals, assumptions, approvals, unresolved findings
+    done: (c, lastFindings) => ({ ...testcaseTotals(tcCtx(c)), unresolved: lastFindings ? unresolvedFindings(lastFindings) : [] }),
   },
   "playwright-ui": {
     build: [
-      { step: "scaffold", agent: "pw-ui-scaffolder", skip: (c) => exists(c.pwProject, "config/ui/settings.ts", "fixtures/ui/index.ts", "fixtures/ui/auth.setup.ts") && "the UI foundation exists" },
-      { step: "pages", agent: "pw-ui-pom-writer" },
-      { step: "tests", agent: "pw-ui-tests-writer" },
+      foundationStep("ui", "scaffold", "pw-ui-scaffolder", "the UI foundation"),
+      // Every approved case is @api: nothing to scaffold or review; the runner records not-run with the reason.
+      { step: "pages", agent: "pw-ui-pom-writer", skipRest: (c) => noUiCases(ucCtx(c)), verify: (c) => uiCodeUnverified(ucCtx(c), "pages"), verifyOnce: true },
+      { step: "tests", agent: "pw-ui-tests-writer", verify: (c) => uiCodeUnverified(ucCtx(c), "tests"), verifyOnce: true },
     ],
-    review: { reviewer: "pw-ui-reviewer", fixer: "pw-ui-fixer" },
-    run: { runner: "pw-ui-test-runner-triager", fixer: "pw-ui-fixer", framework: "playwright-ui" },
+    review: { reviewer: "pw-ui-reviewer", fixer: "pw-ui-fixer", verdict: (c, round) => codeVerdict(c, "playwright-ui", round) },
+    run: { runner: "pw-ui-test-runner-triager", fixer: "pw-ui-fixer", framework: "playwright-ui", triageDomain: "ui" },
+    done: (c, lastFindings, state) => automationSummary(c, FLOWS["playwright-ui"].run, lastFindings, state),
   },
   "playwright-api": {
     build: [
@@ -38,37 +91,62 @@ export const FLOWS = {
       // No API surface (or discovery blocked): nothing to plan, build or review; the runner records not-run with the reason.
       // The plan is script-built (D-046): a "done" plan step counts only once api-plan.mjs check passed on what is on disk.
       { step: "plan", agent: "api-test-planner", skipRest: noApiSurface, verify: (c) => planUnverified(planPaths(c.productDir, c.module)) },
-      { step: "scaffold", agent: "pw-api-scaffolder", skip: (c) => exists(c.pwProject, "config/api/settings.ts", "fixtures/api/index.ts", "fixtures/api/auth.setup.ts", "helpers/api/schema.ts") && "the API foundation exists" },
-      { step: "clients", agent: "pw-api-client-writer" },
-      { step: "tests", agent: "pw-api-tests-writer" },
+      foundationStep("api", "scaffold", "pw-api-scaffolder", "the API foundation"),
+      { step: "clients", agent: "pw-api-client-writer", verify: (c) => apiCodeUnverified(acCtx(c), "clients"), verifyOnce: true },
+      { step: "tests", agent: "pw-api-tests-writer", verify: (c) => apiCodeUnverified(acCtx(c), "tests"), verifyOnce: true },
     ],
-    review: { reviewer: "pw-api-reviewer", fixer: "pw-api-fixer" },
-    run: { runner: "pw-api-test-runner-triager", fixer: "pw-api-fixer", framework: "playwright-api" },
+    review: { reviewer: "pw-api-reviewer", fixer: "pw-api-fixer", verdict: (c, round) => codeVerdict(c, "playwright-api", round) },
+    run: { runner: "pw-api-test-runner-triager", fixer: "pw-api-fixer", framework: "playwright-api", triageDomain: "api" },
+    done: (c, lastFindings, state) => automationSummary(c, FLOWS["playwright-api"].run, lastFindings, state),
   },
   k6: {
     build: [
-      { step: "workload", agent: "k6-workload-designer" },
+      { step: "workload", agent: "k6-workload-designer", args: (c) => ({ run: c.run.runId }), verify: (c) => workloadUnverified(workloadPaths(c.productDir, c.module), c.run.runId) },
       // Every endpoint excluded: no scripts to write or review; the runner records not-run.
-      { step: "lib", agent: "k6-lib-writer", skipRest: (c) => (json(path.join(c.productDir, "modules", c.module, "k6", "workload.json")) ?? []).filter((w) => w.id !== `K6-${c.module}-0`).length === 0 && "every endpoint excluded from load", skip: (c) => exists(c.k6Project, "lib/config.js") && "the shared lib exists" },
-      { step: "scripts", agent: "k6-script-writer" },
+      { ...foundationStep("k6", "lib", "k6-lib-writer", "the k6 lib"), skipRest: (c) => (workloadScenarios(path.join(c.productDir, "modules", c.module, "k6", "workload.json")) ?? []).length === 0 && "every endpoint excluded from load" },
+      { step: "scripts", agent: "k6-script-writer", verify: (c) => k6CodeUnverified(kcCtx(c)), verifyOnce: true },
     ],
-    review: { reviewer: "k6-reviewer", fixer: "k6-fixer" },
-    run: { runner: "k6-runner-triager", fixer: "k6-fixer", framework: "k6" },
+    review: { reviewer: "k6-reviewer", fixer: "k6-fixer", verdict: (c, round) => codeVerdict(c, "k6", round) },
+    run: { runner: "k6-runner-triager", fixer: "k6-fixer", framework: "k6", triageDomain: "k6" },
+    done: (c, lastFindings, state) => automationSummary(c, FLOWS["k6"].run, lastFindings, state),
   },
 };
 
-// `Verdict: pass | changes-required` of a findings file (review or gate), or null.
-export function verdictOf(file) {
-  if (!existsSync(file)) return null;
-  return /^Verdict:\s*(pass|changes-required)\b/m.exec(readFileSync(file, "utf8"))?.[1] ?? null;
+// What done reports for an automation domain, so the orchestrator reads nothing by hand (G10): the results' totals, the
+// product-bug rows, the failures by class, how many healable rows the heal rounds fixed (state.healKeys: the rows asked for;
+// healed = no longer in the final triage), and the review findings still open.
+export function automationSummary(c, run, lastFindings, state) {
+  const tp = triagePaths(c.productDir, c.module, c.run.runId, run.triageDomain);
+  const results = json(tp.results);
+  const rows = json(tp.triage)?.rows ?? [];
+  const byClass = {};
+  for (const r of rows) byClass[r.class ?? "unclassified"] = (byClass[r.class ?? "unclassified"] ?? 0) + 1;
+  const left = new Set(rows.map((r) => r.key));
+  const asked = state?.healKeys ?? [];
+  return {
+    results: results ? { status: results.status, ...(results.reason ? { reason: results.reason } : {}), ...results.totals } : null,
+    productBugs: rows.filter((r) => r.class === "product-bug").map((r) => ({ key: r.key, id: r.tcId ?? r.scenarioId ?? r.k6Id ?? r.tcIds?.[0] ?? null, title: r.title, cluster: r.cluster ?? null })),
+    failuresByClass: byClass,
+    healRounds: state?.rounds?.heal ?? 0,
+    healed: asked.filter((k) => !left.has(k)).length,
+    healableLeft: rows.filter((r) => r.healable === true).length,
+    unresolved: lastFindings ? unresolvedFindings(lastFindings) : [],
+  };
 }
 
-// Rows of a triage table (docs/agent-handoffs.md §7) whose Healable column is yes.
+// The run loop's triage (D-058): triage.json's path and why it cannot be trusted (null when triage.mjs check's verified
+// stamp is current). A heal round never starts from an unverified triage.
+export function runTriage(c, run) {
+  const tp = triagePaths(c.productDir, c.module, c.run.runId, run.triageDomain);
+  return { file: tp.triage, unverified: triageUnverified(tp) };
+}
+
+// Healable rows of triage.json (docs/agent-handoffs.md §7): the test-bug and locator-drift rows marked healable.
 export function healableRows(file) {
   if (!existsSync(file)) return 0;
-  const lines = readFileSync(file, "utf8").split(/\r?\n/).filter((l) => l.trim().startsWith("|"));
-  const cells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim().toLowerCase());
-  const col = lines.length ? cells(lines[0]).indexOf("healable") : -1;
-  if (col < 0) return 0;
-  return lines.slice(1).filter((l) => !/^\|?\s*:?-{3,}/.test(l.trim()) && cells(l)[col] === "yes").length;
+  try {
+    return (JSON.parse(readFileSync(file, "utf8")).rows ?? []).filter((r) => r.healable === true).length;
+  } catch {
+    return 0;
+  }
 }

@@ -35,7 +35,7 @@ export function matches(text, re) {
 
 // Titles of Playwright tests: test('…'), test.fixme('…'), test.skip('…'), test.only('…').
 export function testTitles(text) {
-  return [...text.matchAll(/\btest(?:\.(fixme|skip|only))?\(\s*(['"`])((?:(?!\2)[\s\S])*)\2/g)].map((m) => ({
+  return [...text.matchAll(/(?<![\w$.])test(?:\.(fixme|skip|only))?\(\s*(['"`])((?:(?!\2)[\s\S])*)\2/g)].map((m) => ({
     title: m[3],
     kind: m[1] ?? "test",
     line: lineOf(text, m.index),

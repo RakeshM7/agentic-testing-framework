@@ -8,18 +8,22 @@
 //   - ownership:    that run's state/ledger.jsonl, entries of the CURRENT run only
 //   - caller:       the call's `agent` (set by the adapter only from a trusted source) and `host`
 // The env var AUTHORIZATIONS_MODE=readonly can only downgrade. No active run => readonly, no per-agent rules.
+// One rule holds for every call, in or out of a run, whoever calls: test case approval is human-only (humanOnly()).
+// During a run, no caller (named or not, in any mode) writes a managed foundation file directly (managedPath(), D-054),
+// nor a file scripts/api-code.mjs generates (the API clients, types, schemas, registration and specs, D-056).
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
 // On a host that cannot name the calling agent (scripts/lib/hosts.mjs), a full-run call gets what at least one of the
 // run's agents may do (runCeiling, D-035): every call there comes from one of the run's agents.
 //
 // Dependency-free (imported by a PreToolUse hook on every guarded tool call).
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import { hostname } from "node:os";
 import path from "node:path";
 import { isMutatingBrowserTool } from "./browser-tools.mjs";
 import { canIdentify, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
-import { atLeast, canWrite, effectiveLiveTarget, runCeiling, shellAllowed } from "./permissions.mjs";
+import { atLeast, canWrite, effectiveLiveTarget, isManaged, runCeiling, shellAllowed } from "./permissions.mjs";
 
 const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 
@@ -74,6 +78,28 @@ const DELETE_RE = /(-X|--request)[\s=]*['"]?DELETE\b|--method[\s=]*['"]?DELETE\b
 // Matched as any command of a compound line and by any path to run.mjs: agents often write `cd <repo> && node …`.
 const CANARY = /(?:^\s*|[;&|(]\s*)node\s+(?:\S*\/)?scripts\/run\.mjs\s+guard-check\s+([a-z0-9]+(?:-[a-z0-9]+)*)(?![\w-])/;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Human-only (the user's decision, 2026-10-17): a test case is automated only once a human approves it. Every tool call
+// the hook sees -- any host and mode, identified caller or not, inside or outside a run -- is denied when it runs
+// `testcases.mjs approve` (also chained, through the lib, or with the names split by string concatenation) or touches
+// the approval sheet and its record (approval.csv, approvals.json, their 8.3 short names, anything named approv* in a
+// testcases folder). A human edits the sheet and runs the command in their own terminal. Matching code text can't be
+// complete (an in-process import can hide any name), so this is defence in depth: `approve` itself also insists on an
+// interactive terminal and a typed confirmation (scripts/lib/testcases.mjs).
+// Known limit (accepted, recorded in G3's decision): an agent with `shell: project` can still write approvals.json
+// through code this match can't read -- `node -e` with String.fromCharCode, template literals, base64 or eval, or a
+// shell glob such as appro?als.json. Restricted agents can't: their allow-list never vouches for such a line.
+const JOIN_CONCAT = /(['"`])\s*\+\s*(['"`])/g;
+const HUMAN_ONLY_CMD = /testcases[\s\S]*\bapprove\b|\bapprove\b[\s\S]*testcases/i;
+const HUMAN_ONLY_FILES = /approvals?\.(csv|json)|approv~\d|testcases[\\/]+approv/i;
+const HUMAN_ONLY_PATH = /(^|[\\/])(testcases[\\/]+approv[^\\/]*|approvals?\.(csv|json)|approv~\d[^\\/]*)$/i;
+const HUMAN_ONLY_REASON = "test case approval is human-only: a human edits testcases/approval.csv and runs `node scripts/testcases.mjs approve` in their own terminal";
+function humanOnly(call) {
+  if (call.kind === "shell") {
+    const cmd = String(call.command ?? "").replace(JOIN_CONCAT, "");
+    return HUMAN_ONLY_CMD.test(cmd) || HUMAN_ONLY_FILES.test(cmd);
+  }
+  return call.kind === "write" && call.paths.some((p) => HUMAN_ONLY_PATH.test(String(p)));
+}
 
 const deny = (rule, reason) => ({ allowed: false, rule, reason });
 const ALLOW = { allowed: true };
@@ -110,6 +136,50 @@ function checkShell(cmd, run, row) {
   if (row && lt.http === "none" && run.targetHosts.some((h) => cmd.toLowerCase().includes(h)))
     return deny("http-none", "this agent has no HTTP access to the product under test");
   return ALLOW;
+}
+
+// Stricter only (D-054): the repo-relative path of a managed foundation file the call would write, else null.
+// The path is tested as written and as the file system resolves it, so neither a device prefix (`\\?\C:\…`), a UNC
+// path to this machine (`\\localhost\C$\…`, `\\?\UNC\…`), a directory short name nor a junction or symlink inside a
+// writable folder (helpers/ui/link -> fixtures/ui) reaches a managed file. Resolution only adds candidates: when it
+// fails, the string check still applies.
+const LOCAL_HOSTS = () => new Set(["localhost", "127.0.0.1", "[::1]", "::1", ".", "?", hostname().toLowerCase()]);
+function devicePath(p) {
+  let s = String(p);
+  if (/^[\\/]{2}[?.][\\/]unc[\\/]/i.test(s)) s = `\\\\${s.slice(8)}`; // \\?\UNC\host\share\… -> \\host\share\…
+  else if (/^[\\/]{2}[?.][\\/]/.test(s)) s = s.slice(4); // \\?\C:\… -> C:\…
+  const unc = /^[\\/]{2}([^\\/]+)[\\/]([a-z])\$(?:[\\/](.*))?$/i.exec(s); // \\localhost\C$\… -> C:\…
+  if (unc && LOCAL_HOSTS().has(unc[1].toLowerCase())) s = `${unc[2]}:\\${unc[3] ?? ""}`;
+  return s;
+}
+function realOf(abs) {
+  const rest = [];
+  let dir = abs;
+  try {
+    while (!existsSync(dir)) {
+      const up = path.dirname(dir);
+      if (up === dir) return null;
+      rest.unshift(path.basename(dir));
+      dir = up;
+    }
+    return path.join(realpathSync.native(dir), ...rest);
+  } catch {
+    return null;
+  }
+}
+function managedPath(file, run) {
+  const values = { product: run.product, run_id: run.runId };
+  const roots = [...new Set([run.root, realOf(run.root)].filter(Boolean))];
+  const abs = path.resolve(run.root, devicePath(file));
+  // a UNC path to another host is never inside the repo; don't touch the network to resolve it
+  const real = /^[\\/]{2}/.test(abs) ? null : realOf(abs);
+  for (const target of [...new Set([abs, real].filter(Boolean))])
+    for (const root of roots) {
+      const rel = path.relative(root, target).replaceAll("\\", "/");
+      if (rel.startsWith("..") || path.isAbsolute(rel)) continue;
+      if (isManaged(run.permissions, rel, values)) return rel;
+    }
+  return null;
 }
 
 function checkWrite(file, run, row) {
@@ -175,8 +245,28 @@ export function checkTool(call, root, env = process.env) {
   const canary = call.kind === "shell" ? CANARY.exec(call.command ?? "") : null;
   if (canary)
     return { allowed: false, rule: "canary", reason: `guard is active on ${labelOf(call.host)} (caller: ${call.agent ?? "unidentified"}); this block is expected`, canary: { product: canary[1] } };
+  if (humanOnly(call)) return deny("human-only", HUMAN_ONLY_REASON);
   const runs = findActiveRuns(root, env);
   if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHosts: [] }, null) : ALLOW;
+  // Managed foundation files (D-054) are rendered by scripts/foundation.mjs through node, never by a hooked write: no
+  // caller writes one directly, named or not, in any mode, whichever active run's product it belongs to.
+  if (call.kind === "write")
+    for (const r of runs) {
+      const managed = r.permissions ? (call.paths ?? []).map((f) => managedPath(f, r)).find(Boolean) : null;
+      if (managed)
+        return deny(
+          "managed-file",
+          /\/fixtures\/(ui|api)\/index\.ts$|\/fixtures\/ui\/pages\//i.test(`/${managed}`)
+            ? `${managed} is generated from the module registrations (D-056): run the module's build (ui-code.mjs or api-code.mjs), never edit it`
+            : /\/(clients|tests\/api|config\/api\/schemas|fixtures\/api\/clients)\//i.test(`/${managed}`)
+              ? `${managed} is generated by scripts/api-code.mjs from the endpoint catalogue and the API plan (D-056): change the client or tests overlay, or a slot of helpers/api/<module>.payloads.ts or .glue.ts, and run api-code.mjs build`
+              : /\/k6\/workload(-coverage|-registry)?\.json$/i.test(`/${managed}`)
+                ? `${managed} is written by scripts/workload.mjs (D-057): change k6/workload-overlay.json and run workload.mjs build, then check`
+                : /\/k6\/(code-plan\.json|parked\.json|legacy\/)|^\/k6-tests\/[^/]+\/scripts\//i.test(`/${managed}`)
+                  ? `${managed} is generated by scripts/k6-code.mjs from the verified workload (D-057): write only the slots of k6-tests/<product>/scripts/slots/<module>.js and run k6-code.mjs build, then check`
+                  : `${managed} is rendered by scripts/foundation.mjs from templates/: change the side's overlay (artifacts/<product>/foundation/) and run foundation.mjs render`,
+        );
+    }
   const verdicts = runs.map((r) => evaluate(call, r));
   if (call.kind === "write") return verdicts.find((v) => v.allowed) ?? verdicts[0];
   return firstDenied(verdicts);

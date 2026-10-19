@@ -17,6 +17,8 @@
 //     excluded with a reason code; build() fails if any input is unaccounted for
 //   - non-GET REST operations always mutate; the overlay can raise `mutates`, never lower it
 //   - traffic gives key names only, so types and schemas come only from a spec
+//   - an inventory entry is cited by its stable id, explore/network-inventory.json#NI-<m>-<n> (D-052); an older
+//     inventory without ids is still read, and cited by its array index (#/<index>)
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -24,6 +26,7 @@ import yaml from "js-yaml";
 import { writeAtomic, withFileLock } from "./csv.mjs";
 import { operationsFromIntrospection } from "./graphql.mjs";
 import { parseSpec, specVersion } from "./openapi.mjs";
+import { assignIds } from "./registry.mjs";
 
 export const EXCLUSION_REASONS = ["third_party", "static_asset", "preflight", "telemetry", "health", "auth_plumbing", "page_navigation", "out_of_module", "duplicate", "deprecated", "not_api"];
 const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -96,6 +99,12 @@ export function normalizePath(raw, { literals = [] } = {}) {
 }
 
 export const erase = (p) => p.replace(/\{[^}]*\}/g, "{}");
+
+// A network-inventory entry: its stable NI id (D-052), or its index in an older inventory without ids.
+const NI_RE = /^NI-[a-z0-9]+(-[a-z0-9]+)*-[1-9]\d*$/;
+const hasNiId = (e) => typeof e.id === "string" && NI_RE.test(e.id);
+export const inventoryInput = (e, i) => `inventory:${hasNiId(e) ? e.id : i}:${String(e.method ?? "").toUpperCase()} ${e.pathTemplate}`;
+export const inventoryRef = (e, i) => `explore/network-inventory.json#${hasNiId(e) ? e.id : `/${i}`}`;
 export const segments = (p) => p.split("/").filter(Boolean);
 
 export function restKey(method, origin, p, primaryOrigin) {
@@ -129,11 +138,20 @@ export function leafResource(p) {
   return lits.at(-1) ?? null;
 }
 
+// Words that make a POST to a collection an action, never a plain create (D-056): what it does is destructive or acts
+// on existing entities. The catalogue reads them in the path only (bulk-delete, purge, remove, cancel); a summary or an
+// operationId never changes an endpoint's crud, so a create stays a recorded create whatever it is called (round 3).
+// api-code.mjs also reads them in the summary and the operationId, only to keep such creates out of the glue's facade.
+export const ACTION_LIKE = new Set(["delete", "remove", "purge", "destroy", "erase", "wipe", "truncate", "clear", "reset", "revoke", "cancel", "archive", "unarchive", "restore", "disable", "deactivate", "ban", "block", "bulk", "batch", "merge", "move", "approve", "reject", "close", "lock", "unlock", "expire", "invalidate", "void", "refund", "transfer", "assign", "unassign", "detach", "attach", "sync"]);
+export const actionLike = (...texts) => texts.some((t) => words(t ?? "").some((w) => ACTION_LIKE.has(w.toLowerCase())));
+
+// By the path only: an action word as the last segment, an action segment after an id (/{id}/archive), or a POST whose
+// last segment is destructive or action-like (bulk-delete, purge).
 export function crudOf(method, p) {
   const segs = segments(p);
   const last = segs.at(-1) ?? "";
   const lastIsParam = PARAM.test(last);
-  const action = !lastIsParam && (ACTION_WORDS.has(last.toLowerCase()) || (segs.length > 1 && PARAM.test(segs.at(-2)) && literalSegments(p).length > 1 && method === "POST"));
+  const action = !lastIsParam && (ACTION_WORDS.has(last.toLowerCase()) || (segs.length > 1 && PARAM.test(segs.at(-2)) && literalSegments(p).length > 1 && method === "POST") || (method === "POST" && actionLike(last)));
   if (action) return "action";
   if (method === "GET") return lastIsParam ? "read" : "list";
   if (method === "POST") return lastIsParam ? "action" : "create";
@@ -262,23 +280,6 @@ export function saveSource(ap, { kind, location, content, ...meta }) {
   });
 }
 
-// ---------- registry: stable ids ----------
-
-export function assignIds(registryFile, module, keys, runId) {
-  return withFileLock(registryFile, () => {
-    const reg = readJson(registryFile, { module, next: 1, endpoints: {} });
-    const present = new Set(keys);
-    for (const k of [...keys].sort()) {
-      const e = reg.endpoints[k];
-      if (e) Object.assign(e, { status: "active", lastSeen: runId });
-      else reg.endpoints[k] = { id: `EP-${module}-${reg.next++}`, status: "active", firstSeen: runId, lastSeen: runId };
-    }
-    for (const [k, e] of Object.entries(reg.endpoints)) if (!present.has(k) && e.status === "active") e.status = "gone";
-    writeJson(registryFile, reg);
-    return reg;
-  });
-}
-
 const idNum = (id) => Number(id.split("-").at(-1));
 
 // ---------- schema helpers ----------
@@ -359,7 +360,7 @@ export function build(ap, { module, cfg, runId }) {
   const protocol = new URL(cfg.target.url).protocol;
   const inv = inventory.map((e, i) => {
     const method = String(e.method ?? "").toUpperCase();
-    const input = `inventory:${i}:${method} ${e.pathTemplate}`;
+    const input = inventoryInput(e, i);
     let n;
     try {
       n = normalizePath(e.host && !/^https?:/i.test(e.pathTemplate) ? `${protocol}//${e.host}${e.pathTemplate}` : e.pathTemplate, { literals });
@@ -491,7 +492,7 @@ export function build(ap, { module, cfg, runId }) {
   });
 
   // 5. ids
-  const reg = assignIds(ap.registry, module, [...acc.keys()], runId);
+  const reg = assignIds(ap.registry, [...acc.keys()], { module, runId, prefix: "EP", field: "endpoints" });
   const idOf = (k) => reg.endpoints[k].id;
 
   // 6. finalize each endpoint
@@ -543,7 +544,7 @@ export function build(ap, { module, cfg, runId }) {
         return [];
       }
     }),
-    ...inventory.map((e, i) => `inventory:${i}:${String(e.method ?? "").toUpperCase()} ${e.pathTemplate}`),
+    ...inventory.map(inventoryInput),
     ...overlay.endpoints.map((d, i) => `docs:${i}:${String(d.method).toUpperCase()} ${d.path}`),
   ];
   const accounted = new Map();
@@ -609,7 +610,7 @@ function finalize(a, { idOf, probes }) {
   const sources = [
     ...a.specOps.map((o) => ({ source: "openapi", ref: `sources/${o.sourceId}.json${o.ref}` })),
     ...a.gql.map((g) => ({ source: "graphql", ref: `sources/${g.sourceId}.json#${g.operationType}.${g.field}` })),
-    ...a.inv.map((x) => ({ source: "network", ref: `explore/network-inventory.json#/${x.index}` })),
+    ...a.inv.map((x) => ({ source: "network", ref: inventoryRef(x, x.index) })),
     ...a.docs.map((d) => ({ source: "docs", ref: d.citation })),
     ...(probed ? [{ source: "probe", ref: "sources/probes.json" }] : []),
   ];

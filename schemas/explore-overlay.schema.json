@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "explore-overlay.schema.json",
+  "title": "explore/overlay.json: module-explorer's judgments (D-052). scripts/explore.mjs checks every id and citation in it.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "object",
+      "description": "Frontier items not explored, keyed by FR id. The agent's reasons only: destructive-preexisting, guard-denied and unreachable cite the capture that shows why; duplicate-of names an item with the same role and name. not-allowed-in-mode, out-of-module, external, logout and disabled are derived by the script only.",
+      "propertyNames": { "pattern": "^FR-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["reason", "detail"],
+        "additionalProperties": false,
+        "properties": {
+          "reason": { "enum": ["destructive-preexisting", "guard-denied", "unreachable", "duplicate-of"] },
+          "detail": { "type": "string", "minLength": 1, "description": "Why; for duplicate-of, the other item's FR id." },
+          "citation": { "type": "string", "pattern": "^(ST-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*|observation:explore/captures/.+)$", "description": "destructive-preexisting, guard-denied, unreachable: a capture that names this control, or a different state that acting on it reached." }
+        }
+      }
+    },
+    "kq": {
+      "type": "object",
+      "description": "Knowledge open points, keyed by KQ id.",
+      "propertyNames": { "pattern": "^KQ-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "additionalProperties": false,
+        "properties": {
+          "status": { "enum": ["observed", "asked", "dismissed"] },
+          "state": { "type": "string", "description": "observed: the state that shows the answer." },
+          "evidence": { "type": "string", "pattern": "^observation:.+", "description": "observed: a file under the module." },
+          "csv": { "type": "string", "description": "asked: the clarifications.csv id." },
+          "reason": { "type": "string", "description": "dismissed: why it needs no answer." },
+          "citation": { "type": "string", "pattern": "^(clarification|knowledge|spec|observation):.+$", "description": "dismissed: a file that quotes three consecutive words of the open point (not its own knowledge file), or an answered clarification row a question linked to this KQ." },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Untried inputs with a reason instead of a question, keyed by FR id.",
+      "propertyNames": { "pattern": "^FR-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+      "additionalProperties": { "type": "object", "required": ["reason"], "additionalProperties": false, "properties": { "reason": { "type": "string", "minLength": 1 } } }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "prefixes": { "type": "array", "items": { "type": "string", "pattern": "^/" }, "description": "Extra route prefixes that belong to the module." } }
+    }
+  }
+}

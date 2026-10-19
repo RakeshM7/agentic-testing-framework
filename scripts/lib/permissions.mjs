@@ -46,7 +46,10 @@ export function resolvePermissions(doc) {
   }
   for (const [name, a] of Object.entries(agents))
     for (const s of a.spawns) if (!agents[s]) errors.push(`${name}: spawns unknown agent '${s}'`);
-  return { errors, resolved: { variables: doc.variables ?? {}, agents } };
+  const managed = doc.managed_files ?? [];
+  if (!Array.isArray(managed) || managed.some((g) => typeof g !== "string")) errors.push("managed_files: must be a list of globs");
+  // managed_files (D-054): rendered by scripts/foundation.mjs from templates/; no agent writes one directly.
+  return { errors, resolved: { variables: doc.variables ?? {}, agents, ...(managed.length ? { managed_files: managed } : {}) } };
 }
 
 // readonly runs cap every agent at read (browser/http) and none (load), whatever the file says.
@@ -123,12 +126,99 @@ export function globToRegExp(glob) {
   return new RegExp(`^${re}$`);
 }
 
+// A file scripts/foundation.mjs renders from the framework's templates (D-054): no agent writes it directly, whatever
+// its write list says; the owning agent changes its overlay and re-renders.
+// A deny-list must not fail open on a spelling the file system treats as the same file, so the path is normalised the
+// way Windows (and macOS's default volumes) resolve it: case-insensitively, `.` and `..` resolved, trailing dots and
+// spaces of a segment dropped, an NTFS stream suffix (`base.ts::$DATA`, `base.ts:x`) cut off. An 8.3 short name
+// (`AUTH~1.TS`) matches every managed file in that folder whose name starts with its prefix.
+export function normalizeWritePath(relPath) {
+  const segs = [];
+  for (let seg of String(relPath).replaceAll("\\", "/").split("/")) {
+    seg = seg.replace(/:.*$/s, "").replace(/[. ]+$/, (m) => (seg === "." || seg === ".." ? m : ""));
+    if (!seg || seg === ".") continue;
+    if (seg === "..") segs.pop();
+    else segs.push(seg.toLowerCase());
+  }
+  return segs.join("/");
+}
+
+// Segment by segment: `**` spans any number of segments, `*` stays within one. A path segment that is an 8.3 short name
+// (`playwr~1`, `authse~1.ts`) matches every glob segment whose long name starts with its prefix (dots and spaces
+// dropped, as 8.3 names drop them) or that has a wildcard: in any segment, a directory's as much as a file's.
+function segmentOk(seg, glob) {
+  const short = /^([^~]*)~\d+/.exec(seg);
+  if (short) {
+    const prefix = short[1].replace(/[. ]/g, "");
+    return glob.includes("*") || (prefix.length > 0 && glob.replace(/[. ]/g, "").startsWith(prefix));
+  }
+  return new RegExp(`^${glob.split("*").map((p) => p.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join("[^/]*")}$`).test(seg);
+}
+function segmentsMatch(rel, glob, i = 0, j = 0) {
+  if (j === glob.length) return i === rel.length;
+  if (glob[j] === "**") {
+    for (let k = i; k <= rel.length; k++) if (segmentsMatch(rel, glob, k, j + 1)) return true;
+    return false;
+  }
+  return i < rel.length && segmentOk(rel[i], glob[j]) && segmentsMatch(rel, glob, i + 1, j + 1);
+}
+
+export function isManaged(resolved, relPath, values) {
+  const rel = normalizeWritePath(relPath).split("/").filter(Boolean);
+  return (resolved?.managed_files ?? []).some((g) => segmentsMatch(rel, normalizeWritePath(expandGlob(g, resolved.variables ?? {}, values)).split("/").filter(Boolean)));
+}
+
 export function canWrite(row, relPath, variables, values) {
   return row.filesystem.write.some((g) => !g.startsWith("<") && globToRegExp(expandGlob(g, variables, values)).test(relPath));
 }
 
+// A command line split into its simple commands, for a restricted allow-list. Unquoted `&&`, `||`, `;`, `|`, `&` and
+// line breaks separate commands; the text inside quotes is masked, so no pattern can read it as an operator. -> the
+// commands, or null when the line has something an allow-list can't vouch for: a redirect (< >), a group or subshell
+// (( )), command substitution or a variable ($, a backtick) outside single quotes, cmd.exe's ^ escape or %VAR% outside
+// quotes, a backslash outside quotes (an
+// escape such as \" or \' would otherwise hide where a quote starts), a backslash before a double quote inside double
+// quotes (bash reads it as an escaped quote, PowerShell and cmd as the closing one), or an unterminated quote. Any
+// other backslash inside quotes, and everything inside single quotes, is literal. Arguments belong in single quotes.
+export function shellSegments(cmd) {
+  const segs = [];
+  let cur = "";
+  let q = null;
+  const s = String(cmd ?? "");
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) {
+      if (q === '"' && c === "\\" && s[i + 1] === '"') return null;
+      if (c === q) {
+        q = null;
+        cur += c;
+      } else if (q === '"' && (c === "$" || c === "`")) return null;
+      else cur += "_";
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      q = c;
+      cur += c;
+    } else if ("<>()$`\\^%".includes(c)) return null; // ^ and % for cmd.exe: ^" hides a quote, %VAR% expands
+    else if (c === ";" || c === "\n" || c === "\r" || c === "&" || c === "|") {
+      segs.push(cur);
+      cur = "";
+      if ((c === "&" || c === "|") && s[i + 1] === c) i++;
+    } else cur += c;
+  }
+  if (q) return null;
+  segs.push(cur);
+  if (segs.some((x) => !x.trim())) return null; // an empty command around an operator (`a ;`, `a ;; b`) is not vouched for either
+  return segs.map((x) => x.trim()).filter(Boolean);
+}
+
+// restricted: every simple command of the line must match an allow-list pattern on its own; a `*` in a pattern never
+// matches an operator, a redirect, a substitution or a line break.
 export function shellAllowed(row, cmd) {
   if (row.shell === "none") return false;
   if (row.shell === "project") return true;
-  return row.shell_allow.some((p) => new RegExp(`^${p.replace(/[.+?^$()|[\]\\{}]/g, "\\$&").replace(/\*/g, ".*")}$`).test(cmd.trim()));
+  const segs = shellSegments(cmd);
+  if (!segs?.length) return false;
+  const res = row.shell_allow.map((p) => new RegExp(`^${p.replace(/[.+?^$()|[\]\\{}]/g, "\\$&").replace(/\*/g, "[^;&|<>`$()\\n\\r]*")}$`));
+  return segs.every((seg) => res.some((re) => re.test(seg)));
 }

@@ -1,0 +1,56 @@
+### Page state
+- Page URL: https://app.acme.test/contacts?page=2
+- Page Title: Contacts - Acme CRM
+- Page Snapshot:
+```yaml
+- generic [ref=f2]:
+  - banner [ref=f3]:
+    - link "Acme CRM" [ref=f4] [cursor=pointer]:
+      - /url: /contacts
+    - navigation "Main" [ref=f5]:
+      - list [ref=f6]:
+        - listitem [ref=f7]:
+          - link "Contacts" [ref=f8] [cursor=pointer]:
+            - /url: /contacts
+        - listitem [ref=f9]:
+          - link "Deals" [ref=f10] [cursor=pointer]:
+            - /url: /deals
+        - listitem [ref=f11]:
+          - link "Help" [ref=f12] [cursor=pointer]:
+            - /url: https://help.vendor.test/contacts
+    - button "Sign out" [ref=f13] [cursor=pointer]
+  - main [ref=f14]:
+    - heading "Contacts" [level=1] [ref=f15]
+    - button "New contact" [ref=f16] [cursor=pointer]
+    - searchbox "Search contacts" [ref=f17]
+    - combobox "Sort by" [ref=f18]:
+      - option "Name" [selected]
+      - option "Created"
+    - tablist [ref=f19]:
+      - tab "All" [selected] [ref=f20]
+      - tab "Mine" [ref=f21]
+    - table "Contacts" [ref=f22]:
+      - rowgroup [ref=f23]:
+        - row "Name Email Created" [ref=f24]:
+          - columnheader "Name" [ref=f25]
+          - columnheader "Email" [ref=f26]
+          - columnheader "Created" [ref=f27]
+      - rowgroup [ref=f28]:
+        - row "Ann Lee ann@private.test 2025-01-19" [ref=f29]:
+          - cell "Ann Lee" [ref=f30]:
+            - link "Ann Lee" [ref=f31] [cursor=pointer]:
+              - /url: /contacts/7741
+          - cell "ann@private.test" [ref=f32]
+          - cell "2025-01-19" [ref=f33]
+        - row "Bo Chen bo@private.test 2025-02-11" [ref=f34]:
+          - cell "Bo Chen" [ref=f35]:
+            - link "Bo Chen" [ref=f36] [cursor=pointer]:
+              - /url: /contacts/7742
+          - cell "bo@private.test" [ref=f37]
+          - cell "2025-02-11" [ref=f38]
+    - paragraph [ref=f44]: Showing 21-22 of 22
+    - button "Delete selected" [disabled] [ref=f45]
+  - contentinfo [ref=f46]:
+    - link "Privacy" [ref=f47] [cursor=pointer]:
+      - /url: /privacy
+```

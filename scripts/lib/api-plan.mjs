@@ -1,8 +1,9 @@
 // A module's API test plan: artifacts/<product>/modules/<m>/api/ (docs/agent-handoffs.md §4, decision D-046).
 //
 //   plan.json            the scenarios (schema api-plan) -- written only by build()
-//   plan-coverage.json   every coverage item of the catalogue mapped to scenario ids, excluded with a reason, or
-//                        still pending (schema api-plan-coverage); `verified` is stamped by check()
+//   plan-coverage.json   every coverage item of the catalogue mapped to scenario ids, excluded with a reason,
+//                        deferred over api.plan_budget (D-050), or still pending (schema api-plan-coverage); `verified`
+//                        is stamped by check()
 //   plan-registry.json   scenario key -> API id, assigned once and never reused (stable across runs)
 //   plan-overlay.json    the api-test-planner's judgments (schema api-plan-overlay) -- the only file the agent writes
 //   api-test-plan.md     rendered from the above
@@ -19,17 +20,20 @@
 //   - the overlay can annotate, link test cases, add cited scenarios, and exclude coverage items with a reason; it can
 //     never change what a rule generated
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
-import { withFileLock, writeAtomic } from "./csv.mjs";
+import { writeAtomic } from "./csv.mjs";
+import { citationProblem } from "./citations.mjs";
 import { append, csvPath, isAnswered, readRows } from "./clarifications.mjs";
 import { erase, readJson, writeJson } from "./endpoints.mjs";
+import { assignIds } from "./registry.mjs";
+import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 
 export const TYPES = ["functional", "negative", "boundary", "auth", "authorization", "lifecycle", "http", "graphql", "contract", "business"];
 export const SOURCES = ["spec", "observed", "rfc9110", "graphql-over-http", "class-only"]; // plus clarification:/testcase:/knowledge:
 export const EXCLUSION_REASONS = [
   // set by build()
-  "deduped", "budget", "not_applicable", "unsupported_schema", "unreachable_status", "needs_identity", "auth_unknown", "public", "no_link", "unsafe_probe", "documentation_finding",
+  "deduped", "not_applicable", "unsupported_schema", "unreachable_status", "needs_identity", "auth_unknown", "public", "no_link", "unsafe_probe", "documentation_finding",
   // set by the overlay (each with a detail, most with a citation)
   "not_testable", "out_of_scope", "covered_elsewhere", "needs_data", "spec_wrong",
 ];
@@ -71,7 +75,6 @@ export function planPaths(productDir, module) {
   };
 }
 
-export const sha256 = (file) => (existsSync(file) ? createHash("sha256").update(readFileSync(file)).digest("hex") : null);
 const uniq = (xs) => [...new Set(xs)];
 const numeric = (xs) => uniq(xs).sort((a, b) => a - b);
 const idNum = (id) => Number(String(id).split("-").at(-1));
@@ -82,23 +85,6 @@ const glob = (pattern) => new RegExp("^" + pattern.split("*").map((s) => s.repla
 export const EMPTY_OVERLAY = { statusRules: [], values: {}, testcases: {}, scenarios: [], dependencies: [], bfla: [], priorities: {}, exclude: [] };
 export function readOverlay(file) {
   return { ...EMPTY_OVERLAY, ...readJson(file, {}) };
-}
-
-// ---------- registry: stable ids ----------
-
-export function assignIds(registryFile, module, keys, runId) {
-  return withFileLock(registryFile, () => {
-    const reg = readJson(registryFile, { module, next: 1, scenarios: {} });
-    const present = new Set(keys);
-    for (const k of [...keys].sort()) {
-      const e = reg.scenarios[k];
-      if (e) Object.assign(e, { status: "active", lastSeen: runId });
-      else reg.scenarios[k] = { id: `API-${module}-${reg.next++}`, status: "active", firstSeen: runId, lastSeen: runId };
-    }
-    for (const [k, e] of Object.entries(reg.scenarios)) if (!present.has(k) && e.status === "active") e.status = "gone";
-    writeJson(registryFile, reg);
-    return reg;
-  });
 }
 
 // ---------- request schemas -> fields ----------
@@ -601,26 +587,6 @@ function generateGraphql(e, { add, item, exclude, firstOf, values }) {
   if (firstMutation?.id === e.id) add(e, "gql", "mutation-over-get", { type: "graphql", title: `mutation ${g.field} over GET is refused (GraphQL-over-HTTP)`, request: { method: "GET" }, expect: { statusClass: "4xx", source: "graphql-over-http", rules: [] }, mutates: true }, [item(e, "gql:mutation-over-get")]);
 }
 
-// ---------- overlay ----------
-
-// A citation is checked against the module's own files: clarification:<answered id>, testcase:<TC id>,
-// knowledge:<path under knowledge/>, spec:<path under api/>, observation:<path under the module>.
-export function citationProblem(c, ctx) {
-  const [kind, ...restParts] = String(c).split(":");
-  const ref = restParts.join(":");
-  const file = ref.split("#")[0];
-  if (kind === "clarification") {
-    const row = ctx.rows.find((r) => r.id.trim() === ref);
-    if (!row) return `'${c}': no such row in clarifications.csv`;
-    return isAnswered(row) ? null : `'${c}': the row is not answered yet`;
-  }
-  if (kind === "testcase") return ctx.cases.has(ref) ? null : `'${c}': no such test case`;
-  if (kind === "knowledge") return existsSync(path.join(ctx.pp.productDir, "knowledge", file)) ? null : `'${c}': no such file under knowledge/`;
-  if (kind === "spec") return existsSync(path.join(ctx.pp.dir, file)) ? null : `'${c}': no such file under api/`;
-  if (kind === "observation") return existsSync(path.join(ctx.pp.moduleDir, file)) ? null : `'${c}': no such file under the module`;
-  return `'${c}': a citation is clarification:<id>, testcase:<id>, knowledge:<path>, spec:<path> or observation:<path>`;
-}
-
 // ---------- build ----------
 
 // ctx: {module, cfg, runId, cases: Map TC id -> {api, priority}}. Reads the catalogue, drift and overlay from disk;
@@ -636,7 +602,8 @@ export function build(pp, { module, cfg, runId, cases }) {
   const csv = csvPath(pp.productDir, module);
   let rows = readRows(csv);
   const identities = [...(cfg.authorizations?.identities ?? [])].sort((a, b) => a.name.localeCompare(b.name));
-  const cctx = { rows, cases, pp };
+  // Citations are checked by scripts/lib/citations.mjs against the module's own files.
+  const cctx = { rows, cases, productDir: pp.productDir, moduleDir: pp.moduleDir, apiDir: pp.dir };
   const cite = (where, c) => {
     const p = citationProblem(c, cctx);
     if (p) problems.push(`plan-overlay.json ${where}: ${p}`);
@@ -697,7 +664,7 @@ export function build(pp, { module, cfg, runId, cases }) {
   const keyOfId = new Map(Object.entries(regBefore.scenarios).map(([k, v]) => [v.id, k]));
   for (const [tc, refs] of Object.entries(overlay.testcases)) {
     if (!cases.has(tc)) {
-      problems.push(`plan-overlay.json testcases: '${tc}' is not a test case of this module`);
+      problems.push(`plan-overlay.json testcases: '${tc}' is not a human-approved test case of this module (only approved cases are linked, D-053)`);
       continue;
     }
     for (const ref of refs) {
@@ -747,7 +714,7 @@ export function build(pp, { module, cfg, runId, cases }) {
     s.priority = `p${p}`;
   }
 
-  // budget: drop the lowest priority, least specific scenarios first; their items become `budget` exclusions
+  // budget: drop the lowest priority, least specific scenarios first; their items are `deferred: budget` (D-050)
   const budget = cfg.api?.plan_budget ?? DEFAULT_BUDGET;
   const order = ["http", "graphql", "boundary", "negative", "contract", "lifecycle", "business", "authorization", "auth", "functional"];
   const ranked = [...scenarios.values()].sort((a, b) => P(b.priority) - P(a.priority) || order.indexOf(a.type) - order.indexOf(b.type) || b.key.localeCompare(a.key));
@@ -760,7 +727,7 @@ export function build(pp, { module, cfg, runId, cases }) {
   for (const key of overBudget) scenarios.delete(key);
 
   // overlay priority overrides
-  const reg = assignIds(pp.registry, module, [...scenarios.keys()], runId);
+  const reg = assignIds(pp.registry, [...scenarios.keys()], { module, runId, prefix: "API", field: "scenarios" });
   const idOf = (k) => reg.scenarios[k].id;
   for (const [ref, v] of Object.entries(overlay.priorities)) {
     const key = scenarios.has(refOf(ref)) ? refOf(ref) : Object.keys(reg.scenarios).find((k) => reg.scenarios[k].id === ref);
@@ -800,6 +767,7 @@ export function build(pp, { module, cfg, runId, cases }) {
   // coverage
   const mapped = [];
   const excluded = [];
+  const deferred = [];
   const pending = [];
   for (const [it, x] of [...items.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     if (x.pending) pending.push({ item: it, why: x.pending });
@@ -807,7 +775,7 @@ export function build(pp, { module, cfg, runId, cases }) {
     else {
       const kept = [...x.keys].filter((k) => scenarios.has(k));
       if (kept.length || it.startsWith("question:")) mapped.push({ item: it, scenarios: kept.map(idOf).sort(byId) });
-      else if ([...x.keys].some((k) => overBudget.has(k))) excluded.push({ item: it, reason: "budget", detail: `over api.plan_budget (${budget})` });
+      else if ([...x.keys].some((k) => overBudget.has(k))) deferred.push({ item: it, reason: "budget", detail: `over api.plan_budget (${budget})` });
       else pending.push({ item: it, why: "every scenario covering it was excluded by plan-overlay.json: exclude this item too, or keep a scenario" });
     }
   }
@@ -820,6 +788,7 @@ export function build(pp, { module, cfg, runId, cases }) {
     counts: counts(plan),
     mapped,
     excluded,
+    deferred,
     pending,
     questions,
     retired: Object.values(reg.scenarios).filter((e) => e.status === "gone").map((e) => e.id).sort(byId),
@@ -827,7 +796,7 @@ export function build(pp, { module, cfg, runId, cases }) {
   writeJson(pp.plan, plan);
   writeJson(pp.coverage, coverage);
   writeAtomic(pp.md, render(module, catalogue, plan, coverage, drift));
-  return { problems, summary: { scenarios: plan.length, ...coverage.counts, levels: coverage.levels, excluded: excluded.length, pending: pending.length, questions: questions.map((q) => `${q.id} (${q.fault}${q.answered ? ", answered" : ""})`), retired: coverage.retired.length } };
+  return { problems, summary: { scenarios: plan.length, ...coverage.counts, levels: coverage.levels, excluded: excluded.length, deferred: deferred.length, pending: pending.length, questions: questions.map((q) => `${q.id} (${q.fault}${q.answered ? ", answered" : ""})`), retired: coverage.retired.length } };
 }
 
 
@@ -897,19 +866,20 @@ export async function check(pp, validateData, { cases = new Map() } = {}) {
   }
   for (const m of cov.mapped) for (const id of m.scenarios) if (!ids.has(id)) problems.push(`plan-coverage.json: '${m.item}' maps to unknown ${id}`);
   for (const p of cov.pending) problems.push(`pending ${p.item}: ${p.why}`);
+  for (const d of cov.deferred) if (cov.mapped.some((m) => m.item === d.item) || cov.excluded.some((x) => x.item === d.item)) problems.push(`plan-coverage.json: '${d.item}' is deferred and also mapped or excluded`);
   if (cov.catalogue !== sha256(pp.catalogue)) problems.push("plan-coverage.json: the catalogue changed since the plan was built (run api-plan.mjs build again)");
   const { verified, ...rest } = cov;
-  writeJson(pp.coverage, problems.length ? rest : { ...rest, verified: { plan: sha256(pp.plan), catalogue: sha256(pp.catalogue) } });
+  writeJson(pp.coverage, problems.length ? rest : { ...rest, verified: stampVerified(verifiedInputs(pp)) });
   return problems;
 }
+
+const verifiedInputs = (pp) => ({ plan: pp.plan, catalogue: pp.catalogue });
 
 // For orchestration.mjs next: null when the plan on disk passed check and nothing changed since, else why not.
 export function planUnverified(pp) {
   const cov = readJson(pp.coverage, null);
   if (!cov) return "api/plan-coverage.json is missing: the planner must finish with api-plan.mjs check";
-  if (!cov.verified) return "the API plan did not pass api-plan.mjs check";
-  if (cov.verified.plan !== sha256(pp.plan) || cov.verified.catalogue !== sha256(pp.catalogue)) return "the API plan or the catalogue changed after api-plan.mjs check";
-  return null;
+  return unverifiedReason(cov.verified, verifiedInputs(pp), { unstamped: "the API plan did not pass api-plan.mjs check", changed: "the API plan or the catalogue changed after api-plan.mjs check" });
 }
 
 // ---------- api-test-plan.md ----------
@@ -975,6 +945,10 @@ function render(module, catalogue, plan, cov, drift) {
     ...(cov.discovery.status === "partial" || cov.discovery.status === "blocked" ? [`- Discovery is ${cov.discovery.status}: ${cov.discovery.blockedReason ?? "see coverage.json"}. What discovery could not see is not planned.`] : []),
     ...Object.entries(cov.excluded.reduce((m, x) => ({ ...m, [x.reason]: [...(m[x.reason] ?? []), x] }), {})).sort().flatMap(([reason, xs]) => [`- **${reason}** (${xs.length}):`, ...xs.map((x) => `  - ${x.item}${x.detail ? `: ${x.detail}` : ""}${x.citation ? ` [${x.citation}]` : ""}`)]),
     ...(cov.excluded.length || cov.discovery.status === "partial" || cov.discovery.status === "blocked" ? [] : ["- nothing"]),
+    "",
+    "## Deferred (over the budget)",
+    "",
+    ...(cov.deferred.length ? [`Not planned this run because the plan reached api.plan_budget (${cov.budget}). They stay in the ledger; raise the budget to plan them.`, "", ...cov.deferred.map((d) => `- ${d.item}: ${d.detail}`)] : ["- none"]),
     "",
     ...(cov.pending.length ? ["## Pending (check fails until resolved)", "", ...cov.pending.map((p) => `- ${p.item}: ${p.why}`), ""] : []),
   ];

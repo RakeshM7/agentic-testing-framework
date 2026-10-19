@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "foundation-repo-overlay.schema.json",
+  "title": "artifacts/<product>/foundation/repo-overlay.json: pw-repo-owner's shared-file change requests, rendered into the Playwright repo's shared files by scripts/foundation.mjs (D-054). Structured and cited; never a free-form edit. grepInvert, the env configuration and secrets can't be changed through it.",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "cite": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^(clarification|testcase|knowledge|spec|observation):\\S+$" } },
+    "module": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" }
+  },
+  "properties": {
+    "requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "reason", "cite"],
+        "oneOf": [
+          {
+            "properties": {
+              "kind": { "const": "dependency" },
+              "name": { "type": "string", "minLength": 1, "description": "A plain npm package name; no version (the lockfile pins it)." },
+              "dev": { "type": "boolean", "description": "false for a runtime dependency; a devDependency otherwise." },
+              "requestedBy": { "type": "string" }, "reason": { "type": "string", "minLength": 1 }, "module": { "$ref": "#/$defs/module" }, "cite": { "$ref": "#/$defs/cite" }
+            },
+            "required": ["name"],
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "kind": { "const": "env" },
+              "name": { "type": "string", "minLength": 1, "description": "A variable NAME added to .env.example (empty) and utils/shared/env.ts. Never a value." },
+              "requestedBy": { "type": "string" }, "reason": { "type": "string", "minLength": 1 }, "module": { "$ref": "#/$defs/module" }, "cite": { "$ref": "#/$defs/cite" }
+            },
+            "required": ["name"],
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "kind": { "const": "gitignore" },
+              "pattern": { "type": "string", "minLength": 1, "description": "One pattern added to .gitignore; a negation is refused." },
+              "requestedBy": { "type": "string" }, "reason": { "type": "string", "minLength": 1 }, "module": { "$ref": "#/$defs/module" }, "cite": { "$ref": "#/$defs/cite" }
+            },
+            "required": ["pattern"],
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "kind": { "const": "config" },
+              "name": { "enum": ["testTimeoutMs", "expectTimeoutMs", "retries", "workers", "fullyParallel"] },
+              "value": { "type": ["integer", "boolean"] },
+              "requestedBy": { "type": "string" }, "reason": { "type": "string", "minLength": 1 }, "module": { "$ref": "#/$defs/module" }, "cite": { "$ref": "#/$defs/cite" }
+            },
+            "required": ["name", "value"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  }
+}

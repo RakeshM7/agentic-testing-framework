@@ -35,6 +35,96 @@ A further platform or host must behave identically — same stages, artifacts, s
 - Before changing any framework file, read [`decisions.md`](decisions.md); a change that conflicts with a recorded decision needs the user's explicit confirmation (as a subagent: report it instead).
 - Credentials are only ever paths to files a human prepared; values never appear in prompts, artifacts, code or commits.
 
+## Script-built agents
+
+The single reference for turning an agent's bookkeeping into a script (D-002, D-049). `api-discoverer` (D-045), `api-test-planner` (D-046) and `clarification-explorer` (D-047, D-048) follow it.
+- `module-explorer` (D-052) is script-built too: `scripts/explore.mjs` owns the state fingerprints, the ids, the frontier ledger, the network inventory and the question audit; the agent acts in the browser and writes its flows, questions and overlay.
+- The test case domain (D-053) is script-built too: `scripts/testcases.mjs` owns the coverage items, the ids, the budget, the renders, `@assumption`, the review check and the human approval record; `testcase-writer` writes `cases.json`, `testcase-reviewer` writes a verdict per case, and only a human approves.
+- The foundations (D-054) are script-built too: `scripts/foundation.mjs` renders every fixed file of the Playwright repo (`repo`, `ui`, `api` sides) and of the k6 lib (`k6`) from the framework's `templates/`, with a "do not edit" header and a hash-based drift check, and stamps a passing `check`. `pw-repo-owner`, `pw-ui-scaffolder`, `pw-api-scaffolder` and `k6-lib-writer` each write only a cited overlay (`artifacts/<p>/foundation/<side>-overlay.json`) and their side's extension files (`helpers/<side>/`, `lib/ext/`; `fixtures/<side>/index.ts` is generated from the module registrations since D-056); a gap or change request is a structured overlay entry, then a re-render. A managed file is listed in `config/permissions.yaml` `managed_files`, and during a run the guard denies every caller, named or not, a direct write (any spelling of the path: case, trailing dots, streams, short names). Templates are LF-only, so a render is the same bytes on every OS.
+- The UI code writers (D-055) are script-built too, variant A: `scripts/ui-code.mjs` derives from the approved test cases (D-053) and the exploration's page templates (D-052) one test per approved case and the page objects each touched template needs, and owns everything that must not vary: the cases spec's skeleton (titles, tags, fixtures, one `test.step` per case step) around marked regions, the fixture registration, the class shells and a readonly locator smoke, with a ledger (case → test, page template → page object). `pw-ui-pom-writer` writes the page objects, `pw-ui-tests-writer` fills the regions; `check` grounds every locator name verbatim in the template's state snapshots and stamps the result.
+- The API code writers (D-056) are script-built too, variant A: `scripts/api-code.mjs` generates from the endpoint catalogue (D-045) and the verified API plan (D-046) one client class per resource with one method per endpoint, the types and JSON schemas, the client fixtures and one literal test per plan scenario (its request, auth context, the plan's assertions in order, the ledger and cleanup, `test.fixme` for blocked ones), all managed files with a drift check that the guard denies writing; a ledger maps every endpoint to its method and every scenario to its one test. `pw-api-client-writer` writes a cited client overlay (naming fixes, edge cases, verbatim from the endpoint's own source) and composite helpers over the client facade; `pw-api-tests-writer` fills the data-only payload slots and the business-rule glue slots; the managed sender enforces D-005 at run time (a session per test records every create and refuses a change to an entity the test did not create), and `check` enforces every rule and stamps the result.
+- The k6 agents (D-057) are script-built too, variant A. `scripts/workload.mjs` builds the module's workload from the catalogue, the verified API plan, the playwright-api results of the run and the run-config's `k6` section: test types by mode and opt-in, open-model arrival-rate scenarios sized with Little's law with a `dropped_iterations` threshold, caps from rate limits, SLO-or-assumed thresholds, stable `K6-<m>-<n>` ids and a ledger over every catalogue endpoint; `k6-workload-designer` writes only a cited overlay (priorities, mixes, think time, data needs, exclusions, full-run write flows). `scripts/k6-code.mjs` generates one managed script per scenario (options verbatim, the `setup()` safety calls, tagged requests and expected statuses, a write flow's ledger and cleanup, `handleSummary`), drift-checked and denied to every writer; `k6-script-writer` fills only the data slots of `scripts/slots/<m>.js`. Both `check`s stamp their result, and the k6 flow's steps verify the stamps.
+- The runner-triagers (D-058) are script-built too: `scripts/triage.mjs` owns the stale-output cleanup, the rows (including those for items the report never showed), the rule-decided classes, the signatures, the clusters with their `BUG-<m>-<n>` ids and the verified stamp; the triager runs the suite (Playwright retries a failed test twice, a failed k6 smoke is re-run once), classes the open rows, marks healable rows with a fix hint and writes one cited bug draft per product-bug cluster in `triage-overlay.json`. A product bug needs evidence and an expectation source; the heal loop starts only from a verified triage.
+- The reviewers and fixers (D-059) are script-built too: the gate and the `check` scripts own every mechanical rule (no reviewer repeats one); `pw-ui-reviewer`, `pw-api-reviewer` and `k6-reviewer` write a rubric verdict per test in `review.json` (the rubric below), and `scripts/review.mjs check` verifies every test was reviewed, every finding cites a real `file:line`, nothing changed since, and derives the verdict and `review-findings.md`; nobody types a verdict. `pw-ui-fixer`, `pw-api-fixer` and `k6-fixer` share one included body (`agents/_shared/fixer.md`) plus a domain section, and answer every blocker, major and healable row in `fix-report.json`, which `scripts/fix.mjs check` verifies against the snapshot `orchestration.mjs` takes before the round.
+- The report (D-061) is script-built too: `scripts/report-data.mjs` collects a schema-validated `report.json`, `scripts/report.mjs` renders the deck from it (`templates/report/`) and `check`s the narrative; `report-generator` writes only `narrative.json`, every statement citing `report.json` paths, and every number in it must match a cited value. The `report` stage requires the check's stamp.
+- `feedback-implementor-agent` (D-062) is script-built too: `scripts/feedback.mjs` triages each finding against the Accepted decisions and `check`s the Resolution (per-finding status, a test for every script change, the governing decisions named); the agent plans, changes and writes the Resolution, and cannot edit the checker or any safety file.
+- `knowledge-generator` (D-051) is script-built too: `scripts/knowledge.mjs` owns the input ledger, the source cache, the quote and checklist checks, the open-point ids and the verified stamp. A script owns everything that must be identical on every rerun: enumeration, ids, coverage and the checks. The agent owns only its judgments, and every judgment is cited.
+
+### Two variants
+
+- **Variant A: the script builds, the agent overlays.** For an artifact enumerated from inputs (a catalogue, a plan).
+  1. `<script> build <p> <m>` writes the artifact and its coverage ledger.
+  2. The agent reads the ledger and writes its overlay: the one file it owns.
+  3. `build` again; the agent repeats step 2 at most twice more (≤ 3 builds).
+  4. `<script> check <p> <m>` must exit 0. On success it writes the verified stamp (`lib/verified.mjs`).
+  5. The step in `scripts/lib/domain-flows.mjs` has a `verify` rule, so `orchestration.mjs next` fails the step while the stamp is missing or stale.
+- **Variant B: the agent acts, the script verifies.** For work only an agent can do (a live browser row).
+  1. The agent writes a structured outcome file (verdict, reason code, evidence, citations).
+  2. `<script> record ... --file outcome.json` refuses it, and writes nothing, unless every cited file, quote and entity holds up against the captured evidence.
+  3. The orchestration post-check looks for a valid record of this run. It offers the item once more (`attempt=2`), then records it `blocked` with a reason code. The retry budget lives in the script.
+
+### Shared helpers (`scripts/lib/`)
+
+- **`registry.mjs` `assignIds`: stable ids.** One registry file maps each key to `<PREFIX>-<m>-<n>`. Ids are assigned once, in key order, and are never renumbered or reused. A key that disappears is kept as `gone` and gets its old id back if it returns. The prefix, the map field and the id format are options.
+- **`coverage.mjs`: the coverage ledger.** Every input item is listed once and ends in one status:
+  - `mapped`: covered by ids;
+  - `excluded`: with a reason code and a detail;
+  - `pending`: unresolved, so `check` fails;
+  - `deferred`: reason `budget`, with a detail.
+
+  **Exhaustive ledger, budgeted work: overflow is `deferred: budget`, never dropped silently.** `applyBudget(items, budget, rankFn)` keeps the best-ranked items and defers the rest. `problems()` flags an item that is unresolved, listed twice, or excluded without a reason.
+- **`citations.mjs` `citationProblem`: citations.** Each is checked against the module's own files, never trusted:
+  - `clarification:<id>`: an answered row of `clarifications.csv`;
+  - `testcase:<TC id>`: a test case of the module;
+  - `knowledge:<path>`: a file under the product's `knowledge/`;
+  - `spec:<path>`: a file under the module's `api/`;
+  - `observation:<path>`: a file under the module.
+- **`verified.mjs`: the verified stamp.** `stampVerified({name: file})` records each input's sha256 under its name. `unverifiedReason(stamp, inputs)` returns null, or why the stamp is missing or stale.
+
+### Rules
+
+- **The agent adds; it never removes. Only a cited `exclude` removes.** An overlay can annotate, link, raise priority and add cited items. It can't drop, rename, renumber or re-expect what the script generated.
+- **Files are split by owner.** The script owns the artifact, the ledger, the registry and anything rendered from them. The agent owns its overlay or outcome file and nothing else; its `write` limit names only that file.
+- **Nothing is silent.** Every input is mapped, excluded with a reason, pending or deferred. A blocked step says "blocked: <reason>", never "nothing found".
+
+### CLI shape
+
+- `export async function main(argv, { root = repoRoot } = {})` returns `{ code, out }`; tests call `main` directly.
+- Run as a script, it prints `out` as JSON on stdout and exits with `code`. A thrown error prints `{ errors: [message] }` and exits 1.
+- Exit codes: `0` ok, `1` problems (listed in `out.problems`), `2` usage.
+- Subcommands take `<product> <module>` and read the active run's `state/run.json` and `state/config.resolved.json`. A `paths` subcommand lists the files the agent reads and writes.
+
+### Agent body layout
+
+`## Invocation` → `## Inputs` → `## What the script generates` → `## Steps` → `## Rules` → `## Return`. The steps name the script's commands; they never re-state what the script enforces.
+
+### Shared fragments (D-059)
+
+An agent source includes a shared fragment with one line, `<!-- include: _shared/<file>.md -->`, which the build replaces with the contents of `agents/_shared/<file>.md` (no frontmatter, no nested include; an unknown target or a missing file is a build error). The body limit and the platform-neutrality lint run on the expanded body, and the generated files hold the expanded text, so a change to a fragment is drift in every includer until `npm run build-agents` runs. A fragment is never an agent. The three fixers share `_shared/fixer.md`; the five domain orchestrators share `_shared/domain-loop.md` (D-060).
+
+### Files one refactor touches
+
+1. The script, `scripts/<name>.mjs`, and its lib, `scripts/lib/<name>.mjs`, built on the shared helpers above.
+2. Tests: `scripts/<name>.test.mjs`, plus `scripts/guard.test.mjs` for the agent's new shell and write limits.
+3. Schemas in `schemas/` for the artifact, the ledger and the overlay or outcome.
+4. `config/permissions.yaml` (human-only, D-013): `shell: restricted`, a `shell_allow` naming only the script, and `write` shrunk to the agent's own file.
+5. The agent source, `agents/<name>.md`; then `npm run build-agents`, and `npm run check`.
+6. A D-entry in `decisions.md` listing the new files under **Affects**.
+7. Docs: `agent-handoffs.md` (the file formats), `artifact-contract.md` (the layout) and `agent-architecture.md` (the agent's role).
+
+## Review rubric
+
+Defined once, here (D-059). Each code reviewer judges **every** test of its module (a UI test case, an API scenario, a k6 script) on four dimensions, and records each as `ok` or a finding (severity `blocker | major | minor | info`, a cited `file:line`, a reason, an optional fix hint) in `review.json` (`docs/agent-handoffs.md` §6):
+
+| Dimension | Question |
+|---|---|
+| `intent` | Does the test prove what its case or scenario says (preconditions, action, oracle), not something adjacent? |
+| `assertion` | Does it assert the behavior, message or state change, not only status or visibility? No tautologies. |
+| `flakiness` | Does it depend on order, time or data, share state with another test, or use a race-prone wait? |
+| `data-safety` | Is the data synthetic and unique, cleanup only of entities the run created, with no reliance on pre-existing data (D-005)? |
+
+Severity: **blocker** = a safety rule broken or a wrong expected behavior; **major** = a missing assertion of the case, or a flakiness risk the fixer must remove; **minor**, **info** = style, never blocking. The derived verdict is `pass` exactly when no blocker or major remains. Anything a script can check (titles, tags, ledger calls, fixed waits, locators grounded in snapshots, options, thresholds) is a gate or `check` rule, never a rubric item.
+
 ## Feedback contract (improving the framework itself)
 
 Problems with the framework — an agent prompt, a script, a doc — are recorded as **feedback files** and fixed by `feedback-implementor-agent`. Per-product issues in generated test code are not feedback: each domain's own reviewer and fixer handle those during the run.
@@ -72,5 +162,15 @@ severity: <blocking | high | medium | low>
 ### How it's consumed
 
 1. Pass the file **path** to `feedback-implementor-agent` (never the text).
-2. It implements each finding within its allowed scope, verifies with a real command (`npm test`, `node scripts/build-agents.mjs --check`), and appends `## Resolution (<date>)` to the same file with `Fixed` / `Fixed (unverified)` / `Skipped` / `Deferred` per finding.
-3. Changes to permissions, models, platforms, MCP servers, the guard, the hooks or settings are never made by an agent: such findings are `Deferred` with the exact change for a human. A finding whose fix would conflict with a recorded decision is `Deferred — needs user confirmation (D-NNN)`.
+2. It runs `node scripts/feedback.mjs triage <file>` (the Accepted decisions whose **Affects** match the files a finding names or the agent plans to change), implements each finding within its allowed scope, with a new or updated `*.test.mjs` for every change under `scripts/`, runs `npm run build-agents` after an agent change and `npm run check`, and appends the Resolution to the same file (D-062):
+   ```markdown
+   ## Resolution (<date>)
+
+   ### Finding 1
+   - **Status:** fixed | deferred | declined
+   - **Reason:** <what changed and how it was verified, or why not>
+   - **Files changed:** <comma list or `- path` lines; `none` unless fixed>
+   - **Decisions considered:** <D-NNN, ...; or `none`>
+   ```
+   `node scripts/feedback.mjs check <file>` validates the frontmatter (all five fields) and the Resolution: one entry per `## Finding N`, a valid status, a reason, a `fixed` finding lists files and a `scripts/**.test.mjs` for any non-test script it changed, and names every Accepted decision that governs a file it changed; `deferred` and `declined` list no files. (`Fixed (unverified)` and `Skipped` no longer exist.)
+3. Changes to permissions, models, platforms, MCP servers, the guard, the hooks or settings are never made by an agent: such findings are `deferred` with the exact change for a human. A finding whose fix would conflict with a recorded decision is `deferred` with `Deferred — needs user confirmation (D-NNN)` (the check requires that decision to exist and be listed as considered). The agent never edits the checker (`scripts/feedback.mjs`, `scripts/lib/feedback.mjs`, `scripts/feedback.test.mjs`) either.

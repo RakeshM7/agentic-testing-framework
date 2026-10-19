@@ -36,7 +36,22 @@
           "file": { "type": "string" },
           "status": { "enum": ["passed", "failed", "flaky", "skipped"] },
           "durationMs": { "type": "number" },
-          "error": { "type": "string" }
+          "error": { "type": "string" },
+          "tcId": { "type": "string", "pattern": "^TC-.+-\\d+$", "description": "UI: the case id the generated test's title starts with" },
+          "scenarioId": { "type": "string", "pattern": "^API-.+-\\d+$", "description": "API: the plan scenario id the title starts with" },
+          "tcIds": { "type": "array", "items": { "type": "string" }, "description": "API: the approved cases the test's @TC tags name" },
+          "k6Id": { "type": "string", "pattern": "^K6-.+-\\d+$", "description": "k6: the id in the generated script's header" },
+          "project": { "type": "string" },
+          "attempts": { "type": "integer", "minimum": 0, "description": "how many times the test ran (retries included)" },
+          "passedOnRetry": { "type": "boolean" },
+          "frames": { "type": "array", "items": { "type": "string" }, "description": "the failing run's top stack frames, path:line" },
+          "attachments": { "type": "array", "items": { "type": "object", "required": ["name", "path"], "properties": { "name": { "type": "string" }, "path": { "type": "string" } } } },
+          "skipReason": { "type": "string" },
+          "smoke": { "type": "boolean" },
+          "checks": { "type": "object" },
+          "p95Ms": { "type": ["number", "null"] },
+          "httpFailRate": { "type": ["number", "null"] },
+          "thresholds": { "type": "array", "items": { "type": "object" } }
         }
       }
     }

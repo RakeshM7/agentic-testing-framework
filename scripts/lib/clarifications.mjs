@@ -29,7 +29,9 @@ export const ANSWER_STATUSES = ["agent-proposed", "human-approved", "human"];
 export const csvPath = (productDir, module) => path.join(productDir, "modules", module, "clarifications.csv");
 export const evidenceDir = (file, id) => path.join(path.dirname(file), "clarification-evidence", id);
 const clean = (s) => String(s ?? "").trim();
-const normQuestion = (s) => clean(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+// The de-duplication key of a question; read-only, also used by scripts/lib/explore.mjs to link a new-questions.json
+// entry to the row it was appended as.
+export const normQuestion = (s) => clean(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 export const isAnswered = (r) => clean(r.answer) !== "";
 // Answered by a human, or an agent's answer a human approved. Downstream relies on these; anything else is an assumption.
 export const isAuthoritative = (r) => isAnswered(r) && ["human", "human-approved"].includes(r.answerStatus);

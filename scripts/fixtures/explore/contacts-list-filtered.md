@@ -1,0 +1,50 @@
+### Page state
+- Page URL: https://app.acme.test/contacts?q=jane
+- Page Title: Contacts - Acme CRM
+- Page Snapshot:
+```yaml
+- generic [ref=g2]:
+  - banner [ref=g3]:
+    - link "Acme CRM" [ref=g4] [cursor=pointer]:
+      - /url: /contacts
+    - navigation "Main" [ref=g5]:
+      - list [ref=g6]:
+        - listitem [ref=g7]:
+          - link "Contacts" [ref=g8] [cursor=pointer]:
+            - /url: /contacts
+        - listitem [ref=g9]:
+          - link "Deals" [ref=g10] [cursor=pointer]:
+            - /url: /deals
+        - listitem [ref=g11]:
+          - link "Help" [ref=g12] [cursor=pointer]:
+            - /url: https://help.vendor.test/contacts
+    - button "Sign out" [ref=g13] [cursor=pointer]
+  - main [ref=g14]:
+    - heading "Contacts" [level=1] [ref=g15]
+    - button "New contact" [ref=g16] [cursor=pointer]
+    - searchbox "Search contacts" [ref=g17]: jane
+    - combobox "Sort by" [ref=g18]:
+      - option "Name" [selected]
+      - option "Created"
+    - tablist [ref=g19]:
+      - tab "All" [selected] [ref=g20]
+      - tab "Mine" [ref=g21]
+    - table "Contacts" [ref=g22]:
+      - rowgroup [ref=g23]:
+        - row "Name Email Created" [ref=g24]:
+          - columnheader "Name" [ref=g25]
+          - columnheader "Email" [ref=g26]
+          - columnheader "Created" [ref=g27]
+      - rowgroup [ref=g28]:
+        - row "Jane Doe jane@private.test 2026-10-01" [ref=g29]:
+          - cell "Jane Doe" [ref=g30]:
+            - link "Jane Doe" [ref=g31] [cursor=pointer]:
+              - /url: /contacts/101
+          - cell "jane@private.test" [ref=g32]
+          - cell "2026-10-01" [ref=g33]
+    - paragraph [ref=g44]: Showing 1-1 of 1
+    - button "Delete selected" [disabled] [ref=g45]
+  - contentinfo [ref=g46]:
+    - link "Privacy" [ref=g47] [cursor=pointer]:
+      - /url: /privacy
+```

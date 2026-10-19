@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge-open-points.schema.json",
+  "title": "Open points of one knowledge pass with stable ids (artifacts/<product>/knowledge/open-points.json, or knowledge/modules/<m>/open-points.json), written only by scripts/knowledge.mjs through lib/registry.mjs (D-051). module-explorer accounts for every active id.",
+  "type": "object",
+  "required": ["module", "next", "points"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string", "description": "'product' or the module slug." },
+    "next": { "type": "integer", "minimum": 1 },
+    "points": {
+      "type": "object",
+      "description": "Keyed by the normalized open-point text (lowercase, whitespace collapsed, citations and the category tag removed).",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["id", "status", "text", "category", "file"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^KQ-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+          "status": { "enum": ["active", "gone"], "description": "A point that disappears is kept as gone; its id is never reused." },
+          "firstSeen": { "type": "string" },
+          "lastSeen": { "type": "string" },
+          "text": { "type": "string", "minLength": 1 },
+          "category": { "enum": ["entities", "flows", "rules", "roles", "limits", "dependencies", null] },
+          "file": { "type": "string", "description": "The file, relative to knowledge/, the point was last seen in." }
+        }
+      }
+    }
+  }
+}

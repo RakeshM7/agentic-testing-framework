@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "testcases-approvals.schema.json",
+  "title": "testcases/approvals.json: the human decisions recorded from approval.csv by `node scripts/testcases.mjs approve` (human only; no agent may run it). Each decision is pinned to the case's content hash: an edit to the case makes it unapproved again.",
+  "type": "object",
+  "required": ["module", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "cases": {
+      "type": "object",
+      "propertyNames": { "pattern": "^TC-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["decision", "hash", "at"],
+        "additionalProperties": false,
+        "properties": {
+          "decision": { "enum": ["yes", "no", "changes"] },
+          "comment": { "type": "string" },
+          "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "version": { "type": "string", "pattern": "^v[0-9a-f]{12}$" },
+          "run": { "type": ["string", "null"], "description": "The run the decided row was rendered in." },
+          "at": { "type": "string" }
+        }
+      }
+    }
+  }
+}

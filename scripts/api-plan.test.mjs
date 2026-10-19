@@ -13,7 +13,7 @@ import { paths } from "./lib/contract.mjs";
 import { apiPaths, build as buildCatalogue, saveSource, writeJson } from "./lib/endpoints.mjs";
 import { INTROSPECTION_QUERY } from "./lib/graphql.mjs";
 import { validateRunConfig } from "./run-config.mjs";
-import { put, startRun } from "./test-helpers.mjs";
+import { markApproved, put, renderFoundation, startRun } from "./test-helpers.mjs";
 
 const MOD = "artifacts/acme/modules/contacts";
 const CONTACT = {
@@ -62,7 +62,7 @@ const SPEC = {
 };
 const FEATURE = ["Feature: Contacts", "  @TC-contacts-1 @p1 @api", "  Scenario: create a contact via the API", "    Given x", "  @TC-contacts-2 @p2 @functional", "  Scenario: list contacts", "    Given y", ""].join("\n");
 
-function setup({ spec = SPEC, identities, budget, graphql } = {}) {
+function setup({ spec = SPEC, identities, budget, graphql, approved = ["TC-contacts-1", "TC-contacts-2"] } = {}) {
   const extra = [];
   if (budget) extra.push(`api: {plan_budget: ${budget}}`);
   const { root } = startRun({ extra });
@@ -77,6 +77,7 @@ function setup({ spec = SPEC, identities, budget, graphql } = {}) {
   if (graphql) saveSource(ap, { kind: "graphql", location: "https://app.acme.test/graphql", content: graphql, getSupported: true, status: "ok" });
   put(root, `${MOD}/explore/network-inventory.json`, JSON.stringify([{ method: "GET", pathTemplate: "/api/v1/contacts", statusCodes: [200], requestKeys: [], responseKeys: ["id", "name"], pages: ["/contacts"] }]));
   put(root, `${MOD}/testcases/contacts-testcases.feature`, FEATURE);
+  markApproved(root, approved); // only human-approved @api cases become testcase: items (D-053)
   const cfg = JSON.parse(readFileSync(p.configFile, "utf8"));
   assert.deepEqual(buildCatalogue(ap, { module: "contacts", cfg, runId: "acme-run-1" }).problems, []);
   const pp = planPaths(p.productDir, "contacts");
@@ -215,7 +216,7 @@ test("coverage and check: an @api test case is pending until linked; check stamp
   s.overlay(LINK_TC(s));
   await s.run("build");
   const ok = await s.run("check");
-  assert.deepEqual(ok.out, { valid: true, problems: [] });
+  assert.deepEqual(ok.out, { valid: true, deferred: 0, problems: [] });
   assert.equal(planUnverified(s.pp), null);
   assert.deepEqual(s.plan().find((x) => x.testcases.includes("TC-contacts-1")).priority, "p1", "a linked test case raises the priority");
   assert.ok(s.cov().excluded.some((x) => x.item.endsWith(":402") && x.reason === "not_testable"));
@@ -226,6 +227,25 @@ test("coverage and check: an @api test case is pending until linked; check stamp
   plan[0].expect = { status: 200, source: "spec" };
   writeJson(s.pp.plan, plan);
   assert.match(planUnverified(s.pp), /changed after api-plan.mjs check/, "a hand edit after check is caught");
+});
+
+test("an @api test case becomes a testcase: coverage item only once a human approved it (D-053)", async () => {
+  const s = setup({ approved: [] });
+  await s.run("build");
+  assert.ok(!s.cov().pending.some((p) => p.item === "testcase:TC-contacts-1"), "awaiting approval: not planned yet");
+  markApproved(s.root, ["TC-contacts-1"]);
+  await s.run("build");
+  assert.ok(s.cov().pending.some((p) => p.item === "testcase:TC-contacts-1"));
+});
+
+test("the plan overlay may link only human-approved test cases: no priority or traceability from an unapproved one (D-053)", async () => {
+  const s = setup({ approved: ["TC-contacts-2"] });
+  await s.run("build");
+  s.overlay(LINK_TC(s)); // links TC-contacts-1, which is not approved
+  const r = await s.run("build");
+  assert.equal(r.code, 1);
+  assert.ok(r.out.problems.some((p) => /'TC-contacts-1' is not a human-approved test case of this module/.test(p)), JSON.stringify(r.out.problems));
+  assert.ok(!s.plan().some((x) => x.testcases.includes("TC-contacts-1")), "no link, so no raised priority");
 });
 
 test("overlay: citations must resolve, exclusions need a matching item, and generated scenarios cannot be renamed", async () => {
@@ -283,13 +303,31 @@ test("GraphQL: errors are asserted with the status GraphQL-over-HTTP allows; a m
   assert.equal(g.filter((x) => x.key.endsWith("|gql|mutation-over-get")).length, 1);
 });
 
-test("budget: the lowest-priority scenarios are dropped first and their items say so; happy paths and linked cases stay", async () => {
+test("budget: the lowest-priority scenarios are not planned and their items are deferred, not excluded; check passes and reports them (D-050)", async () => {
   const s = setup({ budget: 20 });
   await s.run("build");
+  s.overlay(LINK_TC(s));
+  const built = await s.run("build");
+  assert.deepEqual(built.out.problems, []);
   assert.ok(s.plan().length <= 20);
-  assert.ok(s.cov().excluded.some((x) => x.reason === "budget"));
   assert.ok(s.plan().filter((x) => x.rule === "happy-path").length >= 6, "every operation keeps its happy path");
+  assert.ok(s.plan().some((x) => x.testcases.includes("TC-contacts-1")), "a linked test case stays");
   assert.ok(!s.plan().some((x) => x.type === "http"), "p3 http scenarios go first");
+  const cov = s.cov();
+  assert.ok(cov.deferred.length > 0);
+  assert.equal(built.out.deferred, cov.deferred.length);
+  assert.ok(cov.deferred.every((d) => d.reason === "budget" && d.detail === "over api.plan_budget (20)"));
+  assert.ok(cov.deferred.some((d) => d.item.startsWith("http:")));
+  assert.ok(!cov.excluded.some((x) => x.reason === "budget"), "budget is no longer an exclusion reason");
+  const listed = [...cov.mapped, ...cov.excluded, ...cov.pending].map((x) => x.item);
+  assert.ok(cov.deferred.every((d) => !listed.includes(d.item)), "a deferred item is in no other list");
+  assert.deepEqual(cov.pending, []);
+  const ok = await s.run("check");
+  assert.deepEqual(ok.out, { valid: true, deferred: cov.deferred.length, problems: [] }, "deferred counts as resolved, and check reports how many");
+  assert.equal(planUnverified(s.pp), null);
+  const md = readFileSync(s.pp.md, "utf8");
+  assert.ok(md.includes("## Deferred (over the budget)"));
+  assert.ok(cov.deferred.every((d) => md.includes(`- ${d.item}: over api.plan_budget (20)`)));
 });
 
 test("orchestration: the plan step counts as done only after api-plan.mjs check passed on what is on disk", async () => {
@@ -322,13 +360,21 @@ test("orchestration: the plan step counts as done only after api-plan.mjs check 
   assert.equal(go2().actions[0].step, "scaffold");
 });
 
-test("gate: a scenario that needs an identity must carry @identity-<name> in its test title", async () => {
+test("gate: a scenario that needs an identity carries @identity-<name> in its generated title; a title without it is drift (D-056)", async () => {
   const s = setup({ identities: [{ name: "peer", role: "peer", session_state_file: "x.json" }] });
   await s.run("build");
-  const bola = s.plan().find((x) => x.rule === "bola");
-  const title = (x) => `${x.id} t${x.mutates ? " @mutates" : ""}`;
-  put(s.root, "playwright-tests/acme/tests/api/contacts/c.spec.ts", s.plan().map((x) => `test('${title(x)}', async () => { recordCreated(); });`).join("\n") + "\n");
+  s.overlay(LINK_TC(s));
+  await s.run("build");
+  await renderFoundation(s.root, ["repo", "api"]);
+  const { main: apiCode } = await import("./api-code.mjs");
+  assert.equal((await apiCode(["build", "acme", "contacts"], { root: s.root })).code, 0);
+  const bola = s.plan().find((x) => x.rule === "bola" && x.endpoint === s.ep("GET", "/api/v1/contacts/{contactId}"));
+  const spec = path.join(s.root, "playwright-tests/acme/tests/api/contacts/contacts.spec.ts");
+  const text = readFileSync(spec, "utf8");
+  const literal = new RegExp(`test\\((['"])(${bola.id} .*?)\\1, async`).exec(text)?.[2];
+  assert.match(literal, / @identity-peer\b/, "the generated title carries @identity-peer");
+  writeFileSync(spec, text.replace(literal, literal.replace(" @identity-peer", "")));
   gate("acme", "contacts", "playwright-api", { root: s.root, compile: false });
   const findings = readFileSync(path.join(s.p.results("acme-run-1"), "contacts", "playwright-api", "gate-findings.md"), "utf8");
-  assert.match(findings, new RegExp(`${bola.id} needs identity 'peer' but its title lacks @identity-peer`));
+  assert.match(findings, new RegExp(`title-drift \\| ${bola.id}: the title or tags differ from the plan`));
 });

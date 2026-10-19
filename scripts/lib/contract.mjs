@@ -57,6 +57,8 @@ export const STAGES = {
       { path: "artifacts/{product}/knowledge/glossary.md" },
       { path: "artifacts/{product}/knowledge/sources.md" },
       { path: "artifacts/{product}/knowledge/sources.json", schema: "sources" },
+      { path: "artifacts/{product}/knowledge/coverage.json", schema: "knowledge-coverage" },
+      { path: "artifacts/{product}/knowledge/open-points.json", schema: "knowledge-open-points" },
     ],
   },
   // Module pass: one knowledge-generator invocation per module.
@@ -70,14 +72,18 @@ export const STAGES = {
       { path: "artifacts/{product}/knowledge/modules/{m}/glossary.md" },
       { path: "artifacts/{product}/knowledge/modules/{m}/notes.md" },
       { path: "artifacts/{product}/knowledge/modules/{m}/sources.md" },
+      { path: "artifacts/{product}/knowledge/modules/{m}/coverage.json", schema: "knowledge-coverage" },
+      { path: "artifacts/{product}/knowledge/modules/{m}/open-points.json", schema: "knowledge-open-points" },
+      { path: "artifacts/{product}/knowledge/modules/{m}/rule-facts.json", schema: "knowledge-rule-facts" },
     ],
   },
+  // The exploration's state machine is script-built (D-052): done needs the verified stamp of `explore.mjs check`.
   explore: {
     scope: "module",
     orchestrator: "module-explorer",
     needs: ["module-knowledge"],
     outputs: [
-      { path: "artifacts/{product}/modules/{m}/explore/sitemap.json", schema: "sitemap" },
+      { path: "artifacts/{product}/modules/{m}/explore/sitemap.json", schema: "sitemap", check: "explore" },
       { path: "artifacts/{product}/modules/{m}/explore/module-summary.md" },
     ],
   },
@@ -100,18 +106,22 @@ export const STAGES = {
     scope: "product",
     orchestrator: "pw-repo-owner",
     needs: [],
-    outputs: [{ path: "playwright-tests/{product}/package.json" }, { path: "playwright-tests/{product}/playwright.config.ts" }],
+    // The shared files are rendered from templates/ (D-054): done needs foundation.mjs check's verified stamp.
+    outputs: [{ path: "playwright-tests/{product}/package.json", check: "foundation-repo" }, { path: "playwright-tests/{product}/playwright.config.ts" }],
   },
+  // approval: only human-approved test cases are automated; with none, the stage awaits approval (scripts/run.mjs, D-053).
   "playwright-ui": {
     scope: "module",
     orchestrator: "playwright-ui-orchestrator",
     needs: ["testcases", "playwright-repo"],
+    approval: true,
     outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-ui/results.json", schema: "results" }],
   },
   "playwright-api": {
     scope: "module",
     orchestrator: "playwright-api-orchestrator",
     needs: ["testcases", "playwright-repo"],
+    approval: true,
     outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-api/results.json", schema: "results" }],
   },
   k6: {
@@ -124,7 +134,8 @@ export const STAGES = {
     scope: "product",
     orchestrator: "report-generator",
     needs: ["*"], // every other stage complete or failed
-    outputs: [{ path: "artifacts/{product}/results/{run}/report/report.json" }, { path: "artifacts/{product}/results/{run}/report/index.html" }],
+    // the deck is rendered by script from report.json and the agent's cited narrative: done needs the verified stamp of `report.mjs check` (G11)
+    outputs: [{ path: "artifacts/{product}/results/{run}/report/report.json", schema: "report" }, { path: "artifacts/{product}/results/{run}/report/index.html", check: "report" }],
   },
 };
 
@@ -161,20 +172,38 @@ export async function validateFile(schema, file) {
 }
 
 // Named content checks for non-JSON outputs. Each returns string[] problems. Registered lazily to avoid cycles.
+// The knowledge checks include the verified stamp a passing `knowledge.mjs check` writes (D-051).
 const knowledgeLib = async (ctx) => {
   const k = await import("./knowledge.mjs");
-  return { k, kp: k.knowledgePaths(paths(ctx.product, ctx.root ?? repoRoot).productDir) };
+  const p = paths(ctx.product, ctx.root ?? repoRoot);
+  return { k, kp: k.knowledgePaths(p.productDir), cfg: loadJson(p.configFile) };
 };
 const CHECKS = {
   clarifications: async (file, ctx) => (await import("./clarifications.mjs")).checkComplete(file, ctx),
   testcases: async (file, ctx) => (await import("./testcases.mjs")).checkTestcases(file, ctx),
   "knowledge-product": async (_file, ctx) => {
-    const { k, kp } = await knowledgeLib(ctx);
-    return k.checkProduct(kp);
+    const { k, kp, cfg } = await knowledgeLib(ctx);
+    return k.checkProduct(kp, cfg);
   },
   "knowledge-module": async (_file, ctx) => {
-    const { k, kp } = await knowledgeLib(ctx);
-    return k.checkModule(kp, ctx.module);
+    const { k, kp, cfg } = await knowledgeLib(ctx);
+    return k.checkModule(kp, cfg, ctx.module);
+  },
+  "foundation-repo": async (_file, ctx) => {
+    const f = await import("./foundation.mjs");
+    const p = paths(ctx.product, ctx.root ?? repoRoot);
+    const why = f.foundationUnverified(f.foundationContext({ root: ctx.root ?? repoRoot, product: ctx.product, run: loadJson(p.runFile), cfg: loadJson(p.configFile), productDir: p.productDir, pwProject: p.pwProject, k6Project: p.k6Project }), "repo");
+    return why ? [why] : [];
+  },
+  report: async (_file, ctx) => {
+    const r = await import("./report.mjs");
+    const why = r.reportUnverified(r.reportPaths(paths(ctx.product, ctx.root ?? repoRoot).productDir, ctx.runId));
+    return why ? [why] : [];
+  },
+  explore: async (_file, ctx) => {
+    const x = await import("./explore.mjs");
+    const p = paths(ctx.product, ctx.root ?? repoRoot);
+    return x.stageProblems(x.exploreContext({ root: ctx.root ?? repoRoot, product: ctx.product, module: ctx.module, run: loadJson(p.runFile), cfg: loadJson(p.configFile), productDir: p.productDir, ledgerFile: p.ledgerFile }));
   },
 };
 

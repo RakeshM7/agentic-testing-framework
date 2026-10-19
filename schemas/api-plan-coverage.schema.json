@@ -3,7 +3,7 @@
   "$id": "api-plan-coverage.schema.json",
   "title": "Coverage of a module's API test plan (artifacts/<product>/modules/<m>/api/plan-coverage.json), written only by scripts/api-plan.mjs (D-046)",
   "type": "object",
-  "required": ["module", "catalogue", "discovery", "budget", "levels", "counts", "mapped", "excluded", "pending", "questions", "retired"],
+  "required": ["module", "catalogue", "discovery", "budget", "levels", "counts", "mapped", "excluded", "deferred", "pending", "questions", "retired"],
   "additionalProperties": false,
   "properties": {
     "module": { "type": "string" },
@@ -21,12 +21,13 @@
         "additionalProperties": false,
         "properties": {
           "item": { "type": "string" },
-          "reason": { "enum": ["deduped", "budget", "not_applicable", "unsupported_schema", "unreachable_status", "needs_identity", "auth_unknown", "public", "no_link", "unsafe_probe", "documentation_finding", "not_testable", "out_of_scope", "covered_elsewhere", "needs_data", "spec_wrong"] },
+          "reason": { "enum": ["deduped", "not_applicable", "unsupported_schema", "unreachable_status", "needs_identity", "auth_unknown", "public", "no_link", "unsafe_probe", "documentation_finding", "not_testable", "out_of_scope", "covered_elsewhere", "needs_data", "spec_wrong"] },
           "detail": { "type": "string" },
           "citation": { "type": "string" }
         }
       }
     },
+    "deferred": { "type": "array", "description": "Items whose scenarios were over api.plan_budget (D-050): not planned this run, kept in the ledger; check counts them as resolved and reports them.", "items": { "type": "object", "required": ["item", "reason", "detail"], "additionalProperties": false, "properties": { "item": { "type": "string" }, "reason": { "const": "budget" }, "detail": { "type": "string" } } } },
     "pending": { "type": "array", "description": "Items the planner must still resolve; check fails while any remain.", "items": { "type": "object", "required": ["item", "why"], "additionalProperties": false, "properties": { "item": { "type": "string" }, "why": { "type": "string" } } } },
     "questions": { "type": "array", "items": { "type": "object", "required": ["id", "fault", "question", "answered"], "additionalProperties": false, "properties": { "id": { "type": "string" }, "fault": { "type": "string" }, "question": { "type": "string" }, "answered": { "type": "boolean" } } } },
     "retired": { "type": "array", "items": { "type": "string" } },
