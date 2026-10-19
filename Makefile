@@ -16,6 +16,15 @@
 #   make automate PRODUCT=acme-crm                    Playwright UI + API tests (needs approved cases)
 #   make resume PRODUCT=acme-crm STAGE=k6 MODULE=deals   any stage, optionally one module
 
+# The recipes are POSIX sh. On Windows, make falls back to cmd.exe when no sh.exe is on PATH, so point it at Git for
+# Windows' sh (bin/sh.exe also puts sed, head, mkdir and friends on PATH). Override with make ... SHELL=<path to sh.exe>.
+ifeq ($(OS),Windows_NT)
+GIT_SH := $(firstword $(wildcard $(subst \,/,$(LOCALAPPDATA))/Programs/Git/bin/sh.exe C:/PROGRA~1/Git/bin/sh.exe C:/Git/bin/sh.exe))
+ifneq ($(GIT_SH),)
+SHELL := $(GIT_SH)
+endif
+endif
+
 PRODUCT ?=
 URL     ?=
 STAGE   ?=
