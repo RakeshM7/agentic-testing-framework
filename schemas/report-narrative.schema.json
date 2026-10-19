@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "report-narrative.schema.json",
+  "title": "results/<run>/report/narrative.json -- the report-generator's only output (G11): an executive summary, the risks and the recommendations, each statement citing report.json paths. `report.mjs check` fails when a number in a statement does not equal a number at one of its cited paths, or a cited path does not exist.",
+  "type": "object",
+  "required": ["executiveSummary", "risks", "recommendations"],
+  "additionalProperties": false,
+  "$defs": {
+    "cite": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_-]*|\\[[0-9]+\\]|\\[[A-Za-z_][A-Za-z0-9_]*=[^\\]\\[]+\\])*$",
+      "description": "A path into report.json: dotted keys, [n] for an array index, [key=value] for the array item whose key equals value, e.g. totals.approvals.awaiting, bugs[0].severity, modules[module=contacts].testcases, totals.execution.playwright-ui.failed."
+    },
+    "statement": {
+      "type": "object",
+      "required": ["text", "cites"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 600, "description": "One plain statement. Every number in it must equal a number at a cited path (or the length of a cited array); write numbers as digits." },
+        "cites": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/cite" } }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "required": ["text", "cites", "severity"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "cites": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/cite" } },
+        "severity": { "enum": ["high", "medium", "low"] }
+      }
+    }
+  },
+  "properties": {
+    "executiveSummary": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/statement" } },
+    "risks": { "type": "array", "maxItems": 12, "items": { "$ref": "#/$defs/risk" } },
+    "recommendations": { "type": "array", "maxItems": 12, "items": { "$ref": "#/$defs/statement" } }
+  }
+}

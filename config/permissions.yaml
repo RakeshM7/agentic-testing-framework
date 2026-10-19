@@ -150,6 +150,11 @@ managed_files:
   - "${results}/*/*/review-findings.md"
   # worker requests (G10, D-060): written only by scripts/requests.mjs (workers add through it) and orchestration.mjs
   - "${results}/*/*/requests.json"
+  # report (G11, D-061): report.json by report-data.mjs; the deck and the verified stamp by report.mjs (the agent writes
+  # only report/narrative.json)
+  - "${results}/report/report.json"
+  - "${results}/report/index.html"
+  - "${results}/report/report-check.json"
 
 profiles:
   # Reusable bundles; an agent lists `profile:` and any per-agent overrides replace the profile's keys.
@@ -488,8 +493,10 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/run.mjs status *", "node scripts/report-data.mjs *"]
-    filesystem: { read: ["${product_dir}/**"], write: ["${results}/report/**"] }
+    # G11 (D-061): writes only its cited narrative overlay; report-data.mjs collects report.json, report.mjs renders the
+    # deck and checks the narrative (report.json, index.html and the report-check.json stamp are managed files)
+    shell_allow: ["node scripts/report-data.mjs *", "node scripts/report.mjs render *", "node scripts/report.mjs check *", "node scripts/report.mjs paths *"]
+    filesystem: { read: ["${product_dir}/**"], write: ["${results}/report/narrative.json"] }
 
   feedback-implementor-agent:   # existing: fixes agent prompts / framework from feedback/ files (not generated test code)
     layer: 1
@@ -498,11 +505,37 @@ agents:
     web_research: none
     shell: project
     filesystem:
-      read: ["feedback/**", "agents/**", "docs/**", "scripts/**", "config/**"]
-      write: ["agents/*.md", "docs/**", "feedback/**", "scripts/*.mjs",
-              "scripts/lib/contract.mjs", "scripts/lib/clarifications.mjs", "scripts/lib/knowledge.mjs",
-              "scripts/lib/testcases.mjs", "scripts/lib/csv.mjs"]
+      read: ["feedback/**", "agents/**", "docs/**", "scripts/**", "config/**", "schemas/**", "templates/**"]
+      write: ["agents/*.md", "agents/_shared/*.md", "docs/**", "feedback/**", "scripts/api-code.mjs",
+              "scripts/api-code.test.mjs", "scripts/api-plan.mjs", "scripts/api-plan.test.mjs",
+              "scripts/build-agents.mjs", "scripts/build-agents.test.mjs", "scripts/clarifications.mjs",
+              "scripts/clarifications.test.mjs", "scripts/decisions.test.mjs", "scripts/domains.test.mjs",
+              "scripts/endpoints.mjs", "scripts/endpoints.test.mjs", "scripts/explore.mjs", "scripts/explore.test.mjs",
+              "scripts/fix.mjs", "scripts/fix.test.mjs", "scripts/foundation.mjs", "scripts/foundation.test.mjs",
+              "scripts/gate.mjs", "scripts/gate.test.mjs", "scripts/k6-code.mjs", "scripts/k6-code.test.mjs",
+              "scripts/knowledge.mjs", "scripts/knowledge.test.mjs", "scripts/orchestration.mjs",
+              "scripts/orchestration.test.mjs", "scripts/report-data.mjs", "scripts/report.mjs",
+              "scripts/report.test.mjs", "scripts/requests.mjs", "scripts/results.mjs", "scripts/review.mjs",
+              "scripts/review.test.mjs", "scripts/run-config.mjs", "scripts/run-config.test.mjs", "scripts/run.mjs",
+              "scripts/run.test.mjs", "scripts/shared-libs.test.mjs", "scripts/test-helpers.mjs",
+              "scripts/testcases.mjs", "scripts/testcases.test.mjs", "scripts/triage.mjs", "scripts/triage.test.mjs",
+              "scripts/ui-code.mjs", "scripts/ui-code.test.mjs", "scripts/workload.mjs", "scripts/workload.test.mjs",
+              "scripts/lib/api-code.mjs", "scripts/lib/api-discovery.mjs", "scripts/lib/api-plan.mjs",
+              "scripts/lib/citations.mjs", "scripts/lib/clarifications.mjs", "scripts/lib/contract.mjs",
+              "scripts/lib/coverage.mjs", "scripts/lib/csv.mjs", "scripts/lib/domain-flows.mjs",
+              "scripts/lib/endpoints.mjs", "scripts/lib/explore.mjs", "scripts/lib/fix.mjs",
+              "scripts/lib/foundation.mjs", "scripts/lib/graphql.mjs", "scripts/lib/k6-code.mjs",
+              "scripts/lib/knowledge.mjs", "scripts/lib/mcp.mjs", "scripts/lib/openapi.mjs", "scripts/lib/probe.mjs",
+              "scripts/lib/registry.mjs", "scripts/lib/report.mjs", "scripts/lib/requests.mjs",
+              "scripts/lib/review.mjs", "scripts/lib/testcases.mjs", "scripts/lib/triage.mjs",
+              "scripts/lib/ts-scan.mjs", "scripts/lib/ui-code.mjs", "scripts/lib/verified.mjs",
+              "scripts/lib/workload.mjs", "scripts/lib/gate/*.mjs", "scripts/fixtures/**", "schemas/*.json",
+              "templates/**"]
+    # G12 (D-062): the write list is enumerated because a glob has no exclude; it covers the scripts, libs, gate rules,
+    # fixtures, schemas and templates of G0-G11 and leaves out the safety files below, which stay human-only.
     # Never config/ (permissions, models, platforms, MCP servers), the safety code (scripts/lib/{guard,permissions,ledger,
-    # hosts,tool-call,browser-tools,guard-check,decisions}.mjs, scripts/hooks/), the hook registrations or editor settings
+    # hosts,tool-call,browser-tools,guard-check,decisions,hook-registrations,agent-scope}.mjs, scripts/hooks/, scripts/lib/agents/),
+    # the checker it is checked by (scripts/{feedback,ledger}.mjs, scripts/lib/feedback.mjs, scripts/{feedback,guard,hooks,roster}.test.mjs),
+    # the hook registrations or editor settings
     # (.claude/settings.json, .github/hooks/, .vscode/) or the generated agent/MCP files (rebuilt from agents/ by
     # `npm run build-agents` via its shell): safety, permissions, models and platforms are human-only decisions (D-013).

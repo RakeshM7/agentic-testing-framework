@@ -82,7 +82,7 @@ main orchestrator:
         every domain orchestrator follows `orchestration.mjs next`, which holds these flows (scripts/lib/domain-flows.mjs)
         API additionally starts with api-discoverer -> api-test-planner
   7 k6-orchestrator (needs the API plan): workload-designer (cited overlay -> workload.mjs build + check, run=<run-id>) -> lib-writer (cited overlay -> foundation.mjs render + check; skipped while verified) -> script-writer (slots -> k6-code.mjs build + check) -> review loop -> run/fix loop
-  8 report-generator -> HTML slide deck
+  8 report-generator -> report-data.mjs (report.json) -> cited narrative.json -> report.mjs render + check (verified stamp) -> HTML slide deck
 ```
 
 ## Contracts decided so far
@@ -109,7 +109,7 @@ main orchestrator:
 
 **Stage table**: one stage per domain, defined in `STAGES` in `scripts/lib/contract.mjs` (and described in [`artifact-contract.md`](artifact-contract.md)); the steps inside a domain belong to its orchestrator. Each stage keeps declared, schema-verified outputs, so `run.mjs next` stays the only source of "what runs next", and it returns the agent and the exact prompt (D-060). The five domain orchestrators share one included body, `agents/_shared/domain-loop.md`, plus a short domain section; workers ask for shared-file changes, missing methods or exports and foundation gaps through `scripts/requests.mjs add`, never in prose.
 
-**Report**: HTML slide deck from `report.json` (modules explored, clarifications answered/unconfirmed, test cases, Playwright UI/API specs, k6 scripts, execution results per framework).
+**Report** (D-061): `scripts/report-data.mjs` collects a schema-validated `report.json` (modules explored, clarifications, test cases, Playwright UI/API specs, k6 scripts, execution results per framework, bug drafts by cluster, human queues, coverage and deferrals, assumptions and risks, failed and blocked stages); `scripts/report.mjs` renders the HTML slide deck from it with the templates in `templates/report/`. `report-generator` writes only a narrative (executive summary, risks, recommendations) whose statements cite `report.json` paths; `report.mjs check` fails on a missing path or a number that doesn't match, and its stamp is what the `report` stage requires.
 
 ## Rollout (domain by domain, each tested before the next)
 knowledge-generator → module-explorer → clarification domain → testcase domain → Playwright UI → Playwright API → K6 → report.

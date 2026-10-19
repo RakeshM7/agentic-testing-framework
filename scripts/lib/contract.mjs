@@ -134,7 +134,8 @@ export const STAGES = {
     scope: "product",
     orchestrator: "report-generator",
     needs: ["*"], // every other stage complete or failed
-    outputs: [{ path: "artifacts/{product}/results/{run}/report/report.json" }, { path: "artifacts/{product}/results/{run}/report/index.html" }],
+    // the deck is rendered by script from report.json and the agent's cited narrative: done needs the verified stamp of `report.mjs check` (G11)
+    outputs: [{ path: "artifacts/{product}/results/{run}/report/report.json", schema: "report" }, { path: "artifacts/{product}/results/{run}/report/index.html", check: "report" }],
   },
 };
 
@@ -192,6 +193,11 @@ const CHECKS = {
     const f = await import("./foundation.mjs");
     const p = paths(ctx.product, ctx.root ?? repoRoot);
     const why = f.foundationUnverified(f.foundationContext({ root: ctx.root ?? repoRoot, product: ctx.product, run: loadJson(p.runFile), cfg: loadJson(p.configFile), productDir: p.productDir, pwProject: p.pwProject, k6Project: p.k6Project }), "repo");
+    return why ? [why] : [];
+  },
+  report: async (_file, ctx) => {
+    const r = await import("./report.mjs");
+    const why = r.reportUnverified(r.reportPaths(paths(ctx.product, ctx.root ?? repoRoot).productDir, ctx.runId));
     return why ? [why] : [];
   },
   explore: async (_file, ctx) => {

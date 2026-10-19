@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
 import { toolCall } from "./lib/tool-call.mjs";
@@ -682,4 +682,73 @@ test("worker requests (G10, D-060): only the askers run requests.mjs add; nobody
       assert.equal(v.rule, "managed-file");
     }
   assert.ok(perms["pw-repo-owner"].filesystem.read.some((g) => g.endsWith("/*/*/requests.json")), "the repo owner reads the requests of any module");
+});
+
+test("report-generator writes only report/narrative.json and runs only report-data.mjs and report.mjs render|check|paths; report.json, index.html and the stamp are managed (D-061)", () => {
+  const D = "artifacts/acme/results/acme-run-1/report";
+  const w = (rel, run = FULL) => allowed(run.root, call("report-generator", "Write", { file_path: path.join(run.root, rel) }));
+  const cmdOk = (cmd) => allowed(FULL.root, sh("report-generator", cmd));
+  assert.equal(w(`${D}/narrative.json`), true, "the narrative overlay");
+  for (const f of ["report.json", "index.html", "report-check.json", "notes.md"]) assert.equal(w(`${D}/${f}`), false, `report-generator may not write ${f}`);
+  assert.equal(w("artifacts/acme/results/other-run/report/narrative.json"), false, "another run");
+  assert.equal(w("artifacts/acme/results/acme-run-1/contacts/k6/review.json"), false, "no other write");
+  for (const cmd of ["node scripts/report-data.mjs acme", "node scripts/report.mjs render acme", "node scripts/report.mjs check acme", "node scripts/report.mjs paths acme"])
+    assert.equal(cmdOk(cmd), true, cmd);
+  for (const cmd of ["node scripts/run.mjs status acme", "node scripts/report.mjs render acme && echo x > " + D + "/report.json", "node scripts/results.mjs acme", "echo x > " + D + "/index.html", "npm test"])
+    assert.equal(cmdOk(cmd), false, cmd);
+  // nobody, named or not, writes report.json, index.html or the stamp
+  const perms = JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents;
+  for (const run of [FULL, RO])
+    for (const agent of [...Object.keys(perms), undefined])
+      for (const f of ["report.json", "index.html", "report-check.json"]) {
+        const v = checkTool(call(agent, "Write", { file_path: path.join(run.root, `${D}/${f}`) }), run.root, {});
+        assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${f}`);
+        assert.equal(v.rule, "managed-file", `${agent}: ${f}`);
+      }
+  assert.deepEqual(perms["report-generator"].filesystem.write, ["${results}/report/narrative.json"]);
+});
+
+test("feedback-implementor-agent writes the G0-G11 framework files and never a safety file or its own checker (D-062)", () => {
+  const w = (rel) => allowed(FULL.root, call("feedback-implementor-agent", "Write", { file_path: path.join(FULL.root, rel) }));
+  const e = (rel) => allowed(FULL.root, call("feedback-implementor-agent", "Edit", { file_path: path.join(FULL.root, rel) }));
+  for (const rel of [
+    "scripts/lib/gate/common.mjs", "scripts/lib/endpoints.mjs", "scripts/lib/api-plan.mjs", "scripts/lib/domain-flows.mjs", "scripts/lib/report.mjs",
+    "scripts/fixtures/explore/contacts-list.md", "schemas/report.schema.json", "templates/report/deck.html", "templates/k6/lib/x.js",
+    "scripts/report.mjs", "scripts/report.test.mjs", "scripts/review.test.mjs", "agents/_shared/fixer.md", "agents/pw-ui-fixer.md", "docs/decisions.md",
+  ]) {
+    assert.equal(w(rel), true, `write ${rel}`);
+    assert.equal(e(rel), true, `edit ${rel}`);
+  }
+  const safety = [
+    "scripts/lib/guard.mjs", "scripts/lib/permissions.mjs", "scripts/lib/ledger.mjs", "scripts/lib/hosts.mjs", "scripts/lib/tool-call.mjs",
+    "scripts/lib/browser-tools.mjs", "scripts/lib/decisions.mjs", "scripts/lib/guard-check.mjs", "scripts/lib/hook-registrations.mjs", "scripts/lib/agent-scope.mjs",
+    "scripts/hooks/pretooluse.mjs", "scripts/hooks/hosts/claude.mjs", "scripts/lib/agents/capabilities.mjs", "scripts/lib/agents/renderers/claude.mjs",
+    "scripts/ledger.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs",
+    "config/permissions.yaml", "config/models.yaml", "config/platforms.yaml", "config/mcp.yaml",
+    ".claude/settings.json", ".claude/agents/pw-ui-fixer.md", ".github/hooks/x.json", ".github/agents/pw-ui-fixer.agent.md", ".vscode/mcp.json", ".mcp.json",
+    "playwright-tests/acme/tests/ui/x.spec.ts", "k6-tests/acme/scripts/x.js",
+    // the checker of its own resolutions is not editable by the agent it checks
+    "scripts/feedback.mjs", "scripts/lib/feedback.mjs", "scripts/feedback.test.mjs",
+  ];
+  for (const rel of safety) {
+    assert.equal(w(rel), false, `write ${rel}`);
+    assert.equal(e(rel), false, `edit ${rel}`);
+  }
+});
+
+test("every framework script is writable by feedback-implementor-agent or deliberately carved out, so a new file forces a decision (D-062)", () => {
+  const carved = new Set([
+    "scripts/feedback.mjs", "scripts/ledger.mjs", "scripts/feedback.test.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs",
+    ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "agent-scope", "feedback"].map((n) => `scripts/lib/${n}.mjs`),
+  ]);
+  const files = [];
+  const walk = (dir) => {
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
+      const rel = `${dir}/${d.name}`;
+      if (d.isDirectory()) { if (!["hooks", "agents", "fixtures"].includes(d.name)) walk(rel); } else if (rel.endsWith(".mjs")) files.push(rel);
+    }
+  };
+  walk("scripts");
+  const w = (rel) => allowed(FULL.root, call("feedback-implementor-agent", "Write", { file_path: path.join(FULL.root, rel) }));
+  for (const rel of files) assert.equal(w(rel), !carved.has(rel), `${rel}: ${carved.has(rel) ? "carved out" : "writable"}`);
 });

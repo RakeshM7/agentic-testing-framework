@@ -222,7 +222,7 @@ test("a review that used up its rounds fails the stage with its open findings an
   for (const stage of ["playwright-ui", "playwright-api", "k6"]) assert.equal(row(stage).blocked, true, `${stage} is blocked`);
   assert.equal(row("playwright-ui", "deals").blocked, false, "another module is not");
   assert.match((await setStage("acme", "testcases", "contacts", "start", undefined, { root })).errors[0], /failed its review this run/);
-  const report = collect("acme", { root });
+  const report = await collect("acme", { root });
   assert.deepEqual(report.failedStages.map((s) => [s.key, s.reviewFailed, s.findings]), [["contacts/testcases", true, [finding]]], "the report data lists the failed stage with its findings");
 });
 

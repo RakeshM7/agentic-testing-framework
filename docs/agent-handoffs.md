@@ -318,6 +318,8 @@ Signature: `errorClass | message (ids, UUIDs, hex and numbers erased, 200 chars)
 
 `results/<run>/<m>/<framework>/results.json` — written only by `node scripts/results.mjs` (schema `results`). Never write it by hand.
 
+**Report (D-061).** `report-generator` writes `results/<run>/report/narrative.json` (schema `report-narrative`) from `report.json` (schema `report`, written by `report-data.mjs`): `{executiveSummary: [S], risks: [S + severity high|medium|low], recommendations: [S]}` with a statement `S = {text, cites: [path…]}` (at least one cite). A cite is a dotted path into `report.json` with `[n]` and `[key=value]` selectors (`totals.approvals.awaiting`, `modules[module=contacts].testcases`). `node scripts/report.mjs render <p>` renders `index.html`; `report.mjs check <p>` exits 1 on a schema error, a cited path that doesn't exist, a number in a text not found at a cited path (cite numerator and denominator; no derived figures), or an `index.html` that differs from the render, and on success stamps `report-check.json`. At most 3 write, render, check rounds.
+
 ## 9. Knowledge base (`knowledge-generator` → everyone)
 
 `knowledge/` for the product pass, `knowledge/modules/<m>/` for a module pass. The layout and the checks are in [`artifact-contract.md`](artifact-contract.md) §"Knowledge base" (D-015, D-051).
