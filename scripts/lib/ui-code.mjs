@@ -33,6 +33,7 @@ import { writeAtomic } from "./csv.mjs";
 import { explorePaths, extractControls, mutatesControl, parseAction, parseSnapshot } from "./explore.mjs";
 import { finding, walk } from "./gate/common.mjs";
 import { indexProblem, writeIndex } from "./foundation.mjs";
+import { declaredNames, parseAgentCode, walkPath } from "./agent-scope.mjs";
 import { callArgs, functionsOf, isClose, isOpen, matchClose, matchOpen, scanTs } from "./ts-scan.mjs";
 import { DEFAULT_MAX_CASES, PRIORITIES, approvalStatus, readApprovals, testcasePaths } from "./testcases.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
@@ -1182,6 +1183,7 @@ export function uiCodeFindings(ctx, { scope = "tests" } = {}) {
     });
     if (t.visual && !/\btoHaveScreenshot\s*\(/.test(code)) out.push(finding("major", file, lineOf(thenKey(t.id)), "visual", `${t.id} is @visual but never calls toHaveScreenshot`, `await expect(page).toHaveScreenshot('${t.id}.png', { mask: [...] }) with the dynamic regions masked`));
     if (t.mutates && !/\brecordCreated\s*\(/.test(code)) out.push(finding("major", file, lineOf(keys[0]), "ledger", `${t.id} is @mutates but its steps never call recordCreated`, "record every entity it creates with recordCreated right after creating it"));
+    if (/\brecordDeleted\s*\(/.test(code) && !/\bowns\s*\(/.test(code)) out.push(finding("major", file, lineOf(keys[0]), "ledger", `${t.id} calls recordDeleted but never checks owns(type, ref) first`, "delete an entity only when owns(type, ref) says this run created it (D-005), then recordDeleted"));
   }
   // every test lives in the cases spec: another spec file in the module's folder holds tests no case asked for
   for (const f of walk(ctx.pwProject, `tests/ui/${module}`, /\.ts$/))
@@ -1309,6 +1311,19 @@ function uniqueFindings(file, text, usage) {
     }
     if (!uses(value))
       out.push(finding("major", file, (value[0] ?? body[0]).line, "data-unique", `${u.builder}() returns ${prop ? `'${prop}' ` : ""}without uniqueName (${value.length === 1 && value[0].type === "str" ? `the fixed string '${value[0].value}'` : "a value not unique to the run"}), and ${u.file}:${u.line} finds it with a data-driven locator`, "build every value a locator finds with uniqueName('<prefix>') from utils/shared/data.ts, so it is unique to the run and the test"));
+    else {
+      // a conditional or defaulted value (cond ? uniqueName(..) : 'Jane', a || 'Jane', a ?? 'Jane'): every alternative that is a bare string or template must be unique too
+      const alts = [[]];
+      let depth = 0;
+      for (const t of value) {
+        if (isOpen(t)) depth++;
+        else if (isClose(t)) depth--;
+        if (!depth && ["?", ":", "|"].includes(t.value)) alts.push([]);
+        else alts.at(-1).push(t);
+      }
+      const bare = alts.length > 1 ? alts.find((x) => x.length === 1 && ["str", "tpl"].includes(x[0].type) && !uses(x)) : null;
+      if (bare) out.push(finding("major", file, bare[0].line, "data-unique", `${u.builder}() returns ${prop ? `'${prop}' ` : ""}a fixed string '${String(bare[0].value).slice(0, 40)}' as one alternative of its value, and ${u.file}:${u.line} finds it with a data-driven locator`, "every alternative a locator can find is built with uniqueName('<prefix>'), the fallback too"));
+    }
   }
   return out;
 }
@@ -1364,6 +1379,97 @@ function thenProblems(sig, fixtures) {
   return uniq(out);
 }
 
+const PAGE_OK = ["goto", "reload", "goBack", "goForward", "waitForURL", "waitForLoadState", "url", "title", "keyboard", "mouse", "setViewportSize", "viewportSize", "bringToFront", "close"];
+const HOOKS = ["beforeEach", "afterEach", "beforeAll", "afterAll"];
+const staticStr = (n) => (n?.type === "Literal" && typeof n.value === "string" ? n.value : n?.type === "TemplateLiteral" && !n.expressions.length ? (n.quasis[0].value.cooked ?? "") : null);
+// The parking statement of a first step: the region's very first statement is `test.fixme(true, '<reason>');`. -> the call | null
+function parkingCall(ast, isFirstStep) {
+  const st = ast.body[0];
+  const c = st?.type === "ExpressionStatement" ? st.expression : null;
+  if (!isFirstStep || c?.type !== "CallExpression" || c.arguments.length !== 2) return null;
+  const f = c.callee;
+  const reason = staticStr(c.arguments[1]);
+  return f.type === "MemberExpression" && !f.computed && f.object.type === "Identifier" && f.object.name === "test" && f.property.name === "fixme" && c.arguments[0].type === "Literal" && c.arguments[0].value === true && reason !== null && reason.trim().length >= 3 ? c : null;
+}
+// Does a member expression's receiver run on a page or a frame: `page.x`, `this.page.x`, `frame.x`, `page.mainFrame().x`, `page.frames()[0].x`?
+function onPageNode(m) {
+  const r = m.object;
+  if (r.type === "Identifier") return /^(page|frame)$/i.test(r.name);
+  if (r.type === "MemberExpression" && !r.computed && r.property.type === "Identifier" && /^(page|frame)$/i.test(r.property.name)) return true;
+  const gets = (c) => c?.type === "CallExpression" && c.callee.type === "MemberExpression" && !c.callee.computed && FRAME_GETTERS.includes(c.callee.property?.name);
+  return gets(r) || (r.type === "MemberExpression" && r.computed && gets(r.object));
+}
+// The rules on the syntax tree of one step region (see regionFindings): the JavaScript that runs, read as nodes.
+function regionAstRules(tree, { key, fixtures, poMembers, parkCall, pomFix, push }) {
+  const { tokens } = declaredNames(tree);
+  const declaring = new Set(tokens);
+  // a function's second parameter after a destructured first one (a hook's) is testInfo
+  const infoParams = new Set();
+  walkPath(tree.ast, (n) => {
+    if (/^(Function|ArrowFunction)/.test(n.type) && n.params.length >= 2 && n.params[0].type !== "Identifier" && n.params[1].type === "Identifier") infoParams.add(n.params[1]);
+  });
+  const infoNames = new Set([...infoParams].map((x) => x.name));
+  const memberOf = (n, p) => (p?.type === "MemberExpression" && p.object === n && !p.computed && p.property.type === "Identifier" ? p.property.name : null);
+  const calledAs = (m, g) => g?.type === "CallExpression" && g.callee === m;
+  const written = (m, g) => (g?.type === "AssignmentExpression" && g.left === m) || g?.type === "UpdateExpression" || ((g?.type === "ForInStatement" || g?.type === "ForOfStatement") && g.left === m);
+  const selectorish = [...PAGE_SELECTOR_METHODS, ...RAW_METHODS, ...FRAME_GETTERS];
+  walkPath(tree.ast, (n, up, k) => {
+    const p = up.at(-1);
+    const g = up.at(-2);
+    if (n.type === "CallExpression" && n.callee.type === "MemberExpression" && !n.callee.computed && n.callee.property.type === "Identifier") {
+      const name = n.callee.property.name;
+      if (RAW_METHODS.includes(name)) push(n.callee.property, "raw-locator", `finds elements itself (.${name}(…)): steps go through the page objects`, "add a locator or method to the page object (pw-ui-pom-writer) and call it; it is grounded in the snapshots there");
+      else if ((PAGE_SELECTOR_METHODS.includes(name) || FRAME_GETTERS.includes(name)) && onPageNode(n.callee)) push(n.callee.property, "raw-locator", `calls page.${name}(…), Playwright's selector API: steps go through the page objects`, "add a locator or method to the page object (pw-ui-pom-writer) and call it");
+      if (["skip", "fixme", "fail", "slow"].includes(name) && n !== parkCall) push(n.callee.property, "silent-skip", `calls .${name}(…): a skipped or expected-to-fail test passes silently`, "never skip; park a case that can't be automated yet with `test.fixme(true, '<reason>');` as the first statement of its first step");
+    }
+    if (n.type === "MemberExpression") {
+      if (n.computed) {
+        const name = staticStr(n.property);
+        if (name !== null && (RAW_METHODS.includes(name) || PAGE_SELECTOR_METHODS.includes(name))) push(n.property, "raw-locator", `finds elements itself (['${name}']): steps go through the page objects`, "add a locator or method to the page object (pw-ui-pom-writer) and call it; it is grounded in the snapshots there");
+        if (name !== null && poMembers.methods.has(name) && n.object.type === "Identifier" && !fixtures.includes(n.object.name)) push(n.object, "po-access", `calls ['${name}'] by computed access`, pomFix);
+      } else if (n.property.type === "Identifier" && selectorish.includes(n.property.name) && !calledAs(n, p) && onPageNode(n)) {
+        // the method taken without calling it (`const f = page.locator;`) is the same selector API
+        push(n.property, "raw-locator", `takes page.${n.property.name} without calling it: steps go through the page objects`, "add a locator or method to the page object (pw-ui-pom-writer) and call it");
+      }
+    }
+    if (n.type !== "Identifier") return;
+    // a name in a pattern's shorthand (`({ page, contactsPage }) =>`) declares a fixture, it does not use one
+    if (p?.type === "Property" && p.shorthand && g?.type === "ObjectPattern") return;
+    if (infoParams.has(n)) return;
+    if (p?.type === "MemberExpression" && k === "property" && !p.computed) return;
+    if ((p?.type === "Property" || p?.type === "MethodDefinition" || p?.type === "PropertyDefinition") && k === "key" && !p.computed) return;
+    if (["LabeledStatement", "BreakStatement", "ContinueStatement", "MetaProperty"].includes(p?.type) || /^(Import|Export)/.test(p?.type ?? "")) return;
+    const m = memberOf(n, p);
+    const called = m !== null && calledAs(p, g);
+    if (n.name === "page") {
+      const inExpect = p?.type === "CallExpression" && p.arguments.length === 1 && p.arguments[0] === n && p.callee.type === "Identifier" && ["expect", "waitForReady"].includes(p.callee.name);
+      if (!inExpect && !(m && (PAGE_OK.includes(m) || selectorish.includes(m)))) push(n, "raw-locator", `uses page${m ? `.${m}` : " as a value"}: only navigation, expect(page) and waitForReady(page) belong in a step`, "add a method to the page object (pw-ui-pom-writer)");
+    }
+    // page objects: po.member and po.method(…) only
+    if (fixtures.includes(n.name)) {
+      if (m === null) push(n, "po-access", `uses the page object ${n.name} ${p?.type === "MemberExpression" && p.object === n && p.computed ? "with computed access" : "as a value (passed on or aliased)"}`, pomFix);
+      else if (g?.type === "MemberExpression" && g.object === p && !g.computed && ["call", "apply", "bind"].includes(g.property?.name)) push(n, "po-access", `calls ${n.name}.${m}.${g.property.name}(…) around its call-site check`, pomFix);
+      else if (poMembers.methods.has(m) && !called) push(n, "po-access", `takes ${n.name}.${m} without calling it`, pomFix);
+    }
+    if (n.name === "test") {
+      if (m === "step" && called) return;
+      if (key === "setup" && HOOKS.includes(m) && called) return;
+      if (parkCall && p === parkCall.callee) return;
+      if (m === "info" && called) {
+        const use = up.at(-3);
+        const useName = memberOf(g, use);
+        const callsUse = calledAs(use, up.at(-4));
+        if (useName && ((useName === "attach" && callsUse) || (["title", "project"].includes(useName) && !callsUse && !written(use, up.at(-4))))) return;
+      }
+      push(n, "test-reference", `uses test${m ? `.${m}` : ""} (only test.step, the hooks in setup, test.info().attach(…) and reading .title or .project)`, "tests, describes and annotations are generated; an alias or a call of test hides a test or a skip from the gate");
+    }
+    if (infoNames.has(n.name)) {
+      const okUse = m !== null && ((m === "attach" && called) || (["title", "project"].includes(m) && !called && !written(p, g)));
+      if (!okUse) push(n, "test-info", `uses ${n.name}${m ? `.${m}` : ""}: testInfo may only attach, or read .title and .project`, "never change a test's status, annotations or expectations from a region");
+    }
+  });
+}
+
 // The rules on the agent's regions of the cases spec (D-055). Steps go through the page objects: no raw locator,
 // selector, page script or selector-taking page/frame method; a page object only as `po.member` or `po.method(…)`
 // (no computed access, no .call/.apply/.bind, no method reference, never passed or aliased); `page` only as
@@ -1376,69 +1482,19 @@ function regionFindings(file, regions, plan, lineOf, { poMembers }) {
   const parked = new Map();
   const firstStep = new Map(plan.tests.map((t) => [t.steps.length ? stepKey(t.id, 1) : thenKey(t.id), t.id]));
   const fixtures = uniq(plan.tests.flatMap((t) => t.fixtures));
-  const HOOKS = ["beforeEach", "afterEach", "beforeAll", "afterAll"];
-  const PAGE_OK = ["goto", "reload", "goBack", "goForward", "waitForURL", "waitForLoadState", "url", "title", "keyboard", "mouse", "setViewportSize", "viewportSize", "bringToFront", "close"];
   for (const [key, lines] of regions) {
     const sig = scanTs(lines.join("\n")).filter((t) => t.type !== "comment");
     const at = (t) => (lineOf(key) ?? 0) + (t?.line ?? 1);
     const push = (t, rule, problem, fix) => out.push(finding("major", file, at(t), rule, `region '${key}' ${problem}`, fix));
     const pomFix = "call the page object as po.method(…) or use po.locator; a missing one is a request to pw-ui-pom-writer";
-    // the parking statement: the very first statement of the first step, unconditional
-    const parkAt0 = firstStep.has(key) && sig[0]?.value === "test" && sig[1]?.value === "." && sig[2]?.value === "fixme" && sig[3]?.value === "(" &&
-      sig[4]?.value === "true" && sig[5]?.value === "," && sig[6]?.type === "str" && sig[6].value.trim().length >= 3 && sig[7]?.value === ")" && (sig[8] === undefined || sig[8].value === ";" || sig[8].line > sig[7].line);
-    if (parkAt0) parked.set(firstStep.get(key), sig[6].value.trim());
-    // testInfo: a function's second parameter after a destructured first one (a hook's), and test.info()
-    const infoNames = new Set(functionsOf(sig).filter((f) => f.params.length >= 2 && f.params[0].name === null && f.params[1].name).map((f) => f.params[1].name));
+    const tree = parseAgentCode(lines.join("\n"), { wrap: key !== "setup" });
     for (const m of lines.join("\n").matchAll(/import\s+(?!type\b)[^;]*?from\s*['"]((?:@playwright\/test|playwright)(?:\/[^'"]*)?)['"]/g)) push(null, "test-reference", `imports ${m[1]}: test and expect come from fixtures/ui`, "import from the fixtures, never from Playwright directly");
-    for (let k = 0; k < sig.length; k++) {
-      const t = sig[k];
-      const prev = sig[k - 1]?.value;
-      const member = prev === "." && sig[k + 1]?.value === "(";
-      if ((t.type === "ident" && member && RAW_METHODS.includes(t.value)) || (t.value === "[" && sig[k + 1]?.type === "str" && (RAW_METHODS.includes(sig[k + 1].value) || PAGE_SELECTOR_METHODS.includes(sig[k + 1].value)) && sig[k + 2]?.value === "]"))
-        push(t, "raw-locator", `finds elements itself (${t.value === "[" ? `['${sig[k + 1].value}']` : `.${t.value}(…)`}): steps go through the page objects`, "add a locator or method to the page object (pw-ui-pom-writer) and call it; it is grounded in the snapshots there");
-      if (t.type === "ident" && member && (PAGE_SELECTOR_METHODS.includes(t.value) || FRAME_GETTERS.includes(t.value)) && onPage(sig, k) && !RAW_METHODS.includes(t.value))
-        push(t, "raw-locator", `calls page.${t.value}(…), Playwright's selector API: steps go through the page objects`, "add a locator or method to the page object (pw-ui-pom-writer) and call it");
-      // page: page.<safe>(…), expect(page), waitForReady(page)
-      const destructured = ["{", ","].includes(prev) && ["}", ","].includes(sig[k + 1]?.value); // ({ page, contactsPage }) of a hook
-      if (t.type === "ident" && t.value === "page" && prev !== "." && !destructured) {
-        const m = sig[k + 1]?.value === "." ? sig[k + 2]?.value : null;
-        const inExpect = ["expect", "waitForReady"].includes(sig[k - 2]?.value) && prev === "(" && sig[k + 1]?.value === ")";
-        if (!inExpect && !(m && PAGE_OK.includes(m)) && !(m && (PAGE_SELECTOR_METHODS.includes(m) || RAW_METHODS.includes(m) || FRAME_GETTERS.includes(m))))
-          push(t, "raw-locator", `uses page${m ? `.${m}` : " as a value"}: only navigation, expect(page) and waitForReady(page) belong in a step`, "add a method to the page object (pw-ui-pom-writer)");
-      }
-      // page objects: po.member and po.method(…) only
-      if (t.type === "ident" && fixtures.includes(t.value) && prev !== "." && !destructured) {
-        const m = sig[k + 1]?.value === "." ? sig[k + 2] : null;
-        if (!m) push(t, "po-access", `uses the page object ${t.value} ${sig[k + 1]?.value === "[" ? "with computed access" : "as a value (passed on or aliased)"}`, pomFix);
-        else if (sig[k + 3]?.value === "." && ["call", "apply", "bind"].includes(sig[k + 4]?.value)) push(t, "po-access", `calls ${t.value}.${m.value}.${sig[k + 4].value}(…) around its call-site check`, pomFix);
-        else if (poMembers.methods.has(m.value) && sig[k + 3]?.value !== "(") push(t, "po-access", `takes ${t.value}.${m.value} without calling it`, pomFix);
-      }
-      if (t.type === "ident" && fixtures.includes(t.value) === false && sig[k + 1]?.value === "[" && poMembers.methods.size && sig[k + 2]?.type === "str" && poMembers.methods.has(sig[k + 2].value))
-        push(t, "po-access", `calls ['${sig[k + 2].value}'] by computed access`, pomFix);
-      // test
-      if (t.type === "ident" && t.value === "test" && prev !== ".") {
-        const m = sig[k + 1]?.value === "." ? sig[k + 2]?.value : null;
-        const call = sig[k + 3]?.value === "(";
-        if (m === "step" && call) continue;
-        if (key === "setup" && HOOKS.includes(m) && call) continue;
-        if (k === 0 && parkAt0) {
-          k += 7;
-          continue;
-        }
-        if (m === "info" && call && sig[k + 4]?.value === ")" && sig[k + 5]?.value === ".") {
-          const use = sig[k + 6]?.value;
-          if ((use === "attach" && sig[k + 7]?.value === "(") || (["title", "project"].includes(use) && !["=", "("].includes(sig[k + 7]?.value))) continue;
-        }
-        push(t, "test-reference", `uses test${m ? `.${m}` : ""} (only test.step, the hooks in setup, test.info().attach(…) and reading .title or .project)`, "tests, describes and annotations are generated; an alias or a call of test hides a test or a skip from the gate");
-      }
-      const declared = prev === "," && sig[k - 2]?.value === "}" && [")", ":"].includes(sig[k + 1]?.value); // async ({}, testInfo) =>
-      if (t.type === "ident" && infoNames.has(t.value) && prev !== "." && !declared) {
-        const use = sig[k + 1]?.value === "." ? sig[k + 2]?.value : null;
-        const okUse = (use === "attach" && sig[k + 3]?.value === "(") || (["title", "project"].includes(use) && !["=", "("].includes(sig[k + 3]?.value) && !(sig[k + 3]?.value === "." && sig[k + 5]?.value === "="));
-        if (!okUse) push(t, "test-info", `uses ${t.value}${use ? `.${use}` : ""}: testInfo may only attach, or read .title and .project`, "never change a test's status, annotations or expectations from a region");
-      }
-      if (t.type === "ident" && member && ["skip", "fixme", "fail", "slow"].includes(t.value) && !(k === 2 && parkAt0))
-        push(t, "silent-skip", `calls .${t.value}(…): a skipped or expected-to-fail test passes silently`, "never skip; park a case that can't be automated yet with `test.fixme(true, '<reason>');` as the first statement of its first step");
+    if (!tree) {
+      push(null, "syntax", "does not parse (TypeScript that only strips to JavaScript; a step region is the body of a function)", "fix the syntax: every bracket the region opens it closes, and it closes none the skeleton opened");
+    } else {
+      const parkCall = parkingCall(tree.ast, firstStep.has(key));
+      if (parkCall) parked.set(firstStep.get(key), staticStr(parkCall.arguments[1]).trim());
+      regionAstRules(tree, { key, fixtures, poMembers, parkCall, pomFix, push: (n, rule, problem, fix) => push(n?.loc ? { line: n.loc.start.line } : n, rule, problem, fix) });
     }
     const testId = key.endsWith(" then") ? key.slice(0, -" then".length) : null;
     if (testId && !parked.has(testId)) {
@@ -1474,6 +1530,17 @@ function regionFindings(file, regions, plan, lineOf, { poMembers }) {
         const n1 = sig[k + 1]?.value;
         if (n1 === "=" || (["+", "-", "*", "/", "?", "|", "&", "%"].includes(n1) && sig[k + 2]?.value === "=") || (n1 === sig[k + 2]?.value && ["+", "-"].includes(n1)))
           out.push(finding("major", file, at(x), "data-shadow", `region '${k2}' reassigns ${x.value}, a name of the test's data region`, dataFix));
+        // a write to a member of the data (c.name = …, c.a.b += …, c['n']++, delete c.n, Object.assign(c, …)) changes the value the test built
+        let j = k + 1;
+        while ((sig[j]?.value === "." && sig[j + 1]?.type === "ident") || sig[j]?.value === "[") {
+          const next = sig[j].value === "." ? j + 2 : matchClose(sig, j) + 1;
+          if (next <= j) break;
+          j = next;
+        }
+        const w = sig[j]?.value;
+        const written = j > k + 1 && (w === "=" || (["+", "-", "*", "/", "%", "|", "&", "^"].includes(w) && sig[j + 1]?.value === "=") || (["+", "-"].includes(w) && sig[j + 1]?.value === w) || sig[k - 1]?.value === "delete");
+        const assigned = sig[k - 1]?.value === "(" && sig[k - 2]?.value === "assign" && sig[k - 3]?.value === "." && sig[k - 4]?.value === "Object" && [",", ")"].includes(n1);
+        if (written || assigned) out.push(finding("major", file, at(x), "data-write", `region '${k2}' writes to ${x.value}, the test's data: a step would use another value than the one built for the test`, "build the value in the data builder (its parameters), not in a step"));
       }
     }
   }

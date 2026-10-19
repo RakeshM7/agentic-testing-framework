@@ -45,6 +45,7 @@ The single reference for turning an agent's bookkeeping into a script (D-002, D-
 - The API code writers (D-056) are script-built too, variant A: `scripts/api-code.mjs` generates from the endpoint catalogue (D-045) and the verified API plan (D-046) one client class per resource with one method per endpoint, the types and JSON schemas, the client fixtures and one literal test per plan scenario (its request, auth context, the plan's assertions in order, the ledger and cleanup, `test.fixme` for blocked ones), all managed files with a drift check that the guard denies writing; a ledger maps every endpoint to its method and every scenario to its one test. `pw-api-client-writer` writes a cited client overlay (naming fixes, edge cases, verbatim from the endpoint's own source) and composite helpers over the client facade; `pw-api-tests-writer` fills the data-only payload slots and the business-rule glue slots; the managed sender enforces D-005 at run time (a session per test records every create and refuses a change to an entity the test did not create), and `check` enforces every rule and stamps the result.
 - The k6 agents (D-057) are script-built too, variant A. `scripts/workload.mjs` builds the module's workload from the catalogue, the verified API plan, the playwright-api results of the run and the run-config's `k6` section: test types by mode and opt-in, open-model arrival-rate scenarios sized with Little's law with a `dropped_iterations` threshold, caps from rate limits, SLO-or-assumed thresholds, stable `K6-<m>-<n>` ids and a ledger over every catalogue endpoint; `k6-workload-designer` writes only a cited overlay (priorities, mixes, think time, data needs, exclusions, full-run write flows). `scripts/k6-code.mjs` generates one managed script per scenario (options verbatim, the `setup()` safety calls, tagged requests and expected statuses, a write flow's ledger and cleanup, `handleSummary`), drift-checked and denied to every writer; `k6-script-writer` fills only the data slots of `scripts/slots/<m>.js`. Both `check`s stamp their result, and the k6 flow's steps verify the stamps.
 - The runner-triagers (D-058) are script-built too: `scripts/triage.mjs` owns the stale-output cleanup, the rows (including those for items the report never showed), the rule-decided classes, the signatures, the clusters with their `BUG-<m>-<n>` ids and the verified stamp; the triager runs the suite (Playwright retries a failed test twice, a failed k6 smoke is re-run once), classes the open rows, marks healable rows with a fix hint and writes one cited bug draft per product-bug cluster in `triage-overlay.json`. A product bug needs evidence and an expectation source; the heal loop starts only from a verified triage.
+- The reviewers and fixers (D-059) are script-built too: the gate and the `check` scripts own every mechanical rule (no reviewer repeats one); `pw-ui-reviewer`, `pw-api-reviewer` and `k6-reviewer` write a rubric verdict per test in `review.json` (the rubric below), and `scripts/review.mjs check` verifies every test was reviewed, every finding cites a real `file:line`, nothing changed since, and derives the verdict and `review-findings.md`; nobody types a verdict. `pw-ui-fixer`, `pw-api-fixer` and `k6-fixer` share one included body (`agents/_shared/fixer.md`) plus a domain section, and answer every blocker, major and healable row in `fix-report.json`, which `scripts/fix.mjs check` verifies against the snapshot `orchestration.mjs` takes before the round.
 - `knowledge-generator` (D-051) is script-built too: `scripts/knowledge.mjs` owns the input ledger, the source cache, the quote and checklist checks, the open-point ids and the verified stamp. A script owns everything that must be identical on every rerun: enumeration, ids, coverage and the checks. The agent owns only its judgments, and every judgment is cited.
 
 ### Two variants
@@ -95,6 +96,10 @@ The single reference for turning an agent's bookkeeping into a script (D-002, D-
 
 `## Invocation` → `## Inputs` → `## What the script generates` → `## Steps` → `## Rules` → `## Return`. The steps name the script's commands; they never re-state what the script enforces.
 
+### Shared fragments (D-059)
+
+An agent source includes a shared fragment with one line, `<!-- include: _shared/<file>.md -->`, which the build replaces with the contents of `agents/_shared/<file>.md` (no frontmatter, no nested include; an unknown target or a missing file is a build error). The body limit and the platform-neutrality lint run on the expanded body, and the generated files hold the expanded text, so a change to a fragment is drift in every includer until `npm run build-agents` runs. A fragment is never an agent. The three fixers share `_shared/fixer.md`.
+
 ### Files one refactor touches
 
 1. The script, `scripts/<name>.mjs`, and its lib, `scripts/lib/<name>.mjs`, built on the shared helpers above.
@@ -104,6 +109,19 @@ The single reference for turning an agent's bookkeeping into a script (D-002, D-
 5. The agent source, `agents/<name>.md`; then `npm run build-agents`, and `npm run check`.
 6. A D-entry in `decisions.md` listing the new files under **Affects**.
 7. Docs: `agent-handoffs.md` (the file formats), `artifact-contract.md` (the layout) and `agent-architecture.md` (the agent's role).
+
+## Review rubric
+
+Defined once, here (D-059). Each code reviewer judges **every** test of its module (a UI test case, an API scenario, a k6 script) on four dimensions, and records each as `ok` or a finding (severity `blocker | major | minor | info`, a cited `file:line`, a reason, an optional fix hint) in `review.json` (`docs/agent-handoffs.md` §6):
+
+| Dimension | Question |
+|---|---|
+| `intent` | Does the test prove what its case or scenario says (preconditions, action, oracle), not something adjacent? |
+| `assertion` | Does it assert the behavior, message or state change, not only status or visibility? No tautologies. |
+| `flakiness` | Does it depend on order, time or data, share state with another test, or use a race-prone wait? |
+| `data-safety` | Is the data synthetic and unique, cleanup only of entities the run created, with no reliance on pre-existing data (D-005)? |
+
+Severity: **blocker** = a safety rule broken or a wrong expected behavior; **major** = a missing assertion of the case, or a flakiness risk the fixer must remove; **minor**, **info** = style, never blocking. The derived verdict is `pass` exactly when no blocker or major remains. Anything a script can check (titles, tags, ledger calls, fixed waits, locators grounded in snapshots, options, thresholds) is a gate or `check` rule, never a rubric item.
 
 ## Feedback contract (improving the framework itself)
 

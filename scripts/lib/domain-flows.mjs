@@ -6,6 +6,7 @@ import path from "node:path";
 import { apiCodeContext, apiCodeUnverified } from "./api-code.mjs";
 import { planPaths, planUnverified } from "./api-plan.mjs";
 import { foundationContext, foundationUnverified } from "./foundation.mjs";
+import { reviewVerdict } from "./review.mjs";
 import { reviewResult, testcaseContext, testcaseTotals, testcasesUnverified } from "./testcases.mjs";
 import { noUiCases, uiCodeContext, uiCodeUnverified } from "./ui-code.mjs";
 import { k6CodeContext, k6CodeUnverified } from "./k6-code.mjs";
@@ -59,6 +60,10 @@ export function unresolvedFindings(file) {
     .map((m) => ({ n: Number(m[1]), severity: m[2], rule: m[3], problem: m[4] }));
 }
 
+// The code domains' review verdict is derived by review.mjs check (G9) from the reviewer's per-test review.json and read
+// here only from a stamp that is still fresh; a typed `Verdict:` line is never read.
+const codeVerdict = (c, domain, round) => reviewVerdict({ root: c.root, module: c.module, productDir: c.productDir, runId: c.run.runId, pwProject: c.pwProject, k6Project: c.k6Project }, domain, round);
+
 // ctx: {root, product, run, cfg, productDir, module, pwProject, k6Project, format}
 export const FLOWS = {
   // The cases are script-built (D-053): a done write step counts only once testcases.mjs check passed on what is on
@@ -76,7 +81,7 @@ export const FLOWS = {
       { step: "pages", agent: "pw-ui-pom-writer", skipRest: (c) => noUiCases(ucCtx(c)), verify: (c) => uiCodeUnverified(ucCtx(c), "pages"), verifyOnce: true },
       { step: "tests", agent: "pw-ui-tests-writer", verify: (c) => uiCodeUnverified(ucCtx(c), "tests"), verifyOnce: true },
     ],
-    review: { reviewer: "pw-ui-reviewer", fixer: "pw-ui-fixer" },
+    review: { reviewer: "pw-ui-reviewer", fixer: "pw-ui-fixer", verdict: (c, round) => codeVerdict(c, "playwright-ui", round) },
     run: { runner: "pw-ui-test-runner-triager", fixer: "pw-ui-fixer", framework: "playwright-ui", triageDomain: "ui" },
   },
   "playwright-api": {
@@ -89,7 +94,7 @@ export const FLOWS = {
       { step: "clients", agent: "pw-api-client-writer", verify: (c) => apiCodeUnverified(acCtx(c), "clients"), verifyOnce: true },
       { step: "tests", agent: "pw-api-tests-writer", verify: (c) => apiCodeUnverified(acCtx(c), "tests"), verifyOnce: true },
     ],
-    review: { reviewer: "pw-api-reviewer", fixer: "pw-api-fixer" },
+    review: { reviewer: "pw-api-reviewer", fixer: "pw-api-fixer", verdict: (c, round) => codeVerdict(c, "playwright-api", round) },
     run: { runner: "pw-api-test-runner-triager", fixer: "pw-api-fixer", framework: "playwright-api", triageDomain: "api" },
   },
   k6: {
@@ -99,16 +104,10 @@ export const FLOWS = {
       { ...foundationStep("k6", "lib", "k6-lib-writer", "the k6 lib"), skipRest: (c) => (workloadScenarios(path.join(c.productDir, "modules", c.module, "k6", "workload.json")) ?? []).length === 0 && "every endpoint excluded from load" },
       { step: "scripts", agent: "k6-script-writer", verify: (c) => k6CodeUnverified(kcCtx(c)), verifyOnce: true },
     ],
-    review: { reviewer: "k6-reviewer", fixer: "k6-fixer" },
+    review: { reviewer: "k6-reviewer", fixer: "k6-fixer", verdict: (c, round) => codeVerdict(c, "k6", round) },
     run: { runner: "k6-runner-triager", fixer: "k6-fixer", framework: "k6", triageDomain: "k6" },
   },
 };
-
-// `Verdict: pass | changes-required` of a findings file (review or gate), or null.
-export function verdictOf(file) {
-  if (!existsSync(file)) return null;
-  return /^Verdict:\s*(pass|changes-required)\b/m.exec(readFileSync(file, "utf8"))?.[1] ?? null;
-}
 
 // The run loop's triage (D-058): triage.json's path and why it cannot be trusted (null when triage.mjs check's verified
 // stamp is current). A heal round never starts from an unverified triage.

@@ -210,7 +210,7 @@ Agents record immediately after creating anything, run `owns` before any delete/
 | `approval.csv` | **human only**: rendered by `build`, filled in Excel or an editor |
 | `approvals.json` | **human only**, through `node scripts/testcases.mjs approve <product> <module>` in an interactive terminal (the slug typed to confirm) |
 | `coverage.json`, `registry/{items,cases}.json`, `<m>-testcases.<ext>`, `testcases-summary.md`, `approval-findings.md` | the script |
-| `results/<run>/<m>/testcases/review.json` | testcase-reviewer; `review-findings.md` beside it is rendered by `review-check` |
+| `results/<run>/<m>/testcases/review.json` | testcase-reviewer; `review-findings.md` beside it is rendered by `review-check` (a managed file since D-059: no agent writes it) |
 
 The guard denies `testcases.mjs approve` and any write to `approval.csv` or `approvals.json` for every tool call it sees, on every host and in every mode, inside or outside a run. Only approved cases are automated: the Playwright gates trace approved cases only (a test for an unapproved case must be absent or `test.fixme` "awaiting approval"), and the API plan's `testcase:` items cover approved `@api` cases only.
 
@@ -277,6 +277,21 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 - **Managed.** The script-owned files above are in `config/permissions.yaml` `managed_files`: during a run the guard denies every caller a direct write.
 - **Verified.** A passing `workload.mjs check` stamps `workload-coverage.json`; a passing `k6-code.mjs check` stamps `code-plan.json` (over the workload, its coverage, the catalogue, the plan, the k6 overlay, the slots and every script). The k6 flow's `workload` and `scripts` steps refuse a missing or stale stamp, and the k6 gate requires the scripts' stamp to be current on every review round.
 
+## Review and fix
+
+`node scripts/review.mjs check|render|paths <product> <module> <domain>` and `node scripts/fix.mjs snapshot|check|paths <product> <module> <domain>` (`scripts/lib/review.mjs`, `scripts/lib/fix.mjs`, D-059; `<domain>` = `playwright-ui`, `playwright-api` or `k6`). The formats are in [`agent-handoffs.md`](agent-handoffs.md) §6, the rubric in [`conventions.md`](conventions.md).
+
+| File (`results/<run>/<m>/<domain>/`) | Owner |
+|---|---|
+| `review.json` (schema `review`): a rubric verdict per test | the code reviewer (its only file) |
+| `review-findings.md`, rendered from `review.json` with the derived verdict | the script (review.mjs) |
+| `review-check.json`: the stamp (round, verdict, counts, hashes of `review.json`, the plan and every code file) | the script (review.mjs) |
+| `fix-report.json` (schema `fix-report`): one entry per blocker, major or healable row | the fixer |
+| `fix-snapshot.json`: file hashes taken before the fix or heal round | the script (orchestration.mjs next) |
+
+- **Managed.** `review-check.json`, `fix-snapshot.json` and `review-findings.md` are in `managed_files`: no agent writes them. The reviewers run only `review.mjs check`, and write only `review.json`; the fixers run `fix.mjs check` (never `snapshot`).
+- **Verified.** `review.mjs check` refuses a test not reviewed in this round or code newer than `review.json`; the orchestration reads the verdict only from a stamp that matches the round, `review.json` and the current code. `fix.mjs check` runs when a fix or heal step is done; a failure fails the step.
+
 ## Triage
 
 `node scripts/triage.mjs prepare|build|check|paths <product> <module> --domain ui|api|k6` (`scripts/lib/triage.mjs`, D-058) triages a run's results. The format, the classes and the rules are in [`agent-handoffs.md`](agent-handoffs.md) §7.
@@ -311,4 +326,4 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest,ui-code-plan,ui-code-coverage,ui-code-parked,api-code-plan,api-code-coverage,api-code-parked,api-code-client-overlay,api-code-tests-overlay,workload,workload-coverage,workload-overlay,k6-code-plan,k6-code-parked,triage,triage-overlay,known-issues}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest,ui-code-plan,ui-code-coverage,ui-code-parked,api-code-plan,api-code-coverage,api-code-parked,api-code-client-overlay,api-code-tests-overlay,workload,workload-coverage,workload-overlay,k6-code-plan,k6-code-parked,triage,triage-overlay,known-issues,review,fix-report}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.

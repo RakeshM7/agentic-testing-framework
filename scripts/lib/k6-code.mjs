@@ -42,7 +42,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { freeIdentifierFindings, propertyFindings, stripTypes } from "./agent-scope.mjs";
+import { freeIdentifierFindings, parseAgentCode, propertyFindings, walk as astWalk } from "./agent-scope.mjs";
 import { builtinPatchFindings } from "./api-code.mjs";
 import { readJson, writeJson } from "./endpoints.mjs";
 import { looksLikeSecret, URL_RE } from "./foundation.mjs";
@@ -529,33 +529,42 @@ export function slotFindings(file, key, lines, startLine) {
   out.push(...freeIdentifierFindings(file, code, { declared, wrap: true, at }).map(fmt));
   const pickHint = (f) => (f.rule === "computed-access" && kind !== "checks" ? { ...f, problem: `${f.problem}; for a random element of an array use pick(array) from lib/data.js` } : f);
   out.push(...propertyFindings(file, code, { wrap: true, at: (t) => at(t?.line), kind: "slot" }).map(pickHint).map(fmt));
-  const js = stripTypes(code, { wrap: true });
-  const raw = scanTs(code).filter((t) => t.type !== "comment");
-  out.push(...builtinPatchFindings(file, js === null ? raw : scanTs(js).filter((t) => t.type !== "comment"), (t) => at(t?.line)).map(fmt));
-  const push = (t, rule, msg) => out.push(`${file}:${at(t.line)} [${rule}] ${key}: ${msg}`);
-  // the body stays inside its function: brackets balance and never close what the skeleton opened
-  let depth = 0;
-  for (const t of raw) {
-    if (t.type === "punct" && "([{".includes(t.value)) depth++;
-    else if (t.type === "punct" && ")]}".includes(t.value) && --depth < 0) {
-      push(t, "slot-structure", "closes a bracket the slot did not open: a slot body stays inside its function");
-      break;
-    }
+  out.push(...builtinPatchFindings(file, code, (t) => at(t?.line), { wrap: true }).map(fmt));
+  const push = (t, rule, msg) => out.push(`${file}:${at(t.loc?.start?.line ?? t.line)} [${rule}] ${key}: ${msg}`);
+  // the body stays inside its function: it parses on its own as a function body, so no bracket closes what the skeleton
+  // opened and none stays open, and it holds no import or export
+  const tree = parseAgentCode(code, { wrap: true });
+  if (!tree) {
+    out.push(`${file}:${startLine} [slot-structure] ${key}: closes a bracket the slot did not open or leaves one open (it does not parse on its own as a function body): a slot body stays inside its function`);
+    return out;
   }
-  if (depth > 0) out.push(`${file}:${startLine} [slot-structure] ${key}: leaves a bracket open: a slot body stays inside its function`);
   const strs = [];
-  raw.forEach((t, k) => {
-    const prev = raw[k - 1]?.value;
-    if (t.type === "ident" && prev !== "." && SLOT_FORBIDDEN.includes(t.value)) push(t, "slot-forbidden", `uses ${t.value}: a slot returns plain values; requests, the environment, imports, sleep and the runtime are the generated script's and the lib's`);
-    if (t.type === "ident" && prev === "." && BAD_MEMBERS.includes(t.value)) push(t, "call-apply-bind", `uses .${t.value}: call functions directly, by name`);
-    const v = t.type === "str" ? t.value : t.type === "tpl" ? String(t.cooked ?? "") : null;
-    if (v === null) return;
-    strs.push(v);
-    if (URL_RE.test(v) || /:\/\//.test(v)) push(t, "hard-coded-url", "a URL literal: the target is BASE_URL, and only the generated script builds a URL");
-    if (looksLikeSecret(v)) push(t, "secret", "a secret-shaped literal: credentials come only from the environment, through lib/auth.js");
+  let returns = false;
+  astWalk(tree.ast, (n, parent, k) => {
+    if (/^(Import|Export)/.test(n.type)) push(n, "slot-forbidden", `uses ${n.type.startsWith("Import") ? "import" : "export"}: a slot returns plain values; requests, the environment, imports, sleep and the runtime are the generated script's and the lib's`);
+    if (n.type === "ImportExpression") push(n, "slot-forbidden", "uses import: a slot returns plain values; requests, the environment, imports, sleep and the runtime are the generated script's and the lib's");
+    if (n.type === "Identifier") {
+      const member = parent?.type === "MemberExpression" && k === "property" && !parent.computed;
+      const key2 = (parent?.type === "Property" || parent?.type === "MethodDefinition" || parent?.type === "PropertyDefinition") && k === "key" && !parent.computed && !parent.shorthand;
+      if (member && BAD_MEMBERS.includes(n.name)) push(n, "call-apply-bind", `uses .${n.name}: call functions directly, by name`);
+      else if (!member && !key2 && SLOT_FORBIDDEN.includes(n.name)) push(n, "slot-forbidden", `uses ${n.name}: a slot returns plain values; requests, the environment, imports, sleep and the runtime are the generated script's and the lib's`);
+    }
+    const v = n.type === "Literal" && typeof n.value === "string" && !/^Import|^Export/.test(parent?.type ?? "") ? n.value : n.type === "TemplateLiteral" ? n.quasis.map((q) => q.value.cooked ?? "").join("") : null;
+    if (v !== null) {
+      strs.push(v);
+      if (URL_RE.test(v) || v.includes("://")) push(n, "hard-coded-url", "a URL literal: the target is BASE_URL, and only the generated script builds a URL");
+      if (looksLikeSecret(v)) push(n, "secret", "a secret-shaped literal: credentials come only from the environment, through lib/auth.js");
+    }
   });
+  // a return of the slot body itself, not of a function inside it
+  const topReturn = (n) => {
+    if (n.type === "ReturnStatement") returns = true;
+    if (/Function/.test(n.type)) return;
+    for (const c of Object.values(n)) for (const x of Array.isArray(c) ? c : [c]) if (x && typeof x.type === "string") topReturn(x);
+  };
+  topReturn(tree.ast);
   if (URL_RE.test(strs.join(""))) out.push(`${file}:${startLine} [hard-coded-url] ${key}: string pieces that join into a URL`);
-  if (kind !== "checks" && filled(lines) && !raw.some((t) => t.value === "return")) out.push(`${file}:${startLine} [slot-return] ${key}: returns nothing: return the plain value`);
+  if (kind !== "checks" && filled(lines) && !returns) out.push(`${file}:${startLine} [slot-return] ${key}: returns nothing: return the plain value`);
   return out;
 }
 

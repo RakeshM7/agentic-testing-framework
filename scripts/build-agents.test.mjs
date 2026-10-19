@@ -2,7 +2,7 @@
 // config/permissions.yaml only, platform syntax only from config/platforms.yaml.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
@@ -165,4 +165,52 @@ test("hook registrations: a bad mode, or --post-hook with --check, writes nothin
   assert.equal(readFileSync(config, "utf8"), before);
   writeFileSync(config, "post_tool_use: maybe\n");
   assert.ok(build({ check: true, root }).errors.some((e) => /post_tool_use 'maybe'/.test(e)));
+});
+
+// agents/_shared/<file>.md fragments, included with `<!-- include: _shared/<file>.md -->` (G9)
+function withInclude(root, fragment = "Shared fixer rule: report, do not guess.") {
+  mkdirSync(path.join(root, "agents", "_shared"), { recursive: true });
+  writeFileSync(path.join(root, "agents", "_shared", "probe.md"), fragment + "\n");
+  const file = path.join(root, "agents", "pw-ui-fixer.md");
+  writeFileSync(file, readFileSync(file, "utf8").replace(/\r?\n$/, "") + "\n\n<!-- include: _shared/probe.md -->\n");
+}
+
+test("an include expands into every platform's generated file, and a changed fragment is drift", () => {
+  const root = scratch();
+  withInclude(root);
+  const first = build({ root });
+  assert.deepEqual(first.errors, []);
+  for (const rel of [".claude/agents/pw-ui-fixer.md", ".github/agents/pw-ui-fixer.agent.md"]) {
+    const text = readFileSync(path.join(root, rel), "utf8");
+    assert.match(text, /Shared fixer rule: report, do not guess\./);
+    assert.ok(!text.includes("<!-- include"), "the marker is replaced by the fragment");
+  }
+  assert.deepEqual(build({ check: true, root }).changed, []);
+  writeFileSync(path.join(root, "agents", "_shared", "probe.md"), "Changed rule.\n");
+  assert.deepEqual(build({ check: true, root }).changed.sort(), [".claude/agents/pw-ui-fixer.md", ".github/agents/pw-ui-fixer.agent.md"]);
+});
+
+test("a missing, malformed or nested include is a build error; the expanded body gets the platform-neutral lint", () => {
+  const root = scratch();
+  withInclude(root);
+  const file = path.join(root, "agents", "pw-ui-fixer.md");
+  const original = readFileSync(file, "utf8");
+  writeFileSync(file, original.replace("_shared/probe.md", "_shared/nope.md"));
+  assert.ok(build({ check: true, root }).errors.some((e) => /pw-ui-fixer\.md: include '_shared\/nope\.md' names no file/.test(e)));
+  writeFileSync(file, original.replace("_shared/probe.md", "../config/mcp.yaml"));
+  assert.ok(build({ check: true, root }).errors.some((e) => /must be _shared\/<file>\.md/.test(e)));
+  writeFileSync(file, original);
+  writeFileSync(path.join(root, "agents", "_shared", "probe.md"), "<!-- include: _shared/probe.md -->\n");
+  assert.ok(build({ check: true, root }).errors.some((e) => /cannot include another fragment/.test(e)));
+  writeFileSync(path.join(root, "agents", "_shared", "probe.md"), "Use AskUserQuestion when unsure.\n");
+  assert.ok(build({ check: true, root }).errors.some((e) => /pw-ui-fixer\.md: body names platform-specific 'AskUserQuestion'/.test(e)));
+});
+
+test("the fragment directory is not an agent: no stray-source error, no generated file", () => {
+  const root = scratch();
+  withInclude(root);
+  writeFileSync(path.join(root, "agents", "_shared", "other.md"), "No frontmatter here.\n");
+  const { errors } = build({ root });
+  assert.deepEqual(errors, []);
+  for (const rel of [".claude/agents", ".github/agents"]) assert.ok(!readdirSync(path.join(root, rel)).some((f) => /probe|other|_shared/.test(f)));
 });

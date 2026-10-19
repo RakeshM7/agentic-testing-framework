@@ -14,7 +14,7 @@ import { main } from "./api-code.mjs";
 import { gate } from "./gate.mjs";
 import { next, step } from "./orchestration.mjs";
 import { apiCodeContext, apiCodeFindings, apiCodeUnverified, builtinPatchFindings, nameIn, runnerImportFindings, parseSlots, renderCompositeSeed, renderFacade, renderGlue, renderPayloads, renderSender, renderSupport, specTests, titleLit, tsType, valueIn } from "./lib/api-code.mjs";
-import { PURE_GLOBALS, freeIdentifierFindings } from "./lib/agent-scope.mjs";
+import { PURE_GLOBALS, freeIdentifierFindings, propertyFindings } from "./lib/agent-scope.mjs";
 import { crudOf } from "./lib/endpoints.mjs";
 import { repoRoot as repoDir } from "./lib/contract.mjs";
 import { renderIndex } from "./lib/foundation.mjs";
@@ -862,9 +862,8 @@ test("B3 static: no agent file patches a built-in, a prototype or globalThis, no
   assert.deepEqual(ruleNames(s.rules()), []);
   s.write(rel, good);
   // the page-object form (not strict): own fields are fine, a built-in is not
-  const sig = (text) => scanTs(text).filter((t) => t.type !== "comment");
-  assert.deepEqual(builtinPatchFindings("p.ts", sig("class A { constructor(page) { this.save = page.x; } }"), () => 1, { strict: false }), []);
-  assert.equal(builtinPatchFindings("p.ts", sig("Array.prototype.at = () => 1;"), () => 1, { strict: false })[0].rule, "builtin-patch");
+  assert.deepEqual(builtinPatchFindings("p.ts", "class A { constructor(page) { this.save = page.x; } }", () => 1, { strict: false }), []);
+  assert.equal(builtinPatchFindings("p.ts", "Array.prototype.at = () => 1;", () => 1, { strict: false })[0].rule, "builtin-patch");
 });
 
 test("U3: a changing request to an unknown id targets an entity this test created and deleted; without a create and a delete for the path it is a fixme", async () => {
@@ -1133,6 +1132,11 @@ test("X1 round 4: agent code writes no escape but the seven plain ones, every es
     [["export function drop(o: { a?: number }) { delete o.a; }"], ["builtin-patch"]],
     [["const o = { a: { b: 1 } };", "delete o.a.b;"], ["builtin-patch"]],
     [["const o = { a: 1 };", "delete (o.a);"], ["builtin-patch"]],
+    // D-5: a built-in patch behind a type cast (type-escape) or a non-null assertion (builtin-patch) is still caught, and `with` makes its names free identifiers
+    [["(Object as any).is = () => true;"], ["type-escape"]],
+    [["(Object as unknown as { is: unknown }).is = () => true;"], ["type-escape"]],
+    [["Object!.is = () => true;"], ["builtin-patch"]],
+    [["export function w(o: { a: number }) { with (o) { return a; } }"], ["free-identifier"]],
   ];
   for (const [lines, rules] of forms) {
     setSlot(s, rel, "helpers", lines);
@@ -1411,4 +1415,115 @@ test("older modules: a plain build keeps a hand-written file with a generated na
   const a = await s.ac("build", "--adopt");
   assert.ok(a.out.adopted.some((x) => x.from === "helpers/api/contacts.util.ts"));
   assert.ok(existsSync(legacy("helpers/api/contacts.util.ts")) && !existsSync(s.file("helpers/api/contacts.util.ts")));
+});
+
+// S9-2b: the scope rules read an acorn syntax tree of the JavaScript that runs, so every spelling of one construct is the
+// same node. Each case is code a rule must reject (or, in `accepted`, code it must not): the unit tests of the scanner.
+test("S9-2b: the AST scope rules reject every spelling of a bypass and accept the harmless look-alikes", () => {
+  const bs = String.fromCharCode(92); // built at run time: the escapes stay escapes in this file
+  const rulesOf = (code, { wrap = false, declared = [] } = {}) => [...new Set([...freeIdentifierFindings("t.ts", code, { declared, wrap }), ...propertyFindings("t.ts", code, { wrap }), ...builtinPatchFindings("t.ts", code, () => 1, { wrap })].map((f) => f.rule))];
+  const rejected = [
+    // escapes: hex, code point, unicode, legacy octal, a line continuation, in strings, names and templates
+    [[`const { 'constr${bs}x75ctor': C } = 'x';`], "escape"],
+    [[`const { 'constr${bs}u{75}ctor': C } = 'x';`], "forbidden-property"],
+    [[`export const f = 'x'.constr${bs}u0075ctor;`], "forbidden-property"],
+    [[`export const f = ${bs}u0065val;`], "free-identifier"],
+    [[`export const t = ${"`"}constr${bs}x75ctor${"${1}`"};`], "forbidden-property"],
+    [[`export const t = ${"`"}${bs}x41${"`"};`], "escape"],
+    [[`export const s = 'a${bs}`, `b';`], "escape"],
+    // comments and whitespace between the tokens of one construct do not change it
+    [["Object /* a */ . /* b */ is = () => 1;"], "builtin-patch"],
+    [["Object", "  // a line comment", "  .is = () => 1;"], "builtin-patch"],
+    [["export const c = ({}) /* x */ . /* y */ constructor;"], "forbidden-property"],
+    [["export const c = ({})['constr' + 'uctor'];"], "computed-access"],
+    // template literals: a ${} is an expression like any other, nested ones included
+    [["export const c = `${({}).constructor}`;"], "forbidden-property"],
+    [["export const c = `${`${({}).prototype}`}`;"], "forbidden-property"],
+    [["export const c = ({})[`constr${'uctor'}`];"], "computed-access"],
+    [["export const c = `${Object}`;"], "free-identifier"],
+    // computed members and keys: only a number literal or a for-loop counter indexes
+    [["const o = { a: 1 };", "const k = 'a';", "export const v = o[k];"], "computed-access"],
+    [["const o = [1, 2];", "export const v = o[-1];"], "computed-access"],
+    [["const o = [1, 2];", "for (let i = 0; i < 2; i++) { const v = o[i + 1]; }"], "computed-access"],
+    [["const o = [1, 2];", "for (let i = 0; i < 2; i++) { i = 'constructor'; o[i]; }"], "computed-access"],
+    [["const o = [1, 2];", "for (let i = 0; i < 2; i++) { [i] = ['constructor']; o[i]; }"], "computed-access"],
+    [["const o = [1, 2];", "for (let i = 0; i < 2; i += 'x') { o[i]; }"], "computed-access"],
+    [["const o = [1, 2];", "for (let i = 0; i < 2; i++) { for (i of ['constructor']) { o[i]; } }"], "computed-access"],
+    [["const o = { a: 1 };", "const k = 'a';", "export const v = o?.[k];"], "computed-access"],
+    [["const k = 'a';", "export const o = { [k]: 1 };"], "computed-access"],
+    [["const k = 'a';", "export class A { [k]() { return 1; } }"], "computed-access"],
+    // aliasing a built-in hands it on, whatever the spelling
+    [["const o = Object;", "o.is = () => 1;"], "free-identifier"],
+    [["const { assign } = Object;", "export const a = assign;"], "free-identifier"],
+    [["export const a = [Object][0];"], "free-identifier"],
+    [["const f = String;", "export const s = f(1);"], "free-identifier"],
+    [["export const g = globalThis;"], "free-identifier"],
+    [["export const a = Math['max'](1, 2);"], "free-identifier"],
+    [["export const a = (Math.max)(1, 2);"], "free-identifier"],
+    [["Object.assign = () => 1;"], "builtin-patch"],
+    // optional chaining
+    [["Object?.defineProperty({}, 'x', {});"], "builtin-patch"],
+    [["export const c = ({})?.constructor;"], "forbidden-property"],
+    [["export const c = ({})?.['constructor'];"], "forbidden-property"],
+    [["Object?.is = () => 1;"], "free-identifier"],
+    // with, this, arguments
+    [["export function w(o: { a: number }) { with (o) { return a; } }"], "free-identifier"],
+    [["export const t = this;"], "free-identifier"],
+    [["export function f() { return arguments[0]; }"], "forbidden-property"],
+    // type casts are erased before the rules read the code, so a cast never hides a patch
+    [["(Object as any).is = () => true;"], "builtin-patch"],
+    [["(Object as unknown as { is: unknown }).is = () => true;"], "builtin-patch"],
+    [["Object!.is = () => true;"], "builtin-patch"],
+    [["(Object satisfies object).is = () => true;"], "builtin-patch"],
+    [["((Object as any)).is = () => true;"], "builtin-patch"],
+    // every kind of write to a built-in's member: assignment, compound, logical, update, destructuring, for-of, delete
+    [["Object.prototype.x++;"], "builtin-patch"],
+    [["Math.max ??= () => 1;"], "builtin-patch"],
+    [["[Object.is] = [() => 1];"], "builtin-patch"],
+    [["({ a: Object.is } = { a: () => 1 });"], "builtin-patch"],
+    [["for (Object.is of [() => 1]) { break; }"], "builtin-patch"],
+    [["delete Object.is;"], "builtin-patch"],
+    [["delete (Object.is);"], "builtin-patch"],
+    [["const o = { a: { b: 1 } };", "delete o.a.b;"], "builtin-patch"],
+    [["Object.defineProperty({}, 'x', { value: 1 });"], "builtin-patch"],
+    [["Object.setPrototypeOf({}, null);"], "builtin-patch"],
+    [["const p = { a: 1 };", "Object.assign(p, { a: 2 });"], "builtin-patch"],
+    // an object the code did not create: a parameter, a shadowing declaration, a reassigned name
+    [["export function f(o: { a: number }) { o.a = 1; }"], "builtin-patch"],
+    [["const o = { a: 1 };", "export function f(o: { a: number }) { o.a = 2; }"], "builtin-patch"],
+    [["const o = { a: 1 };", "export function f(p: { a: number }) { var o = p; o.a = 2; }"], "builtin-patch"],
+    [["let o = { a: 1 };", "o = Object.keys({});", "o.a = 2;"], "builtin-patch"],
+    [["export function f() { this.a = 1; }"], "builtin-patch"],
+    // code that does not parse is rejected
+    [["export const a = ;"], "free-identifier"],
+    [["export const a = 1; }"], "free-identifier"],
+  ];
+  for (const [lines, rule] of rejected) {
+    const found = rulesOf(lines.join("\n"));
+    assert.ok(found.includes(rule), `${rule} expected (${lines.join(" ⏎ ")}): ${found.join(", ") || "nothing"}`);
+  }
+  // inside a slot body (wrap): return and await are top-level, and a body that closes its function early is rejected
+  assert.ok(rulesOf("return { a: await Promise.resolve(1) };", { wrap: true }).length === 0, "a slot body may return and await");
+  assert.ok(rulesOf("return {};\n}\nconst z = 1;\nfunction y() {", { wrap: true }).includes("free-identifier"));
+  const accepted = [
+    // look-alikes: the words only in comments, regex, strings and templates, or a plain name that is not a bypass
+    ["// Object.is = () => 1; and x.constructor", "export const a = 1;"],
+    ["/* with (o) { eval('x'); } */ export const a = 1;"],
+    ["export const re = /constructor|prototype/;", "export const half = 4 / 2;"],
+    ["export const s = 'the constructor of a house';", "export const t = `a prototype here`.length > 0 ? 1 : 0;"],
+    ["export const o = { a: 1, 'b': 2, 3: 'c' };", "export const v = o.a + o.b;"],
+    ["const o = { a: 1 };", "o.a = 2;", "o.b = 3;", "export const v = o;"],
+    ["const out: number[] = [];", "for (let i = 0; i < 3; i++) { out[i] = i; out.push(out[0]); }", "export const v = out;"],
+    ["const a = [1, 2];", "export const first = a[0];", "export const last = a[1];"],
+    ["export function f(x: { y: number }) { const copy = { ...x }; copy.y = 2; return copy; }"],
+    ["const base = { n: 1 };", "export const m = Object.assign({}, base, { n: 2 });", "export const k = Object.keys(m);"],
+    ["export const d = new Date(Date.now());", "export const j = JSON.stringify({ a: Number('1'), b: Math.max(1, 2), c: Math.PI });"],
+    ["export function f(label: string) { outer: for (let i = 0; i < 2; i++) { if (i) break outer; } return label; }"],
+    ["export const g = { get() { return 1; }, set(v: number) { return v; }, async: 1, from: 2, of: 3 };"],
+    ["export const t = `${[1, 2].map((n) => n * 2).join(',')}`;"],
+  ];
+  for (const lines of accepted) {
+    const found = rulesOf(lines.join("\n"));
+    assert.deepEqual(found, [], `accepted: ${lines.join(" ⏎ ")}: ${found.join(", ")}`);
+  }
 });

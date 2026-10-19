@@ -47,8 +47,9 @@ test("filesystem writes are limited to the agent's allow-list, with ${product}/$
   assert.equal(w("pw-ui-scaffolder", "playwright-tests/acme/playwright.config.ts"), false, "shared files belong to pw-repo-owner");
   assert.equal(w("pw-repo-owner", "playwright-tests/acme/playwright.config.ts"), false, "rendered by foundation.mjs from templates/ (D-054)");
   assert.equal(w("pw-repo-owner", "artifacts/acme/foundation/repo-overlay.json"), true, "its overlay");
-  assert.equal(w("pw-ui-reviewer", "artifacts/acme/results/acme-run-1/contacts/playwright-ui/review-findings.md"), true);
-  assert.equal(w("pw-ui-reviewer", "artifacts/acme/results/other-run/contacts/playwright-ui/review-findings.md"), false, "${run_id} is the current run");
+  assert.equal(w("pw-ui-reviewer", "artifacts/acme/results/acme-run-1/contacts/playwright-ui/review.json"), true);
+  assert.equal(w("pw-ui-reviewer", "artifacts/acme/results/other-run/contacts/playwright-ui/review.json"), false, "${run_id} is the current run");
+  assert.equal(w("pw-ui-reviewer", "artifacts/acme/results/acme-run-1/contacts/playwright-ui/review-findings.md"), false, "rendered by review.mjs (D-059)");
   assert.equal(w("pw-ui-tests-writer", "playwright-tests/other-product/tests/ui/a.spec.ts"), false);
   assert.equal(allowed(FULL.root, call("pw-ui-tests-writer", "Write", { file_path: path.resolve(FULL.root, "..", "outside.ts") })), false);
 });
@@ -465,6 +466,51 @@ test("the runner-triagers write only their triage overlay; results, triage, the 
   }
   // the three fixers read the script-built triage
   for (const a of ["pw-ui-fixer", "pw-api-fixer", "k6-fixer"]) assert.ok(perms[a].filesystem.read.some((g) => g.endsWith("/triage.json")), `${a} reads triage.json`);
+});
+
+test("the code reviewers run only review.mjs check and write only their review.json; the fixers write code, their fix-report.json and run fix.mjs check; the stamps, the snapshot and the findings are managed (D-059)", () => {
+  const R = "artifacts/acme/results/acme-run-1/contacts";
+  const w = (agent, rel, run = FULL) => allowed(run.root, call(agent, "Write", { file_path: path.join(run.root, rel) }));
+  const cmdOk = (agent, cmd) => allowed(FULL.root, sh(agent, cmd));
+  const domains = [["pw-ui-reviewer", "pw-ui-fixer", "playwright-ui", "playwright-ui"], ["pw-api-reviewer", "pw-api-fixer", "playwright-api", "playwright-api"], ["k6-reviewer", "k6-fixer", "k6", "k6"]];
+  for (const [rev, fix, fw, dom] of domains) {
+    assert.equal(cmdOk(rev, `node scripts/review.mjs check acme contacts ${dom} --round 1`), true, `${rev} runs the check`);
+    for (const cmd of ["node scripts/review.mjs render acme contacts " + dom, "npx tsc --noEmit", "node scripts/gate.mjs acme contacts " + dom, "node scripts/fix.mjs check acme contacts " + dom + " --round 1",
+      `node scripts/review.mjs check acme contacts ${dom} --round 1 && echo x > ${R}/${fw}/review.json`])
+      assert.equal(cmdOk(rev, cmd), false, `${rev}: ${cmd}`);
+    assert.equal(w(rev, `${R}/${fw}/review.json`), true, `${rev} writes its review.json`);
+    for (const f of ["review-findings.md", "review-check.json", "gate-findings.md", "fix-report.json", "fix-snapshot.json"]) assert.equal(w(rev, `${R}/${fw}/${f}`), false, `${rev} may not write ${f}`);
+    for (const other of ["playwright-ui", "playwright-api", "k6"].filter((x) => x !== fw)) assert.equal(w(rev, `${R}/${other}/review.json`), false, `${rev} may not write ${other}'s review`);
+    assert.equal(w(rev, `${R.replace("acme-run-1", "other-run")}/${fw}/review.json`), false, `${rev}: another run`);
+
+    assert.equal(cmdOk(fix, `node scripts/fix.mjs check acme contacts ${dom} --round 1`), true, `${fix} runs the check`);
+    assert.equal(cmdOk(fix, `node scripts/fix.mjs check acme contacts ${dom} --round 1 --source triage`), true);
+    // the UI and API fixers keep shell: project (tsc, playwright --list), so only the k6-fixer's shell is a closed list; the
+    // snapshot a fix is checked against is taken by orchestration.mjs first and kept, so a later `snapshot` changes nothing
+    if (fix === "k6-fixer")
+      for (const cmd of [`node scripts/fix.mjs snapshot acme contacts ${dom} --round 1`, `node scripts/review.mjs check acme contacts ${dom} --round 1`, `node scripts/fix.mjs check acme contacts ${dom} --round 1 && echo x > ${R}/${fw}/fix-snapshot.json`])
+        assert.equal(cmdOk(fix, cmd), false, `${fix}: ${cmd}`);
+    assert.equal(w(fix, `${R}/${fw}/fix-report.json`), true, `${fix} writes its fix-report.json`);
+    for (const f of ["review.json", "review-findings.md", "review-check.json", "fix-snapshot.json", "triage-overlay.json"]) assert.equal(w(fix, `${R}/${fw}/${f}`), false, `${fix} may not write ${f}`);
+    for (const other of ["playwright-ui", "playwright-api", "k6"].filter((x) => x !== fw)) assert.equal(w(fix, `${R}/${other}/fix-report.json`), false, `${fix} may not write ${other}'s report`);
+  }
+  // nobody writes a stamp, the snapshot or a rendered findings file, in any mode, named or not
+  const agents = Object.keys(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents);
+  for (const run of [FULL, RO])
+    for (const agent of [...agents, undefined])
+      for (const dom of ["testcases", "playwright-ui", "playwright-api", "k6"])
+        for (const f of ["review-check.json", "fix-snapshot.json", "review-findings.md"]) {
+          const v = checkTool(call(agent, "Write", { file_path: path.join(run.root, `${R}/${dom}/${f}`) }), run.root, {});
+          assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${dom}/${f}`);
+          assert.equal(v.rule, "managed-file", `${agent}: ${dom}/${f}`);
+        }
+  const perms = JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents;
+  for (const [rev, fix] of domains) {
+    assert.deepEqual(perms[rev].shell_allow, ["node scripts/review.mjs check *"], `${rev}: the check only`);
+    assert.equal(perms[rev].shell, "restricted");
+    assert.ok(perms[fix].shell_allow.includes("node scripts/fix.mjs check *") && !perms[fix].shell_allow.some((c) => c.includes("fix.mjs snapshot")), `${fix}: check, never snapshot`);
+    assert.ok(perms[fix].filesystem.read.some((g) => g.endsWith("/review.json")), `${fix} reads review.json`);
+  }
 });
 
 test("testcase-writer runs testcases.mjs build/check/paths only and writes only its cases overlay", () => {

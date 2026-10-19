@@ -469,6 +469,9 @@ test("check: every rule of the cases spec, page objects and generated files", as
   edit(SPEC, "      recordCreated({ type: 'contact', ref: 'c-1', module: 'contacts' });\n", "");
   await expectRule("a @mutates test without recordCreated", "ledger", new RegExp(`${create} is @mutates but its steps never call recordCreated`));
   reset();
+  edit(SPEC, "      recordCreated({ type: 'contact', ref: 'c-1', module: 'contacts' });\n", "      recordCreated({ type: 'contact', ref: 'c-1', module: 'contacts' });\n      recordDeleted({ type: 'contact', ref: 'c-1', module: 'contacts' });\n");
+  await expectRule("recordDeleted without owns()", "ledger", new RegExp(`${create} calls recordDeleted but never checks owns`));
+  reset();
   // a case the writer can't automate yet is parked with a reason; its other steps may stay empty
   edit(SPEC, body(`${list} step 1`), "$1      test.fixme(true, 'needs the page-object method ContactsPage.sortBy');$2");
   edit(SPEC, body(`${list} then`), "$1$2");
@@ -1129,6 +1132,10 @@ test("a data name is bound per test: a step that re-declares, shadows or reassig
     ["a parameter of the same name", { DATA, S1: ["      const pick = (c: { name: string }) => c.name;", "      await contactsPage.openNewContact();"] }],
     ["reassigned", { DATA, S1: ["      // @ts-ignore", "      c = { name: 'Nobody Here' };", "      await contactsPage.openNewContact();"] }],
   ]) assert.ok((await run(map)).some((p) => p.includes("[data-shadow]")), what);
+  // a write to a member of the data (D-055's known limit) is a finding too; a read or a comparison is not
+  for (const [what, line] of [["a member assignment", "c.name = 'Nobody Here';"], ["a compound assignment", "c.name += ' Jr';"], ["an increment", "c.count++;"], ["a bracket write", "c['name'] = 'Nobody Here';"], ["a delete", "delete c.email;"], ["Object.assign", "Object.assign(c, { name: 'Nobody Here' });"]])
+    assert.ok((await run({ DATA, S1: ["      // @ts-ignore", `      ${line}`, "      await contactsPage.openNewContact();"] })).some((p) => p.includes("[data-write]")), what);
+  assert.ok(!(await run({ DATA, S1: ["      if (c.name === 'x' || c.email == 'y') await contactsPage.row(c.name).click();"] })).some((p) => p.includes("[data-write]")), "reads and comparisons are not writes");
   // and the shadowed value reaching a locator is not bound data
   const problems = await run({ DATA, S1: ["      await contactsPage.openNewContact();"], THEN: ["      const c = { name: 'Nobody Here' };", "      await expect(contactsPage.row(c.name)).toBeVisible();"] });
   assert.ok(problems.some((p) => p.includes("[locator-param]")), JSON.stringify(problems));
@@ -1149,8 +1156,69 @@ test("builders are run-unique: a value a data-driven locator finds is built with
   assert.ok(problems.some((p) => /\[data-unique\] buildContact\(\) returns 'email' without uniqueName/.test(p)), JSON.stringify(problems));
   s.write(DATA_FILE, "import { uniqueName } from '../../utils/shared/data';\n\nexport const buildContact = () => ({ name: `${uniqueName('contact')} Jr`, email: 'ada@example.test' });\n");
   assert.deepEqual(await run(map), [], "a template built on uniqueName is unique");
+  for (const value of ["fixed ? 'Jane Doe' : uniqueName('contact')", "uniqueName('contact') || 'Jane Doe'", "uniqueName('contact') ?? 'Jane Doe'"]) {
+    s.write(DATA_FILE, `import { uniqueName } from '../../utils/shared/data';\n\nexport const buildContact = (fixed = false) => ({ name: ${value}, email: 'ada@example.test' });\n`);
+    problems = await run(map);
+    assert.ok(problems.some((p) => /\[data-unique\] buildContact\(\) returns 'name' a fixed string 'Jane Doe' as one alternative/.test(p)), `${value}: ${JSON.stringify(problems)}`);
+  }
+  s.write(DATA_FILE, "import { uniqueName } from '../../utils/shared/data';\n\nexport const buildContact = (prefix = 'contact') => ({ name: prefix ? uniqueName(prefix) : uniqueName('contact'), email: 'ada@example.test' });\n");
+  assert.deepEqual(await run(map), [], "every alternative built on uniqueName is unique");
 });
 
 test("the smoke's commit words also cover Watch, Unwatch, Bookmark and Retry", () => {
   for (const name of ["Watch", "Unwatch", "Bookmark", "Retry"]) assert.ok(smokeClickProblem({ role: "button", name }), name);
+});
+
+// S9-2b: a step region is read as an acorn syntax tree (types stripped), so every spelling of a forbidden construct is
+// the same node: the unit tests of the region scanner.
+test("S9-2b: step regions reject every spelling of a raw locator, a page object escape or a skip, and accept look-alikes", async () => {
+  const s = await setup();
+  const id = await cases(s, ["list"]);
+  const list = id.get("list");
+  await s.uc("build", "acme", "contacts");
+  writePages(s, ["pages/contacts/contacts.page.ts"]);
+  await s.uc("build", "acme", "contacts");
+  fillSteps(s);
+  const bs = String.fromCharCode(92); // built at run time: the escapes stay escapes in this file
+  const problems = async (lines) => {
+    setRegions(s, { [`${list} step 1`]: lines });
+    return (await s.uc("check", "acme", "contacts")).out.problems;
+  };
+  const rejected = [
+    ["optional chaining on page", ["      await page?.click('#x');"], "raw-locator"],
+    ["optional chaining into a locator", ["      await page?.locator('#x').click();"], "raw-locator"],
+    ["comments between the tokens", ["      await page /* a */ . /* b */ click('#x');"], "raw-locator"],
+    ["a line break between the tokens", ["      await page", "        .click('#x');"], "raw-locator"],
+    ["a unicode escape in the method name", [`      await page.cl${bs}u0069ck('#x');`], "raw-locator"],
+    ["a concatenated computed member", ["      await page['cl' + 'ick']('#x');"], "raw-locator"],
+    ["a template computed member", ["      await page[`click`]('#x');"], "raw-locator"],
+    ["a selector method taken without calling it", ["      const f = page.locator;", "      await f('#x').click();"], "raw-locator"],
+    ["page destructured", ["      const { click } = page;", "      await click('#x');"], "raw-locator"],
+    ["page handed on in an object", ["      await helper({ page });"], "raw-locator"],
+    ["page behind a cast", ["      await (page as any).click('#x');"], "raw-locator"],
+    ["a frame behind a getter", ["      await page.frames()[0].click('#x');"], "raw-locator"],
+    ["the page object handed on in an object", ["      await helper({ contactsPage });"], "po-access"],
+    ["the page object method behind optional chaining", ["      await contactsPage?.row?.call(contactsPage, 'Jane Doe').click();"], "po-access"],
+    ["a page object method taken optionally", ["      const r = contactsPage?.row;", "      await r('Jane Doe').click();"], "po-access"],
+    ["a computed page object method behind a template", ["      await contactsPage[`row`]('Jane Doe').click();"], "po-access"],
+    ["test aliased", ["      const t = test;", "      t.skip();"], "test-reference"],
+    ["test by computed access", ["      test['fixme'](true, 'x');"], "test-reference"],
+    ["a skip inside a nested function", ["      [1].forEach(() => test.skip());"], "silent-skip"],
+    ["a skip behind optional chaining", ["      test.info()?.skip?.();"], "silent-skip"],
+    ["code that does not parse", ["      await contactsPage.row('x'"], "syntax"],
+    ["with hands the page on", ["      with (page) { click('#x'); }"], "raw-locator"],
+    ["with hands a page object on", ["      with (contactsPage) { row('Jane Doe'); }"], "po-access"],
+  ];
+  for (const [what, lines, rule] of rejected) {
+    const found = await problems(lines);
+    assert.ok(found.some((p) => p.includes(`[${rule}]`)), `${what}: ${rule} expected, got ${JSON.stringify(found)}`);
+  }
+  // look-alikes are not findings: the words in comments and strings, a key named page, a plain step
+  const accepted = [
+    ["      // page.click('#x') and test.skip() are not allowed here", "      await contactsPage.row('Jane Doe jane@private.test 2026-10-01').click();"],
+    ["      const label = 'page.click then test.fixme';", "      await contactsPage.search.fill(label);"],
+    ["      const o = { page: 1, test: 2 };", "      await contactsPage.search.fill(String(o.page));"],
+    ["      await page.goto(`/contacts`);", "      await expect(page).toHaveURL(/contacts/);"],
+  ];
+  for (const lines of accepted) assert.deepEqual(await problems(lines), [], lines.join(" ⏎ "));
 });

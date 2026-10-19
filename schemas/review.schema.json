@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review.schema.json",
+  "title": "results/<run>/<m>/<domain>/review.json (domain: playwright-ui, playwright-api or k6): a reviewer's verdict on every test of the module in one review round, per rubric dimension. `review.mjs check` checks that every test was reviewed in this round, that every finding cites a real file:line, and derives the overall verdict (pass exactly when no blocker or major remains) into review-findings.md. Nobody types a verdict.",
+  "type": "object",
+  "required": ["module", "round", "tests"],
+  "additionalProperties": false,
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "required": ["severity", "location", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "severity": { "enum": ["blocker", "major", "minor", "info"], "description": "blocker or major: the fixer must act; minor or info: noted, never blocks." },
+        "location": { "type": "string", "pattern": "^[^\\s|]+:[1-9][0-9]*$", "description": "file:line the finding is about, relative to the product's Playwright or k6 repo (a real file, a line within it)." },
+        "reason": { "type": "string", "minLength": 1 },
+        "fixHint": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dimension": {
+      "oneOf": [
+        { "const": "ok" },
+        { "$ref": "#/$defs/finding" },
+        { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/finding" } }
+      ]
+    }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "round": { "type": "integer", "minimum": 1, "description": "The review round in the reviewer's prompt; a review from another round does not count." },
+    "tests": {
+      "type": "object",
+      "description": "Keyed by the test id: a UI test case id (TC-...), an API scenario id (API-...) or a k6 script id (K6-...).",
+      "propertyNames": { "pattern": "^(TC|API|K6)-[A-Za-z0-9]+(-[A-Za-z0-9]+)*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["intent", "assertion", "flakiness", "data-safety"],
+        "additionalProperties": false,
+        "properties": {
+          "intent": { "$ref": "#/$defs/dimension", "description": "The test proves what its case or scenario says (preconditions, action, oracle), not something adjacent." },
+          "assertion": { "$ref": "#/$defs/dimension", "description": "It asserts the behavior, message or state change, not just status or visibility; no tautologies." },
+          "flakiness": { "$ref": "#/$defs/dimension", "description": "No dependency on order, time or data; no shared state between tests; no race-prone waits." },
+          "data-safety": { "$ref": "#/$defs/dimension", "description": "Synthetic, unique data; cleanup only of entities the run created; no reliance on pre-existing data." }
+        }
+      }
+    },
+    "general": { "type": "array", "items": { "$ref": "#/$defs/finding" }, "description": "Findings not about one test (a shared helper, the lib)." }
+  }
+}

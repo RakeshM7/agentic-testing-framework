@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fix-report.schema.json",
+  "title": "results/<run>/<m>/<domain>/fix-report.json (domain: playwright-ui, playwright-api or k6): a fixer's answer to every blocker/major finding of this round (source review: ids '<test id>/<dimension>' with '#<n>' when a dimension has several findings, 'general#<n>', or 'gate#<n>' for a gate finding) or every healable triage row (source triage: the row key). `fix.mjs check` fails unless every finding or row has exactly one entry, a `fixed` entry lists files that really changed this round, and a `not-fixed` entry has one of the four reasons and a text.",
+  "type": "object",
+  "required": ["module", "round", "source", "entries"],
+  "additionalProperties": false,
+  "$defs": {
+    "fixed": {
+      "type": "object",
+      "required": ["id", "status", "files"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "status": { "const": "fixed" },
+        "files": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "The code files changed for it, relative to the product's Playwright or k6 repo (or the framework root)." },
+        "note": { "type": "string" }
+      }
+    },
+    "notFixed": {
+      "type": "object",
+      "required": ["id", "status", "reason", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "status": { "const": "not-fixed" },
+        "reason": { "enum": ["disagree-with-cited-reason", "needs-product-change", "needs-human", "out-of-scope"] },
+        "text": { "type": "string", "minLength": 1, "description": "Why, specific to this finding or row (for disagree-with-cited-reason: what in the cited code contradicts the reviewer)." }
+      }
+    }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "round": { "type": "integer", "minimum": 1, "description": "The review round (source review) or heal round (source triage) in the fixer's prompt." },
+    "source": { "enum": ["review", "triage"] },
+    "entries": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/fixed" }, { "$ref": "#/$defs/notFixed" }] } }
+  }
+}

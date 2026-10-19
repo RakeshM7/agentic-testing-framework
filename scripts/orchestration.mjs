@@ -25,7 +25,10 @@ import { gate } from "./gate.mjs";
 import { csvPath, isAnswered, isAuthoritative, readRecord, readRows, record, renderSummary } from "./lib/clarifications.mjs";
 import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
 import { withFileLock, writeAtomic } from "./lib/csv.mjs";
-import { FLOWS, healableRows, runTriage, verdictOf } from "./lib/domain-flows.mjs";
+import { FLOWS, healableRows, runTriage } from "./lib/domain-flows.mjs";
+import { fixCheck, fixSnapshot } from "./lib/fix.mjs";
+import { fixContext } from "./fix.mjs";
+import { REVIEW_DOMAINS } from "./lib/review.mjs";
 
 export const DOMAINS = ["clarifications", "testcases", "playwright-ui", "playwright-api", "k6"];
 const LIMIT_KEY = { review: "review_rounds", heal: "heal_rounds" };
@@ -104,6 +107,27 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
     return { actions: [], done: { outcome, ...(s.steps.review ? { review: s.steps.review } : {}), ...(s.steps.run ? { run: s.steps.run } : {}), ...(summary ? { summary } : {}), ...extra } };
   };
   const failed = (name) => finish("failed", { failedStep: name, note: S().steps[name]?.note ?? "" });
+
+  // The code domains' fixers answer for every finding (G9): before a fixer is spawned the files it may change are
+  // snapshotted; once its step is done, fix.mjs check must pass (fix-report.json answers every blocker/major finding or
+  // healable row, `fixed` lists files that changed, nothing script-owned changed) or the step fails. Checked once.
+  const codeFix = REVIEW_DOMAINS.includes(domain);
+  const snapshotFix = (round, source) => codeFix && fixSnapshot(fixContext(product, module, root), domain, { round, source });
+  const fixProblem = (stepName, round, source) => {
+    const st = S().steps[stepName];
+    if (!codeFix || st?.status !== "done" || st.verified) return null;
+    const r = fixCheck(fixContext(product, module, root), domain, { round, source });
+    if (r.complete) {
+      withFileLock(c.file, () => {
+        const s = load(c.file, c.run, domain, module);
+        s.steps[stepName].verified = true;
+        writeAtomic(c.file, JSON.stringify(s, null, 2) + "\n");
+      });
+      return null;
+    }
+    mark(stepName, "fail", `fix.mjs check failed: ${r.problems.slice(0, 5).join("; ")}`);
+    return failed(stepName);
+  };
 
   // ---- clarifications: one explorer per open row, each checked, then the summary (D-048) -----------------------
   if (domain === "clarifications") {
@@ -213,6 +237,10 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
   const R = flow.review;
   while (!SETTLED.includes(S().steps.review?.status)) {
     let n = S().rounds.review;
+    if (n > 0) {
+      const bad = fixProblem(`fix-${n}`, n, "review");
+      if (bad) return bad;
+    }
     if (n === 0 || S().steps[`fix-${n}`]?.status === "done") {
       const r = round(product, domain, module, "review", { root });
       if (!r.allowed) {
@@ -228,22 +256,23 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
       if (rv === "failed") return failed(`review-${n}`);
       if (rv !== "done") return spawn(`review-${n}`, R.reviewer, { run: runId, round: n, ...(R.reviewerArgs?.(ctx) ?? {}) });
       findings = path.join(dir, "review-findings.md");
-      // A derived verdict (test cases, D-053): every current case needs a verdict in this round, else the step fails.
-      const derived = R.verdict?.(ctx, n);
-      if (derived && !derived.complete) {
+      // The verdict is derived for every domain (D-053, G9): every test (case) needs a verdict in this round, from a
+      // fresh stamped review.json; a typed `Verdict:` line is never read.
+      const derived = R.verdict(ctx, n);
+      if (!derived.complete) {
         mark(`review-${n}`, "fail", `review.json is incomplete: ${derived.problems.slice(0, 5).join("; ")}`);
         return failed(`review-${n}`);
       }
-      const v = derived ? derived.verdict : verdictOf(findings);
+      const v = derived.verdict;
       if (v === "pass") {
         mark("review", "done", `passed in round ${n}`);
         break;
       }
-      if (!v) return finish("failed", { failedStep: `review-${n}`, note: `${rel(findings)} has no Verdict line` });
     }
     const fx = S().steps[`fix-${n}`]?.status;
     if (fx === "failed") return failed(`fix-${n}`);
-    return spawn(`fix-${n}`, R.fixer, { findings: rel(findings), ...(R.fixerArgs?.(ctx) ?? {}) });
+    snapshotFix(n, "review");
+    return spawn(`fix-${n}`, R.fixer, { findings: rel(findings), round: n, ...(R.fixerArgs?.(ctx) ?? {}) });
   }
   if (!flow.run) return finish(S().steps.review.status === "done" ? "complete" : "review-failed");
 
@@ -255,7 +284,12 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
   if (h > 0) {
     const hs = S().steps[`heal-${h}`]?.status;
     if (hs === "failed") return failed(`heal-${h}`);
-    if (hs !== "done") return spawn(`heal-${h}`, RN.fixer, { triage: rel(triage) });
+    if (hs !== "done") {
+      snapshotFix(h, "triage");
+      return spawn(`heal-${h}`, RN.fixer, { triage: rel(triage), round: h });
+    }
+    const bad = fixProblem(`heal-${h}`, h, "triage");
+    if (bad) return bad;
   }
   const k = h + 1;
   const rs = S().steps[`run-${k}`]?.status;
@@ -277,7 +311,8 @@ export function next(product, domain, module, { root = repoRoot, max = 1, compil
     mark("run", "fail", `${healable} healable failure(s) left after ${r.limit} heal rounds`);
     return finish("heal-limit");
   }
-  return spawn(`heal-${r.round}`, RN.fixer, { triage: rel(triage) });
+  snapshotFix(r.round, "triage");
+  return spawn(`heal-${r.round}`, RN.fixer, { triage: rel(triage), round: r.round });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

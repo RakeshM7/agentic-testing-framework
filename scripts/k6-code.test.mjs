@@ -670,3 +670,38 @@ test("N-2: a query-like POST on an item path is never loaded standalone and neve
   assert.match(m.problems.join("\n"), /EP-contacts-18 POST \/api\/v1\/contacts\/\{id\}\/archive is query-like but mutates, and its path parameter id is bound to no create of a flow: a write never gets a path: slot/);
   assert.ok(!m.slots.some((y) => y.key === "path:EP-contacts-18"));
 });
+
+// S9-2b: the slot scan reads an acorn syntax tree, so a spelling that hides a name from a token pattern is still the node.
+test("S9-2b: slot scan, the AST reads every spelling of a forbidden name, member and string", () => {
+  const bs = String.fromCharCode(92);
+  const scan = (key, lines) => slotFindings("scripts/slots/contacts.js", key, lines, 10).join("\n");
+  const cases = [
+    ["comments inside a member chain", "checks:EP-contacts-1", ["  checkStatus /* a */ . /* b */ call(null, res, 200);"], /\[call-apply-bind\]/],
+    ["optional call of apply", "checks:EP-contacts-1", ["  checkStatus?.apply(null, [res, 200]);"], /\[call-apply-bind\]/],
+    ["destructured http", "data", ["  const { request } = http;", "  return { request };"], /\[slot-forbidden\] data: uses http/],
+    ["http in a template", "body:EP-contacts-2", ["  return { r: `${http}` };"], /uses http/],
+    ["__ENV through optional chaining", "data", ["  return { t: __ENV?.K6_TOKEN };"], /uses __ENV/],
+    ["name spelled with a unicode escape", "data", [`  return { t: __ENV${bs}u{2e}K6_TOKEN };`], /\[free-identifier\]|\[escape\]|\[slot-structure\]/],
+    ["escaped name", "body:EP-contacts-2", [`  return { r: ${bs}u0068ttp };`], /\[escape\]/],
+    ["escaped member", "data", [`  return {}.constr${bs}u{75}ctor;`], /\[forbidden-property\]/],
+    ["string concatenation into a URL", "query:EP-contacts-1", ["  return { next: 'ht' + `tp:` + '//x.test' };"], /\[hard-coded-url\]/],
+    ["a URL in a template", "query:EP-contacts-1", ["  return { next: `https://evil.test/${1}` };"], /\[hard-coded-url\]/],
+    ["a computed member", "data", ["  const k = 'a';", "  return { v: ({ a: 1 })[k] };"], /\[computed-access\]/],
+    ["a computed key", "data", ["  const k = 'a';", "  return { [k]: 1 };"], /\[computed-access\]/],
+    ["with", "data", ["  with ({ a: 1 }) { return { a }; }"], /\[free-identifier\]/],
+    ["a cast patch", "checks:EP-contacts-1", ["  (res as any).status = 200;"], /\[builtin-patch\]/],
+    ["a built-in patch", "data", ["  Object.prototype.polluted = 1;", "  return {};"], /\[builtin-patch\]/],
+    ["an export", "data", ["  export const z = 1;", "  return {};"], /uses export/],
+    ["a bracket closed early", "data", ["  return {};", "};", "const z = 1;", "(() => {"], /\[slot-structure\] data: closes a bracket/],
+    ["a bracket left open", "data", ["  return { a: [1, 2 };"], /\[slot-structure\]/],
+    ["a nested return does not count", "data", ["  const f = () => ({ a: 1 });", "  f();"], /\[slot-return\]/],
+  ];
+  for (const [name, key, lines, re] of cases) assert.match(scan(key, lines), re, name);
+  // not findings: the words in comments and strings, a key named like a forbidden name, a plain slot
+  const ok = [
+    ["data", ["  // http, sleep and __ENV belong to the generated script", "  return { name: 'the check of the group', http: 1, check: 2 };"]],
+    ["data", ["  const rows = [1, 2, 3];", "  const out = [];", "  for (let i = 0; i < rows.length; i++) { out.push(rows[i] * 2); }", "  return { out };"]],
+    ["checks:EP-contacts-1", ["  checkStatus(res, 200);", "  checkJsonKeys(res, ['id']);"]],
+  ];
+  for (const [key, lines] of ok) assert.equal(scan(key, lines), "", `${key}: ${lines.join(" ")}`);
+});

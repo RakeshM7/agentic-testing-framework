@@ -2,10 +2,12 @@
 // declared in it, imported, or one of a few pure globals, and a pure global is only called, constructed or has an allowed
 // member called; it is never a value (no alias, no argument, no spread, no destructuring), so no agent code can reach a
 // built-in to change it. A member is assigned only on an object the same code created (a literal or a construction).
-// Types are stripped first with Node's own type stripper, so only code that runs is read.
+// Types are stripped first with Node's own type stripper, so only code that runs is read, and that code is read as an
+// acorn syntax tree (S9-2b): a rule sees a node, never a guess about what a run of characters means.
 import * as nodeModule from "node:module";
 import { finding } from "./gate/common.mjs";
-import { isClose, isOpen, matchClose, scanTs } from "./ts-scan.mjs";
+import * as acorn from "acorn";
+import { readEscape } from "./ts-scan.mjs";
 
 // The pure globals and how agent code may use each: call (`String(x)`), construct (`new Date()`), call a member
 // (`Object.keys(x)`) or read a constant member (`Number.MAX_SAFE_INTEGER`).
@@ -31,11 +33,9 @@ export const PURE_GLOBALS = Object.freeze({
   isFinite: { call: true },
 });
 // Literal values and keywords: never a binding agent code could change.
-// Every reserved word and keyword of JavaScript and TypeScript is a keyword, never an identifier (D-4, round 4), but
-// `this` and `with`, which have their own findings below.
-const KEYWORDS = new Set("break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof let new null of return static super switch throw true try typeof var void while yield async await from as get set implements interface package private protected public undefined NaN Infinity".split(" "));
+// These three are values, not bindings. `this` and `with` have their own findings below.
+const KEYWORDS = new Set(["undefined", "NaN", "Infinity"]);
 const OWN_FINDING = { this: "uses this: agent code has no receiver", with: "uses with: it changes what every name inside it means" };
-const CONTROL = new Set(["if", "for", "while", "switch", "catch", "with", "return", "typeof", "await", "new", "super", "import", "else", "do", "yield", "in", "of", "delete", "void", "throw", "case"]);
 // Every global of the runtime and the module scope: agent code never declares one of these names (a shadow would let a
 // misread declaration hide a global from the allowlist).
 const GLOBAL_NAMES = new Set([...Object.getOwnPropertyNames(globalThis), ...Object.keys(PURE_GLOBALS), "require", "module", "exports", "__dirname", "__filename", "arguments", "undefined", "NaN", "Infinity", "eval", "Function", "Reflect", "Proxy", "Symbol", "globalThis", "global", "process", "window", "self"]);
@@ -59,151 +59,122 @@ export function stripTypes(code, { wrap = false } = {}) {
   }
 }
 
-// To the next "," or ";" at this depth, or the close of the enclosing bracket, or a statement keyword on a new line.
-function skipExpr(sig, j, limit = sig.length) {
-  let d = 0;
-  for (; j < limit; j++) {
-    const t = sig[j];
-    if (isOpen(t)) d++;
-    else if (isClose(t)) {
-      if (d === 0) return j;
-      d--;
-    } else if (d === 0 && (t.value === "," || t.value === ";")) return j;
-    else if (d === 0 && t.type === "ident" && ["const", "let", "var", "function", "class", "return", "if", "for", "while", "export", "import"].includes(t.value) && j > 0 && sig[j - 1].line < t.line) return j;
-  }
-  return j;
-}
-// The names a binding pattern at sig[k] declares (an identifier, an object or array pattern, with defaults and rests).
-// -> the index after it
-function binding(sig, k, add) {
-  const t = sig[k];
-  if (!t) return k + 1;
-  if (t.value === "...") return binding(sig, k + 1, add);
-  if (t.type === "ident") {
-    add(t);
-    return k + 1;
-  }
-  if (t.value !== "{" && t.value !== "[") return k + 1;
-  const end = matchClose(sig, k);
-  let j = k + 1;
-  while (j < end) {
-    const from = j;
-    if (sig[j].value === ",") {
-      j++;
-      continue;
-    }
-    if (t.value === "{" && sig[j].value !== "...") {
-      const keyEnd = sig[j].value === "[" ? matchClose(sig, j) + 1 : j + 1;
-      if (sig[keyEnd]?.value === ":") j = binding(sig, keyEnd + 1, add);
-      else {
-        if (sig[j].type === "ident") add(sig[j]);
-        j = keyEnd;
-      }
-    } else j = binding(sig, j, add);
-    if (sig[j]?.value === "=") j = skipExpr(sig, j + 1, end);
-    if (j <= from) j = from + 1;
-  }
-  return end + 1;
-}
-// Whether the "(" at sig[k] opens a parameter list: an arrow's, a function's or a method's.
-function isParams(sig, k) {
-  const c = matchClose(sig, k);
-  if (sig[c + 1]?.value === "=>") return true;
-  if (sig[c + 1]?.value !== "{") return false;
-  const p = sig[k - 1];
-  if (p?.value === "function") return true;
-  if (p?.type !== "ident" || CONTROL.has(p.value)) return false;
-  return ["function", "*", "{", ",", "}", ";", "get", "set", "async", "static"].includes(sig[k - 2]?.value) || sig[k - 2] === undefined;
-}
 
-// The names code declares: const, let, var (patterns too), function and class names, parameters, catch bindings and
-// imports. -> {names, tokens} (tokens: each declaring identifier)
-export function declaredNames(sig) {
-  const tokens = [];
-  const add = (t) => tokens.push(t);
-  for (let k = 0; k < sig.length; k++) {
-    const t = sig[k];
-    const v = t.value;
-    if (t.type === "ident" && ["const", "let", "var"].includes(v) && sig[k - 1]?.value !== ".") {
-      let j = binding(sig, k + 1, add);
-      while (sig[j]?.value === "=" || sig[j]?.value === ",") {
-        if (sig[j].value === "=") j = skipExpr(sig, j + 1);
-        if (sig[j]?.value === ",") j = binding(sig, j + 1, add);
-      }
-    } else if (t.type === "ident" && (v === "function" || v === "class") && sig[k - 1]?.value !== ".") {
-      const n = sig[k + 1]?.value === "*" ? sig[k + 2] : sig[k + 1];
-      if (n?.type === "ident") add(n);
-    } else if (v === "catch" && sig[k + 1]?.value === "(") binding(sig, k + 2, add);
-    else if (v === "(" && t.type === "punct" && isParams(sig, k)) {
-      const c = matchClose(sig, k);
-      let j = k + 1;
-      while (j < c) {
-        const from = j;
-        j = binding(sig, j, add);
-        if (sig[j]?.value === "=") j = skipExpr(sig, j + 1, c);
-        if (sig[j]?.value === ",") j++;
-        if (j <= from) j = from + 1;
-      }
-    } else if (v === "=>" && sig[k - 1]?.type === "ident") add(sig[k - 1]);
-    else if (v === "import" && t.type === "ident" && sig[k + 1]?.value !== "(" && sig[k - 1]?.value !== ".") {
-      for (let j = k + 1; j < sig.length && sig[j].type !== "str"; j++) {
-        const x = sig[j];
-        if (x.type !== "ident" || ["from", "as", "type"].includes(x.value)) continue;
-        if (sig[j + 1]?.value === "as") continue; // `a as b`: b is the binding
-        add(x);
-      }
+// ---------- the syntax tree ----------
+
+// The JavaScript that runs, as an acorn tree: -> {ast, src} or null when it does not parse. A module first (imports and
+// exports), then a script (`with` and legacy octal escapes are scripts only: they parse, so a rule can reject them).
+// A slot body has `return` and `await` at its top level.
+export function parseJs(src) {
+  const text = String(src ?? "");
+  for (const sourceType of ["module", "script"]) {
+    try {
+      const ast = acorn.parse(text, { ecmaVersion: "latest", sourceType, locations: true, allowReturnOutsideFunction: true, allowAwaitOutsideFunction: true, allowHashBang: true, preserveParens: true });
+      return { ast, src: text };
+    } catch {
+      /* the other source type, then null */
     }
   }
-  return { names: new Set(tokens.map((t) => t.value)), tokens };
+  return null;
 }
-
-// The names this code creates itself, the only ones whose members it may assign: a const, let or var initialised with an
-// object or array literal or a construction, never a parameter (any name inside a parameter list), never reassigned.
-// Reads TypeScript or JavaScript tokens.
-export function createdNames(sig) {
-  const created = new Set();
-  const demoted = new Set();
-  for (let k = 0; k < sig.length; k++) {
-    const t = sig[k];
-    if (["const", "let", "var"].includes(t.value) && sig[k + 1]?.type === "ident") {
-      let j = k + 2;
-      if (sig[j]?.value === ":") for (let d = 0; j < sig.length && !(d === 0 && ["=", ";"].includes(sig[j].value)); j++) d += isOpen(sig[j]) ? 1 : isClose(sig[j]) ? -1 : 0;
-      if (sig[j]?.value === "=" && ["{", "[", "new"].includes(sig[j + 1]?.value)) created.add(sig[k + 1].value);
-    }
-    // a parameter list (types kept or stripped): "(" … ")" followed by =>, a body or a return type
-    if (t.value === "(" && t.type === "punct" && (isParams(sig, k) || [":", "=>", "{"].includes(sig[matchClose(sig, k) + 1]?.value))) for (let j = k + 1; j < matchClose(sig, k); j++) if (sig[j].type === "ident") demoted.add(sig[j].value);
-    if (t.value === "=>" && sig[k - 1]?.type === "ident") demoted.add(sig[k - 1].value);
-    if (t.type === "ident" && sig[k - 1]?.value !== "." && !["const", "let", "var"].includes(sig[k - 1]?.value) && (sig[k + 1]?.value === "=" || (["+", "-", "*", "/", "%", "|", "&", "?", "^"].includes(sig[k + 1]?.value) && sig[k + 2]?.value === "="))) demoted.add(t.value);
+// Strip (types become spaces) and parse. -> {ast, src} | null
+export function parseAgentCode(code, { wrap = false } = {}) {
+  return parseJs(stripTypes(code, { wrap }) ?? String(code ?? ""));
+}
+const isNode = (v) => v && typeof v === "object" && typeof v.type === "string";
+// Every node, parents first: visit(node, parent, key, grandparent).
+export function walk(node, visit, parent = null, key = null, grand = null) {
+  visit(node, parent, key, grand);
+  for (const k of Object.keys(node)) {
+    if (k === "loc") continue;
+    const v = node[k];
+    if (Array.isArray(v)) for (const c of v) isNode(c) && walk(c, visit, node, k, parent);
+    else if (isNode(v)) walk(v, visit, node, k, parent);
   }
-  return new Set([...created].filter((n) => !demoted.has(n)));
 }
-
-// The ${} expressions of a template literal token's source.
-function templateExprs(raw) {
+// Every node with its ancestors (nearest last) and the key it hangs on: visit(node, ancestors, key).
+export function walkPath(node, visit, up = [], key = null) {
+  visit(node, up, key);
+  const path = [...up, node];
+  for (const k of Object.keys(node)) {
+    if (k === "loc") continue;
+    const v = node[k];
+    if (Array.isArray(v)) for (const c of v) isNode(c) && walkPath(c, visit, path, k);
+    else if (isNode(v)) walkPath(v, visit, path, k);
+  }
+}
+const lineOf = (n) => ({ line: n?.loc?.start?.line ?? null });
+// The escapes inside a piece of source (a string literal, a template's text or an identifier), as written.
+function escapesIn(raw) {
   const out = [];
-  let i = 1;
-  while (i < raw.length - 1) {
-    if (raw[i] === "\\") i += 2;
-    else if (raw[i] === "$" && raw[i + 1] === "{") {
-      const rest = raw.slice(i + 2);
-      let d = 0;
-      let end = rest.length;
-      for (const t of scanTs(rest)) {
-        if (t.type === "comment") continue;
-        if (isOpen(t)) d++;
-        else if (isClose(t)) {
-          if (d === 0) {
-            end = t.start;
-            break;
-          }
-          d--;
-        }
-      }
-      out.push(rest.slice(0, end));
-      i += 2 + end + 1;
-    } else i++;
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] !== "\\") continue;
+    const e = readEscape(raw, i);
+    out.push(e.raw);
+    i = Math.max(e.end, i + 2) - 1;
   }
   return out;
+}
+// The identifiers a binding pattern declares (an identifier, an object or array pattern, with defaults and rests).
+function patternIds(p, out = []) {
+  if (!p) return out;
+  if (p.type === "Identifier") out.push(p);
+  else if (p.type === "ObjectPattern") for (const x of p.properties) patternIds(x.type === "RestElement" ? x.argument : x.value, out);
+  else if (p.type === "ArrayPattern") for (const x of p.elements) patternIds(x, out);
+  else if (p.type === "AssignmentPattern") patternIds(p.left, out);
+  else if (p.type === "RestElement") patternIds(p.argument, out);
+  return out;
+}
+const isFunction = (n) => n.type === "FunctionDeclaration" || n.type === "FunctionExpression" || n.type === "ArrowFunctionExpression";
+
+// The names code declares: const, let, var (patterns too), function and class names, parameters, catch bindings and
+// imports. -> {names, tokens} (tokens: each declaring identifier node)
+export function declaredNames(tree) {
+  const tokens = [];
+  walk(tree.ast, (n) => {
+    if (n.type === "VariableDeclarator") tokens.push(...patternIds(n.id));
+    else if ((n.type === "FunctionDeclaration" || n.type === "FunctionExpression" || n.type === "ClassDeclaration" || n.type === "ClassExpression") && n.id) tokens.push(n.id);
+    if (isFunction(n)) for (const p of n.params) tokens.push(...patternIds(p));
+    else if (n.type === "CatchClause") tokens.push(...patternIds(n.param));
+    else if (n.type === "ImportSpecifier" || n.type === "ImportDefaultSpecifier" || n.type === "ImportNamespaceSpecifier") tokens.push(n.local);
+  });
+  return { names: new Set(tokens.map((t) => t.name)), tokens };
+}
+
+// The member expressions and identifiers an assignment target holds, destructuring included.
+function targetsOf(p, out = []) {
+  if (!p) return out;
+  if (p.type === "ParenthesizedExpression") targetsOf(p.expression, out);
+  else if (p.type === "Identifier" || p.type === "MemberExpression") out.push(p);
+  else if (p.type === "ObjectPattern") for (const x of p.properties) targetsOf(x.type === "RestElement" ? x.argument : x.value, out);
+  else if (p.type === "ArrayPattern") for (const x of p.elements) targetsOf(x, out);
+  else if (p.type === "AssignmentPattern") targetsOf(p.left, out);
+  else if (p.type === "RestElement") targetsOf(p.argument, out);
+  return out;
+}
+// Every write to a target: [{node, target, op, right}] for an assignment, an update (++, --) and a for-in/of head.
+export function writesOf(tree) {
+  const out = [];
+  walk(tree.ast, (n) => {
+    if (n.type === "AssignmentExpression") for (const t of targetsOf(n.left)) out.push({ node: n, target: t, op: n.operator, right: n.right });
+    else if (n.type === "UpdateExpression") for (const t of targetsOf(n.argument)) out.push({ node: n, target: t, op: n.operator });
+    else if ((n.type === "ForInStatement" || n.type === "ForOfStatement") && n.left.type !== "VariableDeclaration") for (const t of targetsOf(n.left)) out.push({ node: n, target: t, op: "for" });
+  });
+  return out;
+}
+
+// The names this code creates itself, the only ones whose members it may assign: every declaration of the name is a
+// const, let or var initialised with an object or array literal or a construction (so no parameter, import, function,
+// catch binding or shadowing declaration can stand behind the name), and the name is never reassigned.
+export function createdNames(tree) {
+  const decls = declaredNames(tree);
+  const literal = new Set();
+  walk(tree.ast, (n) => {
+    if (n.type === "VariableDeclarator" && n.id.type === "Identifier" && ["ObjectExpression", "ArrayExpression", "NewExpression"].includes(n.init?.type)) literal.add(n.id);
+  });
+  const bad = new Set(decls.tokens.filter((t) => !literal.has(t)).map((t) => t.name));
+  for (const w of writesOf(tree)) if (w.target.type === "Identifier") bad.add(w.target.name);
+  return new Set(decls.tokens.map((t) => t.name).filter((n) => !bad.has(n)));
 }
 
 // ---------- X1 (round 3): no property that reaches a constructor, a prototype or a caller; no computed access ----------
@@ -212,45 +183,27 @@ function templateExprs(raw) {
 export const POISON_PROPERTIES = Object.freeze(["constructor", "prototype", "__proto__", "caller", "callee", "arguments"]);
 const POISON = new Set(POISON_PROPERTIES);
 // The escapes agent code may write in a string, a template or a name (D-1, round 4): none of them can spell a letter.
-// \x, \u, \u{}, octal escapes and line continuations are findings (escape); the scanner decodes them all anyway.
+// \x, \u, \u{}, octal escapes and line continuations are findings (escape); the tree holds every escape decoded anyway.
 export const SAFE_ESCAPES = new Set(["\\n", "\\t", "\\r", "\\\\", "\\'", '\\"', "\\`"]);
-// A "[" after one of these opens an array literal or an array pattern (const [a, b] = …), never a member access.
-const NOT_A_RECEIVER = new Set(["return", "typeof", "in", "of", "case", "await", "yield", "new", "delete", "void", "throw", "instanceof", "else", "do", "export", "extends", "default", "const", "let", "var"]);
-// Whether the "[" at sig[k] reads a member: after a value (a name, a literal, a call, an index, `?.`), not an array literal.
-function memberIndex(sig, k) {
-  const p = sig[k - 1];
-  if (!p) return false;
-  if (p.type === "punct") return [")", "]", "}", "."].includes(p.value);
-  if (p.type === "ident") return !NOT_A_RECEIVER.has(p.value);
-  return ["str", "num", "regex", "tpl"].includes(p.type);
-}
-// The loop counters of code: `for (let|var i = <number>; …)`, declared once, only ever stepped by ++, --, += or -= a
-// number, and never handed to a pattern, a spread or another binding. Only these may index a member (x[i]).
-function loopCounters(sig) {
-  const decls = new Map();
-  for (const t of declaredNames(sig).tokens) decls.set(t.value, (decls.get(t.value) ?? 0) + 1);
-  const out = new Set();
-  for (let k = 0; k < sig.length; k++) {
-    if (!(sig[k].value === "for" && sig[k + 1]?.value === "(" && ["let", "var"].includes(sig[k + 2]?.value) && sig[k + 3]?.type === "ident" && sig[k + 4]?.value === "=" && sig[k + 5]?.type === "num" && sig[k + 6]?.value === ";")) continue;
-    const name = sig[k + 3].value;
-    if (decls.get(name) !== 1) continue;
-    let ok = true;
-    for (let j = 0; j < sig.length && ok; j++) {
-      const t = sig[j];
-      if (j === k + 3 || t.type !== "ident" || t.value !== name) continue;
-      const prev = sig[j - 1]?.value;
-      const next = sig[j + 1]?.value;
-      if (prev === "." || (["{", ","].includes(prev) && next === ":")) continue; // a property name, not the variable
-      if (prev === "...") ok = false;
-      else if (next === "=") ok = false;
-      else if (["+", "-", "*", "/", "%", "|", "&", "^", "?", "<", ">"].includes(next) && sig[j + 2]?.value === "=" ) ok = ["+", "-"].includes(next) && sig[j + 3]?.type === "num";
-      else if (["of", "in"].includes(next)) ok = false;
-      else if ([",", "}", ":"].includes(next)) ok = false;
-      else if (next === "]") ok = prev === "[" && memberIndex(sig, j - 1);
-    }
-    if (ok) out.add(name);
+
+// The loop counters of code: `for (let|var i = <number>; …)`, declared once, and only ever stepped by ++, --, += or -= a
+// number: never assigned, destructured into or used as a for-in/of head, so it only ever holds a number. Only these may
+// index a member (x[i]).
+function loopCounters(tree) {
+  const counts = new Map();
+  for (const t of declaredNames(tree).tokens) counts.set(t.name, (counts.get(t.name) ?? 0) + 1);
+  const cand = new Set();
+  walk(tree.ast, (n) => {
+    if (n.type !== "ForStatement" || n.init?.type !== "VariableDeclaration" || n.init.kind === "const" || n.init.declarations.length !== 1) return;
+    const d = n.init.declarations[0];
+    if (d.id.type === "Identifier" && d.init?.type === "Literal" && typeof d.init.value === "number" && counts.get(d.id.name) === 1) cand.add(d.id.name);
+  });
+  for (const w of writesOf(tree)) {
+    if (w.target.type !== "Identifier" || !cand.has(w.target.name)) continue;
+    const step = w.node.type === "UpdateExpression" || (w.node.type === "AssignmentExpression" && w.node.left === w.target && ["+=", "-="].includes(w.op) && w.right.type === "Literal" && typeof w.right.value === "number");
+    if (!step) cand.delete(w.target.name);
   }
-  return out;
+  return cand;
 }
 
 // The rules on every agent-written file and slot, on the JavaScript that runs (types stripped): no property named
@@ -259,95 +212,101 @@ function loopCounters(sig) {
 // no computed member access or computed key but a number literal or a loop counter. code: TypeScript (a whole file, or
 // a slot's body with wrap); at(token): the reported line. -> findings
 export function propertyFindings(file, code, { wrap = false, at = (t) => t?.line ?? null, kind = "agent" } = {}) {
-  const js = stripTypes(code, { wrap }) ?? String(code);
-  return propertyRules(file, scanTs(js).filter((t) => t.type !== "comment"), at, kind);
-}
-function propertyRules(file, sig, at, kind, counters = loopCounters(sig)) {
-  const out = [];
-  const poison = (t, what) => out.push(finding("major", file, at(t), "forbidden-property", `${kind} code names ${what}: it reaches a constructor, a prototype or a calling frame`, `never name ${POISON_PROPERTIES.join(", ")} (as a member, a key, a destructuring key or a string); use plain data and the generated clients`));
-  const computed = (t, inner) => out.push(finding("major", file, at(t), "computed-access", `${kind} code uses a computed member or key ([${inner.slice(0, 40)}])`, "use .name or a literal key; index only by a number literal or a for-loop counter"));
-  for (let k = 0; k < sig.length; k++) {
-    const t = sig[k];
-    const bad = (t.escapes ?? []).find((e) => !SAFE_ESCAPES.has(e));
-    if (bad !== undefined) out.push(finding("major", file, at(t), "escape", `${kind} code writes ${t.type === "ident" ? "a name" : "a string"} with the escape ${bad.replace(/\r?\n/, "<newline>")}: an escape can spell a name no rule sees`, `write the characters themselves; only ${[...SAFE_ESCAPES].join(" ")} are allowed`));
-    if (t.type === "ident" && POISON.has(t.value)) poison(t, t.value);
-    else if (t.type === "str" && (POISON.has(t.value.trim()) || t.value.includes("__proto__"))) poison(t, `'${t.value.slice(0, 40)}'`);
-    else if (t.type === "tpl") {
-      const exprs = templateExprs(t.value);
-      // the template's own text, cooked (escapes decoded) and joined across its ${}
-      if (POISON_PROPERTIES.some((n) => String(t.cooked ?? "").includes(n))) poison(t, "a property in a template literal");
-      for (const e of exprs) out.push(...propertyRules(file, scanTs(e).filter((x) => x.type !== "comment").map((x) => ({ ...x, line: t.line })), at, kind, counters));
-    } else if (t.value === "[" && t.type === "punct" && sig[k + 1]?.value !== "]") {
-      const close = matchClose(sig, k);
-      const keyed = ["{", ","].includes(sig[k - 1]?.value) && [":", "("].includes(sig[close + 1]?.value);
-      if (!memberIndex(sig, k) && !keyed) continue;
-      const inner = sig.slice(k + 1, close);
-      const ok = inner.length === 1 && (inner[0].type === "num" || (inner[0].type === "ident" && counters.has(inner[0].value)));
-      if (!ok) computed(t, inner.map((x) => x.value).join(" "));
-    }
+  const tree = parseAgentCode(code, { wrap });
+  if (!tree) {
+    // code that does not parse is rejected; its escapes are still named (a legacy octal escape is a syntax error in a module)
+    const bad = escapesIn(String(code ?? "")).find((e) => !SAFE_ESCAPES.has(e));
+    const out = [finding("major", file, at({ line: 1 }), "free-identifier", `${kind} code does not parse as TypeScript that only strips to JavaScript`, "write plain TypeScript: types, functions and data")];
+    if (bad !== undefined) out.push(finding("major", file, at({ line: 1 }), "escape", `${kind} code writes an escape (${bad.replace(/\r?\n/, "<newline>")}): an escape can spell a name no rule sees`, `write the characters themselves; only ${[...SAFE_ESCAPES].join(" ")} are allowed`));
+    return out;
   }
+  return propertyRules(file, tree, at, kind);
+}
+function propertyRules(file, tree, at, kind) {
+  const out = [];
+  const { src } = tree;
+  const counters = loopCounters(tree);
+  const poison = (n, what) => out.push(finding("major", file, at(lineOf(n)), "forbidden-property", `${kind} code names ${what}: it reaches a constructor, a prototype or a calling frame`, `never name ${POISON_PROPERTIES.join(", ")} (as a member, a key, a destructuring key or a string); use plain data and the generated clients`));
+  const computed = (n, inner) => out.push(finding("major", file, at(lineOf(n)), "computed-access", `${kind} code uses a computed member or key ([${inner.slice(0, 40)}])`, "use .name or a literal key; index only by a number literal or a for-loop counter"));
+  const escape = (n, raws, what) => {
+    const bad = raws.find((e) => !SAFE_ESCAPES.has(e));
+    if (bad !== undefined) out.push(finding("major", file, at(lineOf(n)), "escape", `${kind} code writes ${what} with the escape ${bad.replace(/\r?\n/, "<newline>")}: an escape can spell a name no rule sees`, `write the characters themselves; only ${[...SAFE_ESCAPES].join(" ")} are allowed`));
+  };
+  const seen = new Set();
+  const okIndex = (p) => (p.type === "Literal" && typeof p.value === "number") || (p.type === "Identifier" && counters.has(p.name));
+  walk(tree.ast, (n) => {
+    if (n.type === "Identifier") {
+      if (seen.has(n.start)) return; // a shorthand property is a key and a value in one place
+      seen.add(n.start);
+      const raw = src.slice(n.start, n.end);
+      if (raw.includes("\\")) escape(n, escapesIn(raw), "a name");
+      if (POISON.has(n.name)) poison(n, n.name);
+    } else if (n.type === "Literal" && typeof n.value === "string") {
+      escape(n, escapesIn(n.raw), "a string");
+      if (POISON.has(n.value.trim()) || n.value.includes("__proto__")) poison(n, `'${n.value.slice(0, 40)}'`);
+    } else if (n.type === "TemplateLiteral") {
+      const cooked = n.quasis.map((q) => q.value.cooked ?? "").join("");
+      for (const q of n.quasis) escape(q, escapesIn(q.value.raw), "a string");
+      if (!n.expressions.length) {
+        if (POISON.has(cooked.trim()) || cooked.includes("__proto__")) poison(n, `'${cooked.slice(0, 40)}'`);
+      } else if (POISON_PROPERTIES.some((p) => cooked.includes(p))) poison(n, "a property in a template literal");
+    } else if (n.type === "MemberExpression" && n.computed) {
+      if (!okIndex(n.property)) computed(n, src.slice(n.property.start, n.property.end));
+    } else if ((n.type === "Property" || n.type === "MethodDefinition" || n.type === "PropertyDefinition") && n.computed) {
+      if (!okIndex(n.key)) computed(n, src.slice(n.key.start, n.key.end));
+    }
+  });
   return out;
 }
 
 // The names a whole file declares (its imports, declarations and parameters), for the slots inside it. -> Set
 export function scopeOf(code) {
-  const js = stripTypes(code);
-  return js === null ? new Set() : new Set([...declaredNames(scanTs(js).filter((t) => t.type !== "comment")).names].filter((n) => !GLOBAL_NAMES.has(n)));
+  const tree = parseAgentCode(code);
+  return tree === null ? new Set() : new Set([...declaredNames(tree).names].filter((n) => !GLOBAL_NAMES.has(n)));
 }
 
 // B3: the free identifiers of a piece of agent code. code: TypeScript (a whole file, or a slot's function body with
 // wrap); declared: the names the code may use without declaring them (the generated file's own declarations and
 // bindings); at(line): the reported line for a line of code. -> findings
 export function freeIdentifierFindings(file, code, { declared = [], wrap = false, at = (line) => line } = {}) {
-  const js = stripTypes(code, { wrap });
-  if (js === null) return [finding("major", file, at(1), "free-identifier", "the code does not parse as TypeScript that only strips to JavaScript (no enum, namespace or other code-generating TypeScript)", "write plain TypeScript: types, functions and data")];
-  return identifierFindings(file, scanTs(js).filter((t) => t.type !== "comment"), new Set(declared), at);
+  const tree = stripTypes(code, { wrap }) === null ? null : parseAgentCode(code, { wrap });
+  if (!tree) return [finding("major", file, at(1), "free-identifier", "the code does not parse as TypeScript that only strips to JavaScript (no enum, namespace or other code-generating TypeScript)", "write plain TypeScript: types, functions and data")];
+  return identifierFindings(file, tree, new Set(declared), at);
 }
-function identifierFindings(file, sig, outer, at) {
+function identifierFindings(file, tree, outer, at) {
   const out = [];
-  const push = (t, problem) => out.push(finding("major", file, at(t.line), "free-identifier", problem, "use only what this code declares or imports and the pure globals as calls (String(x), Object.keys(x), new Date()); never a built-in as a value"));
-  const { names, tokens } = declaredNames(sig);
-  for (const t of tokens) if (GLOBAL_NAMES.has(t.value)) push(t, `declares ${t.value}, a name of the runtime's globals`);
+  const push = (n, problem) => out.push(finding("major", file, at(n.loc.start.line), "free-identifier", problem, "use only what this code declares or imports and the pure globals as calls (String(x), Object.keys(x), new Date()); never a built-in as a value"));
+  const { names, tokens } = declaredNames(tree);
+  for (const t of tokens) if (GLOBAL_NAMES.has(t.name)) push(t, `declares ${t.name}, a name of the runtime's globals`);
   const scope = new Set([...outer, ...[...names].filter((n) => !GLOBAL_NAMES.has(n))]);
-  let inImport = false;
-  for (let k = 0; k < sig.length; k++) {
-    const t = sig[k];
-    const prev = sig[k - 1];
-    const next = sig[k + 1];
-    if (t.type === "ident" && t.value === "import" && prev?.value !== ".") inImport = true;
-    if (inImport) {
-      if (t.type === "str" || t.value === ";") inImport = false;
-      continue;
+  const declaring = new Set(tokens);
+  const isRef = (n, parent, key) => {
+    if (declaring.has(n)) return false;
+    if (!parent) return true;
+    if (parent.type === "MemberExpression") return key !== "property" || parent.computed;
+    if (parent.type === "Property" || parent.type === "MethodDefinition" || parent.type === "PropertyDefinition") return key !== "key" || parent.computed;
+    if (["LabeledStatement", "BreakStatement", "ContinueStatement", "MetaProperty"].includes(parent.type)) return false;
+    if (parent.type === "ExportSpecifier" && key === "exported") return false;
+    if (parent.type.startsWith("Import")) return false;
+    return true;
+  };
+  walk(tree.ast, (n, parent, key, grand) => {
+    if (n.type === "ThisExpression") return push(n, OWN_FINDING.this);
+    if (n.type === "WithStatement") return push(n, OWN_FINDING.with);
+    if (n.type !== "Identifier" || !isRef(n, parent, key) || KEYWORDS.has(n.name) || scope.has(n.name)) return;
+    const g = Object.hasOwn(PURE_GLOBALS, n.name) ? PURE_GLOBALS[n.name] : null;
+    if (!g) return push(n, `${n.name} is not declared here, imported, or an allowed pure global`);
+    if (parent?.type === "CallExpression" && key === "callee" && g.call) return;
+    if (parent?.type === "NewExpression" && key === "callee" && g.construct) return;
+    if (parent?.type === "MemberExpression" && key === "object" && !parent.computed && parent.property.type === "Identifier") {
+      const member = parent.property.name;
+      const called = grand?.type === "CallExpression" && grand.callee === parent;
+      if (called && (g.members ?? []).includes(member)) return;
+      const assigned = (grand?.type === "AssignmentExpression" && grand.left === parent) || grand?.type === "UpdateExpression" || ((grand?.type === "ForInStatement" || grand?.type === "ForOfStatement") && grand.left === parent);
+      if (!called && (g.constants ?? []).includes(member) && !assigned) return;
+      return push(n, `${n.name}.${member}${called ? "(…)" : ""} is not an allowed use of ${n.name}`);
     }
-    if (t.type === "tpl") {
-      for (const expr of templateExprs(t.value)) out.push(...identifierFindings(file, scanTs(expr).filter((x) => x.type !== "comment").map((x) => ({ ...x, line: t.line })), scope, at));
-      continue;
-    }
-    if (t.type !== "ident" || prev?.value === "." || KEYWORDS.has(t.value) || scope.has(t.value)) continue;
-    // a property key, a method's name, a label
-    if (["{", ","].includes(prev?.value) && next?.value === ":") continue;
-    if (next?.value === "(" && sig[matchClose(sig, k + 1) + 1]?.value === "{" && ["{", ",", "}", ";", "get", "set", "async", "static", "*"].includes(prev?.value)) continue;
-    if ([";", "{", "}"].includes(prev?.value) && next?.value === ":") continue;
-    if (Object.hasOwn(OWN_FINDING, t.value)) {
-      push(t, OWN_FINDING[t.value]);
-      continue;
-    }
-    const g = Object.hasOwn(PURE_GLOBALS, t.value) ? PURE_GLOBALS[t.value] : null;
-    if (!g) {
-      push(t, `${t.value} is not declared here, imported, or an allowed pure global`);
-      continue;
-    }
-    if (next?.value === "(" && g.call && prev?.value !== "new") continue;
-    if (prev?.value === "new" && g.construct) continue;
-    if (next?.value === "." && sig[k + 2]?.type === "ident") {
-      const member = sig[k + 2].value;
-      const called = sig[k + 3]?.value === "(";
-      if (called && (g.members ?? []).includes(member)) continue;
-      if (!called && (g.constants ?? []).includes(member) && !["=", "++", "--"].includes(sig[k + 3]?.value) && !(["+", "-", "*", "/", "%", "|", "&", "?", "^"].includes(sig[k + 3]?.value) && sig[k + 4]?.value === "=")) continue;
-      push(t, `${t.value}.${member}${called ? "(…)" : ""} is not an allowed use of ${t.value}`);
-      continue;
-    }
-    push(t, `${t.value} is used as a value (an alias, an argument, a spread or a destructuring hands on the built-in)`);
-  }
+    push(n, `${n.name} is used as a value (an alias, an argument, a spread or a destructuring hands on the built-in)`);
+  });
   return out;
 }

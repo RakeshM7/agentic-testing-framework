@@ -77,8 +77,8 @@ main orchestrator:
                  each writer ends with ui-code.mjs check, whose stamp the step needs, D-055;
                  API: api-code.mjs build generates the clients and one test per plan scenario; the writers fill
                  the overlays and slots and end with api-code.mjs check, whose stamp the step needs, D-056)
-        review loop: gate script -> (fail: gate findings -> fixer) | reviewer -> findings -> fixer (max N rounds)
-        run loop:    runner-triager -> [script] triage.json, verified by triage.mjs check -> fixer on healable rows -> re-run (max N rounds)
+        review loop: gate script -> (fail: gate findings -> fixer) | reviewer (review.json, a rubric verdict per test; review.mjs check derives the verdict and review-findings.md, D-059) -> fixer (fix-report.json answering every blocker/major; fix.mjs check against the pre-round snapshot) (max N rounds)
+        run loop:    runner-triager -> [script] triage.json, verified by triage.mjs check -> fixer on healable rows (fix-report.json, fix.mjs check) -> re-run (max N rounds)
         every domain orchestrator follows `orchestration.mjs next`, which holds these flows (scripts/lib/domain-flows.mjs)
         API additionally starts with api-discoverer -> api-test-planner
   7 k6-orchestrator (needs the API plan): workload-designer (cited overlay -> workload.mjs build + check, run=<run-id>) -> lib-writer (cited overlay -> foundation.mjs render + check; skipped while verified) -> script-writer (slots -> k6-code.mjs build + check) -> review loop -> run/fix loop

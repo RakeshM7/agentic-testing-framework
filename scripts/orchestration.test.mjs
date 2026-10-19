@@ -5,6 +5,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { next, show, step } from "./orchestration.mjs";
+import { reviewCheck } from "./lib/review.mjs";
+import { requiredEntries } from "./lib/fix.mjs";
 import { healableRows } from "./lib/domain-flows.mjs";
 import { append, csvPath, readRows, record, recordOutcome } from "./lib/clarifications.mjs";
 import { paths } from "./lib/contract.mjs";
@@ -32,7 +34,25 @@ async function uiCode(root) {
 }
 const SPEC = "playwright-tests/acme/tests/ui/contacts/cases.spec.ts";
 const editSpec = (root, from, to) => put(root, SPEC, readFileSync(path.join(root, SPEC), "utf8").replace(from, to));
-const verdict = (root, v) => put(root, `${RESULTS}/playwright-ui/review-findings.md`, `# Review\nVerdict: ${v}\n| # | Severity | File | Line | Rule | Problem | Required fix |\n|---|---|---|---|---|---|---|\n`);
+// The UI reviewer's per-test review.json for round n (G9), checked: `pass` reviews every test ok, anything else gives each a
+// major finding. review.mjs check derives the verdict and stamps it, as the reviewer's own command does.
+const verdict = (root, v, round = 1) => {
+  const p = paths("acme", root);
+  const plan = JSON.parse(readFileSync(path.join(p.productDir, "modules/contacts/ui-code/plan.json"), "utf8"));
+  const bad = { severity: "major", location: "tests/ui/contacts/cases.spec.ts:1", reason: "the test proves something adjacent" };
+  const tests = Object.fromEntries(plan.tests.map((t) => [t.id, { intent: v === "pass" ? "ok" : bad, assertion: "ok", flakiness: "ok", "data-safety": "ok" }]));
+  put(root, `${RESULTS}/playwright-ui/review.json`, JSON.stringify({ module: "contacts", round, tests }));
+  const r = reviewCheck({ root, module: "contacts", productDir: p.productDir, runId: "acme-run-1", pwProject: p.pwProject, k6Project: p.k6Project }, "playwright-ui", { round });
+  assert.equal(r.verdict, v, JSON.stringify(r));
+};
+// The fixer's fix-report.json (G9) answering every blocker/major finding of the round (or healable row): all fixed in the
+// spec when `changed`, else all not-fixed. The orchestration verifies it with fix.mjs check once the fixer's step is done.
+const answer = (root, round, source = "review", changed = false) => {
+  const p = paths("acme", root);
+  const { ids } = requiredEntries({ module: "contacts", productDir: p.productDir, runId: "acme-run-1" }, "playwright-ui", round, source);
+  const entries = ids.map((id) => (changed ? { id, status: "fixed", files: ["tests/ui/contacts/cases.spec.ts"] } : { id, status: "not-fixed", reason: "needs-human", text: "left for a human" }));
+  put(root, `${RESULTS}/playwright-ui/fix-report.json`, JSON.stringify({ module: "contacts", round, source, entries }));
+};
 // A verified triage.json (D-058): no results, known issues or overlay on disk, so the stamp is all nulls and stays current.
 const stamp = { results: null, knownIssues: null, overlay: null };
 const triage = (root, framework, healable, { verified = stamp, cls = "test-bug" } = {}) =>
@@ -60,17 +80,17 @@ test("Playwright UI: build (verified by ui-code.mjs check), review, a failing ga
   assert.equal(review.prompt, "product=acme module=contacts run=acme-run-1 round=1");
   assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps.tests.verified, true, "verified once, when first seen done");
   // the fixer's edit makes the stamps stale: the gate, not the build step, judges it from here on
-  perform(root, "playwright-ui", { step: "fix-1", agent: "pw-ui-fixer" }, () => editSpec(root, "await page.goto('/');", "await page.waitForTimeout(9);"));
-  const fix = perform(root, "playwright-ui", { step: "fix-2", agent: "pw-ui-fixer" }, () => editSpec(root, "await page.waitForTimeout(9);", "await page.goto('/');"));
-  assert.equal(fix.prompt, `product=acme module=contacts findings=${RESULTS}/playwright-ui/gate-findings.md`, "gate findings go to the fixer; no reviewer started");
+  perform(root, "playwright-ui", { step: "fix-1", agent: "pw-ui-fixer" }, () => { editSpec(root, "await page.goto('/');", "await page.waitForTimeout(9);"); answer(root, 1, "review", true); });
+  const fix = perform(root, "playwright-ui", { step: "fix-2", agent: "pw-ui-fixer" }, () => { editSpec(root, "await page.waitForTimeout(9);", "await page.goto('/');"); answer(root, 2, "review", true); });
+  assert.equal(fix.prompt, `product=acme module=contacts findings=${RESULTS}/playwright-ui/gate-findings.md round=2`, "gate findings go to the fixer; no reviewer started");
   assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps["gate-2"].note, "changes-required");
   assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps["review-2"], undefined);
-  perform(root, "playwright-ui", { step: "review-3", agent: "pw-ui-reviewer" }, () => verdict(root, "pass"));
+  perform(root, "playwright-ui", { step: "review-3", agent: "pw-ui-reviewer" }, () => verdict(root, "pass", 3));
 
   const run = perform(root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" }, () => triage(root, "playwright-ui", true));
   assert.equal(run.prompt, "product=acme module=contacts run=acme-run-1 mode=readonly round=1");
-  const heal = perform(root, "playwright-ui", { step: "heal-1", agent: "pw-ui-fixer" });
-  assert.equal(heal.prompt, `product=acme module=contacts triage=${RESULTS}/playwright-ui/triage.json`);
+  const heal = perform(root, "playwright-ui", { step: "heal-1", agent: "pw-ui-fixer" }, () => answer(root, 1, "triage"));
+  assert.equal(heal.prompt, `product=acme module=contacts triage=${RESULTS}/playwright-ui/triage.json round=1`);
   perform(root, "playwright-ui", { step: "run-2", agent: "pw-ui-test-runner-triager" }, () => triage(root, "playwright-ui", false));
 
   const done = go(root, "playwright-ui");
@@ -183,8 +203,8 @@ test("review rounds are bounded: automation still runs the suite", async () => {
   await uiCode(ui.root);
   for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root: ui.root });
   for (const n of [1, 2, 3]) {
-    perform(ui.root, "playwright-ui", { step: `review-${n}`, agent: "pw-ui-reviewer" }, () => verdict(ui.root, "changes-required"));
-    perform(ui.root, "playwright-ui", { step: `fix-${n}`, agent: "pw-ui-fixer" });
+    perform(ui.root, "playwright-ui", { step: `review-${n}`, agent: "pw-ui-reviewer" }, () => verdict(ui.root, "changes-required", n));
+    perform(ui.root, "playwright-ui", { step: `fix-${n}`, agent: "pw-ui-fixer" }, () => answer(ui.root, n));
   }
   perform(ui.root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" });
 });
@@ -230,7 +250,7 @@ test("heal rounds are bounded by limits.heal_rounds", async () => {
   perform(root, "playwright-ui", { step: "review-1", agent: "pw-ui-reviewer" }, () => verdict(root, "pass"));
   for (const n of [1, 2, 3]) {
     perform(root, "playwright-ui", { step: `run-${n}`, agent: "pw-ui-test-runner-triager" }, () => triage(root, "playwright-ui", true));
-    perform(root, "playwright-ui", { step: `heal-${n}`, agent: "pw-ui-fixer" });
+    perform(root, "playwright-ui", { step: `heal-${n}`, agent: "pw-ui-fixer" }, () => answer(root, n, "triage"));
   }
   perform(root, "playwright-ui", { step: "run-4", agent: "pw-ui-test-runner-triager" });
   const done = go(root, "playwright-ui");
@@ -306,4 +326,38 @@ test("clarifications: a row answered by a human meanwhile needs no record; follo
   const done = go(root, "clarifications");
   assert.equal(done.done.outcome, "complete");
   assert.deepEqual([done.done.deferred, done.done.failedRows], [["contacts-3"], []]);
+});
+
+test("a fixer round is verified by fix.mjs check: a missing report fails the step, a lying one too (G9)", async () => {
+  const setup = async () => {
+    const r = startRun();
+    await uiCode(r.root);
+    for (const s of ["scaffold", "pages", "tests"]) step("acme", "playwright-ui", "contacts", s, "done", undefined, { root: r.root });
+    return r.root;
+  };
+  // review round 1 changes-required; the fixer finishes without answering the findings
+  let root = await setup();
+  perform(root, "playwright-ui", { step: "review-1", agent: "pw-ui-reviewer" }, () => verdict(root, "changes-required"));
+  perform(root, "playwright-ui", { step: "fix-1", agent: "pw-ui-fixer" });
+  assert.ok(existsSync(path.join(root, RESULTS, "playwright-ui/fix-snapshot.json")), "the orchestration snapshots before it spawns the fixer");
+  let done = go(root, "playwright-ui");
+  assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "fix-1"]);
+  assert.match(done.done.note, /fix.mjs check failed: fix-report.json is missing/);
+
+  // claims a fix in a file it never changed
+  root = await setup();
+  perform(root, "playwright-ui", { step: "review-1", agent: "pw-ui-reviewer" }, () => verdict(root, "changes-required"));
+  perform(root, "playwright-ui", { step: "fix-1", agent: "pw-ui-fixer" }, () => answer(root, 1, "review", true));
+  done = go(root, "playwright-ui");
+  assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "fix-1"]);
+  assert.match(done.done.note, /did not change this round/);
+
+  // a heal round answers every healable row too
+  root = await setup();
+  perform(root, "playwright-ui", { step: "review-1", agent: "pw-ui-reviewer" }, () => verdict(root, "pass"));
+  perform(root, "playwright-ui", { step: "run-1", agent: "pw-ui-test-runner-triager" }, () => triage(root, "playwright-ui", true));
+  perform(root, "playwright-ui", { step: "heal-1", agent: "pw-ui-fixer" });
+  done = go(root, "playwright-ui");
+  assert.deepEqual([done.done.outcome, done.done.failedStep], ["failed", "heal-1"]);
+  assert.match(done.done.note, /fix-report.json is missing/);
 });

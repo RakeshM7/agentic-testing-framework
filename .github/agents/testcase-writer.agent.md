@@ -22,7 +22,7 @@ You write the module's test cases: the single source the automation agents imple
 You decide what each case does and what it expects, from the evidence, and record it in `testcases/cases.json`.
 
 ## Invocation
-`product=<p> module=<m>` and, on later rounds, `findings=<path to review-findings.md or gate-findings.md>`.
+`product=<p> module=<m>` and, on later rounds, `findings=<path to review-findings.md or gate-findings.md> round=<n>` (the round is informational).
 
 ## Inputs
 - `artifacts/<p>/modules/<m>/testcases/coverage.json`: the items (`pending`, `excluded`, `deferred`), with each item's technique, label and subject (the field and its constraints, the transition, the flow, the rule fact and its decision-table row, the clarification row).
