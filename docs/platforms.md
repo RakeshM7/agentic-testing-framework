@@ -110,6 +110,8 @@ From GitHub's and VS Code's documentation:
 - **VS Code nesting.** Nested subagents need `chat.subagents.allowInvocationsFromSubagents` (max depth 5). Local subagents have no ask-question tool.
 - **Copilot tool aliases.** GitHub custom agents accept the aliases `read`, `edit`, `search`, `execute`, `web`, `agent` and `server/tool` MCP names, and ignore unknown tools. The prompt limit is 30,000 characters.
 - **Copilot hook files.** Copilot CLI reads `.github/hooks/*.json` and also `.claude/settings.json`; the cloud agent reads only `.github/hooks/*.json`.
+  - VS Code's Copilot CLI engine does the same: it labels `.claude/settings.json` "repo settings" and ignores `chat.useClaudeHooks`. On Windows it runs those commands through PowerShell. The generated Claude command therefore avoids bash-only syntax: `${CLAUDE_PROJECT_DIR:-.}` crashed there, and every matched call was "Denied by preToolUse hook from "repo settings" (hook errored)".
+  - Windows PowerShell 5.1 prefixes a BOM when it relays a hook's stdin; the hook entries strip it.
 - **Copilot hook payloads.** PascalCase `PreToolUse` sends snake_case fields with Claude tool names. There is no calling-agent field.
 - **Copilot CLI and cloud agent hook outcomes.** Exit 2, or any non-zero exit from a pre-tool hook, denies the call. A timeout fails open. On the cloud agent, `ask` counts as deny.
 - **VS Code hook outcomes.** These differ from the CLI's:

@@ -14,7 +14,7 @@ try {
   args = hookArgs();
   const adapter = await adapterFor(args.host);
   raw = readFileSync(0, "utf8");
-  payload = JSON.parse(raw);
+  payload = JSON.parse(raw.replace(/^﻿/, "")); // Windows PowerShell 5.1 prefixes a BOM when it relays stdin
   root = adapter.rootOf(payload);
   const call = adapter.normalize(payload, { env: process.env, host: args.host, agent: args.agent });
   if (call.sessionId) {
