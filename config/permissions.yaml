@@ -193,7 +193,7 @@ agents:
     tool_search: allowed       # runs as the main session, so it can ask the human
     filesystem:
       read: ["${product_dir}/**", "config/**"]
-      write: ["${state}/notes.md"]
+      write: ["${state}/notes.md", "config/interview-answers.json"]   # the run-config interview (D-063): `run-config.mjs draft` turns it into config/<product>.yaml
 
   # ======================= Product level (spawned by the main orchestrator) ================================
   knowledge-generator:
@@ -526,7 +526,7 @@ agents:
               "scripts/lib/endpoints.mjs", "scripts/lib/explore.mjs", "scripts/lib/fix.mjs",
               "scripts/lib/foundation.mjs", "scripts/lib/graphql.mjs", "scripts/lib/k6-code.mjs",
               "scripts/lib/knowledge.mjs", "scripts/lib/mcp.mjs", "scripts/lib/openapi.mjs", "scripts/lib/probe.mjs",
-              "scripts/lib/registry.mjs", "scripts/lib/report.mjs", "scripts/lib/requests.mjs",
+              "scripts/lib/registry.mjs", "scripts/lib/report.mjs", "scripts/lib/requests.mjs", "scripts/lib/run-config-draft.mjs",
               "scripts/lib/review.mjs", "scripts/lib/testcases.mjs", "scripts/lib/triage.mjs",
               "scripts/lib/ts-scan.mjs", "scripts/lib/ui-code.mjs", "scripts/lib/verified.mjs",
               "scripts/lib/workload.mjs", "scripts/lib/gate/*.mjs", "scripts/fixtures/**", "schemas/*.json",

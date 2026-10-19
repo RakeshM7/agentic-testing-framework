@@ -24,6 +24,8 @@ Start a run with the **orchestrator-agent** as the session's agent (Claude Code:
 4. Live browser work (exploration, clarifications) needs an interactive Playwright MCP session on Claude Code or VS Code.
 
 ### 2. Prepare the run-config
+**Either let the orchestrator interview you**: run `make interview`. It asks, in one message, for the product name (public or internal tool), its URL and a short description or overview link, the modules to run, links and file paths it can read (documents, sheets; export Office files to .md, .csv or .pdf), and optionally an API host or spec and whether a login is needed. It never asks for a secret. It then writes `config/<slug>.yaml` (always `readonly`), shows you a summary, and starts the run if you say so. If it needs a login it tells you to run `make login` first. **Or write the file by hand**, as below; both end in the same file.
+
 1. Create it: `make config PRODUCT=<slug> URL=<target url>`. It writes `config/<slug>.yaml` from the example, with `product` and `target.url` set and `authorizations.mode: readonly`. [`config/run-config.freshsales.yaml`](config/run-config.freshsales.yaml) is a filled-in sample.
 2. Open the file and fill in what only you know:
    - `modules`: slug, name, `entry_url` and `nav_path` for each. You list the modules, the agents don't pick them;
@@ -38,7 +40,7 @@ Start a run with the **orchestrator-agent** as the session's agent (Claude Code:
 6. Check it: `make validate PRODUCT=<slug>`.
 
 ### 3. Start the run
-1. Run `make run PRODUCT=<slug>`. It opens an **orchestrator-agent** session on Claude Code with the run-config as its first prompt. On another host, start the session yourself (host commands are above) and give it `config/<product>.yaml`, or pass `AGENT="copilot --agent orchestrator-agent"` to make.
+1. Run `make run PRODUCT=<slug>` when you have `config/<slug>.yaml` (hand-written or drafted by `make interview`, which already offers to start the run). It opens an **orchestrator-agent** session on Claude Code with the run-config as its first prompt. On another host, start the session yourself (host commands are above) and give it `config/<product>.yaml`, or pass `AGENT="copilot --agent orchestrator-agent"` to make.
 2. The agent runs `node scripts/run.mjs init` (takes the product lock, freezes permissions), then the guard check (`run.mjs guard-check <product>`). It then loops over `run.mjs next <product>`, starting the right agent for each stage.
 
 #### Pick up from the middle (a later day, after a human step)
@@ -131,7 +133,7 @@ After `npm run build-agents`, start a new session: hosts load agents at session 
 | `.claude/agents/`, `.github/agents/`, `.mcp.json`, `.vscode/mcp.json` | generated per platform by `npm run build-agents`; never edit |
 | `scripts/hooks/` | the one hook entry for every host, plus thin host adapters |
 | `scripts/`, `schemas/` | run state machine, clarifications CSV, ledger, permissions, guard, config validation; JSON Schemas; tests |
-| `config/` | run-config example, `permissions.yaml`, `models.yaml`, `platforms.yaml`, `mcp.yaml` |
+| `config/` | run-config example, `permissions.yaml`, `models.yaml`, `platforms.yaml`, `mcp.yaml`; your `<product>.yaml` run-configs (and the git-ignored `interview-answers.json` the interview leaves) |
 | `docs/` | architecture, contract, conventions |
 | `artifacts/<product>/` | generated product knowledge, module state, run state and per-run results (git-ignored) |
 | `playwright-tests/<product>/`, `k6-tests/<product>/` | generated test projects |

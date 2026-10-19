@@ -54,6 +54,7 @@ Working files under `modules/` always represent the latest state and are overwri
 ## Flow
 
 ```
+(no config yet: orchestrator-agent interviews the human and `run-config.mjs draft` writes a readonly config/<product>.yaml, D-063)
 config ──► run.mjs init
 main orchestrator:
   1 knowledge-generator, product pass -> artifacts/<product>/knowledge/{overview,glossary,sources}.md   (built)

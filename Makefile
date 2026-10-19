@@ -2,6 +2,7 @@
 #
 #   make setup                                        install dependencies and a browser
 #   make config PRODUCT=acme-crm URL=https://...      create config/acme-crm.yaml from the example
+#   make interview                                    or: the orchestrator asks a few questions and writes the config for you
 #   make login  PRODUCT=acme-crm                      log in once in a browser and save the session
 #   make validate PRODUCT=acme-crm                    check the run-config
 #   make check                                        drift check + tests (what CI runs)
@@ -28,10 +29,10 @@ STAGES   = knowledge module-knowledge playwright-repo explore clarifications tes
 CONFIG  = config/$(PRODUCT).yaml
 AUTH    = playwright-tests/$(PRODUCT)/.auth/state.json
 
-.PHONY: help setup config login validate build-agents check test run resume status next explore clarifications testcases automate k6 report approve
+.PHONY: help setup config interview login validate build-agents check test run resume status next explore clarifications testcases automate k6 report approve
 
 help:
-	@echo "make setup | config | login | validate | build-agents | check | test"
+	@echo "make setup | config | interview | login | validate | build-agents | check | test"
 	@echo "make run | resume | status | next | explore | clarifications | testcases | approve | automate | k6 | report"
 	@echo "config, login and validate need PRODUCT=<slug>; config also needs URL=<target url>"
 
@@ -45,9 +46,14 @@ require-product:
 config: require-product
 	@test -n "$(URL)" || { echo "Set URL=<target url>, e.g. make config PRODUCT=$(PRODUCT) URL=https://crm.example.com"; exit 1; }
 	@test ! -e "$(CONFIG)" || { echo "$(CONFIG) already exists; edit it instead"; exit 1; }
-	sed -e 's|^product:.*|product: $(PRODUCT)|' -e 's|^  url:.*|  url: $(URL)|' config/run-config.example.yaml > $(CONFIG)
+	sed -e 's|^product:.*|product: $(PRODUCT)|' -e 's|^  url:.*|  url: $(URL)|' -e 's|^  name: Acme CRM|  name: $(PRODUCT)|' config/run-config.example.yaml > $(CONFIG)
 	@echo "Created $(CONFIG). Still to fill in by hand: modules, knowledge.references, testcases.output_format."
 	@echo "authorizations.mode stays readonly; set full-run yourself only for a target you are authorized to test."
+
+# Opens an orchestrator-agent session that interviews you (a few questions, one message) and drafts config/<product>.yaml
+# (readonly) through scripts/run-config.mjs draft, then offers to start the run. Needs no PRODUCT.
+interview:
+	$(AGENT) "I have no run-config yet. Interview me for it (short, one message of questions), draft it with node scripts/run-config.mjs draft, show me the summary, then start the run if I say so."
 
 # Opens a browser: log in yourself (CAPTCHA/MFA included), then close the window to save the session.
 login: require-product
@@ -82,7 +88,7 @@ next: require-product
 	node scripts/run.mjs next $(PRODUCT)
 
 run: require-product
-	@test -f "$(CONFIG)" || { echo "Run make config PRODUCT=$(PRODUCT) URL=<target url> first"; exit 1; }
+	@test -f "$(CONFIG)" || { echo "No $(CONFIG). Run make config PRODUCT=$(PRODUCT) URL=<target url>, or make interview to be asked instead"; exit 1; }
 	$(AGENT) "Start or resume the run for $(CONFIG): node scripts/run.mjs init $(CONFIG) (add --resume when a run is active), then follow run.mjs next. Finished stages stay done."
 
 resume: require-product

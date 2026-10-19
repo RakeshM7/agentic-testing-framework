@@ -19,6 +19,10 @@ config/mcp.yaml             MCP servers
 
 A body can share a fragment: a line `<!-- include: _shared/<file>.md -->` is replaced at build time by `agents/_shared/<file>.md` (the three fixers share `_shared/fixer.md`, D-059), so the generated files hold the expanded text. To change an agent, edit `agents/<name>.md` (body, `description`, `color`, `user_invocable`) and rebuild. To change what it may do, edit `config/permissions.yaml`, a human decision (D-013). Start a new session afterwards, since every host loads agents at session start.
 
+## Starting a session
+
+Start the **orchestrator-agent** session with a run-config path, or with none: it then interviews you (a few questions in one message) and drafts `config/<product>.yaml` as `readonly` (D-063). `make interview` and `make run` open that session on Claude Code. On other hosts, start it yourself and say you have no run-config yet. The interview needs a host where the agent can ask you questions. On one that can't, write the file by hand.
+
 ## Host matrix
 
 VS Code Copilot Chat can run a chat on two engines. They behave differently for the guard, so they have separate columns (D-035, D-039).

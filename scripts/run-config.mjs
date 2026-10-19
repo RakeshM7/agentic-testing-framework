@@ -3,15 +3,17 @@
 //   node scripts/run-config.mjs validate <config.yaml>   -> normalized JSON, exit 1 with errors
 // Exports validateRunConfig for run.mjs and tests. See config/run-config.example.yaml for the format.
 
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import { SLUG_RE } from "./lib/contract.mjs";
 import { UNRESOLVED_POLICIES } from "./lib/clarifications.mjs";
+import { VISIBILITIES, buildDraft } from "./lib/run-config-draft.mjs";
 
 const MODES = ["readonly", "full-run"];
 const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
-const KNOWN = ["product", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
+const KNOWN = ["product", "about", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
 const posInt = (v) => Number.isInteger(v) && v > 0;
 const strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
 const httpUrl = (v) => {
@@ -89,6 +91,14 @@ export function validateRunConfig(cfg) {
   for (const k of Object.keys(cfg)) if (!KNOWN.includes(k)) errors.push(`${k}: unknown top-level key`);
 
   if (typeof cfg.product !== "string" || !SLUG_RE.test(cfg.product)) errors.push("product: required, lowercase kebab-case (folder name under artifacts/, playwright-tests/, k6-tests/)");
+  if (cfg.about !== undefined) {
+    if (!isMap(cfg.about)) errors.push("about: must be a mapping {name?, visibility?, description?}");
+    else {
+      for (const k of Object.keys(cfg.about)) if (!["name", "visibility", "description"].includes(k)) errors.push(`about.${k}: unknown key`);
+      if (cfg.about.visibility !== undefined && !VISIBILITIES.includes(cfg.about.visibility)) errors.push(`about.visibility: '${cfg.about.visibility}' not in [${VISIBILITIES}]`);
+      for (const k of ["name", "description"]) if (cfg.about[k] !== undefined && typeof cfg.about[k] !== "string") errors.push(`about.${k}: must be a string`);
+    }
+  }
   if (typeof cfg.target?.url !== "string") errors.push("target.url: required string");
   else {
     try {
@@ -188,6 +198,7 @@ export function validateRunConfig(cfg) {
     errors,
     normalized: {
       ...cfg,
+      about: { name: cfg.product, visibility: "public", description: "", ...cfg.about },
       target: { api_urls: [], ...cfg.target },
       api: { ...API_DEFAULTS, ...cfg.api },
       feature: { description: "", requirement_docs: [], ...cfg.feature },
@@ -206,10 +217,47 @@ export function validateRunConfig(cfg) {
   };
 }
 
+// The interview's output (D-063): answers JSON -> a validated config/<product>.yaml, readonly, never over an existing file.
+export function draftRunConfig(answers, { root = process.cwd() } = {}) {
+  const draft = buildDraft(answers, { root });
+  if (!draft.errors.length) {
+    const { errors } = validateRunConfig(draft.config);
+    draft.errors.push(...errors);
+  }
+  if (draft.errors.length) return draft;
+  const header = [
+    `# Run-config for ${draft.config.about.name}, drafted from the orchestrator's interview.`,
+    "# Everything not listed here uses the defaults of config/run-config.example.yaml (see it for every option).",
+    "# authorizations.mode stays readonly: set full-run yourself, only for a target you are authorized to test.",
+    "# Never put secret values in this file, only paths to files you prepared.",
+    "",
+  ].join("\n");
+  const out = path.resolve(root, draft.file);
+  mkdirSync(path.dirname(out), { recursive: true });
+  writeFileSync(out, header + yaml.dump(draft.config, { lineWidth: 120, noRefs: true }), { flag: "wx" });
+  return draft;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [cmd, file] = process.argv.slice(2);
+  if (cmd === "draft" && file) {
+    let answers;
+    try {
+      answers = JSON.parse(readFileSync(file, "utf8"));
+    } catch (e) {
+      console.error(`- cannot read answers from ${file}: ${e.message}`);
+      process.exit(1);
+    }
+    const d = draftRunConfig(answers);
+    if (d.errors.length) {
+      console.error(d.errors.map((e) => `- ${e}`).join("\n"));
+      process.exit(1);
+    }
+    console.log(JSON.stringify({ file: d.file, product: d.product, modules: d.config.modules.map((m) => m.slug), warnings: d.warnings, next: d.next }, null, 2));
+    process.exit(0);
+  }
   if (cmd !== "validate" || !file) {
-    console.error("usage: run-config.mjs validate <config.yaml>");
+    console.error("usage: run-config.mjs validate <config.yaml> | draft <answers.json>");
     process.exit(2);
   }
   const { errors, normalized } = validateRunConfig(yaml.load(readFileSync(file, "utf8")));

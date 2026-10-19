@@ -3,12 +3,21 @@
 # Copy this file (e.g. to config/<product>.yaml), fill it in, then:
 #   node scripts/run.mjs init config/<product>.yaml
 # Validate without starting a run:  node scripts/run-config.mjs validate config/<product>.yaml
+# Or skip this file: start the orchestrator-agent with no config (make interview) and answer its few questions; it
+# drafts config/<product>.yaml (readonly) from your answers. Edit the result by hand any time.
 #
 # Never put secret VALUES in this file -- only paths to files a human prepared.
 
 # Product slug: the folder name under artifacts/, playwright-tests/ and k6-tests/. All knowledge, clarifications
 # and run state for this product accumulate under artifacts/<product>/ across runs.
 product: acme-crm
+
+# Optional: what the product is. `visibility: internal` tells the knowledge-generator not to search the web for it
+# (only your references and the live product are used); default public.
+about:
+  name: Acme CRM
+  visibility: public            # public | internal
+  description: ""               # a sentence or two; most useful for an internal tool
 
 target:
   url: https://crm.example.com

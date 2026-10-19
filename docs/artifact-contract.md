@@ -39,7 +39,8 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     run.json                          # the current (or last) run: id, mode, modules, stage status
     lock.json                         # present only while a run is active -- one active run per product
     ledger.jsonl                      # entities created in the target, every entry tagged with runId
-    config.resolved.json              # the validated run-config the current run started from
+    config.resolved.json              # the validated run-config the current run started from (hand-written, or drafted from
+                                      # the orchestrator's interview by `run-config.mjs draft`, D-063; `about.visibility` included)
     permissions.resolved.json         # frozen copy of config/permissions.yaml for the current run
     orchestration/<domain>-<module>.json   # domain orchestrators' loop counters (review/heal rounds)
     guard-check/                      # guard liveness records for the current session (run.mjs guard-check)

@@ -116,6 +116,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-060 | Orchestrators are pure loops over script decisions: structured worker requests, once-limits in state, serialized repo-owner, report-and-end on awaiting approval, failed review blocks dependants, run.mjs next returns agent and prompt | Accepted | 2026-10-19 |
 | D-061 | The report is rendered from a schema-validated report.json; the agent writes only a cited narrative | Accepted | 2026-10-19 |
 | D-062 | Feedback resolutions are script-checked: per-finding resolution, test per code change, decision-aware triage | Accepted | 2026-10-19 |
+| D-063 | The orchestrator can draft the run-config from a one-message interview; the script writes it, readonly | Accepted | 2026-10-19 |
 
 ## Decisions
 
@@ -1292,3 +1293,17 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - The old write list missed most framework files since G0, so the agent could not fix what feedback was about. Widening it must not widen the safety surface (D-013: nothing safety-related moves).
 - **Affects:** `scripts/feedback.mjs`, `scripts/lib/feedback.mjs`, `scripts/feedback.test.mjs`, `agents/feedback-implementor-agent.md`, `config/permissions.yaml`, `scripts/guard.test.mjs`, `docs/conventions.md`
 - **Confirmed by the user on:** 2026-10-17. This extends D-002, D-013 and D-049 without weakening them.
+
+### D-063 · The orchestrator can draft the run-config from a one-message interview; the script writes it, readonly
+- **Status:** Accepted · **Date:** 2026-10-19 · **Source:** conversation with the user, 2026-10-19. They wanted the run-config populated by the orchestrator through a short interview, with hand-editing still possible, and as little friction as possible.
+- **Decision:**
+  - **Two ways in, one file.** A path to a hand-written `config/<product>.yaml` works as before. With no path (`make interview`), `orchestrator-agent` asks six things in one message: product name and public or internal, URL plus a description or overview link, modules, references (links and file paths), an optional API host or spec, an optional login. Only the first three are required. It never asks a second round except to fix a reported error, and never for a secret value (D-012).
+  - **The script writes the config.** The agent records the answers in `config/interview-answers.json` and runs `node scripts/run-config.mjs draft <answers>`. `scripts/lib/run-config-draft.mjs` builds the config and `validateRunConfig` checks it before anything is written. Links go to `knowledge.references`, local files (which must exist) to `feature.requirement_docs` so their content is tracked, API specs and hosts to `api.specs` and `target.api_urls`, and each module gets `nav_path: [<name>]`. Office files are flagged, because the agents read text, .md, .csv and .pdf. The script never overwrites an existing config.
+  - **Always readonly.** A drafted config has `authorizations.mode: readonly`; the agent never offers or sets `full-run`, so D-004 is unchanged. A login the human needs is a `make login` step (their browser, their MFA), not an interview answer.
+  - **`about`.** The run-config gains an optional `about: {name, visibility: public|internal, description}`. `internal` makes the knowledge-generator skip web research for the product and use only the configured inputs and the live product.
+  - **Permissions.** `orchestrator-agent` may write one more file, `config/interview-answers.json` (git-ignored). Nothing else moves; D-013's human-only files stay human-only.
+- **Why:**
+  - Writing a run-config by hand is the first thing a new user meets, and most of it is answers they can give in a sentence each. A script that validates and writes keeps the interview's output as trustworthy as a hand-written file.
+  - Public and internal tools need different research: an internal tool has nothing on the web to cite, and guessing would put invented facts in the knowledge base (D-015).
+- **Affects:** `scripts/run-config.mjs`, `scripts/lib/run-config-draft.mjs`, `scripts/run-config.test.mjs`, `agents/orchestrator-agent.md`, `agents/knowledge-generator.md`, `config/permissions.yaml`, `config/run-config.example.yaml`, `Makefile`
+- **Confirmed by the user on:** 2026-10-19. This extends D-004 (readonly stays the default and is never inferred), D-012 and D-013 (one extra write path, no safety file) without weakening them.
