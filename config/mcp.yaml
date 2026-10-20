@@ -5,6 +5,9 @@
 # `browser_server` is the server whose browser_* tools an agent gets when config/permissions.yaml grants it
 # `live_target.browser`. Keep its --storage-state equal to the run-config's authorizations.session_state_file when
 # authorizations.authenticated_crawl is true (orchestrator-agent checks this before a run).
+#
+# `--browser chromium` runs Playwright's own Chromium, so no system Chrome is needed; the doctor checks that the build
+# this @playwright/mcp version needs is downloaded (`make doctor` installs it).
 
 browser_server: playwright
 
@@ -14,6 +17,8 @@ servers:
     args:
       - "-y"
       - "@playwright/mcp@0.0.83"
+      - "--browser"
+      - "chromium"
       - "--isolated"
       - "--storage-state"
       - "playwright-tests/ami/.auth/state.json"

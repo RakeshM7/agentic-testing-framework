@@ -123,6 +123,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-067 | The endpoint catalogue is its own module stage, api-discovery, started by orchestrator-agent | Accepted | 2026-10-20 |
 | D-068 | k6 workloads are built only from human-approved @performance test cases, skip known functional failures, and keep D-057's script-built rules | Accepted | 2026-10-20 |
 | D-069 | A saved session passes when present (single sign-on); the human signs in in a real Edge window that make login, or the orchestrator after the human confirms, opens through run.mjs login | Accepted | 2026-10-20 |
+| D-070 | The browser server runs Playwright's own Chromium (`--browser chromium`), not a system Chrome | Accepted | 2026-10-20 |
 
 ## Decisions
 
@@ -1411,3 +1412,16 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **D-066:** extended, not superseded. Its "a login is a `make login` step" becomes: the login is the human's, through `make login` or the orchestrator's `run.mjs login` after the human confirms. The interview still never asks for a secret, and a drafted config stays `readonly`.
 - **Affects:** `scripts/lib/doctor.mjs`, `scripts/doctor.mjs`, `scripts/doctor.test.mjs`, `scripts/run.mjs`, `agents/orchestrator-agent.md`, `Makefile`, `package.json`, `scripts/lib/login.mjs`, `scripts/login.test.mjs`, `scripts/lib/run-config-draft.mjs`, `agents/module-explorer.md`, `agents/clarification-explorer.md`
 - **Supersedes:** D-064 (only the session check and the login browser; the rest is restated as in force) · **Confirmed by the user on:** 2026-10-20 (the session check relaxed with hard expiry kept, and the Edge login opened by both `make login` and the orchestrator after the human confirms). The 2-minute option, the warning when no target cookie is present, the `login` doctor group and the fallback to Chrome and Chromium are design choices the main session made the same day. This extends D-002, D-004 (the login changes nothing in the product; readonly is untouched) and D-012 (no secret reaches an agent) without weakening them.
+
+### D-070 · The browser server runs Playwright's own Chromium (`--browser chromium`), not a system Chrome
+- **Status:** Accepted · **Date:** 2026-10-20 · **Source:** conversation with the user, 2026-10-20. On another Windows machine, explore and clarifications were blocked because the browser server launched Google Chrome (Playwright MCP's default when no `--browser` is given) and Chrome was not installed. They asked for the browser server to use the browser Playwright installs instead.
+- **Decision:**
+  - `config/mcp.yaml` passes `--browser chromium` to `@playwright/mcp`, so the browser server needs no system browser.
+  - The doctor's existing `mcp-browser` check covers it: it reads the Chromium build that the pinned `@playwright/mcp` version's own Playwright needs (from its `browsers.json`), which can differ from the product repo's Playwright, and `--fix` installs it with `npx -y playwright@<that version> install chromium`.
+  - The login window is unchanged (D-069): it still opens Edge, else Chrome, else Playwright's Chromium.
+- **Why:**
+  - A machine without Chrome (common where only Edge ships) could not explore at all, and the fix depended on an install outside the framework.
+  - Playwright's Chromium is downloaded by the doctor, so every machine gets the same browser build for the pinned server version.
+  - Risk accepted: an identity provider that binds a session to a managed device may refuse the saved session in Chromium; then `--browser msedge` is the alternative.
+- **Affects:** `config/mcp.yaml`, `.mcp.json`, `.vscode/mcp.json` (generated)
+- **Confirmed by the user on:** 2026-10-20. This extends D-069 (the doctor browser check it restates from D-064 is unchanged in code) without superseding it.
