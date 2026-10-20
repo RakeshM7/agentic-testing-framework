@@ -770,6 +770,51 @@ test("approve and import --approved through make, shell globs, expansions, print
     assert.equal(allowed(FULL.root, sh(agent, c)), true, `${agent ?? "(no agent)"}: ${c}`);
 });
 
+test("make approve: a separator inside quotes is text, not a new command; an unquoted chain or a substitution in quotes is denied", () => {
+  const unnamed = (host, command) => toolCall({ host, kind: "shell", tool: "bash", command });
+  const callers = (c) => [
+    ...[RO, FULL].flatMap(({ root }) => ["orchestrator-agent", "feedback-implementor-agent", undefined].map((agent) => [`${agent ?? "(no agent)"}`, root, sh(agent, c)])),
+    ...["copilot-cli", "vscode", "copilot-cloud"].map((host) => [host, FULL.root, unnamed(host, c)]),
+  ];
+  for (const c of [
+    "true | make approve PRODUCT=acme MODULE=contacts",
+    "ls; make approve PRODUCT=acme MODULE=contacts",
+    "ls && make approve",
+    "ls || make approve",
+    "ls\nmake approve",
+    "ls & make import PRODUCT=acme MODULE=contacts APPROVED=yes",
+    "echo \"$(make approve)\"",
+    "echo \"`make approve`\"",
+    "echo \"x $(true; make approve)\"",
+    "echo \\\"; make approve \\\"",
+    "echo \"a\\\"; make approve\"",
+    "echo 'x' | make approve",
+    "bash -c \"ls; make approve\"",
+    "echo \"ls; make approve\" | sh",
+    "ba''sh -c 'ls; make approve'",
+    "/bin/s? -c 'ls; make approve'",
+    "cmd /c echo 'x & make approve'",
+    "node -e \"require('child_process').execSync('ls; make approve')\"",
+    "git rebase --exec \"ls; make approve\" HEAD~1",
+    // the quoted string itself is the command a runner starts, with no separator before make
+    "bash -c \"make approve PRODUCT=acme MODULE=contacts\"",
+    "sh -c 'make import PRODUCT=acme MODULE=contacts APPROVED=yes'",
+    "eval \"make approve PRODUCT=acme\"",
+  ])
+    for (const [who, root, tc] of callers(c)) assert.equal(allowed(root, tc), false, `${who}: ${c}`);
+  for (const c of [
+    "grep -n \"a\\|make approve\" scripts/guard.test.mjs",
+    "grep -n 'a\\|make approve' scripts/guard.test.mjs",
+    "echo \"x; make approve\"",
+    "echo 'x; make approve'",
+    "echo \"(make approve)\"",
+    "echo '$(make approve)'",
+    "git commit -m 'docs: a && make approve explained'",
+    "git commit -m \"docs: a || make approve explained\"",
+  ])
+    for (const agent of [undefined, "feedback-implementor-agent"]) assert.equal(allowed(FULL.root, sh(agent, c)), true, `${agent ?? "(no agent)"}: ${c}`);
+});
+
 test("worker requests (G10, D-060): only the askers run requests.mjs add; nobody writes requests.json; the repo owner reads every module's", () => {
   const cmdOk = (agent, cmd) => allowed(FULL.root, sh(agent, cmd));
   const R = "artifacts/acme/results/acme-run-1/contacts";
