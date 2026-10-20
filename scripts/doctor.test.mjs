@@ -51,20 +51,25 @@ test("a Playwright update whose browser build was never downloaded is caught (th
   assert.equal(browserBuilds(path.join(m.root, "nowhere"), ["chromium"], m.opts), null);
 });
 
-test("base and codegen: Node version, pinned framework dependencies, the login browser with its install as autofix", async () => {
+test("base and login: Node version, pinned framework dependencies, and the login browser (Edge, else Chrome, else Playwright's Chromium with its install as autofix)", async () => {
   const m = machine();
   put(m.root, "package.json", JSON.stringify({ dependencies: { "js-yaml": "^4.1.0" }, devDependencies: { playwright: "1.64.1" } }));
   put(m.root, "node_modules/js-yaml/package.json", JSON.stringify({ version: "4.1.0" }));
   put(m.root, "node_modules/playwright/package.json", JSON.stringify({ version: "1.63.0" }));
   m.core(".");
-  let checks = await runChecks(cfg(), ["base", "codegen"], { ...m.opts, nodeVersion: "18.20.0" });
+  const noBranded = { ...m.opts, exists: () => false };
+  let checks = await runChecks(cfg(), ["base", "login"], { ...noBranded, nodeVersion: "18.20.0" });
   assert.deepEqual(ids(checks), { node: "fail", "framework-deps": "fail", "login-browser": "fail" });
   assert.match(checks.find((c) => c.id === "framework-deps").detail, /playwright is 1\.63\.0, package\.json pins 1\.64\.1/);
   assert.deepEqual(checks.find((c) => c.id === "login-browser").autofix, { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: m.root });
   put(m.root, "node_modules/playwright/package.json", JSON.stringify({ version: "1.64.1" }));
   m.installed("chromium", "1248");
-  checks = await runChecks(cfg(), ["base", "codegen"], m.opts);
-  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "login-browser": "ok" });
+  checks = await runChecks(cfg(), ["base", "login"], noBranded);
+  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "login-browser": "warn" });
+  assert.match(checks.find((c) => c.id === "login-browser").detail, /some single sign-on providers block/);
+  const only = (p) => ({ ...m.opts, exists: (x) => x === p });
+  assert.equal(ids(await runChecks(cfg(), ["login"], only("/opt/google/chrome/chrome")))["login-browser"], "warn");
+  assert.deepEqual(await runChecks(cfg(), ["login"], only("/opt/microsoft/msedge/msedge")), [{ group: "login", id: "login-browser", ok: true, level: undefined, detail: "the login opens Microsoft Edge" }]);
 });
 
 test("browser: the MCP server's channel must be installed, and its --storage-state must be the run's session", async () => {
@@ -104,16 +109,27 @@ test("browser: a bundled-chromium MCP server is checked against the build its ca
   assert.equal(ids(checks)["mcp-browser"], "ok");
 });
 
-test("session: missing, cookie-less, expired and soon-expiring sessions; missing credential files", async () => {
+test("session: present is enough (no target cookie only warns, for single sign-on); missing, empty or expired fails; soon-expiring warns; missing credential files", async () => {
   const m = machine();
   const auth = { authenticated_crawl: true, session_state_file: "s.json" };
   const save = (cookies) => put(m.root, "s.json", JSON.stringify({ cookies, origins: [] }));
   const at = (h) => NOW / 1000 + h * 3600;
   assert.equal(ids(await runChecks(cfg(auth), ["session"], m.opts)).session, "fail");
-  save([{ name: "sid", domain: ".other.test", expires: at(100) }]);
-  assert.match((await runChecks(cfg(auth), ["session"], m.opts))[0].detail, /no cookie for app\.acme\.test/);
-  save([{ name: "sid", domain: ".acme.test", expires: at(-1) }]);
-  assert.match((await runChecks(cfg(auth), ["session"], m.opts))[0].detail, /has expired/);
+  save([]);
+  assert.match((await runChecks(cfg(auth), ["session"], m.opts))[0].detail, /s\.json is empty \(no cookie, no local storage\)/);
+  put(m.root, "s.json", JSON.stringify({ cookies: [], origins: [{ origin: "https://app.acme.test", localStorage: [{ name: "msal.token", value: "x" }] }] }));
+  assert.equal(ids(await runChecks(cfg(auth), ["session"], m.opts)).session, "warn", "a token in local storage only (single sign-on)");
+  save([{ name: "ESTSAUTH", domain: ".login.microsoftonline.com", expires: at(100) }]);
+  let check = (await runChecks(cfg(auth), ["session"], m.opts))[0];
+  assert.deepEqual([check.ok, check.level], [true, "warn"], "no cookie on the target's host passes with a warning");
+  assert.match(check.detail, /no cookie for app\.acme\.test \(usual after a single sign-on login\): the login is confirmed when a stage opens the target/);
+  assert.match(check.fix, /if a stage meets a sign-in page, make login PRODUCT=acme/);
+  save([{ name: "ESTSAUTH", domain: ".login.microsoftonline.com", expires: at(-1) }]);
+  assert.match((await runChecks(cfg(auth), ["session"], m.opts))[0].detail, /every cookie in the saved session has expired/);
+  save([{ name: "sid", domain: ".acme.test", expires: at(-1) }, { name: "ESTSAUTH", domain: ".login.microsoftonline.com", expires: at(100) }]);
+  check = (await runChecks(cfg(auth), ["session"], m.opts))[0];
+  assert.equal(check.ok, false, "every target cookie expired still fails, whatever else lives");
+  assert.match(check.detail, /every cookie for app\.acme\.test in the saved session has expired/);
   save([{ name: "sid", domain: "app.acme.test", expires: at(2) }]);
   assert.equal(ids(await runChecks(cfg(auth), ["session"], m.opts)).session, "warn");
   save([{ name: "sid", domain: "app.acme.test", expires: -1 }, { name: "x", domain: ".acme.test", expires: at(200) }]);
@@ -196,7 +212,7 @@ test("run: stage start needs this session's dependency record; run.mjs doctor re
   assert.ok(r.checks.length);
   assert.ok(r.checks.every((c) => !("autofix" in c)));
   assert.deepEqual(r.blockedStages, ["k6"]); // no k6; the product repo is not built yet, which the run itself does
-  assert.ok(!r.checks.some((c) => c.group === "codegen"));
+  assert.ok(!r.checks.some((c) => c.group === "login"), "the run never checks the login browser");
   assert.ok(!(await setStage(product, "knowledge", null, "start", undefined, { root })).errors);
   assert.equal(doctorStatus(product, "playwright-ui", root).ready, true);
   put(root, "playwright-tests/acme/package.json", "{}"); // the playwright-repo stage built it: the record is stale for the repo
@@ -208,11 +224,11 @@ test("run: stage start needs this session's dependency record; run.mjs doctor re
 });
 
 test("doctor.mjs: scope, --fix runs each distinct install once then checks again, exit codes, --warn-only", async () => {
-  assert.deepEqual(scope({ for: "login" }).groups, ["base", "codegen"]);
+  assert.deepEqual(scope({ for: "login" }).groups, ["base", "login"]);
   assert.deepEqual(scope({ stage: "k6" }).groups, ["base", "k6", "target"]);
   assert.match(scope({ stage: "nope" }).error, /unknown stage/);
   const step = { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: "/r" };
-  const bad = [{ group: "codegen", id: "a", ok: false, level: "fail", detail: "x", autofix: step }, { group: "repo", id: "b", ok: false, level: "fail", detail: "y", autofix: { steps: [step, { cmd: "npm", args: ["install"], cwd: "/p" }] } }];
+  const bad = [{ group: "login", id: "a", ok: false, level: "fail", detail: "x", autofix: step }, { group: "repo", id: "b", ok: false, level: "fail", detail: "y", autofix: { steps: [step, { cmd: "npm", args: ["install"], cwd: "/p" }] } }];
   assert.equal(autofixSteps(bad).length, 2);
   assert.equal(failures(bad, ["repo"]).length, 1);
 
