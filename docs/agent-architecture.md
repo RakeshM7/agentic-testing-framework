@@ -16,12 +16,12 @@ Roster v3 ([`decisions.md`](decisions.md) D-043): one fixer per automation domai
 
 | Domain | Orchestrator | Workers |
 |---|---|---|
-| Product level | `orchestrator-agent` (layer 0) | `knowledge-generator`, `module-explorer`, `report-generator` |
+| Product level | `orchestrator-agent` (layer 0) | `knowledge-generator`, `module-explorer`, `api-discoverer` (the endpoint catalogue, its own api-discovery stage, D-067), `report-generator` |
 | Clarification | `clarification-orchestrator` | `clarification-explorer` |
 | Test cases | `testcase-orchestrator` | `testcase-writer`, `testcase-reviewer` |
 | Shared Playwright repo | — (spawned by `orchestrator-agent` for the skeleton, by either Playwright orchestrator for a change request, one domain at a time) | `pw-repo-owner` (sole owner of package.json, playwright.config.ts, tsconfig, .env.example, .gitignore, README, utils/shared/, rendered from templates with its cited overlay) |
 | Playwright UI | `playwright-ui-orchestrator` | `pw-ui-scaffolder` (the UI foundation's cited overlay, rendered from templates), `pw-ui-pom-writer` (the page objects `ui-code.mjs` requires), `pw-ui-tests-writer` (the step bodies of the generated skeleton), `pw-ui-reviewer`, `pw-ui-fixer`, `pw-ui-test-runner-triager` |
-| Playwright API | `playwright-api-orchestrator` | `api-discoverer`, `api-test-planner`, `pw-api-scaffolder` (the API foundation's cited overlay, rendered from templates), `pw-api-client-writer` (a cited overlay and composite helpers over the clients `api-code.mjs` generates), `pw-api-tests-writer` (the payload and glue slots of the tests `api-code.mjs` generates, one per plan scenario), `pw-api-reviewer`, `pw-api-fixer`, `pw-api-test-runner-triager` |
+| Playwright API | `playwright-api-orchestrator` | `api-test-planner`, `pw-api-scaffolder` (the API foundation's cited overlay, rendered from templates), `pw-api-client-writer` (a cited overlay and composite helpers over the clients `api-code.mjs` generates), `pw-api-tests-writer` (the payload and glue slots of the tests `api-code.mjs` generates, one per plan scenario), `pw-api-reviewer`, `pw-api-fixer`, `pw-api-test-runner-triager` |
 | K6 | `k6-orchestrator` | `k6-workload-designer` (a cited overlay over the workload `workload.mjs` builds), `k6-lib-writer` (the k6 lib's cited overlay, rendered from templates), `k6-script-writer` (the data slots of the scripts `k6-code.mjs` generates, one per workload scenario), `k6-reviewer`, `k6-fixer`, `k6-runner-triager` |
 | Framework maintenance | — | `feedback-implementor-agent` (existing; fixes agent prompts/framework from `feedback/`) |
 
@@ -54,13 +54,17 @@ Working files under `modules/` always represent the latest state and are overwri
 ## Flow
 
 ```
-(no config yet: orchestrator-agent interviews the human and `run-config.mjs draft` writes a readonly config/<product>.yaml, D-063)
-config ──► run.mjs init
-main orchestrator:
+(no config yet: orchestrator-agent interviews the human, steps included, and `run-config.mjs draft` writes a readonly config/<product>.yaml, D-063/D-066)
+(a config path: the step menu, pre-selected from its `steps`; `run-config.mjs set` rewrites only that key, D-066)
+config ──► run.mjs init (freezes steps + caseTypes) ──► guard-check, doctor ──► run.mjs prereqs
+        per module gap: Explore · Ask clarification questions · Generate test cases · Describe scenarios to explore
+        (run.mjs scenarios) · Use my test case file (testcases.mjs import) · Skip this step for this run (run.mjs steps)
+main orchestrator (only the chosen steps and the stages they need run; the rest are not-chosen, D-066):
   1 knowledge-generator, product pass -> artifacts/<product>/knowledge/{overview,glossary,sources}.md   (built)
     knowledge-generator, one module pass per module -> knowledge/modules/<m>/{overview,glossary,notes,sources}.md
     (cited sources from a product-wide registry; reused unless inputs changed; live product only if needed)
-  2 module-explorer  (per module, in config order; modules come from the run-config)
+  2 module-explorer  (per module, in config order; modules come from the run-config; only the human's scenarios when
+                      the module has scenarios.json)
         -> artifacts/<product>/modules/<m>/explore/{sitemap.json, pages/, flows/, module-summary.md, interactions + network inventory}
         -> artifacts/<product>/modules/<m>/clarifications.csv   (product-level; new rows for unconfirmed behavior)
   3 clarification-orchestrator (per module):
@@ -70,7 +74,9 @@ main orchestrator:
                                [script] no valid record -> one retry, then blocked; follow-ups wait for the next run
         then clarifications-summary.md, rendered from the CSV by the script
         [gate] unresolved rows: human edits the Answer column, re-invoke resumes
-  4 testcase-orchestrator: testcase-writer (cases.json; testcases.mjs build/check) -> gate script | testcase-reviewer (a verdict per case; verdict derived) -> testcase-writer (max N rounds); then a human approves cases (approval.csv + testcases.mjs approve), and only approved cases are automated (D-053)
+    api-discoverer (per module, stage api-discovery, when API or performance cases or tests are needed, D-067)
+        -> artifacts/<product>/modules/<m>/api/{discovered-endpoints,coverage,drift}.json (endpoints.mjs)
+  4 testcase-orchestrator: testcase-writer (cases.json: UI cases, plus @api / @performance per the run's case types; import mode converts or links the human's own cases; testcases.mjs build/check) -> gate script | testcase-reviewer (a verdict per case; verdict derived) -> testcase-writer (max N rounds); then a human approves cases (approval.csv + testcases.mjs approve), and only approved cases of a stage's type are automated (D-053, D-066)
   5 pw-repo-owner (once per product, any time before step 6): shared repo skeleton for ui + api, rendered from templates/ (foundation.mjs, D-054)
   6 playwright-ui-orchestrator and playwright-api-orchestrator (independent; both need testcases + the repo)
         build:  scaffolder (cited overlay -> foundation.mjs render + check; skipped while the verified stamp is current) -> pom|client writer -> tests-writer
@@ -81,8 +87,8 @@ main orchestrator:
         review loop: gate script -> (fail: gate findings -> fixer) | reviewer (review.json, a rubric verdict per test; review.mjs check derives the verdict and review-findings.md, D-059) -> fixer (fix-report.json answering every blocker/major; fix.mjs check against the pre-round snapshot) (max N rounds)
         run loop:    runner-triager -> [script] triage.json, verified by triage.mjs check -> fixer on healable rows (fix-report.json, fix.mjs check) -> re-run (max N rounds)
         every domain orchestrator follows `orchestration.mjs next`, which holds these flows (scripts/lib/domain-flows.mjs)
-        API additionally starts with api-discoverer -> api-test-planner
-  7 k6-orchestrator (needs the API plan): workload-designer (cited overlay -> workload.mjs build + check, run=<run-id>) -> lib-writer (cited overlay -> foundation.mjs render + check; skipped while verified) -> script-writer (slots -> k6-code.mjs build + check) -> review loop -> run/fix loop
+        API additionally starts with api-test-planner (over the api-discovery catalogue; the approved @api cases are p1)
+  7 k6-orchestrator (needs the approved @performance cases and the catalogue, not the API tests, D-068): workload-designer (cited overlay -> workload.mjs build + check, run=<run-id>) -> lib-writer (cited overlay -> foundation.mjs render + check; skipped while verified) -> script-writer (slots -> k6-code.mjs build + check) -> review loop -> run/fix loop
   8 report-generator -> report-data.mjs (report.json) -> cited narrative.json -> report.mjs render + check (verified stamp) -> HTML slide deck
 ```
 

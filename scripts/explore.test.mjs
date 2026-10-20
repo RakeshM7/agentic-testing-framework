@@ -672,3 +672,50 @@ test("citations: never the item's own state as a capture; an observed KQ must qu
   const imp = (await s.ex("state", "acme", "contacts", "--snapshot", "captures/import.md")).out;
   assert.doesNotMatch(await problems({ kq: { "KQ-contacts-1": { status: "observed", state: imp.state } } }), /KQ-contacts-1/);
 });
+
+// ---------- scenario mode (selectable steps, decision 15) ----------
+
+import { writeScenarios } from "./lib/explore.mjs";
+
+test("scenario mode: only the scenarios' flows are explored; every scenario needs a flow or an audited reason", async () => {
+  const s = setup();
+  const productDir = paths("acme", s.root).productDir;
+  const w = writeScenarios({ productDir, modules: ["contacts", "deals"], runId: "acme-run-1", answers: { modules: { contacts: [{ title: "Dialog for a new contact", goal: "the dialog opens", start: "the contact list", steps: ["New contact"] }, { title: "Export contacts", goal: "a CSV downloads", start: "the contact list", steps: ["Export"] }] } } });
+  assert.deepEqual(w.written.contacts, ["SC-contacts-1", "SC-contacts-2"]);
+  const list = await s.state("contacts-list.md");
+  const m = await s.model();
+  assert.ok(m.frontier.length > 0);
+  assert.ok(!m.frontier.some((i) => i.status === "pending"), "nothing open");
+  assert.ok(m.frontier.some((i) => i.status === "deferred" && i.reason === "scenario-scope"), "outside the scenarios: deferred, never dropped");
+  let r = await s.ex("check", "acme", "contacts");
+  let p = r.out.problems.join("\n");
+  assert.ok(!/is open -- explore it/.test(p), "no open frontier in scenario mode");
+  assert.match(p, /SC-contacts-1 \(Dialog for a new contact\): no flow names it/);
+  assert.match(p, /SC-contacts-2 \(Export contacts\): no flow names it/);
+  s.write("flows/new-contact.md", `# Dialog for a new contact\nScenario: SC-contacts-1\n1. Open "Contacts" (${list.state}).\n`);
+  s.write("flows/stray.md", `# Stray\nSC-contacts-9 ${list.state}\n`);
+  s.write("captures/export.md", "There is no Export control on the contact list.");
+  s.write("overlay.json", { scenarios: { "SC-contacts-2": { reason: "not-in-product", detail: "the list has no export control", citation: "captures/export.md" } } });
+  r = await s.ex("check", "acme", "contacts");
+  p = r.out.problems.join("\n");
+  assert.ok(!/SC-contacts-[12] \(/.test(p), p);
+  assert.match(p, /flows\/stray\.md: names SC-contacts-9, which is not a scenario of scenarios\.json/);
+  const cov = read(s.xp.coverage);
+  assert.deepEqual(cov.scope.scenarios.map((x) => [x.id, x.status]), [["SC-contacts-1", "flow"], ["SC-contacts-2", "explained"]]);
+  s.write("overlay.json", { scenarios: { "SC-contacts-2": { reason: "not-in-product", detail: "x", citation: "captures/nothing.md" } } });
+  rmSync(path.join(s.xp.flows, "stray.md"));
+  r = await s.ex("check", "acme", "contacts");
+  assert.match(r.out.problems.join("\n"), /overlay\.json scenarios\.SC-contacts-2: cite the capture that shows it/);
+});
+
+test("scenario mode: a complete exploration passes check with its scenarios' flows, and the stamp covers scenarios.json", async () => {
+  const s = setup();
+  const ids = await explore(s);
+  finish(s, ids);
+  const productDir = paths("acme", s.root).productDir;
+  writeScenarios({ productDir, modules: ["contacts"], runId: "acme-run-1", answers: { modules: { contacts: [{ title: "Create a contact", goal: "the dialog opens", start: "the contact list", steps: ["New contact"] }] } } });
+  s.write("flows/create-contact.md", `# Create a contact\nScenario: SC-contacts-1\n1. Open "Contacts" (${ids.list}).\n2. Click "New contact" (${ids.dialog}).\n`);
+  const r = await s.ex("check", "acme", "contacts");
+  assert.equal(r.code, 0, JSON.stringify(r.out.problems));
+  assert.equal(read(s.xp.coverage).verified.scenarios.length, 64);
+});

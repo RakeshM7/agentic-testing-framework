@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "workload.schema.json",
-  "title": "A module's k6 workload (artifacts/<product>/modules/<m>/k6/workload.json), written only by scripts/workload.mjs build: one scenario per load unit and test type, open model, with its options exactly as the script uses them",
+  "title": "A module's k6 workload (artifacts/<product>/modules/<m>/k6/workload.json), written only by scripts/workload.mjs build: one scenario per human-approved @performance test case, its test type capped by the mode and opt-ins, open model, with its options exactly as the script uses them",
   "type": "object",
   "required": ["module", "runId", "mode", "types", "notes", "scenarios"],
   "additionalProperties": false,
   "properties": {
     "module": { "type": "string" },
-    "runId": { "type": "string", "description": "The run whose playwright-api results.json was read." },
+    "runId": { "type": "string", "description": "The run the workload was built in (check binds it to that run)." },
     "mode": { "enum": ["readonly", "full-run"] },
     "types": { "type": "array", "items": { "$ref": "#/$defs/type" } },
     "notes": { "type": "array", "items": { "type": "string" } },
@@ -15,11 +15,12 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "key", "name", "type", "kind", "endpoints", "mutates", "executor", "load", "sizing", "thinkTimeMs", "data", "thresholds", "options"],
+        "required": ["id", "key", "case", "name", "type", "kind", "endpoints", "mutates", "executor", "load", "sizing", "thinkTimeMs", "data", "thresholds", "options"],
         "additionalProperties": false,
         "properties": {
           "id": { "$ref": "#/$defs/id" },
-          "key": { "type": "string", "description": "<endpoint key>|<type>, mix:<name>|<type> or flow:<name>|<type>." },
+          "key": { "type": "string", "pattern": "^case:TC-", "description": "case:<TC id>|<type>: one scenario per approved @performance test case (D-068)." },
+          "case": { "type": "string", "pattern": "^TC-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$", "description": "The human-approved @performance test case this scenario loads." },
           "name": { "type": "string", "pattern": "^[a-z-]+-[0-9]+$", "description": "<type>-<n>: the k6 scenario name; the script is <module>-<name>.js." },
           "type": { "$ref": "#/$defs/type" },
           "kind": { "enum": ["endpoint", "mix", "flow"] },

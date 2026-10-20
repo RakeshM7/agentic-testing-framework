@@ -21,15 +21,17 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     clarifications.csv                # product-level clarifications (format below)
     clarification-evidence/<ID>/      # what the clarification-explorer observed per row
     clarifications-summary.md
-    testcases/   api/   k6/           # domain working files
+    scenarios.json                    # scenario mode (D-066): the human's scenarios with stable SC ids, written by `run.mjs scenarios`
+    testcases/   api/   k6/           # domain working files; testcases/imported.json is the human's own file parsed by
+                                      # `testcases.mjs import` (schema testcases-imported, script-owned)
     ui-code/                          # ui-code.mjs (D-055): plan.json coverage.json parked.json -- all script-owned
     api-code/                         # api-code.mjs (D-056): plan.json coverage.json parked.json (script-owned);
                                       # client-overlay.json is pw-api-client-writer's, tests-overlay.json pw-api-tests-writer's
-    api/                              # endpoints.mjs: discovered-endpoints.json coverage.json drift.json registry.json sources/;
-                                      # overlay.json is the api-discoverer's (see below)
+    api/                              # endpoints.mjs (stage api-discovery, D-067): discovered-endpoints.json coverage.json
+                                      # drift.json registry.json sources/; overlay.json is the api-discoverer's (see below)
                                       # api-plan.mjs: plan.json plan-coverage.json plan-registry.json api-test-plan.md;
                                       # plan-overlay.json is the api-test-planner's
-    k6/                               # workload.mjs (D-057): workload.json workload-coverage.json workload-registry.json;
+    k6/                               # workload.mjs (D-068, from the approved @performance cases): workload.json workload-coverage.json workload-registry.json;
                                       # workload-overlay.json is the k6-workload-designer's
                                       # k6-code.mjs: code-plan.json parked.json legacy/ -- all script-owned
     triage/                           # triage.mjs (D-058): triage-registry.json (the BUG ids), script-owned
@@ -37,7 +39,8 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
   foundation/                         # foundation.mjs (D-054): <side>-manifest.json (rendered files, verified stamp);
                                       # <side>-overlay.json for side repo|ui|api|k6 is that side's agent's
   state/
-    run.json                          # the current (or last) run: id, mode, modules, stage status
+    run.json                          # the current (or last) run: id, mode, modules, steps, caseTypes, stage status
+    scenario-answers.json             # the orchestrator's scenario interview (D-066), turned into modules/<m>/scenarios.json
     lock.json                         # present only while a run is active -- one active run per product
     ledger.jsonl                      # entities created in the target, every entry tagged with runId
     config.resolved.json              # the validated run-config the current run started from (hand-written, or drafted from
@@ -60,6 +63,9 @@ There is no `artifacts/<run-id>/` directory. Run ids are `<product>-<YYYYMMDD>-<
 node scripts/run.mjs init config/<product>.yaml [--resume]   # validate config + permissions, take the lock, write state/
 node scripts/run.mjs guard-check <product>                   # liveness canary: a working guard BLOCKS this
 node scripts/run.mjs doctor <product>                        # what each stage needs on this machine; {checks, blockedStages}
+node scripts/run.mjs prereqs <product>                       # per module and chosen step: ok | missing (with the gap menu) | awaiting-approval
+node scripts/run.mjs steps <product> [--add a,b] [--remove c] [--import-mode m] [--reopen m]   # the gap menu's answer (an option's args)
+node scripts/run.mjs scenarios <product> [--file <answers>]  # state/scenario-answers.json -> modules/<m>/scenarios.json (SC ids)
 node scripts/run.mjs next <product>                          # {actions: [{stage, module, agent, prompt, attempt, retry}], concurrency, end?}
 node scripts/run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]
 node scripts/run.mjs status <product>                        # every stage with output verification
@@ -81,12 +87,22 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 | `module-knowledge` | module | knowledge | `knowledge/modules/<m>/{overview,glossary,notes,sources}.md`, `coverage.json`, `open-points.json`, `rule-facts.json` (schemas) — every knowledge, glossary-merge and sources check passes and the verified stamp is current |
 | `playwright-repo` | product | — | `playwright-tests/<product>/package.json`, `playwright.config.ts` — the repo side's verified stamp of `foundation.mjs check` is current |
 | `explore` | module | module-knowledge | `modules/<m>/explore/sitemap.json` (schema), `module-summary.md` — the verified stamp of `explore.mjs check` is current |
-| `clarifications` | module | explore | `modules/<m>/clarifications.csv` (check below), `clarifications-summary.md` |
-| `testcases` | module | clarifications | `modules/<m>/testcases/<m>-testcases.<ext>` + `testcases-summary.md` — `Total test cases: N` must equal the cases in the file. Completes once the review passes; approval comes later |
-| `playwright-ui` | module | testcases, playwright-repo, **a human-approved test case** | `results/<run>/<m>/playwright-ui/results.json` (schema `results`, written by `results.mjs`) |
-| `playwright-api` | module | testcases, playwright-repo, **a human-approved test case** | `results/<run>/<m>/playwright-api/results.json` (schema `results`) |
-| `k6` | module | playwright-api | `results/<run>/<m>/k6/results.json` (schema `results`; `not-run` in readonly runs) |
+| `clarifications` | module | explore (after module-knowledge) | `modules/<m>/clarifications.csv` (check below), `clarifications-summary.md` |
+| `api-discovery` | module | explore | `modules/<m>/api/discovered-endpoints.json` (schema; `endpoints.mjs check` passes), `coverage.json` (schema), `drift.json` — run by `api-discoverer`, started by the orchestrator; an empty catalogue is a valid outcome |
+| `testcases` | module | explore; api-discovery when the run derives `@api` or `@performance` cases (after module-knowledge and clarifications, when chosen) | `modules/<m>/testcases/<m>-testcases.<ext>` + `testcases-summary.md` — `Total test cases: N` must equal the cases in the file. Completes once the review passes; approval comes later |
+| `playwright-ui` | module | testcases, playwright-repo, **a human-approved UI test case** | `results/<run>/<m>/playwright-ui/results.json` (schema `results`, written by `results.mjs`) |
+| `playwright-api` | module | testcases, playwright-repo, api-discovery, **a human-approved `@api` test case** | `results/<run>/<m>/playwright-api/results.json` (schema `results`) |
+| `k6` | module | testcases, api-discovery, **a human-approved `@performance` test case** | `results/<run>/<m>/k6/results.json` (schema `results`; `not-run` in readonly runs) |
 | `report` | product | every other stage complete, exhausted or blocked | `results/<run>/report/report.json` (by `report-data.mjs`, schema `report`) + `index.html` (by `report.mjs render`; `done` needs the verified stamp `report-check.json` of `report.mjs check`) |
+
+"Needs" are hard needs; "after" is a soft order: a stage waits for it only while it is chosen for this run and not settled, and is never blocked by it.
+
+**Steps (D-066).** A run executes only the steps the human chose (`steps:` in the run-config, one set for every module; absent = all six: `explore`, `clarifications`, `testcases`, `playwright-ui`, `playwright-api`, `k6`), frozen with the case types they derive (`caseTypes`: `ui` always, `api` with playwright-api, `performance` with k6, plus `testcases.types`) into `run.json` at `init`. The run's stages are the chosen steps plus what they need automatically: knowledge and module-knowledge for explore, clarifications and testcases; api-discovery when API or performance cases or tests are needed; playwright-repo for either Playwright step; the report always. Every other stage is `not-chosen`: `next` never offers it, `stage … start` refuses it, it is never failed or blocked, `end.notChosen` lists it, and the report shows it as "Not chosen for this run". A need on a not-chosen stage is met by that stage's outputs verifying from an earlier run, or, for test cases, by the human's imported file (`satisfiedBy: earlier-run | import`); otherwise its dependant is blocked with `unmet`.
+- **Prerequisites up front.** After `doctor`, `run.mjs prereqs` checks every module against the chosen steps (exit 1 while a gap is open): one gap per module and need (`explore` or `testcases`), with the gap menu's options `{id, label, adds|removes, importMode?, reopen?, args?}`: Explore the product · Ask clarification questions · Generate test cases · Describe scenarios to explore · Use my test case file · Skip this step for this run; a `link` gap (imported UI cases not linked while no testcases stage runs for the module) offers **Link my imported cases to the explored screens** (`--import-mode <m>`), and a step added after the module's testcases stage completed without its case type offers **Generate @api / @performance cases** (`--add testcases --reopen <m>`: the stage goes back to pending; approvals of unchanged cases stand). `run.mjs steps <p> <args>` applies the answer to the run (a step whose stages started can't be removed); after an add, `run-config.mjs set --steps <configSteps>` keeps the config's own steps plus the added ones (a skip never leaves the config).
+- **`run-config.mjs set <config> [--steps a,b] [--testcases-file <m>=<path>] [--testcases-import <path>] [--testcases-types ui,api]`** validates first, then rewrites only those keys of the file; every other byte and comment stays. It is the one change a script makes to an existing run-config (D-063's drafts are never written over a file).
+- **Scenario mode.** `run.mjs scenarios` turns `state/scenario-answers.json` (`{"modules": {"<m>": [{title, goal, start, steps}]}}`, written by the orchestrator) into `modules/<m>/scenarios.json` (schema `scenarios`, stable `SC-<m>-<n>` ids by title); `[]` returns a module to a whole-module exploration. The exploration is then scenario-scoped (`explore/coverage.json` `scope`), and the test cases cover only those scenarios' flows.
+- **Imports.** `testcases.mjs import <p> <m> [--file]` parses the human's file (`modules[].testcases_file`, else the product-level `testcases.import` split by `@module:<slug>` or a Module column) in a framework format into `testcases/imported.json`; any other document is converted by testcase-writer's import mode into `cases.json` cases citing it verbatim. Imported cases enter `approval.csv` like generated ones; `import … --approved` is human-only (a terminal and the typed module slug; the guard denies it to every tool call).
+- **Import mode (`run.json` `testcasesMode`).** Without the `testcases` step, a module whose imported cases must be converted or linked runs its testcases stage in import mode, for that module only (`run.mjs steps --import-mode <m>`; the other modules have no testcases stage). The writer converts and links only; every coverage item no case covers is `deferred` with reason `import`; `check` verifies the imported cases (overlay, verbatim quotes, links; with `playwright-ui` chosen, every imported UI case linked, in either mode). With `testcases` chosen every module is `generate`: generated and imported cases.
 
 A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. Sub-steps inside a domain (build steps, gate → reviewer → fixer, runner-triager → fixer) belong to the domain orchestrator, not this table: it follows `node scripts/orchestration.mjs next <product> <domain> <module>`, which reads the domain's flow from `scripts/lib/domain-flows.mjs` and the files on disk, runs the script steps itself (the pre-review gate, the clarification summary), and spends the bounded review and heal rounds.
 
@@ -94,7 +110,7 @@ A stage is complete only if `run.json` marks it `done` **and** every declared ou
 
 Each stage gets at most **two attempts** per run (`attempts` in `run.json`); a stage that failed twice is *exhausted*, everything depending on it is *blocked*, and `next` no longer offers either — so the report still becomes ready and states what did not run.
 
-**`awaiting-approval` (D-053).** Once a module's test cases are complete, its `playwright-ui` and `playwright-api` stages (and `k6`, which needs the API stage) are `awaiting-approval` while no case of the module is approved by a human. Such a stage is never offered, `stage … start` refuses it without spending an attempt, and it counts as settled, so the report still runs; `next` offers the report stage, and `end` reports the run `awaiting-approval` (listing the approval sheets) when nothing else is left. A new run for the product then adopts that run's complete stages whose product-level outputs still verify (`carriedFrom`, D-060; consistent with D-003: the first run has ended and released the lock). A later run picks the module up once cases are approved.
+**`awaiting-approval` (D-053, per type since D-066).** Once a module's test cases are complete, each automation stage is `awaiting-approval` while no case of its type is approved by a human: `playwright-ui` waits for a UI case, `playwright-api` for an `@api` case, `k6` for an `@performance` case (an imported UI case also needs its exploration states linked). Such a stage is never offered, `stage … start` refuses it without spending an attempt, and it counts as settled, so the report still runs; `next` offers the report stage, and `end` reports the run `awaiting-approval` (listing the approval sheets) when nothing else is left. A new run for the product then adopts that run's complete stages whose product-level outputs still verify (`carriedFrom`, D-060; consistent with D-003: the first run has ended and released the lock). A later run picks the module up once cases are approved.
 
 ## Knowledge base
 
@@ -174,7 +190,7 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 ## API endpoint catalogue
 
-`node scripts/endpoints.mjs find-spec|introspect|build|probe|check <product> <module>` (`scripts/lib/{endpoints,openapi,graphql,probe,api-discovery}.mjs`) owns `modules/<m>/api/` except `overlay.json`. The format is in [`agent-handoffs.md`](agent-handoffs.md) §4, and the design is decision D-045.
+`node scripts/endpoints.mjs find-spec|introspect|build|probe|check <product> <module>` (`scripts/lib/{endpoints,openapi,graphql,probe,api-discovery}.mjs`) owns `modules/<m>/api/` except `overlay.json`. The format is in [`agent-handoffs.md`](agent-handoffs.md) §4, and the design is decision D-045. The catalogue is built by its own module stage, `api-discovery` (`api-discoverer`, started by the orchestrator, D-067), whenever a chosen step needs it: `@api` or `@performance` test cases, the Playwright API tests or k6.
 
 - **Stable ids.** Ids come from `registry.json`: one `EP-<m>-<n>` per endpoint key, never renumbered or reused. An inventory input is cited by its `NI-<m>-<n>` id (`explore/network-inventory.json#NI-…`); an older inventory without ids by its index.
 - **Coverage.** `build` fails unless every input appears exactly once in `coverage.json`, either mapped or excluded with a reason code. The inputs are spec operations, GraphQL root fields, inventory entries and docs endpoints.
@@ -213,9 +229,10 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 | File | Owner |
 |---|---|
-| `cases.json` | testcase-writer (its only file) |
+| `cases.json` | testcase-writer (its only file; in import mode it also holds the converted cases and the `links` of imported UI cases to exploration states) |
+| `imported.json` (schema `testcases-imported`) | the script: `testcases.mjs import` parses the human's own file in a framework format (D-066) |
 | `approval.csv` | **human only**: rendered by `build`, filled in Excel or an editor |
-| `approvals.json` | **human only**, through `node scripts/testcases.mjs approve <product> <module>` in an interactive terminal (the slug typed to confirm) |
+| `approvals.json` | **human only**, through `node scripts/testcases.mjs approve <product> <module>` (or `import <product> <module> --approved` for a file already approved) in an interactive terminal (the slug typed to confirm) |
 | `coverage.json`, `registry/{items,cases}.json`, `<m>-testcases.<ext>`, `testcases-summary.md`, `approval-findings.md` | the script |
 | `results/<run>/<m>/testcases/review.json` | testcase-reviewer; `review-findings.md` beside it is rendered by `review-check` (a managed file since D-059: no agent writes it) |
 
@@ -267,12 +284,12 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## k6 workload and scripts
 
-`node scripts/workload.mjs build|check|paths <product> <module> [--run <run-id>]` (`scripts/lib/workload.mjs`) builds a module's load workload, and `node scripts/k6-code.mjs build [--adopt]|check|paths <product> <module>` (`scripts/lib/k6-code.mjs`) generates its k6 scripts from the verified workload (formats: [`agent-handoffs.md`](agent-handoffs.md) §5; design: [`k6-conventions.md`](k6-conventions.md) and decision D-057). Neither sends a request to the product or runs load.
+`node scripts/workload.mjs build|check|paths <product> <module> [--run <run-id>]` (`scripts/lib/workload.mjs`) builds a module's load workload from its human-approved `@performance` test cases only, one load unit per case, and `node scripts/k6-code.mjs build [--adopt]|check|paths <product> <module>` (`scripts/lib/k6-code.mjs`) generates its k6 scripts from the verified workload (formats: [`agent-handoffs.md`](agent-handoffs.md) §5; design: [`k6-conventions.md`](k6-conventions.md) and decision D-068). Neither sends a request to the product or runs load.
 
 | File | Owner |
 |---|---|
 | `modules/<m>/k6/workload.json` (schema `workload`): the scenarios, their sizing, thresholds and exact k6 `options` | the script (workload.mjs) |
-| `modules/<m>/k6/workload-coverage.json` (schema `workload-coverage`): the ledger over every catalogue endpoint, the input digests, the `verified` stamp | the script (workload.mjs) |
+| `modules/<m>/k6/workload-coverage.json` (schema `workload-coverage`): the ledger over every approved `@performance` case (loaded, excluded with a reason, `deferred: budget`), the input digests, the `verified` stamp | the script (workload.mjs) |
 | `modules/<m>/k6/workload-registry.json`: the stable `K6-<m>-<n>` ids | the script (workload.mjs) |
 | `modules/<m>/k6/workload-overlay.json` (schema `workload-overlay`): cited priorities, mixes, think time, data needs, exclusions, write flows | k6-workload-designer |
 | `modules/<m>/k6/code-plan.json` (schema `k6-code-plan`): the scripts, their requests, the slots, the `verified` stamp | the script (k6-code.mjs) |
@@ -341,4 +358,4 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## Schemas
 
-`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest,ui-code-plan,ui-code-coverage,ui-code-parked,api-code-plan,api-code-coverage,api-code-parked,api-code-client-overlay,api-code-tests-overlay,workload,workload-coverage,workload-overlay,k6-code-plan,k6-code-parked,triage,triage-overlay,known-issues,review,fix-report,report,report-narrative}.schema.json` (JSON Schema 2020-12, Ajv). Changing the layout, a schema or the stage table bumps `LAYOUT_VERSION` in `scripts/lib/contract.mjs`.
+`schemas/{run,lock,ledger-entry,sitemap,explore-model,explore-coverage,explore-overlay,interactions,network-inventory,sources,knowledge-coverage,knowledge-open-points,knowledge-source-cache,knowledge-rule-facts,results,scenarios,testcases-imported,discovered-endpoints,api-coverage,api-overlay,foundation-repo-overlay,foundation-ui-overlay,foundation-api-overlay,foundation-k6-overlay,foundation-manifest,ui-code-plan,ui-code-coverage,ui-code-parked,api-code-plan,api-code-coverage,api-code-parked,api-code-client-overlay,api-code-tests-overlay,workload,workload-coverage,workload-overlay,k6-code-plan,k6-code-parked,triage,triage-overlay,known-issues,review,fix-report,report,report-narrative}.schema.json` (JSON Schema 2020-12, Ajv). `LAYOUT_VERSION` in `scripts/lib/contract.mjs` is bumped only on incompatible layout changes: a bump makes `run.mjs validate` reject every existing `run.json`, so a compatible change (a new optional key, a new stage, a schema that still accepts older files) keeps it and says in its decision what an older run does on resume (D-066).

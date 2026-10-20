@@ -32,7 +32,7 @@ Within a side: the scaffolder writes the side's overlay and renders the foundati
 
 | File (in `playwright-tests/<p>/`) | Owner |
 |---|---|
-| `tests/ui/<m>/cases.spec.ts`: one `test()` per approved non-`@api` case, its literal title `TC-<m>-<n> <title> @<priority> @<type> [@mutates] [@assumption] [@visual]`, the page-object fixtures its states need, one `test.step` per case step and one `Then: <expected>` step | the script, **except the marked regions** |
+| `tests/ui/<m>/cases.spec.ts`: one `test()` per approved UI case (neither `@api` nor `@performance`), its literal title `TC-<m>-<n> <title> @<priority> @<type> [@mutates] [@assumption] [@visual]`, the page-object fixtures its states need, one `test.step` per case step and one `Then: <expected>` step | the script, **except the marked regions** |
 | the regions `// ui-code:begin <key>` … `// ui-code:end <key>` of that file: `setup` (imports, hooks, helpers), one per test for its data (`TC-<m>-<n> data`, at the top of the test) and one per step (`TC-<m>-<n> step <n>`, `TC-<m>-<n> then`) | pw-ui-tests-writer |
 | `helpers/ui/<m>.data.ts` | pw-ui-tests-writer |
 | `pages/<m>/<slug>.page.ts` per required page template (`PG-` id), `pages/<m>/components/<name>.component.ts` per dialog its states show; `build` seeds a class shell once when one is missing | pw-ui-pom-writer |
@@ -42,7 +42,7 @@ Within a side: the scaffolder writes the side's overlay and renders the foundati
 
 **Why marked regions.** The generated and the agent-written code share one file: the script owns every line outside the regions, so a rebuild re-renders the skeleton around the file's own region bodies and keeps every body; `check` re-renders it the same way, and any other difference is an edit of generated code. The step bodies close over the test's fixtures, so they need no plumbing. A body whose test is no longer generated (its case was edited and is awaiting a new approval, or a step was dropped) is parked in `artifacts/<p>/modules/<m>/ui-code/parked.json` and restored when its region comes back; a file whose markers are broken is never rewritten.
 
-**Required page objects.** A case touches the states its coverage items name (an input field's states, a transition's two ends, the states its flow file names) and the state snapshots its `observation:` evidence cites. Each page template (`PG-`) of a touched state needs a page object, and each dialog those states show needs a component object. Unapproved cases are never generated, and approved ones over `testcases.max_cases` are deferred (lowest priority first). `ui-code/coverage.json` is the ledger: every case is mapped to its test, excluded (`not-approved`, `api-side`) or deferred (`budget`); every page template is mapped to its page object or excluded (`not-touched`); every dialog is mapped to its component.
+**Required page objects.** A case touches the states its coverage items name (an input field's states, a transition's two ends, the states its flow file names) and the state snapshots its `observation:` evidence cites. An imported case touches the exploration states testcase-writer's import mode linked it to (D-066); an unlinked imported UI case is not automated. Each page template (`PG-`) of a touched state needs a page object, and each dialog those states show needs a component object. Unapproved cases are never generated, and approved ones over `testcases.max_cases` are deferred (lowest priority first). `ui-code/coverage.json` is the ledger: every case is mapped to its test, excluded (`not-approved`, `api-side`: an `@api` case, or a `@performance` case k6 loads) or deferred (`budget`); every page template is mapped to its page object or excluded (`not-touched`); every dialog is mapped to its component.
 
 **Locator policy.** `getByRole` first, then `getByLabel`, then `getByText`; `getByPlaceholder` and `getByTestId` when the snapshot shows that placeholder or that test-id attribute. Every name is a string literal copied **verbatim and whole** from a stored state snapshot of the page object's own template (`explore/pages/<slug>/states/<ST>.md`; a component: the states that show its dialog):
 - a `getByRole` name is a node of that role with exactly that name;
@@ -125,7 +125,7 @@ The gate traces the smoke's tests to page templates, not to cases, only at the e
 
 ### API code is generated from the catalogue and the plan (D-056)
 
-`node scripts/api-code.mjs build|check|paths <p> <m>` (`scripts/lib/api-code.mjs`) generates the module's API code from the endpoint catalogue (D-045) and the verified API plan (D-046, D-050). Only scenarios the plan holds are automated, and the plan links only test cases a human approved (D-053).
+`node scripts/api-code.mjs build|check|paths <p> <m>` (`scripts/lib/api-code.mjs`) generates the module's API code from the endpoint catalogue (D-045, built by the `api-discovery` stage, D-067) and the verified API plan (D-046, D-050; every scenario linked to a signed-off `@api` case is p1). Only scenarios the plan holds are automated, and the plan links only test cases a human approved (D-053).
 
 | File (in `playwright-tests/<p>/`) | Owner |
 |---|---|

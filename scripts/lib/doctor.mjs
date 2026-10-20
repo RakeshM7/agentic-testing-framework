@@ -29,6 +29,7 @@ export const STAGE_NEEDS = {
   "playwright-repo": ["base"],
   explore: ["base", "browser", "session", "target"],
   clarifications: ["base", "browser", "session", "target"],
+  "api-discovery": ["base", "session", "target"],
   testcases: ["base"],
   "playwright-ui": ["base", "repo", "session", "target"],
   "playwright-api": ["base", "repo", "session", "target"],

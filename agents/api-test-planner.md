@@ -47,7 +47,7 @@ You don't redo any of this. Know it so you can judge the gaps:
 1. **Build.** Run `node scripts/api-plan.mjs build <p> <m>`.
 2. **Judge.** Read `plan-coverage.json` (`pending`, `excluded`, `deferred`, `questions`), `api-test-plan.md` and your inputs. Then write `api/plan-overlay.json`, the only file you write.
    - **Every `pending` item gets resolved:**
-     - **`testcase:<TC>`:** link each `@api` test case to the scenarios that cover it in `testcases`, using API ids or `overlay:<name>`. If none does, add a scenario, or `exclude` the case with a reason.
+     - **`testcase:<TC>`:** link each approved `@api` test case to the scenarios that cover it in `testcases`, using API ids or `overlay:<name>`. If none does, add a scenario, or `exclude` the case with a reason. A case naming a catalogue `endpoint` that you don't link is linked by the script to that endpoint's happy-path scenario; a case naming an endpoint the catalogue lacks stays pending with that reason.
      - **`status:<EP>:<code>`:** a documented status no rule triggers. Add a cited scenario that `covers` it, or `exclude` it, for example a 402 that needs an account at its plan limit.
      - **`value:<EP>:<pointer>`:** a required pattern field with no example. Give a realistic valid value in `values`.
      - **`question:<id>`:** an answered clarification. Apply it as a `statusRules` entry citing it.
@@ -60,7 +60,7 @@ You don't redo any of this. Know it so you can judge the gaps:
    - **Inter-parameter rules** read from the spec text or the notes go in `dependencies`. Examples: `from` requires `to`, or only one of `id` and `email`.
    - **Functions a role must be refused** go in `bfla`. Take them from the notes or clarifications, naming the identity.
    - **Exact statuses** that a clarification, test case or the notes state go in `statusRules`, per fault class, module-wide or per endpoint. They replace the class-only expectations.
-   - **Priorities** are a fixed table, raised by the linked test cases. Override one only with a reason.
+   - **Priorities** are a fixed table, raised by the linked test cases: a scenario linked to an approved `@api` case is p1, so the human's cases are planned first. Override one only with a reason.
    - **Exclusions** go in `exclude` (`not_testable`, `out_of_scope`, `covered_elsewhere`, `needs_data`, `spec_wrong`, `unreachable_status`), each with a detail. Cite one whenever you can.
    - **Deferred items** are over `api.plan_budget`. The script sets them; leave them as they are. Never `exclude` one to hide it.
 3. **Rebuild.** Run `build` again, and repeat step 2 at most twice more.

@@ -15,6 +15,7 @@ You map one module thoroughly enough that others can ask precise questions, writ
 - The knowledge open points to account for: every id in `knowledge/modules/<m>/open-points.json` and `knowledge/open-points.json` (`KQ-<m>-<n>`, `KQ-product-<n>`).
 - `node scripts/clarifications.mjs list <p> <m>`: what is already asked or answered. Answered rows are trusted; don't re-ask them.
 - `node scripts/explore.mjs paths <p> <m>` lists the module's explore files. Formats: `docs/agent-handoffs.md` §1.
+- `artifacts/<p>/modules/<m>/scenarios.json`, when present: the scenarios the human described (`SC-<m>-<n>`: title, goal, starting point, key steps). Then the exploration is **scenario-scoped** (below).
 
 ## What the script generates
 You don't write any of this. Know it so you can read its output.
@@ -60,6 +61,8 @@ You don't write any of this. Know it so you can read its output.
 7. **Write `module-summary.md`**: `## Pages`, `## Key entities`, `## Key actions`, `## Roles observed`, `## Mutations performed` (with ledger refs), `## Not explored` (and why), `## Questions raised` (CSV ids).
 8. `node scripts/explore.mjs build <p> <m>`, then `node scripts/explore.mjs check <p> <m>`. Fix what it reports and check again, at most 3 rounds. If it still fails, stop and report the problems it lists.
 
+**Scenario mode** (the module has `scenarios.json`): explore only what the scenarios need. Start each one at its starting point and follow its key steps; record every state and transition they pass through, as above. The script defers every other frontier item as `scenario-scope`, so leave those alone. For each scenario, either write a flow (step 4) that names its `SC-<m>-<n>` id and the `ST` ids it passes through, or account for it in `overlay.json` `scenarios`: `{"SC-…": {"reason": "unreachable|guard-denied|not-allowed-in-mode|not-in-product", "detail": "<what happened>", "citation": "captures/<file>"}}`, the verbatim capture showing it. Name an `SC` id only in the flows of that scenario. `check` fails on a scenario with neither. The KQ and untried-input audits (steps 5 and 6) still apply to what you explored. Test cases are then written only for those scenarios' flows.
+
 **Open rows from earlier runs** (from `clarifications.mjs list <p> <m> --open`, including rows a human added): if their Question or Steps no longer match what you just saw (a renamed label, a moved menu) or fall short of the standard above, refine them with `node scripts/clarifications.mjs set-steps <p> <m> <ID> --question "<question>" --steps "<steps>"`. Leave precise rows unchanged; the script refuses answered rows.
 
 **Requirement changes**: if the run's `feature` description or requirement docs explicitly change a behavior recorded in an answered row, update that row: `node scripts/clarifications.mjs record <p> <m> <ID> --answer "<new behavior>" --notes "Changed by requirement: <doc/section>" --requirement-change`. Do this only for an explicit requirement statement, never for something you merely observed.
@@ -82,4 +85,5 @@ A short report only; don't paste file contents. From the last `check` output:
 - KQs by status (observed, asked, dismissed, open);
 - questions added (CSV ids), rows refined with `set-steps`, rows updated by a requirement change;
 - mutations performed (ledger refs) or `none`, and live entities left;
+- in scenario mode, each scenario with its flow or its reason;
 - anything not explored and why, and the final `check` result.

@@ -19,13 +19,17 @@
 //   - endpoints with the same request schema get field-level negatives once (the lowest EP id) and one smoke negative
 //   - the overlay can annotate, link test cases, add cited scenarios, and exclude coverage items with a reason; it can
 //     never change what a rule generated
+//   - every human-approved @api test case is a coverage item (testcase:<TC>) and its scenarios are top priority (p1,
+//     D-066): the overlay's links, else -- for a case naming a catalogue endpoint (EP id) -- that endpoint's
+//     happy path, linked by the script. A case naming an endpoint the catalogue lacks stays pending. The catalogue is the
+//     api-discovery stage's output (lib/endpoints.mjs apiPaths).
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { writeAtomic } from "./csv.mjs";
 import { citationProblem } from "./citations.mjs";
 import { append, csvPath, isAnswered, readRows } from "./clarifications.mjs";
-import { erase, readJson, writeJson } from "./endpoints.mjs";
+import { apiPaths, erase, readJson, writeJson } from "./endpoints.mjs";
 import { assignIds } from "./registry.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 
@@ -57,9 +61,12 @@ export const FAULTS = {
 const ASKED = ["validation", "auth", "forbidden", "notFound"];
 const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
 
+// The catalogue, its drift and its coverage are the api-discovery stage's outputs (lib/contract.mjs STAGES), read where
+// lib/endpoints.mjs writes them.
 export function planPaths(productDir, module) {
   const m = path.join(productDir, "modules", module);
   const dir = path.join(m, "api");
+  const ap = apiPaths(productDir, module);
   return {
     dir,
     moduleDir: m,
@@ -69,9 +76,9 @@ export function planPaths(productDir, module) {
     registry: path.join(dir, "plan-registry.json"),
     overlay: path.join(dir, "plan-overlay.json"),
     md: path.join(dir, "api-test-plan.md"),
-    catalogue: path.join(dir, "discovered-endpoints.json"),
-    drift: path.join(dir, "drift.json"),
-    epCoverage: path.join(dir, "coverage.json"),
+    catalogue: ap.catalogue,
+    drift: ap.drift,
+    epCoverage: ap.coverage,
   };
 }
 
@@ -595,7 +602,7 @@ function generateGraphql(e, { add, item, exclude, firstOf, values }) {
 export function build(pp, { module, cfg, runId, cases }) {
   const problems = [];
   const catalogue = readJson(pp.catalogue, null);
-  if (!catalogue) return { problems: ["discovered-endpoints.json is missing (run endpoints.mjs build first)"], summary: {} };
+  if (!catalogue) return { problems: ["discovered-endpoints.json is missing (the api-discovery stage builds it with endpoints.mjs build)"], summary: {} };
   const drift = readJson(pp.drift, []);
   const epCoverage = readJson(pp.epCoverage, {});
   const overlay = readOverlay(pp.overlay);
@@ -673,11 +680,21 @@ export function build(pp, { module, cfg, runId, cases }) {
       else scenarios.get(key).testcases.push(tc);
     }
   }
+  // an approved @api case the overlay does not link, naming a catalogue endpoint: linked to that endpoint's happy path
+  for (const [tc, c] of cases) {
+    if (!c.api || [...scenarios.values()].some((s) => s.testcases.includes(tc))) continue;
+    const e = c.endpoint && catalogue.find((x) => x.id === c.endpoint);
+    const happy = e && scenarios.get(`${e.key}|happy-path`);
+    if (happy) happy.testcases.push(tc);
+  }
   for (const [tc, c] of cases) {
     if (!c.api) continue;
     const it = `testcase:${tc}`;
     const linked = [...scenarios.values()].filter((s) => s.testcases.includes(tc));
-    items.set(it, linked.length ? { keys: new Set(linked.map((s) => s.key)) } : { pending: "an @api test case linked to no scenario: link it in plan-overlay.json testcases, or exclude it with a reason" });
+    const why = c.endpoint && !epIds.has(c.endpoint)
+      ? `an @api test case naming ${c.endpoint}, which is not in the catalogue: link it in plan-overlay.json testcases, or exclude it with a reason`
+      : "an @api test case linked to no scenario: link it in plan-overlay.json testcases, or exclude it with a reason";
+    items.set(it, linked.length ? { keys: new Set(linked.map((s) => s.key)) } : { pending: why });
   }
 
   // values a valid request needs but no spec example gives: required pattern fields
@@ -704,13 +721,15 @@ export function build(pp, { module, cfg, runId, cases }) {
   for (const key of dropped) scenarios.delete(key);
   for (const s of scenarios.values()) s.testcases = s.testcases.filter((tc) => !items.get(`testcase:${tc}`)?.excluded);
 
-  // priority: a fixed table by type, raised by linked test cases, overridden by the overlay (with a reason)
+  // priority: a fixed table by type; a scenario an approved @api case is linked to is top priority (p1, decision 12);
+  // overridden by the overlay (with a reason)
   const P = (p) => Number(String(p).slice(1));
   for (const s of scenarios.values()) {
     const e = catalogue.find((x) => x.id === s.endpoint);
     const table = { functional: e.observed?.ui ? 1 : 2, auth: 1, authorization: 1, lifecycle: e.observed?.ui ? 1 : 2, contract: 2, negative: 2, boundary: 2, http: 3, graphql: 3, business: 2 }[s.type];
     let p = s.priority ? P(s.priority) : table;
-    for (const tc of s.testcases) if (cases.get(tc)?.priority) p = Math.min(p, P(cases.get(tc).priority));
+    for (const c of s.testcases.map((tc) => cases.get(tc))) if (c?.api) p = 1;
+    else if (c?.priority) p = Math.min(p, P(c.priority));
     s.priority = `p${p}`;
   }
 

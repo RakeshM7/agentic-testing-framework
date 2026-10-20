@@ -3,7 +3,7 @@
 // (docs/agent-handoffs.md §4, D-046). Uses the product's active run (state/run.json + state/config.resolved.json).
 // Never sends a request to the product.
 //
-//   api-plan.mjs build <product> <module>   catalogue + drift + test cases + plan-overlay.json -> plan.json,
+//   api-plan.mjs build <product> <module>   catalogue (api-discovery stage) + drift + approved test cases + plan-overlay.json -> plan.json,
 //                                           plan-coverage.json, plan-registry.json, api-test-plan.md; appends one
 //                                           clarification question per fault class asserted as a status class only
 //                                           (exit 1 on overlay problems)
@@ -27,11 +27,14 @@ function context(product, module, root) {
   const cfg = loadJson(p.configFile);
   const pp = planPaths(p.productDir, module);
   const file = testcasesFile(pp.moduleDir, module, cfg.testcases?.output_format ?? "gherkin");
-  // Only cases a human approved exist for the plan (D-053): an approved @api case becomes a testcase: coverage item,
-  // and the overlay may link or cite (testcase:) approved cases only, so an unapproved case gives no priority and no
-  // traceability.
-  const approved = new Set(approvalSummary(p.productDir, module).approved);
-  const cases = new Map(existsSync(file) ? parseCases(file, cfg.testcases?.output_format ?? "gherkin").filter((c) => c.id && approved.has(c.id)).map((c) => [c.id, { api: c.api, priority: c.priority }]) : []);
+  // Only cases a human approved exist for the plan (D-053): an approved @api case becomes a testcase: coverage item and
+  // a top-priority scenario (decision 12), and the overlay may link or cite (testcase:) approved cases only, so an
+  // unapproved case gives no priority and no traceability. The endpoint (EP id) an @api case names comes from the
+  // script-built testcases/coverage.json; the plan links the case to that endpoint's happy path when the overlay does not.
+  const summary = approvalSummary(p.productDir, module);
+  const approved = new Set(summary.approved);
+  const endpointOf = new Map(summary.cases.map((c) => [c.id, c.endpoint]));
+  const cases = new Map(existsSync(file) ? parseCases(file, cfg.testcases?.output_format ?? "gherkin").filter((c) => c.id && approved.has(c.id)).map((c) => [c.id, { api: c.api, priority: c.priority, ...(endpointOf.get(c.id) ? { endpoint: endpointOf.get(c.id) } : {}) }]) : []);
   return { run, cfg, pp, cases };
 }
 

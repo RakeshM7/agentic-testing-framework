@@ -21,7 +21,7 @@ A body can share a fragment: a line `<!-- include: _shared/<file>.md -->` is rep
 
 ## Starting a session
 
-Start the **orchestrator-agent** session with a run-config path, or with none: it then interviews you (a few questions in one message) and drafts `config/<product>.yaml` as `readonly` (D-063). `make interview` and `make run` open that session on Claude Code. On other hosts, start it yourself and say you have no run-config yet. The interview needs a host where the agent can ask you questions. On one that can't, write the file by hand.
+Start the **orchestrator-agent** session with a run-config path, or with none: it then interviews you (a few questions in one message, including which steps to run) and drafts `config/<product>.yaml` as `readonly` (D-063). With a path, it shows the step menu pre-selected from the config's `steps` and, before the first stage, asks you once per missing prerequisite (explore, clarify, generate test cases, describe scenarios, use your own test case file, or skip the step), D-066. `make interview` and `make run` open that session on Claude Code. On other hosts, start it yourself and say you have no run-config yet. The interview needs a host where the agent can ask you questions. On one that can't, write the file by hand.
 
 ## Host matrix
 

@@ -182,18 +182,22 @@ agents:
   # ======================= Layer 0 ========================================================================
   orchestrator-agent:
     layer: 0
-    spawns: [knowledge-generator, module-explorer, clarification-orchestrator, testcase-orchestrator,
+    spawns: [knowledge-generator, module-explorer, api-discoverer, clarification-orchestrator, testcase-orchestrator,
              playwright-ui-orchestrator, playwright-api-orchestrator, k6-orchestrator, report-generator, pw-repo-owner]
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
+    # run-config.mjs set rewrites only the run-config's steps and test case file keys (D-066); testcases.mjs import
+    # brings in the human's own test case file, never with --approved (human-only: the guard denies it to every call)
     shell_allow: ["node scripts/run.mjs *", "node scripts/run-config.mjs *", "node scripts/ledger.mjs list *",
-                  "node scripts/knowledge.mjs *", "node scripts/clarifications.mjs status *"]
+                  "node scripts/knowledge.mjs *", "node scripts/clarifications.mjs status *",
+                  "node scripts/testcases.mjs import *"]
     ask_user: allowed
     tool_search: allowed       # runs as the main session, so it can ask the human
     filesystem:
       read: ["${product_dir}/**", "config/**"]
-      write: ["${state}/notes.md", "config/interview-answers.json"]   # the run-config interview (D-063): `run-config.mjs draft` turns it into config/<product>.yaml
+      write: ["${state}/notes.md", "config/interview-answers.json",   # the run-config interview (D-063): `run-config.mjs draft` turns it into config/<product>.yaml
+              "${state}/scenario-answers.json"]   # the scenario interview (D-066): `run.mjs scenarios` turns it into modules/<m>/scenarios.json
 
   # ======================= Product level (spawned by the main orchestrator) ================================
   knowledge-generator:
@@ -232,6 +236,15 @@ agents:
     # requirement changes a behavior already recorded (then the row's Answer/notes are updated, Run ID kept as the
     # creating run). The CSV is written ONLY through scripts/clarifications.mjs (ids, de-dup, locking, human-answer
     # protection), so no agent has Write access to clarifications.csv itself.
+
+  api-discoverer:               # D-045: the catalogue, coverage, drift, ids and probes are script-owned (endpoints.mjs)
+    layer: 1                    # D-067: its own stage, api-discovery, started by orchestrator-agent (it serves test cases, API tests and k6)
+    spawns: []
+    live_target: { browser: none, http: read, load: none }   # fetch OpenAPI / GET endpoints; endpoints.mjs probes GET-only
+    web_research: allowed     # vendor API docs
+    shell: restricted
+    shell_allow: ["node scripts/endpoints.mjs *"]
+    filesystem: { read: ["${knowledge}/**", "${modules}/**"], write: ["${modules}/api/overlay.json"] }
 
   # ======================= Clarification domain ===========================================================
   clarification-orchestrator:
@@ -272,10 +285,12 @@ agents:
     web_research: none
     shell: restricted           # never `testcases.mjs approve`: approval is human-only, and the guard denies it to every agent
     shell_allow: ["node scripts/testcases.mjs build *", "node scripts/testcases.mjs check *", "node scripts/testcases.mjs paths *"]
+    # import mode (D-066) also reads the human's own test case document: whatever path the run-config names, found
+    # through `testcases.mjs paths` (importSource.file), so it is not a fixed glob here
     filesystem:
       read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/testcases/review-findings.md",
              "${results}/${module}/testcases/gate-findings.md"]
-      write: ["${modules}/testcases/cases.json"]   # only its cases overlay; never approval.csv or approvals.json
+      write: ["${modules}/testcases/cases.json"]   # only its cases overlay, in import mode too; never approval.csv or approvals.json
 
   testcase-reviewer:            # D-053: writes only its per-case verdicts; testcases.mjs review-check derives the verdict and review-findings.md
     layer: 2
@@ -357,17 +372,11 @@ agents:
   playwright-api-orchestrator:
     layer: 1
     profile: orchestrator
-    spawns: [pw-repo-owner, api-discoverer, api-test-planner, pw-api-scaffolder, pw-api-client-writer, pw-api-tests-writer,
+    # the endpoint catalogue comes from the api-discovery stage (D-067), so api-discoverer is not its worker
+    spawns: [pw-repo-owner, api-test-planner, pw-api-scaffolder, pw-api-client-writer, pw-api-tests-writer,
              pw-api-reviewer, pw-api-fixer, pw-api-test-runner-triager]
     filesystem: { read: ["${modules}/**", "${pw_project}/**", "${results}/${module}/playwright-api/**"], write: ["${state}/orchestration/playwright-api-${module}.json"] }
 
-  api-discoverer:               # D-045: the catalogue, coverage, drift, ids and probes are script-owned (endpoints.mjs)
-    layer: 2
-    live_target: { browser: none, http: read, load: none }   # fetch OpenAPI / GET endpoints; endpoints.mjs probes GET-only
-    web_research: allowed     # vendor API docs
-    shell: restricted
-    shell_allow: ["node scripts/endpoints.mjs *"]
-    filesystem: { read: ["${knowledge}/**", "${modules}/**"], write: ["${modules}/api/overlay.json"] }
   api-test-planner:             # D-046: plan.json, its coverage, ids, questions and api-test-plan.md are script-owned (api-plan.mjs)
     layer: 2
     live_target: { browser: none, http: none, load: none }
@@ -435,7 +444,7 @@ agents:
     profile: orchestrator
     spawns: [k6-workload-designer, k6-lib-writer, k6-script-writer, k6-reviewer, k6-fixer, k6-runner-triager]
     filesystem: { read: ["${modules}/**", "${k6_project}/**", "${results}/${module}/k6/**"], write: ["${state}/orchestration/k6-${module}.json"] }
-  k6-workload-designer:         # D-057: workload.mjs builds workload.json; it writes a cited overlay
+  k6-workload-designer:         # D-068: workload.mjs builds workload.json from the approved @performance cases (testcases/coverage.json); it writes a cited overlay
     layer: 2
     live_target: { browser: none, http: none, load: none }   # never load during design
     web_research: none

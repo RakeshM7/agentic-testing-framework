@@ -27,7 +27,8 @@ function expected({ productDir, module, side }) {
     const { built, cases, approved } = approvalSummary(productDir, module);
     if (!built) return null;
     const ok = new Set(approved);
-    return { want: new Map(cases.filter((c) => ok.has(c.id) && !c.api).map((c) => [c.id, { mutates: c.mutates }])), unapproved: new Set(cases.filter((c) => !ok.has(c.id)).map((c) => c.id)) };
+    // a @performance case is k6's (selectable steps): the UI side does not trace it
+    return { want: new Map(cases.filter((c) => ok.has(c.id) && !c.api && !c.performance).map((c) => [c.id, { mutates: c.mutates }])), unapproved: new Set(cases.filter((c) => !ok.has(c.id)).map((c) => c.id)) };
   }
   const plan = path.join(moduleDir, "api", "plan.json");
   if (!existsSync(plan)) return null;

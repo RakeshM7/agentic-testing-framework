@@ -142,3 +142,143 @@ test("about is validated and defaults to a public product", () => {
   assert.ok(errors.some((e) => e.startsWith("about.visibility")));
   assert.ok(errors.includes("about.owner: unknown key"));
 });
+
+// ---- selectable steps and the human's own test case files ----
+import { setRunConfig, parseSetArgs } from "./run-config.mjs";
+import { applyChanges, rewriteKeys } from "./lib/run-config-draft.mjs";
+import { repoRoot } from "./lib/contract.mjs";
+
+test("steps: absent = all six; a subset of the six slugs, no duplicates; an unknown slug names the allowed set", () => {
+  assert.deepEqual(validateRunConfig(base).normalized.steps, ["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"]);
+  assert.deepEqual(validateRunConfig({ ...base, steps: ["testcases", "k6"] }).normalized.steps, ["testcases", "k6"]);
+  assert.ok(validateRunConfig({ ...base, steps: ["explore", "load"] }).errors.includes("steps: unknown step 'load' (one of explore, clarifications, testcases, playwright-ui, playwright-api, k6)"));
+  assert.ok(validateRunConfig({ ...base, steps: ["k6", "k6"] }).errors.includes("steps: duplicate k6"));
+  for (const bad of [[], "explore", [1]]) assert.ok(validateRunConfig({ ...base, steps: bad }).errors.some((e) => e.startsWith("steps: must be a non-empty list")), JSON.stringify(bad));
+});
+
+test("test case files must exist (reported, not guessed); null means none; types are a subset of ui, api, performance", () => {
+  const root = interviewRoot();
+  const ok = validateRunConfig({ ...base, modules: [{ ...base.modules[0], testcases_file: "docs/prd.md" }], testcases: { import: null, types: ["ui", "performance"] } }, { root });
+  assert.deepEqual(ok.errors, []);
+  assert.deepEqual(ok.normalized.testcases, { output_format: "gherkin", max_cases: 200, import: null, types: ["ui", "performance"] });
+  const { errors } = validateRunConfig({ ...base, modules: [{ ...base.modules[0], testcases_file: "docs/cases.feature" }], testcases: { import: 3, types: ["ui", "ui", "load"], formats: [] } }, { root });
+  assert.ok(errors.includes("modules[0].testcases_file: file not found: docs/cases.feature (give the path from the repo root, or an absolute path)"));
+  assert.ok(errors.includes("testcases.import: must be a file path (from the repo root, or absolute) or null"));
+  assert.ok(errors.some((e) => e.startsWith("testcases.types: a non-empty list of distinct [ui,api,performance]")));
+  assert.ok(errors.includes("testcases.formats: unknown key"));
+});
+
+test("the interview's draft carries the steps, the human's test case files and the case types", () => {
+  const root = interviewRoot();
+  const d = draftRunConfig({ ...answers, steps: ["explore", "testcases"], testcases_files: { Deals: "docs/prd.md" }, testcases_import: "docs/prd.md", testcases_types: ["ui", "api"] }, { root });
+  assert.deepEqual(d.errors, []);
+  const cfg = yaml.load(readFile(path.join(root, d.file), "utf8"));
+  assert.deepEqual(cfg.steps, ["explore", "testcases"]);
+  assert.equal(cfg.modules[1].testcases_file, "docs/prd.md");
+  assert.equal(cfg.modules[0].testcases_file, undefined);
+  assert.deepEqual(cfg.testcases, { import: "docs/prd.md", types: ["ui", "api"] });
+  const bad = draftRunConfig({ ...answers, name: "Acme Two", steps: ["explore", "nope"], modules: [{ name: "Contacts", testcases_file: "docs/missing.csv" }], testcases_files: { Billing: "docs/prd.md" } }, { root });
+  assert.ok(bad.errors.some((e) => /^testcases_files\.Billing: not one of the modules \(contacts\)/.test(e)), String(bad.errors));
+  assert.ok(!has(path.join(root, "config", "acme-two.yaml")), "nothing is written on an error");
+  const bad2 = draftRunConfig({ ...answers, name: "Acme Three", steps: ["explore", "nope"], modules: [{ name: "Contacts", testcases_file: "docs/missing.csv" }] }, { root });
+  for (const re of [/^steps: unknown step 'nope'/, /^modules\[0\]\.testcases_file: file not found: docs\/missing\.csv/]) assert.ok(bad2.errors.some((e) => re.test(e)), String(re));
+  assert.equal(buildDraft({ ...answers, modules: [{ name: "Deals", testcases_file: "docs/prd.md" }] }, { root }).config.modules[0].testcases_file, "docs/prd.md");
+});
+
+// The example config, copied into a throwaway root that has the files the tests point at.
+const exampleRoot = () => {
+  const root = interviewRoot();
+  writeFile(path.join(root, "docs", "contacts.feature"), "Feature: c");
+  writeFile(path.join(root, "docs", "all cases.csv"), "id,module");
+  const file = path.join(root, "config", "acme-crm.yaml");
+  mkdir(path.dirname(file), { recursive: true });
+  writeFile(file, readFile(path.join(repoRoot, "config", "run-config.example.yaml"), "utf8"));
+  return { root, file };
+};
+
+test("the example config documents every new key and validates", () => {
+  const text = readFile(path.join(repoRoot, "config", "run-config.example.yaml"), "utf8");
+  for (const re of [/^steps: \[explore, clarifications, testcases, playwright-ui, playwright-api, k6\]$/m, /^    testcases_file: null +# /m, /^  import: null +# /m, /^  # types: \[ui, api, performance\]/m]) assert.match(text, re);
+  assert.deepEqual(validateRunConfig(yaml.load(text)).errors, []);
+});
+
+test("set rewrites only steps, a module's testcases_file and testcases.import/types: every other byte and comment stays", () => {
+  const { root, file } = exampleRoot();
+  const before = readFile(file, "utf8");
+  const r = setRunConfig(file, { steps: ["explore", "testcases", "playwright-ui"], testcasesFiles: { contacts: "docs/contacts.feature", deals: "docs/contacts.feature" }, testcasesImport: "docs/all cases.csv", testcasesTypes: ["ui", "api"] }, { root });
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(r.changed, ["steps", "modules[contacts].testcases_file", "modules[deals].testcases_file", "testcases.import", "testcases.types"]);
+  const after = readFile(file, "utf8");
+  const a = before.split(/\r?\n/);
+  const b = after.split(/\r?\n/);
+  assert.deepEqual(a.filter((l) => !b.includes(l)), [
+    "steps: [explore, clarifications, testcases, playwright-ui, playwright-api, k6]",
+    "    testcases_file: null        # optional: your own test cases for this module (a path from the repo root), imported",
+    "  import: null                  # optional: one file of your own test cases for every module; each case names its",
+  ], "only the three replaced lines are gone");
+  assert.deepEqual(b.filter((l) => !a.includes(l)), [
+    "steps: [explore, testcases, playwright-ui]",
+    "    testcases_file: docs/contacts.feature # optional: your own test cases for this module (a path from the repo root), imported",
+    "    testcases_file: docs/contacts.feature",
+    '  import: "docs/all cases.csv"  # optional: one file of your own test cases for every module; each case names its',
+    "  types: [ui, api]",
+  ], "replaced lines keep their comment, at its column when it fits; new keys are inserted");
+  assert.equal(b.length, a.length + 2);
+  const cfg = yaml.load(after);
+  assert.deepEqual(cfg.modules.map((m) => m.testcases_file), ["docs/contacts.feature", "docs/contacts.feature"]);
+  assert.deepEqual(validateRunConfig(cfg, { root }).errors, []);
+  // the same answer again changes nothing
+  assert.deepEqual(setRunConfig(file, { steps: ["explore", "testcases", "playwright-ui"] }, { root }).errors, []);
+  assert.equal(readFile(file, "utf8"), after);
+  // an empty file value clears it back to null
+  assert.deepEqual(setRunConfig(file, { testcasesFiles: { deals: null } }, { root }).errors, []);
+  assert.equal(yaml.load(readFile(file, "utf8")).modules[1].testcases_file, null);
+});
+
+test("set validates first and writes nothing on an error; a config without the keys gets them inserted; CRLF stays", () => {
+  const { root, file } = exampleRoot();
+  const before = readFile(file, "utf8");
+  for (const [changes, re] of [
+    [{ steps: ["explore", "smoke"] }, /^steps: unknown step 'smoke'/],
+    [{ testcasesFiles: { contacts: "docs/nope.feature" } }, /^modules\[0\]\.testcases_file: file not found/],
+    [{ testcasesFiles: { billing: "docs/contacts.feature" } }, /^--testcases-file billing: not a module of this config \(contacts, deals\)/],
+    [{ testcasesTypes: ["load"] }, /^testcases\.types:/],
+  ]) {
+    const r = setRunConfig(file, changes, { root });
+    assert.ok(r.errors.some((e) => re.test(e)), `${String(re)}: ${r.errors}`);
+  }
+  assert.equal(readFile(file, "utf8"), before, "nothing written");
+
+  const plain = path.join(root, "config", "plain.yaml");
+  writeFile(plain, ["# my product", "product: acme", "target:", "  url: https://app.acme.test", "modules:", "  - slug: contacts   # the first", "    name: Contacts", "    nav_path: [Contacts]", ""].join("\r\n"));
+  assert.deepEqual(setRunConfig(plain, { steps: ["explore"], testcasesFiles: { contacts: "docs/contacts.feature" }, testcasesTypes: ["ui"] }, { root }).errors, []);
+  assert.equal(readFile(plain, "utf8"), ["# my product", "product: acme", "steps: [explore]", "target:", "  url: https://app.acme.test", "modules:", "  - slug: contacts   # the first", "    testcases_file: docs/contacts.feature", "    name: Contacts", "    nav_path: [Contacts]", "", "testcases:", "  types: [ui]", ""].join("\r\n"));
+
+  // a block-style steps list is replaced whole
+  assert.equal(rewriteKeys("product: a\nsteps:\n  - explore\n  - k6\n# next\ntarget: x\n", { steps: ["k6"] }).text, "product: a\nsteps: [k6]\n# next\ntarget: x\n");
+  // V-6: a one-line {...} module item gets the key inside its braces; every other byte stays
+  const flow = path.join(root, "config", "flow.yaml");
+  const flowText = "product: acme   # mine\ntarget: {url: 'https://app.acme.test'}\nmodules:\n  - {slug: contacts, name: Contacts, nav_path: [Contacts]}   # first\n  - {slug: deals, name: Deals, testcases_file: 'docs/contacts.feature', nav_path: [Deals]}\n";
+  writeFile(flow, flowText);
+  assert.deepEqual(setRunConfig(flow, { testcasesFiles: { contacts: "docs/contacts.feature" } }, { root }).errors, []);
+  const flowAfter = readFile(flow, "utf8");
+  assert.equal(flowAfter, flowText.replace("nav_path: [Contacts]}", "nav_path: [Contacts], testcases_file: docs/contacts.feature}"), "only the item's braces change");
+  assert.deepEqual(setRunConfig(flow, { testcasesFiles: { deals: "docs/contacts.feature" } }, { root }).errors, []);
+  assert.equal(readFile(flow, "utf8"), flowAfter.replace("testcases_file: 'docs/contacts.feature'", "testcases_file: docs/contacts.feature"), "an existing value is replaced in place");
+  assert.deepEqual(setRunConfig(flow, { testcasesFiles: { deals: null } }, { root }).errors, []);
+  assert.equal(yaml.load(readFile(flow, "utf8")).modules[1].testcases_file, null);
+  // a {...} item over several lines is reported with the precise fallback; nothing is written
+  const multi = path.join(root, "config", "multi.yaml");
+  const multiText = "product: acme\ntarget: {url: 'https://app.acme.test'}\nmodules:\n  - {slug: contacts,\n     name: Contacts, nav_path: [Contacts]}\n";
+  writeFile(multi, multiText);
+  const refused = setRunConfig(multi, { testcasesFiles: { contacts: "docs/contacts.feature" } }, { root });
+  assert.match(refused.errors[0], /no item with slug contacts that set can rewrite .* Add `testcases_file: docs\/contacts\.feature` to that module's item by hand, or use --testcases-import <path> with the cases tagged @module:contacts/);
+  assert.equal(readFile(multi, "utf8"), multiText);
+  assert.equal(applyChanges({ modules: [] }, { testcasesFiles: { x: null } }).errors.length, 1);
+});
+
+test("set's arguments: lists, module=path pairs, an empty value clears; nothing to set is an error", () => {
+  assert.deepEqual(parseSetArgs(["--steps", "explore, k6", "--testcases-file", "contacts=docs/c.feature", "--testcases-file", "deals=", "--testcases-import", "", "--testcases-types", "ui,api"]).changes, { steps: ["explore", "k6"], testcasesFiles: { contacts: "docs/c.feature", deals: null }, testcasesImport: null, testcasesTypes: ["ui", "api"] });
+  assert.match(parseSetArgs(["--testcases-file", "docs/c.feature"]).errors[0], /expected <module>=<path>/);
+  assert.match(parseSetArgs([]).errors[0], /^nothing to set/);
+});

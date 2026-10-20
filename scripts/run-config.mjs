@@ -1,19 +1,26 @@
 #!/usr/bin/env node
 // Run-config validation and normalization (layout v2).
 //   node scripts/run-config.mjs validate <config.yaml>   -> normalized JSON, exit 1 with errors
+//   node scripts/run-config.mjs draft <answers.json>     -> config/<product>.yaml from the interview (D-063), never over a file
+//   node scripts/run-config.mjs set <config.yaml> [--steps a,b] [--testcases-file <module>=<path> ...]
+//        [--testcases-import <path>] [--testcases-types ui,api,performance]
+//                                                        validates the changed config, then rewrites only those keys in
+//                                                        the file (comments and every other key untouched) -> {file,
+//                                                        changed, steps}; an empty path clears a file (null); exit 1 with errors
 // Exports validateRunConfig for run.mjs and tests. See config/run-config.example.yaml for the format.
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual, parseArgs } from "node:util";
 import yaml from "js-yaml";
-import { SLUG_RE } from "./lib/contract.mjs";
+import { CASE_TYPES, SLUG_RE, STEPS, repoRoot } from "./lib/contract.mjs";
 import { UNRESOLVED_POLICIES } from "./lib/clarifications.mjs";
-import { VISIBILITIES, buildDraft } from "./lib/run-config-draft.mjs";
+import { VISIBILITIES, applyChanges, buildDraft, rewriteKeys } from "./lib/run-config-draft.mjs";
 
 const MODES = ["readonly", "full-run"];
 const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
-const KNOWN = ["product", "about", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
+const KNOWN = ["product", "about", "steps", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
 const posInt = (v) => Number.isInteger(v) && v > 0;
 const strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
 const httpUrl = (v) => {
@@ -27,6 +34,8 @@ const httpUrl = (v) => {
 export const EXPLORE_DEFAULTS = { max_pages: 40, max_states: 150 };
 // Test cases (scripts/testcases.mjs): the rendered format, and the budget of coverage items per module that need a case.
 export const TESTCASES_DEFAULTS = { output_format: "gherkin", max_cases: 200 };
+// Optional test case keys with no default: a product-level file of the human's own cases, and the case types to write.
+const TESTCASES_OPTIONAL = ["import", "types"];
 // k6 workloads (scripts/workload.mjs, G7): load units per module, the average-load caps, SLOs and opt-in test types.
 export const K6_DEFAULTS = { budget: 10, caps: { rps: 10, duration_s: 120, soak_duration_s: 1800 }, slo: {}, modules: {} };
 export const K6_OPT_IN_TYPES = ["stress", "spike", "soak", "breakpoint"];
@@ -85,10 +94,28 @@ function k6Errors(k6, slugs) {
 
 export const API_DEFAULTS = { specs: [], graphql: [], auth_header: null, discovery_budget: 40, probe_budget: 50, probe_delay_ms: 500, plan_budget: 300 };
 
-export function validateRunConfig(cfg) {
+// A file the human points at (a test case file): null means none; a path must exist now, from the repo root (or
+// absolute), and is reported, never guessed. -> error or null
+function fileError(v, where, root) {
+  if (v === null) return null;
+  if (typeof v !== "string" || !v.trim()) return `${where}: must be a file path (from the repo root, or absolute) or null`;
+  return existsSync(path.resolve(root, v)) ? null : `${where}: file not found: ${v} (give the path from the repo root, or an absolute path)`;
+}
+
+// root: what relative file paths (test case files) resolve against.
+export function validateRunConfig(cfg, { root = repoRoot } = {}) {
   const errors = [];
   if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return { errors: ["config is not a YAML mapping"] };
   for (const k of Object.keys(cfg)) if (!KNOWN.includes(k)) errors.push(`${k}: unknown top-level key`);
+  // The steps this run executes (absent = all of them); the stages a chosen step needs run automatically.
+  if (cfg.steps !== undefined) {
+    if (!strList(cfg.steps) || !cfg.steps.length) errors.push(`steps: must be a non-empty list of [${STEPS}]`);
+    else {
+      for (const s of cfg.steps) if (!STEPS.includes(s)) errors.push(`steps: unknown step '${s}' (one of ${STEPS.join(", ")})`);
+      const dup = cfg.steps.filter((s, i) => cfg.steps.indexOf(s) !== i);
+      if (dup.length) errors.push(`steps: duplicate ${[...new Set(dup)].join(", ")}`);
+    }
+  }
 
   if (typeof cfg.product !== "string" || !SLUG_RE.test(cfg.product)) errors.push("product: required, lowercase kebab-case (folder name under artifacts/, playwright-tests/, k6-tests/)");
   if (cfg.about !== undefined) {
@@ -154,6 +181,10 @@ export function validateRunConfig(cfg) {
       }
       if (m?.nav_path !== undefined && !strList(m.nav_path)) errors.push(`modules[${i}].nav_path: must be a list of menu labels`);
       if (m?.references !== undefined && !strList(m.references)) errors.push(`modules[${i}].references: must be a list of URLs/paths`);
+      if (m?.testcases_file !== undefined) {
+        const e = fileError(m.testcases_file, `modules[${i}].testcases_file`, root);
+        if (e) errors.push(e);
+      }
     });
   }
 
@@ -185,7 +216,14 @@ export function validateRunConfig(cfg) {
       errors.push(`testcases.output_format: '${cfg.testcases.output_format}' not in [${FORMATS}]`);
     if (cfg.testcases?.max_cases !== undefined && !posInt(cfg.testcases.max_cases))
       errors.push("testcases.max_cases: must be a positive integer (per module; coverage items over it are deferred: budget)");
-    for (const k of Object.keys(cfg.testcases ?? {})) if (!(k in TESTCASES_DEFAULTS)) errors.push(`testcases.${k}: unknown key`);
+    for (const k of Object.keys(cfg.testcases ?? {})) if (!(k in TESTCASES_DEFAULTS) && !TESTCASES_OPTIONAL.includes(k)) errors.push(`testcases.${k}: unknown key`);
+    if (cfg.testcases?.import !== undefined) {
+      const e = fileError(cfg.testcases.import, "testcases.import", root);
+      if (e) errors.push(e);
+    }
+    const types = cfg.testcases?.types;
+    if (types !== undefined && !(strList(types) && types.length && types.every((t) => CASE_TYPES.includes(t)) && new Set(types).size === types.length))
+      errors.push(`testcases.types: a non-empty list of distinct [${CASE_TYPES}] (ui is always written; the chosen automation steps add api and performance)`);
   }
   if (cfg.clarifications?.unresolved_policy !== undefined && !UNRESOLVED_POLICIES.includes(cfg.clarifications.unresolved_policy))
     errors.push(`clarifications.unresolved_policy: not in [${UNRESOLVED_POLICIES}]`);
@@ -198,6 +236,7 @@ export function validateRunConfig(cfg) {
     errors,
     normalized: {
       ...cfg,
+      steps: cfg.steps ?? [...STEPS],
       about: { name: cfg.product, visibility: "public", description: "", ...cfg.about },
       target: { api_urls: [], ...cfg.target },
       api: { ...API_DEFAULTS, ...cfg.api },
@@ -221,7 +260,7 @@ export function validateRunConfig(cfg) {
 export function draftRunConfig(answers, { root = process.cwd() } = {}) {
   const draft = buildDraft(answers, { root });
   if (!draft.errors.length) {
-    const { errors } = validateRunConfig(draft.config);
+    const { errors } = validateRunConfig(draft.config, { root });
     draft.errors.push(...errors);
   }
   if (draft.errors.length) return draft;
@@ -238,8 +277,70 @@ export function draftRunConfig(answers, { root = process.cwd() } = {}) {
   return draft;
 }
 
+// The step menu's answer and the human's test case files, written into an existing config: the changed config is
+// validated first, then only those keys are rewritten in the text (every other byte, comments included, stays), and the
+// result must parse to exactly the validated config. changes: see applyChanges. -> {errors, file?, changed?, steps?}
+export function setRunConfig(file, changes, { root = repoRoot } = {}) {
+  let text;
+  try {
+    text = readFileSync(file, "utf8");
+  } catch (e) {
+    return { errors: [`cannot read ${file}: ${e.message}`] };
+  }
+  const before = yaml.load(text);
+  const { config, errors } = applyChanges(before, changes);
+  if (errors.length) return { errors };
+  const v = validateRunConfig(config, { root });
+  if (v.errors.length) return { errors: v.errors };
+  const out = rewriteKeys(text, changes);
+  if (out.errors.length) return { errors: out.errors };
+  let after;
+  try {
+    after = yaml.load(out.text);
+  } catch (e) {
+    after = e;
+  }
+  if (!isDeepStrictEqual(after, config)) return { errors: [`${file}: the rewrite would not read back as the validated config; nothing was written (edit the file by hand)`] };
+  if (out.text !== text) writeFileSync(file, out.text, "utf8");
+  const changed = [...(changes.steps ? ["steps"] : []), ...Object.keys(changes.testcasesFiles ?? {}).map((m) => `modules[${m}].testcases_file`), ...(changes.testcasesImport !== undefined ? ["testcases.import"] : []), ...(changes.testcasesTypes ? ["testcases.types"] : [])];
+  return { errors: [], file, changed, steps: v.normalized.steps };
+}
+
+// `set` arguments -> changes. An empty file value clears it (null).
+export function parseSetArgs(args) {
+  const { values: v } = parseArgs({ args, options: { steps: { type: "string" }, "testcases-file": { type: "string", multiple: true }, "testcases-import": { type: "string" }, "testcases-types": { type: "string" } } });
+  const list = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
+  const changes = {};
+  const errors = [];
+  if (v.steps !== undefined) changes.steps = list(v.steps);
+  for (const a of v["testcases-file"] ?? []) {
+    const i = a.indexOf("=");
+    if (i < 1) errors.push(`--testcases-file ${a}: expected <module>=<path>`);
+    else (changes.testcasesFiles ??= {})[a.slice(0, i)] = a.slice(i + 1).trim() || null;
+  }
+  if (v["testcases-import"] !== undefined) changes.testcasesImport = v["testcases-import"].trim() || null;
+  if (v["testcases-types"] !== undefined) changes.testcasesTypes = list(v["testcases-types"]);
+  if (!errors.length && !Object.keys(changes).length) errors.push("nothing to set: give --steps, --testcases-file, --testcases-import or --testcases-types");
+  return { changes, errors };
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [cmd, file] = process.argv.slice(2);
+  if (cmd === "set" && file) {
+    let r;
+    try {
+      const a = parseSetArgs(process.argv.slice(4));
+      r = a.errors.length ? a : setRunConfig(file, a.changes);
+    } catch (e) {
+      r = { errors: [e.message] };
+    }
+    if (r.errors.length) {
+      console.error(r.errors.map((e) => `- ${e}`).join("\n"));
+      process.exit(1);
+    }
+    console.log(JSON.stringify({ file: r.file, changed: r.changed, steps: r.steps }, null, 2));
+    process.exit(0);
+  }
   if (cmd === "draft" && file) {
     let answers;
     try {
@@ -257,7 +358,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(0);
   }
   if (cmd !== "validate" || !file) {
-    console.error("usage: run-config.mjs validate <config.yaml> | draft <answers.json>");
+    console.error("usage: run-config.mjs validate <config.yaml> | draft <answers.json> | set <config.yaml> [--steps ...] (see header comment)");
     process.exit(2);
   }
   const { errors, normalized } = validateRunConfig(yaml.load(readFileSync(file, "utf8")));

@@ -2,17 +2,29 @@
 // variant A: the script builds, the k6-workload-designer only overlays cited judgments).
 //
 //   workload.json            the scenarios (schema workload) -- written only by build()
-//   workload-coverage.json   every catalogue endpoint: loaded (with its K6 ids), excluded with a reason, or deferred:
-//                            budget (schema workload-coverage); `verified` is stamped by check()
+//   workload-coverage.json   every human-approved @performance test case: loaded (with its K6 id), excluded with a
+//                            reason, or deferred: budget (schema workload-coverage); `verified` is stamped by check()
 //   workload-registry.json   scenario key -> K6 id, assigned once and never reused (lib/registry.mjs)
 //   workload-overlay.json    the designer's cited judgments (schema workload-overlay) -- the only file the agent writes
 //
-// Inputs: the endpoint catalogue (api/discovered-endpoints.json: rateLimit, safeMethod, queryLike, mutates, observed),
-// the verified API plan (api/plan.json: scenario endpoints, steps, blocked), the playwright-api results.json of the
-// results run, the run-config's k6 section (slo, modules.<m>.types, caps, budget), the run's mode and the overlay.
+// Inputs: the human-approved @performance test cases (testcases/coverage.json + approvals.json, D-053: each names an
+// endpoint EP id or a user flow, a load type, a target rate and optionally an SLO), the endpoint catalogue of the
+// api-discovery stage (api/discovered-endpoints.json: rateLimit, safeMethod, queryLike, mutates), the run-config's k6
+// section (slo, modules.<m>.types, caps, budget), the run's mode and the overlay. The workload is built ONLY from the
+// approved @performance cases (D-068, superseding D-057's catalogue-wide workload; D-057's caps below stay);
+// k6 no longer needs playwright-api (decision 5), but known functional failures are skipped (decision 16): when the
+// module has playwright-api results (this run's, else the latest recorded earlier run's), mapped to endpoints through
+// the API plan's scenario ids, a case whose endpoint failed or was blocked functionally is not loaded. Without results,
+// every case is load-tested.
 // Never sends a request and never runs k6.
 //
 // Rules enforced here (not in prompts):
+//   - one load unit per approved @performance case: its endpoint, or the overlay flow or mix its flow names; a case
+//     naming an endpoint the catalogue lacks (unknown-endpoint) or a flow no overlay flow or mix resolves
+//     (unresolved-flow) is excluded with that reason and noted, never dropped silently
+//   - the case's type, capped (caseType): readonly -> smoke; an opt-in type the run-config does not opt in ->
+//     average-load; each cap noted. Its rate: the case's target rps, never above the caps below. Its SLO: the case's
+//     fields over k6.slo's, field by field; a field neither gives is the assumed default, marked assumed
 //   - test types by mode: readonly -> smoke; full-run -> smoke + average-load, plus stress/spike/soak/breakpoint only
 //     when k6.modules.<m>.types opts in (an opt-in under readonly is ignored with a note, never an error)
 //   - open model only: constant-arrival-rate (smoke, average-load, soak), ramping-arrival-rate (stress, spike,
@@ -30,26 +42,31 @@
 //   - writes: excluded in readonly (mutating-readonly); in full-run only through cited overlay flows that start with a
 //     create and touch only the entities the flow created: every path parameter bound to a create's id pointer
 //     (flowProblems; else no-safe-data); a flow records its cleanup and trackLeftover for the script generator (D-005)
-//   - endpoints whose playwright-api tests failed, were blocked or never passed are excluded; a failed scenario that
-//     touches several endpoints excludes all of them (ambiguous, conservative)
-//   - stable ids K6-<m>-<n> from the registry, keyed "<endpoint key>|<type>", "mix:<name>|<type>" or
-//     "flow:<name>|<type>"
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+//   - known functional failures (decision 16, the pre-S2b D-057 mapping): a case naming an endpoint that a failed (or
+//     flaky) playwright-api scenario touches -> failed-functional (a failed scenario touching several endpoints
+//     excludes all of them: ambiguous, conservative); an endpoint whose own functional scenarios are all blocked in
+//     the plan and none passed -> blocked. A flow or mix case is excluded only when one of its endpoints failed (a
+//     flow binds its own data, so a plan block on a member does not apply). Each is noted. No results -> loaded
+//   - k6.budget counts load units (cases): the best-ranked by case priority, then the overlay's, then id; the rest
+//     deferred: budget
+//   - stable ids K6-<m>-<n> from the registry, keyed "case:<TC id>|<type>"
+import { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { citationProblem } from "./citations.mjs";
 import { csvPath, readRows } from "./clarifications.mjs";
 import { applyBudget, createLedger } from "./coverage.mjs";
 import { readJson, writeJson } from "./endpoints.mjs";
-import { planPaths, planUnverified } from "./api-plan.mjs";
+import { planPaths } from "./api-plan.mjs";
 import { assignIds } from "./registry.mjs";
+import { testcasePaths } from "./testcases.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 import { K6_DEFAULTS, K6_OPT_IN_TYPES as OPT_IN_TYPES } from "../run-config.mjs";
 
 export { K6_DEFAULTS, OPT_IN_TYPES };
 
 export const TYPES = ["smoke", "average-load", "stress", "spike", "soak", "breakpoint"];
-export const EXCLUSION_REASONS = ["not-planned", "overlay-excluded", "mutating-readonly", "failed-functional", "blocked", "untested-functional", "rate-limited", "no-safe-data"];
+export const EXCLUSION_REASONS = ["unknown-endpoint", "unresolved-flow", "overlay-excluded", "mutating-readonly", "failed-functional", "blocked", "rate-limited", "no-safe-data"];
 export const ASSUMED = { p95_ms: 1000, error_rate: 0.01 };
 export const SMOKE = { rps: 1, durationS: 30 };
 export const RATE_LIMIT_SHARE = 0.5; // never above half a documented rate limit
@@ -68,13 +85,19 @@ export function workloadPaths(productDir, module) {
   const moduleDir = path.join(productDir, "modules", module);
   const dir = path.join(moduleDir, "k6");
   const pp = planPaths(productDir, module);
+  const tp = testcasePaths(productDir, module);
   return {
     dir, moduleDir, productDir, apiDir: pp.dir,
     workload: path.join(dir, "workload.json"),
     coverage: path.join(dir, "workload-coverage.json"),
     registry: path.join(dir, "workload-registry.json"),
     overlay: path.join(dir, "workload-overlay.json"),
+    // the catalogue (api-discovery stage); the plan only for k6-code's expected statuses (optional, else 2xx); the
+    // test cases and their approvals: the workload's source (D-068)
     catalogue: pp.catalogue, plan: pp.plan, pp,
+    cases: tp.coverage, approvals: tp.approvals,
+    // the module's playwright-api results of a run: functional evidence when present (decision 16)
+    resultsDir: path.join(productDir, "results"),
     results: (runId) => path.join(productDir, "results", runId, module, "playwright-api", "results.json"),
   };
 }
@@ -205,27 +228,6 @@ export function sizing(peakRps, expectedIterationS) {
   const preAllocatedVUs = Math.max(1, Math.ceil(round(peakRps * expectedIterationS * HEADROOM)));
   return { peakRps: round(peakRps), expectedIterationS: round(expectedIterationS), headroom: HEADROOM, preAllocatedVUs, maxVUs: preAllocatedVUs * MAX_VUS_FACTOR };
 }
-
-// ---------- results -> plan scenarios -> endpoints ----------
-// A generated API test's results item carries its plan scenario id (results.mjs scenarioId, parsed from the literal title,
-// D-056/D-058). -> {byScenario: Map(id -> passed|failed|skipped), unmapped: [title]} (no scenarioId, an id of another
-// module, or an id the plan does not have): conservative, never guessed from the title.
-export function mapResults(results, module, planIds) {
-  const byScenario = new Map();
-  const unmapped = [];
-  for (const it of results?.items ?? []) {
-    const id = it.scenarioId;
-    if (typeof id !== "string" || !id.startsWith(`API-${module}-`) || !planIds.has(id)) {
-      unmapped.push(it.title);
-      continue;
-    }
-    const st = it.status === "failed" || it.status === "flaky" ? "failed" : it.status === "passed" ? "passed" : "skipped";
-    const before = byScenario.get(id);
-    byScenario.set(id, before === "failed" || st === "failed" ? "failed" : before === "passed" || st === "passed" ? "passed" : "skipped");
-  }
-  return { byScenario, unmapped };
-}
-const touches = (s) => [...new Set([s.endpoint, ...(s.steps ?? []).map((x) => x.endpoint), ...(s.request?.setup ?? []).map((x) => x.endpoint)])];
 
 const PRIORITY = { p1: 1, p2: 2, p3: 3 };
 const idNum = (id) => Number(String(id).split("-").at(-1));
@@ -402,18 +404,110 @@ export function rootDeleteStep(flow, byId) {
   return step === undefined ? null : flow.steps[step];
 }
 
+// ---------- functional evidence (D-068, decision 16) ----------
+// The module's playwright-api results.json that counts: this run's when it ran, else the latest recorded (recordedAt,
+// then run id) of the earlier runs that ran. -> {file, runId, results} | null (no results: every case is load-tested).
+// A results.json of status not-run is no evidence.
+export function functionalResults(wp, runId) {
+  const ran = (id) => {
+    const results = readJson(wp.results(id), null);
+    return results?.status === "ran" ? { file: wp.results(id), runId: id, results } : null;
+  };
+  const own = runId ? ran(runId) : null;
+  if (own) return own;
+  const runs = existsSync(wp.resultsDir) ? readdirSync(wp.resultsDir, { withFileTypes: true }).filter((d) => d.isDirectory() && d.name !== runId).map((d) => d.name) : [];
+  return runs.map(ran).filter(Boolean).sort((a, b) => String(b.results.recordedAt ?? "").localeCompare(String(a.results.recordedAt ?? "")) || b.runId.localeCompare(a.runId))[0] ?? null;
+}
+
+// A generated API test's results item carries its plan scenario id (results.mjs scenarioId, parsed from the literal
+// title, D-056/D-058). -> {byScenario: Map(id -> passed|failed|skipped), unmapped: [title]} (no scenarioId, an id of
+// another module, or an id the plan does not have): conservative, never guessed from the title. Flaky counts as failed.
+function scenarioStatuses(results, module, planIds) {
+  const byScenario = new Map();
+  const unmapped = [];
+  for (const it of results?.items ?? []) {
+    const id = it.scenarioId;
+    if (typeof id !== "string" || !id.startsWith(`API-${module}-`) || !planIds.has(id)) {
+      unmapped.push(it.title);
+      continue;
+    }
+    const st = it.status === "failed" || it.status === "flaky" ? "failed" : it.status === "passed" ? "passed" : "skipped";
+    const before = byScenario.get(id);
+    byScenario.set(id, before === "failed" || st === "failed" ? "failed" : before === "passed" || st === "passed" ? "passed" : "skipped");
+  }
+  return { byScenario, unmapped };
+}
+const touches = (s) => [...new Set([s.endpoint, ...(s.steps ?? []).map((x) => x.endpoint), ...(s.request?.setup ?? []).map((x) => x.endpoint)].filter(Boolean))];
+
+// The functional verdict per endpoint from the chosen results and the API plan (the pre-S2b D-057 rules). -> {fr,
+// verdict(epId) -> {reason: failed-functional|blocked, detail} | null, notes[]}. No results (or no plan to map them
+// through): verdict is always null, and a note says why.
+export function functionalEvidence(wp, module, runId) {
+  const fr = functionalResults(wp, runId);
+  const notes = [];
+  const none = { fr, verdict: () => null, notes };
+  const own = runId ? readJson(wp.results(runId), null) : null;
+  if (own && own.status !== "ran") notes.push(`the playwright-api tests of run ${runId} did not run: ${own.reason ?? "no reason recorded"}`);
+  if (!fr) {
+    notes.push("no playwright-api results.json for this module in this or an earlier run: every case is load-tested without functional evidence (decision 16)");
+    return none;
+  }
+  const plan = readJson(wp.plan, null);
+  if (!Array.isArray(plan)) {
+    notes.push(`playwright-api results of run ${fr.runId} exist but api/plan.json is missing: they cannot be mapped to endpoints, every case is load-tested`);
+    return none;
+  }
+  notes.push(`functional evidence: the playwright-api results of run ${fr.runId}${fr.runId === runId ? "" : " (an earlier run)"}`);
+  const { byScenario, unmapped } = scenarioStatuses(fr.results, module, new Set(plan.map((s) => s.id)));
+  if (unmapped.length) notes.push(`${unmapped.length} playwright-api result(s) of run ${fr.runId} name no single plan scenario and were not mapped (no scenarioId in results.json: record them with results.mjs)`);
+  const verdict = (epId, { flow = false } = {}) => {
+    const ss = plan.filter((s) => touches(s).includes(epId));
+    const failed = ss.filter((s) => byScenario.get(s.id) === "failed");
+    if (failed.length) {
+      const multi = failed.filter((s) => touches(s).length > 1);
+      return { reason: "failed-functional", detail: `${epId} failed functionally in run ${fr.runId}: ${failed.map((s) => s.id).join(", ")}${multi.length ? `; ambiguous: ${multi.map((s) => `${s.id} touches ${touches(s).join(", ")}`).join("; ")}, excluded conservatively` : ""}` };
+    }
+    if (flow) return null;
+    const ownSs = ss.filter((s) => s.endpoint === epId);
+    const functional = ownSs.filter((s) => s.type === "functional");
+    const blockedSet = functional.length ? functional : ownSs;
+    if (blockedSet.length && blockedSet.every((s) => s.blocked) && !blockedSet.some((s) => byScenario.get(s.id) === "passed")) return { reason: "blocked", detail: `${epId} is blocked functionally (run ${fr.runId}): ${blockedSet.map((s) => `${s.id} (${s.blocked})`).join("; ")}` };
+    return null;
+  };
+  return { fr, verdict, notes };
+}
+
 // ---------- build ----------
-// opts: {module, cfg (resolved run-config), mode, runId (the results run), cases (approved test cases), registryFile}
-// -> {problems[], notes[], workload, coverage, summary}. Pure but for the registry (assignIds), which a dry run points
-// at a copy.
+// The approved @performance cases of a Map TC id -> case (the CLI passes every human-approved case, D-053), in id order.
+export function performanceCases(cases) {
+  return [...cases.entries()].filter(([, c]) => c?.performance || c?.type === "performance").map(([id, c]) => ({ ...c, id })).sort((a, b) => idNum(a.id) - idNum(b.id));
+}
+
+// The type a case gets in this run (D-057's caps): readonly -> smoke; an opt-in type without
+// k6.modules.<m>.types opting in -> average-load. -> {type, note?}
+export function caseType(requested, types) {
+  if (types.includes(requested)) return { type: requested };
+  const type = types.includes("average-load") ? "average-load" : "smoke";
+  const why = types.includes("average-load") ? `${requested} is an opt-in type the run-config does not opt this module into (k6.modules.<m>.types)` : "a readonly run gets smoke only";
+  return { type, note: `${requested} capped to ${type}: ${why}` };
+}
+
+// A case's SLO over the run-config's (k6.slo, field by field), each field with its source: case:<TC> | slo:* (none =
+// the assumed default, marked in the thresholds).
+const caseSlo = (k6, module, e, c) => {
+  const out = sloFor(k6, module, e);
+  for (const k of ["p95_ms", "p99_ms", "error_rate"]) if (c.load?.slo?.[k] !== undefined) out[k] = { value: c.load.slo[k], source: `case:${c.id}` };
+  return out;
+};
+
+// opts: {module, cfg (resolved run-config), mode, runId (the run building it), cases: Map TC id -> {performance?,
+// endpoint?, flow?, load?, priority?} (the human-approved cases), registryFile}. Reads the catalogue and the overlay from
+// disk. -> {problems[], notes[], workload, coverage, summary}. Pure but for the registry (assignIds), which a dry run
+// points at a copy.
 export function compute(wp, { module, cfg, mode, runId, cases = new Map(), registryFile = wp.registry }) {
   const problems = [];
   const catalogue = readJson(wp.catalogue, null);
-  const plan = readJson(wp.plan, null);
-  if (!catalogue) return { problems: ["api/discovered-endpoints.json is missing (the API stage must run first)"] };
-  if (!plan) return { problems: ["api/plan.json is missing (the API stage must run first)"] };
-  const unverified = planUnverified(wp.pp);
-  if (unverified) problems.push(`the API plan is not verified: ${unverified}`);
+  if (!catalogue) return { problems: ["api/discovered-endpoints.json is missing (the api-discovery stage builds it with endpoints.mjs build)"] };
   const k6 = k6Config(cfg);
   const ov = readOverlay(wp.overlay);
   const cctx = { rows: readRows(csvPath(wp.productDir, module)), cases, productDir: wp.productDir, moduleDir: wp.moduleDir, apiDir: wp.apiDir };
@@ -425,54 +519,20 @@ export function compute(wp, { module, cfg, mode, runId, cases = new Map(), regis
     else if (byKey.has(k) && Object.hasOwn(k6.modules[module].slo.endpoints, byKey.get(k).id)) problems.push(`k6.modules.${module}.slo.endpoints: '${k}' and '${byKey.get(k).id}' name the same endpoint`);
   }
   const { types, notes } = typesFor(mode, k6, module);
+  const perf = performanceCases(cases);
+  const fe = functionalEvidence(wp, module, runId);
+  notes.push(...fe.notes);
+  if (!perf.length) notes.push("no human-approved @performance test case: nothing to load (the workload is built only from approved @performance cases)");
 
-  // functional evidence from the playwright-api results of the results run
-  const resultsFile = wp.results(runId);
-  const results = readJson(resultsFile, null);
-  const planIds = new Set(plan.map((s) => s.id));
-  const { byScenario, unmapped } = mapResults(results, module, planIds);
-  if (!results) notes.push(`no playwright-api results.json for run ${runId}: no endpoint has passing functional evidence`);
-  else if (results.status === "not-run") notes.push(`the playwright-api tests of run ${runId} did not run: ${results.reason ?? "no reason recorded"}`);
-  if (unmapped.length) notes.push(`${unmapped.length} playwright-api result(s) name no single plan scenario and were not mapped (no scenarioId in results.json: record them with results.mjs)`);
-  const scenariosOf = new Map(catalogue.map((e) => [e.id, []]));
-  for (const s of plan) for (const id of touches(s)) scenariosOf.get(id)?.push(s);
-
-  const ledger = createLedger({ reasons: EXCLUSION_REASONS });
-  const exclusion = new Map(); // EP id -> {reason, detail, citation?}
-  const excludeOv = new Map(ov.exclude.map((x) => [x.endpoint, x]));
-  const peakCap = new Map();
-  for (const e of catalogue) {
-    ledger.addItem(e.id, { key: e.key });
-    const ss = scenariosOf.get(e.id);
-    const own = ss.filter((s) => s.endpoint === e.id);
-    const failed = ss.filter((s) => byScenario.get(s.id) === "failed");
-    const passed = ss.filter((s) => byScenario.get(s.id) === "passed");
-    const functional = own.filter((s) => s.type === "functional");
-    const blockedSet = functional.length ? functional : own;
-    const rl = rateLimitRps(e.rateLimit);
-    let x = null;
-    if (!ss.length) x = { reason: "not-planned", detail: "no API plan scenario touches it" };
-    else if (excludeOv.has(e.id)) x = { reason: "overlay-excluded", detail: excludeOv.get(e.id).reason, citation: excludeOv.get(e.id).citation };
-    else if (mode !== "full-run" && e.mutates) x = { reason: "mutating-readonly", detail: `${e.method ?? e.kind} mutates${e.queryLike ? " (query-like, still a write for the guard)" : ""}; a readonly run loads no writes` };
-    else if (failed.length) {
-      const multi = failed.filter((s) => touches(s).length > 1);
-      x = { reason: "failed-functional", detail: `failed in run ${runId}: ${failed.map((s) => s.id).join(", ")}${multi.length ? `; ambiguous: ${multi.map((s) => `${s.id} touches ${touches(s).join(", ")}`).join("; ")}, excluded conservatively` : ""}` };
-    } else if (blockedSet.length && blockedSet.every((s) => s.blocked)) x = { reason: "blocked", detail: `blocked in the plan: ${blockedSet.map((s) => `${s.id} (${s.blocked})`).join("; ")}` };
-    else if (!passed.length) x = { reason: "untested-functional", detail: results ? `no playwright-api test touching it passed in run ${runId}` : `no playwright-api results.json for run ${runId}` };
-    else if (rl?.unreadable) x = { reason: "rate-limited", detail: "a rate limit is documented but no rate could be read from it" };
-    if (x) exclusion.set(e.id, x);
-    peakCap.set(e.id, rl?.rps ? rl.rps * RATE_LIMIT_SHARE : Infinity);
-  }
-
+  const peakCap = new Map(catalogue.map((e) => [e.id, rateLimitRps(e.rateLimit)?.rps ? rateLimitRps(e.rateLimit).rps * RATE_LIMIT_SHARE : Infinity]));
   // per-endpoint caps: rps for average-load and its source
   const capOf = (e) => {
     const slo = sloFor(k6, module, e);
     const rlCap = peakCap.get(e.id);
     const base = Math.min(k6.caps.rps, rlCap);
     // a write and a query-like POST (D-057): the write cap in every type, so a ramp's peak is never below the average
-    const write = !!e.mutates;
     if (slo.rps) return { rps: Math.min(slo.rps.value, rlCap), source: slo.rps.value > rlCap ? "rate-limit" : slo.rps.source };
-    if (write) return { rps: base * WRITE_SHARE, source: rlCap < k6.caps.rps ? "rate-limit-write-half" : "default-write-half" };
+    if (e.mutates) return { rps: base * WRITE_SHARE, source: rlCap < k6.caps.rps ? "rate-limit-write-half" : "default-write-half" };
     return { rps: base, source: rlCap < k6.caps.rps ? "rate-limit" : "default" };
   };
   // the write cap: half the read cap (itself at most 50% of a documented rate limit), unless an SLO sets the rate
@@ -481,80 +541,97 @@ export function compute(wp, { module, cfg, mode, runId, cases = new Map(), regis
     const rlCap = peakCap.get(e.id);
     return slo.rps ? Math.min(slo.rps.value, rlCap) : Math.min(k6.caps.rps, rlCap) * WRITE_SHARE;
   };
-  const p95Of = (e) => (sloFor(k6, module, e).p95_ms?.value ?? ASSUMED.p95_ms) / 1000;
   const thinkOf = (target) => ov.thinkTime[target] ?? null;
+  const excludeOv = new Map(ov.exclude.map((x) => [x.endpoint, x]));
+  const flows = new Map(ov.flows.map((f) => [f.name, f]));
+  const mixes = new Map(ov.mixes.map((m) => [m.name, m]));
 
-  // load units: flows (full-run), mixes, then single endpoints
+  // one load unit per approved @performance case, or the reason it cannot load
+  const ledger = createLedger({ reasons: EXCLUSION_REASONS });
+  const exclusion = new Map(); // TC id -> {reason, detail, citation?}
   const units = [];
-  const flowNote = new Map(); // mutating EP id -> why its flow did not load
-  const flowCovered = new Set();
-  const priorityOf = (ids) => Math.min(...ids.map((id) => PRIORITY[ov.priorities[id]?.priority] ?? Math.min(...(scenariosOf.get(id) ?? []).filter((s) => s.endpoint === id).map((s) => PRIORITY[s.priority] ?? 3), 3)));
-  if (mode === "full-run") {
-    for (const f of ov.flows) {
-      const eps = f.steps.map((s) => byId.get(s.endpoint)).filter(Boolean);
-      if (eps.length !== f.steps.length || flowProblems(f, byId).length) continue;
-      const bad = eps.filter((e) => exclusion.has(e.id));
-      if (bad.length) {
-        for (const e of eps) if (e.mutates && !exclusion.has(e.id)) flowNote.set(e.id, `its flow '${f.name}' is not loaded: ${bad.map((b) => `${b.id} ${exclusion.get(b.id).reason}`).join(", ")}`);
-        continue;
-      }
-      for (const e of eps) if (e.mutates) flowCovered.add(e.id);
-      units.push({ kind: "flow", name: f.name, key: `flow:${f.name}`, endpoints: [...new Set(eps.map((e) => e.id))], flow: f });
-    }
-  }
-  const mixed = new Set();
-  for (const m of ov.mixes) {
-    const members = (m.endpoints ?? []).filter((x) => byId.has(x.endpoint) && !byId.get(x.endpoint).mutates);
-    for (const x of members) mixed.add(x.endpoint);
-    const live = members.filter((x) => !exclusion.has(x.endpoint));
-    if (live.length) units.push({ kind: "mix", name: m.name, key: `mix:${m.name}`, endpoints: live.map((x) => x.endpoint), weights: Object.fromEntries(live.map((x) => [x.endpoint, x.weight])), citation: m.citation });
-  }
-  for (const e of catalogue) {
-    if (exclusion.has(e.id) || mixed.has(e.id)) continue;
+  const typeNotes = new Map(); // TC id -> requested type, when capped
+  for (const c of perf) {
+    const x = (reason, detail, extra = {}) => {
+      exclusion.set(c.id, { reason, detail, ...extra });
+      if (["unknown-endpoint", "unresolved-flow", "failed-functional", "blocked"].includes(reason)) notes.push(`${c.id} is not loaded: ${detail}`);
+    };
+    let u = null;
+    if (c.endpoint) {
+      const e = byId.get(c.endpoint);
+      if (!e) x("unknown-endpoint", `${c.id} names ${c.endpoint}, which is not in the endpoint catalogue (discovered-endpoints.json)`);
+      else u = { kind: "endpoint", name: e.id, target: e.id, endpoints: [e.id] };
+    } else if (c.flow && flows.has(c.flow)) {
+      const f = flows.get(c.flow);
+      const eps = f.steps.map((s) => byId.get(s.endpoint));
+      if (eps.some((e) => !e)) x("unresolved-flow", `flow '${c.flow}' names an endpoint the catalogue lacks: ${f.steps.filter((s) => !byId.has(s.endpoint)).map((s) => s.endpoint).join(", ")}`);
+      else u = { kind: "flow", name: f.name, target: `flow:${f.name}`, endpoints: [...new Set(eps.map((e) => e.id))], flow: f };
+    } else if (c.flow && mixes.has(c.flow)) {
+      const m = mixes.get(c.flow);
+      const members = (m.endpoints ?? []).filter((y) => byId.has(y.endpoint) && !byId.get(y.endpoint).mutates);
+      if (!members.length) x("unresolved-flow", `mix '${c.flow}' has no read endpoint of the catalogue`);
+      else u = { kind: "mix", name: m.name, target: `mix:${m.name}`, endpoints: members.map((y) => y.endpoint), weights: Object.fromEntries(members.map((y) => [y.endpoint, y.weight])), citation: m.citation };
+    } else if (c.flow) x("unresolved-flow", `${c.id} names the user flow '${c.flow}': no workload-overlay.json flow or mix has that name (the designer adds it, cited)`);
+    else x("unresolved-flow", `${c.id} names neither an endpoint (EP id) nor a user flow`);
+    if (!u) continue;
+    u.case = c;
+    u.key = `case:${c.id}`;
+    const eps = u.endpoints.map((id) => byId.get(id));
+    const ovx = eps.find((e) => excludeOv.has(e.id));
+    const unreadable = eps.find((e) => rateLimitRps(e.rateLimit)?.unreadable);
+    // known functional failures (decision 16): a flow or mix only when a member endpoint failed
+    const functional = eps.map((e) => fe.verdict(e.id, { flow: u.kind !== "endpoint" })).find(Boolean);
+    if (ovx) x("overlay-excluded", `${ovx.id}: ${excludeOv.get(ovx.id).reason}`, { citation: excludeOv.get(ovx.id).citation });
+    else if (mode !== "full-run" && eps.some((e) => e.mutates)) x("mutating-readonly", `${eps.filter((e) => e.mutates).map((e) => `${e.id} ${e.method ?? e.kind} mutates${e.queryLike ? " (query-like, still a write for the guard)" : ""}`).join("; ")}; a readonly run loads no writes`);
+    else if (functional) x(functional.reason, functional.detail);
+    else if (u.kind === "flow" && flowProblems(u.flow, byId).length) x("no-safe-data", `flow '${u.name}': ${flowProblems(u.flow, byId).join("; ")}`);
     // a query-like request on an item path is loaded only as a flow step bound to a create: standalone, its {param}
     // would come from a slot, that is pre-existing data, and a wrong query-like flag would write to it (D-005)
-    if (e.queryLike && pathParamsOf(e).length) {
-      if (!flowCovered.has(e.id)) exclusion.set(e.id, { reason: "no-safe-data", detail: `query-like on an item path (${e.path}): loaded only as a step of a cited flow bound to an entity the run creates${flowNote.has(e.id) ? `; ${flowNote.get(e.id)}` : ""}` });
-      continue;
-    }
-    if (e.mutates && !e.queryLike) {
-      if (!flowCovered.has(e.id)) exclusion.set(e.id, { reason: "no-safe-data", detail: flowNote.get(e.id) ?? "a write is loaded only through a cited overlay flow on an entity the run creates; none covers it" });
-      continue;
-    }
-    units.push({ kind: "endpoint", name: e.id, key: e.key, endpoints: [e.id] });
+    else if (u.kind === "endpoint" && eps[0].queryLike && pathParamsOf(eps[0]).length) x("no-safe-data", `query-like on an item path (${eps[0].path}): loaded only as a step of a cited flow bound to an entity the run creates; name that flow in the case`);
+    else if (u.kind === "endpoint" && eps[0].mutates && !eps[0].queryLike) x("no-safe-data", `${eps[0].id} writes: a write is loaded only through a cited workload-overlay.json flow on an entity the run creates; name that flow in the case`);
+    else if (unreadable) x("rate-limited", `${unreadable.id}: a rate limit is documented but no rate could be read from it`);
+    else units.push(u);
   }
-  // budget: the best-ranked load units; the rest deferred (D-049)
+  for (const c of perf) ledger.addItem(c.id, { target: c.endpoint ?? (c.flow ? (mixes.has(c.flow) && !flows.has(c.flow) ? `mix:${c.flow}` : `flow:${c.flow}`) : "-") });
+
+  // budget: the best-ranked cases; the rest deferred (D-049): case priority, then the overlay's endpoint priority
   const items = units.map((u, n) => ({ id: u.key, status: "pending", unit: u, n }));
-  const rank = (i) => priorityOf(i.unit.endpoints) * 1e6 + (i.unit.endpoints.some((id) => byId.get(id).observed?.ui) ? 0 : 1e5) + Math.min(...i.unit.endpoints.map(idNum));
+  const rank = (i) => Math.min(PRIORITY[i.unit.case.priority] ?? 3, ...i.unit.endpoints.map((id) => PRIORITY[ov.priorities[id]?.priority] ?? 3)) * 1e6 + idNum(i.unit.case.id);
   applyBudget(items, k6.budget, rank);
   const kept = items.filter((i) => i.status === "pending").map((i) => i.unit);
   const deferredUnits = items.filter((i) => i.status === "deferred").map((i) => i.unit);
 
-  // scenarios: every kept unit x type
+  // scenarios: one per kept case, its type capped by the mode and the opt-ins, its rate by the caps
   const drafts = [];
   const skippedTypes = [];
   for (const u of kept) {
+    const c = u.case;
     const eps = u.endpoints.map((id) => byId.get(id));
-    let r;
+    const sloOf = (e) => caseSlo(k6, module, e, c);
+    const p95Of = (e) => (sloOf(e).p95_ms?.value ?? ASSUMED.p95_ms) / 1000;
+    let cap;
     let capSource;
     if (u.kind === "flow") {
       const caps = u.flow.steps.map((s) => capOf(byId.get(s.endpoint)));
-      r = Math.min(...caps.map((c) => c.rps));
-      capSource = caps.find((c) => c.rps === r).source;
+      cap = Math.min(...caps.map((x) => x.rps));
+      capSource = caps.find((x) => x.rps === cap).source;
     } else if (u.kind === "mix") {
       const total = Object.values(u.weights).reduce((a, b) => a + b, 0);
-      const limits = eps.map((e) => capOf(e).rps * (total / u.weights[e.id]));
-      r = Math.min(k6.caps.rps, ...limits);
-      capSource = r < k6.caps.rps ? "member-cap" : "default";
-    } else {
-      const c = capOf(eps[0]);
-      r = c.rps;
-      capSource = c.source;
+      cap = Math.min(k6.caps.rps, ...eps.map((e) => capOf(e).rps * (total / u.weights[e.id])));
+      capSource = cap < k6.caps.rps ? "member-cap" : "default";
+    } else ({ rps: cap, source: capSource } = capOf(eps[0]));
+    // the case's target rate, never above the caps
+    const r = Math.min(c.load?.rps ?? cap, cap);
+    if (c.load?.rps !== undefined && c.load.rps <= cap) capSource = `case:${c.id}`;
+    const { type, note } = caseType(c.load?.type ?? "smoke", types);
+    if (note) {
+      notes.push(`${c.id}: ${note}`);
+      typeNotes.set(c.id, c.load.type);
     }
     // 50% of each rate limit, per iteration: a mix member gets weight/total of the iterations
     const total = u.kind === "mix" ? Object.values(u.weights).reduce((a, b) => a + b, 0) : 1;
     const pc = Math.min(...eps.map((e) => peakCap.get(e.id) * (u.kind === "mix" ? total / u.weights[e.id] : 1)));
-    const target = u.kind === "endpoint" ? eps[0].id : u.key;
+    const target = u.target;
     const think = thinkOf(target);
     const requestS = u.kind === "flow" ? u.flow.steps.reduce((n, s) => n + p95Of(byId.get(s.endpoint)), 0) : Math.max(...eps.map(p95Of));
     const expectedS = requestS + (think?.ms ?? 0) / 1000;
@@ -562,56 +639,50 @@ export function compute(wp, { module, cfg, mode, runId, cases = new Map(), regis
     // the write cap holds at every peak (D-7): a flow's writes and a query-like POST
     const writes = u.kind === "flow" ? u.flow.steps.map((s) => byId.get(s.endpoint)).filter((e) => e.mutates) : u.kind === "endpoint" && eps[0].mutates ? [eps[0]] : [];
     const wc = writes.length ? Math.min(...writes.map(writeCapOf)) : Infinity;
-    for (const type of types) {
-      const prof = profileFor(type, r, pc, k6.caps, wc);
-      if (prof.skip) {
-        skippedTypes.push({ unit: u.key, type, reason: prof.skip, detail: prof.detail });
-        continue;
-      }
-      drafts.push({ u, type, prof, r, capSource, pc, wc, eps, think, expectedS, data });
+    const prof = profileFor(type, r, pc, k6.caps, wc);
+    if (prof.skip) {
+      skippedTypes.push({ unit: u.key, type, reason: prof.skip, detail: prof.detail });
+      exclusion.set(c.id, { reason: "rate-limited", detail: `${type}: ${prof.detail}` });
+      continue;
     }
+    drafts.push({ u, type, prof, r, capSource, pc, wc, eps, think, expectedS, data, sloOf });
   }
   const reg = assignIds(registryFile, drafts.map((d) => `${d.u.key}|${d.type}`), { module, runId, prefix: "K6", field: "scenarios" });
-  const scenarios = drafts.map((d) => scenarioOf(d, reg.scenarios[`${d.u.key}|${d.type}`].id, { k6, module, byId })).sort((a, b) => idNum(a.id) - idNum(b.id));
+  const scenarios = drafts.map((d) => scenarioOf(d, reg.scenarios[`${d.u.key}|${d.type}`].id, { byId })).sort((a, b) => idNum(a.id) - idNum(b.id));
 
-  // ledger
-  const idsOf = new Map();
-  for (const s of scenarios) for (const id of s.endpoints) idsOf.set(id, [...(idsOf.get(id) ?? []), s.id]);
-  const deferredEp = new Set(deferredUnits.flatMap((u) => u.endpoints));
-  for (const e of catalogue) {
-    if (idsOf.has(e.id)) ledger.resolve(e.id, { status: "mapped", refs: idsOf.get(e.id) });
-    else if (exclusion.has(e.id)) ledger.resolve(e.id, { status: "excluded", ...exclusion.get(e.id) });
-    else if (deferredEp.has(e.id)) ledger.resolve(e.id, { status: "deferred", reason: "budget", detail: `over k6.budget (${k6.budget} load units)` });
-    else {
-      const sk = skippedTypes.filter((s) => kept.some((u) => u.key === s.unit && u.endpoints.includes(e.id)));
-      ledger.resolve(e.id, { status: "excluded", reason: "rate-limited", detail: sk.map((s) => `${s.type}: ${s.detail}`).join("; ") || "no test type could be sized" });
-    }
+  // the ledger: every approved @performance case loaded, excluded with a reason, or deferred
+  const scenarioOfCase = new Map(scenarios.map((s) => [s.case, s]));
+  const deferredCases = new Set(deferredUnits.map((u) => u.case.id));
+  for (const c of perf) {
+    const s = scenarioOfCase.get(c.id);
+    if (s) ledger.resolve(c.id, { status: "mapped", refs: [s.id], endpoints: s.endpoints, type: s.type, ...(typeNotes.has(c.id) ? { requestedType: typeNotes.get(c.id) } : {}) });
+    else if (exclusion.has(c.id)) ledger.resolve(c.id, { status: "excluded", ...exclusion.get(c.id) });
+    else if (deferredCases.has(c.id)) ledger.resolve(c.id, { status: "deferred", reason: "budget", detail: `over k6.budget (${k6.budget} load units)` });
   }
   problems.push(...ledger.problems().map((p) => `workload-coverage: ${p}`));
   const sum = ledger.summary();
   const coverage = {
     module, runId, mode, types, budget: k6.budget,
-    inputs: { catalogue: sha256(wp.catalogue), plan: sha256(wp.plan), results: sha256(resultsFile), overlay: sha256(wp.overlay) },
+    inputs: { catalogue: sha256(wp.catalogue), cases: sha256(wp.cases), approvals: sha256(wp.approvals), overlay: sha256(wp.overlay), plan: sha256(wp.plan), results: fe.fr ? sha256(fe.fr.file) : null },
     counts: { total: sum.total, loaded: sum.mapped, excluded: sum.excluded, deferred: sum.deferred },
-    loaded: ledger.items.filter((i) => i.status === "mapped").map((i) => ({ endpoint: i.id, key: i.key, ids: i.refs })),
-    excluded: ledger.items.filter((i) => i.status === "excluded").map((i) => ({ endpoint: i.id, key: i.key, reason: i.reason, detail: i.detail, ...(i.citation ? { citation: i.citation } : {}) })),
-    deferred: ledger.items.filter((i) => i.status === "deferred").map((i) => ({ endpoint: i.id, key: i.key, reason: "budget", detail: i.detail })),
+    loaded: ledger.items.filter((i) => i.status === "mapped").map((i) => ({ case: i.id, target: i.target, endpoints: i.endpoints, type: i.type, ...(i.requestedType ? { requestedType: i.requestedType } : {}), ids: i.refs })),
+    excluded: ledger.items.filter((i) => i.status === "excluded").map((i) => ({ case: i.id, target: i.target, reason: i.reason, detail: i.detail, ...(i.citation ? { citation: i.citation } : {}) })),
+    deferred: ledger.items.filter((i) => i.status === "deferred").map((i) => ({ case: i.id, target: i.target, reason: "budget", detail: i.detail })),
     skippedTypes,
     notes,
-    unmappedResults: unmapped,
   };
   const workload = { module, runId, mode, types, notes, scenarios };
   return { problems, notes, workload, coverage, summary: { scenarios: scenarios.length, ...coverage.counts, types } };
 }
 
-function scenarioOf(d, id, { k6, module, byId }) {
-  const { u, type, prof, r, capSource, pc, wc, eps, think, expectedS, data } = d;
+function scenarioOf(d, id, { byId }) {
+  const { u, type, prof, r, capSource, pc, wc, eps, think, expectedS, data, sloOf } = d;
   const name = `${type}-${idNum(id)}`;
   const size = sizing(prof.peakRps, expectedS);
   const abort = type === "breakpoint";
   const reqEps = u.kind === "flow" ? [...new Set(u.flow.steps.map((s) => s.endpoint))].map((x) => byId.get(x)) : eps;
   const thresholds = [
-    ...reqEps.flatMap((e) => endpointThresholds(e, sloFor(k6, module, e), abort)),
+    ...reqEps.flatMap((e) => endpointThresholds(e, sloOf(e), abort)),
     { metric: "dropped_iterations", stat: "dropped-iterations", limit: droppedLimit(prof.planned), expr: `count<${droppedLimit(prof.planned)}`, source: "open-model", assumed: false },
   ];
   const exec = prof.executor === "constant-arrival-rate"
@@ -622,7 +693,7 @@ function scenarioOf(d, id, { k6, module, byId }) {
   const mutates = reqEps.some((e) => e.mutates);
   const deleteStep = u.kind === "flow" ? rootDeleteStep(u.flow, byId) : null;
   return {
-    id, key: `${u.key}|${type}`, name, type, kind: u.kind, endpoints: u.endpoints,
+    id, key: `${u.key}|${type}`, case: u.case.id, name, type, kind: u.kind, endpoints: u.endpoints,
     ...(u.kind === "mix" ? { weights: u.weights, citation: u.citation } : {}),
     ...(u.kind === "flow" ? { flow: { name: u.flow.name, steps: u.flow.steps.map((s) => ({ endpoint: s.endpoint, method: byId.get(s.endpoint).method ?? null, path: byId.get(s.endpoint).path ?? null, ...(s.bind ? { bind: s.bind } : {}) })), citations: u.flow.citations } } : {}),
     mutates,
@@ -664,7 +735,7 @@ export async function check(wp, validateData, opts) {
   if (problems.length) return problems;
   const wl = readJson(wp.workload);
   const cov = readJson(wp.coverage);
-  // the build is bound to the run it used: a workload built from another run's results is not this run's
+  // the build is bound to the run it was built in: a workload of another run is not this run's
   if (wl.runId !== opts.runId) {
     const { verified, ...rest } = cov;
     writeJson(wp.coverage, rest);
@@ -685,14 +756,15 @@ export async function check(wp, validateData, opts) {
   if (stable(wl) !== stable(fresh.workload)) problems.push("workload.json differs from a fresh build (a hand edit, or an input changed since): run workload.mjs build");
   const { verified, ...rest } = cov;
   if (stable(rest) !== stable(fresh.coverage)) problems.push("workload-coverage.json differs from a fresh build (a hand edit, or an input changed since): run workload.mjs build");
-  problems.push(...workloadRules(wl, cov, readJson(wp.registry, { scenarios: {} }), readJson(wp.catalogue, [])));
+  problems.push(...workloadRules(wl, cov, readJson(wp.registry, { scenarios: {} }), readJson(wp.catalogue, []), performanceCases(opts.cases ?? new Map()).map((c) => c.id)));
   if (opts.extra) problems.push(...(await opts.extra({ wp, workload: wl, coverage: cov })));
-  writeJson(wp.coverage, problems.length ? rest : { ...rest, verified: stampVerified(verifiedInputs(wp, wl.runId)) });
+  writeJson(wp.coverage, problems.length ? rest : { ...rest, verified: stampVerified(verifiedInputs(wp, opts.runId)) });
   return problems;
 }
 
 // The rules on the files themselves (also hold if a build were wrong).
-export function workloadRules(wl, cov, reg, catalogue) {
+// caseIds: the approved @performance cases, each accounted for in the coverage.
+export function workloadRules(wl, cov, reg, catalogue, caseIds = []) {
   const out = [];
   const byId = new Map(catalogue.map((e) => [e.id, e]));
   const ids = new Map();
@@ -715,13 +787,15 @@ export function workloadRules(wl, cov, reg, catalogue) {
     if (wl.mode !== "full-run" && !["smoke"].includes(s.type)) out.push(`${s.id}: ${s.type} in a readonly workload (smoke only)`);
   }
   for (const [id, n] of ids) if (n > 1) out.push(`${id}: listed ${n} times`);
-  const listed = [...cov.loaded, ...cov.excluded, ...cov.deferred].map((x) => x.endpoint);
-  for (const e of catalogue) if (!listed.includes(e.id)) out.push(`workload-coverage.json: ${e.id} is not accounted for`);
-  for (const x of cov.loaded) for (const id of x.ids) if (!ids.has(id)) out.push(`workload-coverage.json: ${x.endpoint} maps to unknown ${id}`);
+  const listed = [...cov.loaded, ...cov.excluded, ...cov.deferred].map((x) => x.case);
+  for (const id of caseIds) if (!listed.includes(id)) out.push(`workload-coverage.json: ${id} is not accounted for`);
+  for (const x of cov.loaded) for (const id of x.ids) if (!ids.has(id)) out.push(`workload-coverage.json: ${x.case} maps to unknown ${id}`);
+  for (const s of wl.scenarios) if (!s.case || !String(s.key).startsWith(`case:${s.case}|`)) out.push(`${s.id}: not keyed by its approved @performance case (case:<TC>|<type>)`);
   return out;
 }
 
-const verifiedInputs = (wp, runId) => ({ workload: wp.workload, catalogue: wp.catalogue, plan: wp.plan, results: wp.results(runId), overlay: wp.overlay });
+// the plan and the chosen playwright-api results (decision 16): a run's new results make the workload stale
+const verifiedInputs = (wp, runId) => ({ workload: wp.workload, catalogue: wp.catalogue, cases: wp.cases, approvals: wp.approvals, overlay: wp.overlay, plan: wp.plan, results: functionalResults(wp, runId)?.file ?? wp.results(runId) });
 
 // For the domain flow (S7-3): null when the workload on disk passed check and nothing changed since, else why not.
 // runId (the active run, D-6 of G7): a workload built from another run is not this run's, whatever its stamp says.

@@ -57,6 +57,13 @@ test("full-run on a host that cannot identify the caller: the run's combined per
   assert.deepEqual([spawn("orchestrator-agent"), spawn("pw-ui-fixer"), spawn("feedback-implementor-agent")], [true, true, false], "the chat may start the entry agent; agents outside a run stay out");
   assert.equal(checkTool(cli({ toolName: "write_bash", toolArgs: { shellId: "1", input: post } }), FULL.root, {}).rule, "unmapped-tool");
   assert.equal(allowed(FULL.root, cli({ toolName: "read_bash", toolArgs: { shellId: "1" } })), true);
+  assert.equal(allowed(FULL.root, cli({ tool_name: "tool_search_tool", tool_input: { query: "playwright browser_navigate" } })), true, "loading tool definitions runs nothing");
+  // Copilot CLI's apply_patch: tool_name Edit, the bare patch text as tool_input (seen 2026-10-19).
+  const patch = (rel) => cli({ tool_name: "Edit", tool_input: `*** Begin Patch\n*** Add File: ${rel}\n+{}\n*** End Patch` });
+  assert.deepEqual(patch("playwright-tests/acme/pages/contacts.page.ts").paths, ["playwright-tests/acme/pages/contacts.page.ts"]);
+  assert.equal(allowed(FULL.root, patch("playwright-tests/acme/pages/contacts.page.ts")), true);
+  assert.equal(checkTool(patch("config/permissions.yaml"), FULL.root, {}).rule, "fs-write", "the patch's own path is checked");
+  assert.equal(cli({ toolName: "bash", toolArgs: "ls -la" }).command, "ls -la", "a bare non-patch string is still a command");
   assert.equal(allowed(FULL.root, copilot.normalize({ toolName: "bash", toolArgs: { command: post } }, { env: { GITHUB_ACTIONS: "true" }, host: "copilot" })), true, "the cloud agent too");
   assert.equal(allowed(FULL.root, claude.normalize({ tool_name: "Bash", tool_input: { command: post } }, { env: {}, host: "claude-code" })), true, "Copilot reading .claude/settings.json (unknown host)");
 

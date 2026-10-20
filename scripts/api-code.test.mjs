@@ -607,8 +607,8 @@ test("orchestration: the clients and tests steps count as done only after api-co
   const s = await setup();
   const go = () => next("acme", "playwright-api", "contacts", { root: s.root, compile: false });
   const act = go().actions[0];
-  assert.equal(act.step, "discover");
-  for (const name of ["discover", "plan"]) {
+  assert.equal(act.step, "plan", "the catalogue is the api-discovery stage's: the domain starts at the plan");
+  for (const name of ["plan"]) {
     step("acme", "playwright-api", "contacts", name, "start", undefined, { root: s.root });
     step("acme", "playwright-api", "contacts", name, "done", undefined, { root: s.root });
   }
@@ -622,7 +622,7 @@ test("orchestration: the clients and tests steps count as done only after api-co
 
   const t = await setup();
   const go2 = () => next("acme", "playwright-api", "contacts", { root: t.root, compile: false });
-  for (const name of ["discover", "plan"]) {
+  for (const name of ["plan"]) {
     step("acme", "playwright-api", "contacts", name, "start", undefined, { root: t.root });
     step("acme", "playwright-api", "contacts", name, "done", undefined, { root: t.root });
   }

@@ -110,6 +110,32 @@
         }
       }
     },
+    "scope": {
+      "type": "object",
+      "required": ["kind", "scenarios"],
+      "additionalProperties": false,
+      "description": "Scenario mode (scenarios.json): only these scenarios' flows were explored; every other control is deferred (scenario-scope).",
+      "properties": {
+        "kind": { "const": "scenarios" },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^SC-" },
+              "title": { "type": "string" },
+              "status": { "enum": ["flow", "explained", "pending"] },
+              "flows": { "type": "array", "items": { "type": "string" } },
+              "reason": { "type": "string" },
+              "detail": { "type": "string" },
+              "citation": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
     "liveEntities": {
       "type": "array",
       "description": "Entities this run created while exploring that are still live in state/ledger.jsonl: reported, not a failure (D-005 limits deletes; it does not require them).",

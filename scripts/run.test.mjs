@@ -5,7 +5,7 @@ import path from "node:path";
 import { carryForward, endInfo, endRun, initRun, makeRunId, next, nextStep, setStage, stagePrompt, status, validateProduct } from "./run.mjs";
 import { loadJson, paths } from "./lib/contract.mjs";
 import { collect } from "./report-data.mjs";
-import { markApproved, put, renderFoundation, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
+import { buildCatalogue, markApproved, put, renderFoundation, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
 
 const SITEMAP = JSON.stringify([{ url: "https://app.acme.test/contacts", slug: "contacts-list", title: "Contacts" }]);
 const CSV_HEADER = "ID,Module,Question,Steps to execute,Answer,Clarification agent notes,Run ID\r\n";
@@ -93,8 +93,10 @@ test("awaiting-approval: with no human-approved test case the automation stages 
   put(root, "artifacts/acme/modules/contacts/testcases/contacts-testcases.feature", "Feature: C\n  @TC-contacts-1 @p1 @functional\n  Scenario: list\n    Given x\n");
   put(root, "artifacts/acme/modules/contacts/testcases/testcases-summary.md", "Total test cases: 1\n");
   await renderFoundation(root, ["repo"]); // the shared files, rendered from templates/ and checked (D-054)
+  await buildCatalogue(root); // the endpoint catalogue the API tests and k6 need (the api-discovery stage)
   const run = loadJson(p.runFile);
   run.stages["contacts/testcases"] = { status: "done", attempts: 1 };
+  run.stages["contacts/api-discovery"] = { status: "done", attempts: 1 };
   run.stages["_product/playwright-repo"] = { status: "done", attempts: 1 };
   writeFileSync(p.runFile, JSON.stringify(run));
 
@@ -112,11 +114,13 @@ test("awaiting-approval: with no human-approved test case the automation stages 
   assert.equal((await row("playwright-ui", "deals")).awaitingApproval, false, "a module whose test cases are not done yet is just pending");
 
   markApproved(root, []);
-  assert.match((await setStage("acme", "playwright-ui", "contacts", "start", undefined, { root })).errors[0], /no test case of contacts is approved by a human yet \(testcases\/approval\.csv/, "built: a human approves");
+  assert.match((await setStage("acme", "playwright-ui", "contacts", "start", undefined, { root })).errors[0], /no UI test case of contacts is approved by a human yet \(testcases\/approval\.csv/, "built: a human approves");
   markApproved(root, ["TC-contacts-1"]);
-  assert.deepEqual((await ready("acme", root)).filter((x) => x.startsWith("contacts/")), ["contacts/playwright-api", "contacts/playwright-ui"]);
+  // each automation stage waits for an approved case of its own type (B4): a UI case starts only the UI tests
+  assert.deepEqual((await ready("acme", root)).filter((x) => x.startsWith("contacts/")), ["contacts/playwright-ui"]);
   assert.equal((await setStage("acme", "playwright-ui", "contacts", "start", undefined, { root })).attempts, 1);
-  assert.equal((await row("k6")).awaitingApproval, false);
+  assert.match((await setStage("acme", "playwright-api", "contacts", "start", undefined, { root })).errors[0], /no @api test case of contacts is approved/);
+  assert.equal((await row("k6")).awaitingApproval, true, "k6 needs an approved @performance case; it no longer waits for the API tests");
 });
 
 test("an ended run accepts no stage changes and offers nothing", async () => {
@@ -301,4 +305,241 @@ test("carry-forward does not adopt knowledge whose run-config inputs changed (pl
   const c = await carryForward("acme", { root });
   assert.ok(!c.carried.includes("contacts/module-knowledge"), "changed module inputs: not carried");
   assert.equal(loadJson(p.runFile).stages["contacts/module-knowledge"], undefined);
+});
+
+// ---- selectable steps: the chosen stage set, not-chosen stages, the prerequisite check and the gap menu ----
+import { chosenStages, deriveCaseTypes, stageNeeds, validateData } from "./lib/contract.mjs";
+import { changeSteps, prereqs } from "./run.mjs";
+import { renderDeck } from "./lib/report.mjs";
+import { buildCases } from "./test-helpers.mjs";
+
+const stagesOf = (run) => [...chosenStages(run)].sort();
+
+test("the stage set of a run: its steps, what they need automatically, and the report; case types come from the steps", () => {
+  assert.deepEqual(stagesOf({ steps: ["explore"] }), ["explore", "knowledge", "module-knowledge", "report"]);
+  assert.deepEqual(stagesOf({ steps: ["k6"] }), ["api-discovery", "k6", "report"], "no knowledge, no shared repo");
+  assert.deepEqual(stagesOf({ steps: ["playwright-ui"] }), ["playwright-repo", "playwright-ui", "report"]);
+  assert.ok(!chosenStages({ steps: ["testcases"], caseTypes: ["ui"] }).has("api-discovery"));
+  assert.ok(chosenStages({ steps: ["testcases"], caseTypes: ["ui", "api"] }).has("api-discovery"), "testcases writing @api cases needs the catalogue");
+  assert.equal(chosenStages({}).size, 11, "a run.json from before steps chose everything");
+  assert.deepEqual(deriveCaseTypes(["explore", "testcases"]), ["ui"]);
+  assert.deepEqual(deriveCaseTypes(["testcases"], ["performance"]), ["ui", "performance"]);
+  assert.deepEqual(deriveCaseTypes(["playwright-api", "k6"]), ["ui", "api", "performance"]);
+  assert.deepEqual(stageNeeds("testcases", { steps: ["testcases"], caseTypes: ["ui"] }), ["explore"], "clarifications is no longer a hard need");
+  assert.deepEqual(stageNeeds("testcases", {}), ["explore", "api-discovery"]);
+  assert.deepEqual(stageNeeds("k6", {}), ["testcases", "api-discovery"], "k6 no longer needs playwright-api");
+  assert.deepEqual(stageNeeds("playwright-api", {}), ["testcases", "playwright-repo", "api-discovery"]);
+});
+
+test("init freezes the config's steps and their case types into run.json; absent steps are all six", () => {
+  const all = startRun().run;
+  assert.deepEqual([all.steps, all.caseTypes], [["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"], ["ui", "api", "performance"]]);
+  const { root, run } = startRun({ extra: ["steps: [playwright-ui, explore]"] });
+  assert.deepEqual([run.steps, run.caseTypes], [["explore", "playwright-ui"], ["ui"]]);
+  assert.deepEqual(loadJson(paths("acme", root).runFile).steps, ["explore", "playwright-ui"]);
+  assert.match(initRun(writeConfig(tempRoot(), { extra: ["steps: [explore, load]"] }), { root }).errors.join("\n"), /steps: unknown step 'load'/);
+});
+
+test("stages not chosen are never offered or started, never failed or blocked, and never make the run incomplete", async () => {
+  const { root } = startRun({ extra: ["steps: [explore]"] });
+  const p = paths("acme", root);
+  assert.deepEqual(await ready("acme", root), ["knowledge"], "no shared repo: no Playwright step was chosen");
+  const st = await status("acme", { root });
+  const k6 = st.stages.find((r) => r.stage === "k6" && r.module === "contacts");
+  assert.deepEqual([k6.status, k6.notChosen, k6.satisfied, !!k6.blocked, k6.complete], ["not-chosen", true, false, false, false]);
+  assert.match((await setStage("acme", "k6", "contacts", "start", undefined, { root })).errors[0], /^contacts\/k6 is not chosen for this run \(steps: explore\): it is never started; to run it, add the step: node scripts\/run\.mjs steps acme --add k6\. No attempt was spent\./);
+  assert.match((await setStage("acme", "playwright-repo", undefined, "start", undefined, { root })).errors[0], /^_product\/playwright-repo is not chosen for this run \(steps: explore\): it is never started\. No attempt/);
+  assert.equal(loadJson(p.runFile).stages["contacts/k6"], undefined, "no attempt recorded");
+
+  const row = (stage, extra = {}) => ({ stage, module: "contacts", complete: false, ...extra });
+  const settledRun = { stages: [row("explore", { complete: true }), row("report", { complete: true }), row("k6", { notChosen: true }), row("playwright-ui", { notChosen: true })] };
+  assert.deepEqual(endInfo(settledRun, { p, root }), { outcome: "completed", notChosen: ["k6", "playwright-ui"] });
+  assert.equal(endInfo({ stages: [...settledRun.stages, row("testcases", { awaitingApproval: true })] }, { p, root }).outcome, "awaiting-approval");
+  const summary = await endRun("acme", { root });
+  assert.equal(summary.outcome, "incomplete", "knowledge and explore are still pending");
+  assert.equal(summary.blocked, undefined, "a not-chosen stage is never blocked");
+  assert.ok(summary.notChosen.includes("k6") && !summary.notChosen.includes("explore"));
+});
+
+test("the report shows each step chosen or not; a not-chosen stage is never failed, blocked or incomplete", async () => {
+  const { root } = startRun({ extra: ["steps: [explore, testcases]"] });
+  const r = await collect("acme", { root });
+  assert.deepEqual(await validateData("report", r), []);
+  assert.deepEqual(r.steps.filter((s) => !s.chosen).map((s) => s.step), ["clarifications", "playwright-ui", "playwright-api", "k6"]);
+  assert.ok(r.notChosenStages.some((s) => s.key === "contacts/k6") && r.notChosenStages.some((s) => s.key === "_product/playwright-repo"));
+  assert.ok(!r.incompleteStages.some((s) => ["k6", "playwright-ui", "clarifications", "api-discovery"].includes(s.stage)));
+  assert.equal(r.totals.stages.notChosen, r.notChosenStages.length);
+  const html = renderDeck(r);
+  assert.match(html, /Not chosen for this run: clarifications, playwright-ui, playwright-api, k6/);
+  assert.match(html, /<td><code>k6<\/code><\/td><td>Not chosen for this run<\/td>/);
+});
+
+test("api-discovery is its own stage: done needs the verified catalogue; the API tests and k6 need it, not each other", async () => {
+  const { root } = startRun();
+  const first = await setStage("acme", "api-discovery", "contacts", "done", undefined, { root });
+  assert.match(first.errors.join("\n"), /api\/discovered-endpoints\.json: missing or empty/);
+  assert.equal(first.retry.agent, "api-discoverer");
+  assert.equal(first.retry.prompt.split(" problems=")[0], "product=acme module=contacts run=acme-run-1 mode=readonly");
+  await buildCatalogue(root);
+  assert.equal((await setStage("acme", "api-discovery", "contacts", "done", undefined, { root })).status, "done");
+  const ap = path.join(root, "artifacts/acme/modules/contacts/api/discovered-endpoints.json");
+  writeFileSync(ap, JSON.stringify(JSON.parse(readFileSync(ap, "utf8")).map((e) => ({ ...e, id: "EP-contacts-99" }))));
+  assert.match((await status("acme", { root })).stages.find((r) => r.stage === "api-discovery" && r.module === "contacts").problems.join("\n"), /does not match registry\.json/, "the endpoints.mjs check runs on the stage's outputs");
+});
+
+test("a need on a stage not chosen is met by an earlier run's verified outputs, else its dependants are blocked (unmet)", async () => {
+  const { root } = startRun({ extra: ["steps: [playwright-ui]"] });
+  await buildCases(root, { cases: [{ key: "list" }] }); // contacts has test cases from an earlier run; deals has none
+  const st = await status("acme", { root });
+  const row = (stage, module) => st.stages.find((r) => r.stage === stage && r.module === module);
+  assert.deepEqual([row("testcases", "contacts").satisfied, row("testcases", "contacts").satisfiedBy], [true, "earlier-run"]);
+  assert.equal(row("testcases", "deals").satisfied, false);
+  assert.deepEqual([row("playwright-ui", "deals").blocked, row("playwright-ui", "deals").unmet], [true, ["testcases"]]);
+  assert.deepEqual([row("playwright-ui", "contacts").blocked, row("playwright-ui", "contacts").status], [false, "pending"], "waits for the shared repo only");
+});
+
+test("prereqs: per module and chosen step, ok, missing (with the gap menu) or awaiting-approval; the gap menu's answer changes the run's steps", async () => {
+  const { root } = startRun({ extra: ["steps: [playwright-ui]"] });
+  await buildCases(root, { cases: [{ key: "list" }] });
+  let r = await prereqs("acme", { root });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.gaps.map((g) => [g.module, g.need, g.steps]), [["contacts", "explore", ["playwright-ui"]], ["deals", "explore", ["playwright-ui"]], ["deals", "testcases", ["playwright-ui"]]]);
+  const tcGap = r.gaps.find((g) => g.need === "testcases");
+  assert.match(tcGap.what, /^deals has no test cases/);
+  assert.deepEqual(tcGap.options.map((o) => [o.id, o.label, o.adds ?? o.removes]), [
+    ["testcases", "Generate test cases", ["testcases"]],
+    ["clarifications", "Ask clarification questions", ["clarifications", "testcases"]],
+    ["scenarios", "Describe scenarios to explore", ["explore", "testcases"]],
+    ["import", "Use my test case file", []],
+    ["skip", "Skip this step for this run", ["playwright-ui"]],
+  ]);
+  assert.deepEqual(r.gaps[0].options.map((o) => o.id), ["explore", "scenarios", "skip"]);
+  assert.deepEqual(r.modules.deals[0].missing.map((m) => m.need), ["explore", "testcases"]);
+
+  assert.deepEqual(changeSteps("acme", { add: ["explore"], root }).stages, ["knowledge", "module-knowledge", "explore", "playwright-repo", "playwright-ui", "report"]);
+  r = await prereqs("acme", { root });
+  assert.deepEqual(r.modules.contacts, [{ step: "explore", status: "ok" }, { step: "playwright-ui", status: "awaiting-approval", awaiting: { type: "ui", cases: 1 } }], "cases exist, none approved: not a gap");
+  assert.deepEqual(r.gaps.map((g) => [g.module, g.need]), [["deals", "testcases"]]);
+  const added = changeSteps("acme", { add: ["testcases"], root });
+  assert.deepEqual([added.steps, added.caseTypes], [["explore", "testcases", "playwright-ui"], ["ui"]]);
+  r = await prereqs("acme", { root });
+  assert.deepEqual([r.ok, r.gaps, r.modules.deals.map((x) => x.status)], [true, [], ["ok", "ok", "ok"]], "produced by a step chosen in this run");
+
+  assert.match(changeSteps("acme", { add: ["smoke"], root }).errors[0], /unknown step\(s\) smoke/);
+  await setStage("acme", "knowledge", undefined, "start", undefined, { root });
+  assert.match(changeSteps("acme", { remove: ["explore", "testcases"], root }).errors[0], /cannot remove: _product\/knowledge already started this run/);
+  assert.deepEqual(changeSteps("acme", { remove: ["testcases"], root }).steps, ["explore", "playwright-ui"], "knowledge stays for explore");
+  assert.match(changeSteps("acme", { remove: ["explore", "playwright-ui"], root }).errors[0], /at least one step/);
+});
+
+import { main as testcasesMain } from "./testcases.mjs";
+import { importCovers, scenarios } from "./run.mjs";
+
+test("an imported test case file stands in for a testcases stage not chosen; its UI cases need links to exploration states", async () => {
+  const { root } = startRun({ extra: ["steps: [playwright-ui]"] });
+  put(root, "data/deals.feature", ["Feature: Deals", "  @TC-1 @p1", "  Scenario: The deal list opens", "    When the user opens Deals", "    Then the deal list is shown", ""].join("\n"));
+  const imp = await testcasesMain(["import", "acme", "deals", "--file", "data/deals.feature"], { root });
+  assert.equal(imp.out.imported, 1, JSON.stringify(imp.out));
+  const row = async (stage, module) => (await status("acme", { root })).stages.find((r) => r.stage === stage && r.module === module);
+  assert.deepEqual([(await row("testcases", "deals")).satisfied, (await row("testcases", "deals")).satisfiedBy], [true, "import"]);
+  const r = await prereqs("acme", { root });
+  const link = r.modules.deals[0].missing.find((m) => m.link);
+  assert.deepEqual(link.link, imp.out.ids);
+  assert.equal(link.need, "link");
+  assert.match(link.what, /not linked to the explored screens/);
+  // its own option (V-2): the testcases stage in import mode for deals only
+  const gap = r.gaps.find((g) => g.need === "link");
+  assert.deepEqual(gap.options.map((o) => [o.id, o.label, o.args]), [["link", "Link my imported cases to the explored screens", "--import-mode deals"], ["skip", "Skip this step for this run", "--remove playwright-ui"]]);
+  // the build on disk must be from exactly that import: a later change to the cases makes it no import any more
+  const productDir = path.join(root, "artifacts/acme");
+  assert.equal(importCovers(productDir, "deals"), true);
+  writeFileSync(path.join(productDir, "modules/deals/testcases/cases.json"), JSON.stringify({ cases: [] }));
+  assert.equal(importCovers(productDir, "deals"), false, "cases.json changed after the build");
+  assert.equal(importCovers(productDir, "contacts"), false, "nothing imported");
+});
+
+test("import mode (D-066): the link option runs the testcases stage for that module only; an approved but unlinked case gets its own start message", async () => {
+  const { root } = startRun({ extra: ["steps: [explore, playwright-ui]"] });
+  put(root, "data/deals.feature", ["Feature: Deals", "  @TC-1 @p1", "  Scenario: The deal list opens", "    When the user opens Deals", "    Then the deal list is shown", ""].join("\n"));
+  const imp = await testcasesMain(["import", "acme", "deals", "--file", "data/deals.feature"], { root });
+  markApproved(root, imp.out.ids, { module: "deals" });
+  for (const s of ["knowledge", "playwright-repo"]) await setStage("acme", s, undefined, "start", undefined, { root });
+  // V-2: approved, only unlinked -> not "no case is approved"
+  const tcPath = path.join(root, "artifacts/acme/modules/deals/testcases/coverage.json");
+  const st0 = (await status("acme", { root })).stages.find((r) => r.stage === "playwright-ui" && r.module === "deals");
+  assert.equal(st0.status, "pending", "waits for the shared repo");
+  await renderFoundation(root, ["repo"]);
+  assert.equal((await setStage("acme", "playwright-repo", undefined, "done", undefined, { root })).status, "done");
+  assert.ok(existsSync(tcPath));
+  const startUi = await setStage("acme", "playwright-ui", "deals", "start", undefined, { root });
+  assert.match(startUi.errors[0], new RegExp(`approved imported UI case\\(s\\) of deals \\(${imp.out.ids[0]}\\) are not linked to the explored screens`));
+  assert.match(startUi.errors[0], /Link my imported cases to the explored screens.*--import-mode deals/);
+  assert.doesNotMatch(startUi.errors[0], /no UI test case of deals is approved/);
+
+  const r = changeSteps("acme", { importMode: ["deals"], root });
+  assert.deepEqual([r.steps, r.testcasesMode, r.configChanged], [["explore", "playwright-ui"], { deals: "import" }, false], "the run's steps are unchanged; no regeneration for contacts");
+  const st = await status("acme", { root });
+  const row = (stage, m) => st.stages.find((x) => x.stage === stage && x.module === m);
+  assert.deepEqual([row("testcases", "deals").notChosen, row("testcases", "deals").status], [undefined, "pending"], "deals' testcases stage runs (import mode)");
+  assert.equal(row("testcases", "contacts").notChosen, true, "contacts is unaffected");
+  assert.equal((await setStage("acme", "testcases", "contacts", "start", undefined, { root })).errors[0].includes("is not chosen for this run"), true);
+  assert.equal((await prereqs("acme", { root })).gaps.filter((g) => g.module === "deals" && g.need === "link").length, 0, "the stage this run links them");
+  assert.equal(row("testcases", "deals").blocked, false, "it waits for deals' exploration, chosen this run");
+  // adding the testcases step later makes it generate (every module), and sends a completed import-mode stage back
+  const run2 = loadJson(paths("acme", root).runFile);
+  run2.stages["deals/testcases"] = { status: "done" };
+  writeFileSync(paths("acme", root).runFile, JSON.stringify(run2));
+  const added = changeSteps("acme", { add: ["testcases"], root });
+  assert.deepEqual([added.testcasesMode, added.reopened], [{ contacts: "generate", deals: "generate" }, ["deals/testcases"]]);
+  assert.match(loadJson(paths("acme", root).runFile).stages["deals/testcases"].reopened, /import mode becomes generate/);
+});
+
+test("V-4: a step added after testcases completed without its case type is a gap; its option reopens the stage, keeping sign-offs", async () => {
+  const { root } = startRun({ extra: ["steps: [explore, testcases, playwright-ui]"] });
+  await buildCases(root, { cases: [{ key: "list" }] });
+  const run = loadJson(paths("acme", root).runFile);
+  run.stages["contacts/testcases"] = { status: "done", attempts: 1 };
+  writeFileSync(paths("acme", root).runFile, JSON.stringify(run));
+  put(root, "artifacts/acme/state/orchestration/testcases-contacts.json", JSON.stringify({ runId: "acme-run-1" }));
+  changeSteps("acme", { add: ["k6"], root });
+  const r = await prereqs("acme", { root });
+  const gap = r.gaps.find((g) => g.module === "contacts" && g.need === "testcases");
+  assert.match(gap.what, /generated this run without @performance cases/);
+  assert.deepEqual(gap.options.map((o) => [o.id, o.label, o.args]), [["types", "Generate @performance cases", "--add testcases --reopen contacts"], ["skip", "Skip this step for this run", "--remove k6"]]);
+  const re = changeSteps("acme", { add: ["testcases"], reopen: ["contacts"], root });
+  assert.deepEqual(re.reopened, ["contacts/testcases"]);
+  assert.equal(loadJson(paths("acme", root).runFile).stages["contacts/testcases"].status, "pending");
+  assert.ok(!existsSync(path.join(root, "artifacts/acme/state/orchestration/testcases-contacts.json")), "the domain loop starts again");
+  assert.ok(!(await prereqs("acme", { root })).gaps.some((g) => g.module === "contacts" && g.need === "testcases"), "the reopened stage generates them this run");
+  assert.match(changeSteps("acme", { reopen: ["billing"], root }).errors[0], /unknown module/);
+});
+
+test("V-5: after a skip, an add keeps the config's own steps plus the added one (a skip never leaves the config)", async () => {
+  const { root } = startRun({ extra: ["steps: [explore, testcases, playwright-ui]"] });
+  const skip = changeSteps("acme", { remove: ["playwright-ui"], root });
+  assert.deepEqual([skip.steps, skip.configSteps, skip.configChanged], [["explore", "testcases"], ["explore", "testcases", "playwright-ui"], false]);
+  const add = changeSteps("acme", { add: ["k6"], root });
+  assert.deepEqual([add.steps, add.configSteps, add.configChanged], [["explore", "testcases", "k6"], ["explore", "testcases", "playwright-ui", "k6"], true]);
+});
+
+test("scenarios: the interview's answers become each module's scenarios.json with stable SC ids; bad answers write nothing", async () => {
+  const { root } = startRun({ extra: ["steps: [explore, testcases]"] });
+  const answers = (modules) => put(root, "artifacts/acme/state/scenario-answers.json", JSON.stringify({ modules }));
+  const file = path.join(root, "artifacts/acme/modules/contacts/scenarios.json");
+  answers({ contacts: [{ title: "Create a contact", goal: "a new contact is listed", start: "the contact list", steps: "1. New contact\n2. Fill the name\n3. Save" }, { title: "Search", goal: "find by name", start: "/contacts", steps: ["Type a name"] }] });
+  let r = await scenarios("acme", { root });
+  assert.deepEqual(r.written, { contacts: ["SC-contacts-1", "SC-contacts-2"] });
+  assert.deepEqual(loadJson(file).scenarios[0].steps, ["New contact", "Fill the name", "Save"]);
+  answers({ contacts: [{ title: "Search", goal: "find by name", start: "/contacts", steps: ["Type a name"] }] });
+  r = await scenarios("acme", { root });
+  assert.deepEqual(r.written.contacts, ["SC-contacts-2"], "the same scenario keeps its id");
+  answers({ contacts: [{ title: "", goal: "x", start: "y", steps: [] }], billing: [] });
+  r = await scenarios("acme", { root });
+  assert.match(r.problems.join("\n"), /modules\.contacts\[0\]: needs a title/);
+  assert.match(r.problems.join("\n"), /modules\.contacts\[0\]: needs its key steps/);
+  assert.match(r.problems.join("\n"), /modules\.billing: not a module of this run/);
+  assert.equal(loadJson(file).scenarios.length, 1, "nothing written");
+  answers({ contacts: [] });
+  assert.deepEqual((await scenarios("acme", { root })).removed, ["contacts"]);
+  assert.ok(!existsSync(file), "back to a whole-module exploration");
 });

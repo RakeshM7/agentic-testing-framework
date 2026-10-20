@@ -235,3 +235,22 @@ test("doctor.mjs: scope, --fix runs each distinct install once then checks again
   assert.equal(await main([file, "--warn-only"], { root, log, check: async () => bad }), 0);
   assert.equal(await main([], { root, log }), 2);
 });
+
+test("a stage not chosen for the run is never reported as blocked: run.mjs doctor and doctor.mjs check only the chosen stages", async () => {
+  assert.deepEqual(STAGE_NEEDS["api-discovery"], ["base", "session", "target"], "the catalogue's guarded GET probes");
+  const { root, product } = startRun({ doctored: false, extra: ["steps: [explore, testcases]"] });
+  put(root, "config/mcp.yaml", mcpYaml([]));
+  const r = await doctor(product, { root, env: { PLAYWRIGHT_BROWSERS_PATH: path.join(root, "b") }, platform: "linux", home: root, which: () => false, exists: () => true, fetchImpl: async () => ({ status: 200 }) });
+  assert.ok(r.checks.some((c) => c.group === "k6" && !c.ok), "k6 is missing on this machine");
+  assert.deepEqual(r.blockedStages, [], "but k6 is not chosen, so nothing is blocked");
+
+  const cfg = { steps: ["explore", "testcases"], testcases: {} };
+  assert.deepEqual(scope({}, cfg).stages, ["knowledge", "module-knowledge", "explore", "testcases", "report"]);
+  assert.deepEqual(scope({}, cfg).groups, ["base", "browser", "session", "target"], "no repo, no k6");
+  assert.deepEqual(scope({}, { ...cfg, testcases: { types: ["api"] } }).stages, ["knowledge", "module-knowledge", "explore", "api-discovery", "testcases", "report"]);
+  assert.equal(scope({ stage: "k6" }, cfg).stages[0], "k6", "an explicit --stage is checked as asked");
+  let groups;
+  const file = path.join(root, "config", "acme.yaml");
+  assert.equal(await main([file], { root, log: () => {}, check: async (_cfg, g) => ((groups = g), []) }), 0);
+  assert.deepEqual(groups, ["base", "browser", "session", "target"], "doctor.mjs on the run-config checks only what its steps need");
+});

@@ -49,6 +49,21 @@
       "type": "object",
       "additionalProperties": false,
       "properties": { "prefixes": { "type": "array", "items": { "type": "string", "pattern": "^/" }, "description": "Extra route prefixes that belong to the module." } }
+    },
+    "scenarios": {
+      "type": "object",
+      "description": "Scenario mode: a scenario of scenarios.json with no recorded flow, and why (citing the capture that shows it), keyed by SC id.",
+      "propertyNames": { "pattern": "^SC-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["reason", "detail", "citation"],
+        "additionalProperties": false,
+        "properties": {
+          "reason": { "enum": ["unreachable", "guard-denied", "not-allowed-in-mode", "not-in-product"] },
+          "detail": { "type": "string", "minLength": 1 },
+          "citation": { "type": "string", "pattern": "^captures/", "description": "captures/<file>: what the product showed." }
+        }
+      }
     }
   }
 }

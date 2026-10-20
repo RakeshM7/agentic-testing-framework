@@ -44,7 +44,58 @@ export function paths(product, root = repoRoot) {
   };
 }
 
+// The steps a human chooses for a run (run-config `steps`; absent = all six). Each is the stage of the same name; the
+// other stages run only when a chosen step needs them (chosenStages).
+export const STEPS = ["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"];
+// Test case types: UI always; @api when playwright-api is chosen, @performance when k6 is (or testcases.types asks).
+export const CASE_TYPES = ["ui", "api", "performance"];
+
+// The case types a run derives from its steps and the run-config's optional testcases.types (decision 11).
+export function deriveCaseTypes(steps, configured = []) {
+  const want = new Set(["ui", ...configured]);
+  if (steps.includes("playwright-api")) want.add("api");
+  if (steps.includes("k6")) want.add("performance");
+  return CASE_TYPES.filter((t) => want.has(t));
+}
+
+// The stage set of a run: the chosen steps plus their automatic stages (knowledge for explore, clarifications and
+// testcases; api-discovery when API or performance cases or tests are needed; the shared repo for Playwright) and the
+// report, always. A run.json from before steps existed chose all six.
+export function chosenStages(run) {
+  const steps = run.steps ?? STEPS;
+  const types = run.caseTypes ?? deriveCaseTypes(steps);
+  const set = new Set(["report", ...steps]);
+  if (steps.some((s) => ["explore", "clarifications", "testcases"].includes(s))) set.add("knowledge").add("module-knowledge");
+  if (steps.includes("playwright-api") || steps.includes("k6") || (steps.includes("testcases") && types.some((t) => t !== "ui"))) set.add("api-discovery");
+  if (steps.includes("playwright-ui") || steps.includes("playwright-api")) set.add("playwright-repo");
+  return set;
+}
+
+// The testcases stage's mode for a module (D-066): `generate` for every module when the `testcases` step is chosen
+// (generated and imported cases); else `import` for a module the run put in import mode (run.json testcasesMode: its
+// imported cases need converting or linking, and nothing is generated); else null (the stage does not run for it).
+export function testcasesModeOf(run, module) {
+  if ((run?.steps ?? STEPS).includes("testcases")) return "generate";
+  return run?.testcasesMode?.[module] === "import" ? "import" : null;
+}
+
+// Whether a stage runs for a module this run: chosen for the run, or the testcases stage of a module in import mode.
+export const stageChosen = (run, stage, module) => chosenStages(run).has(stage) || (stage === "testcases" && !!module && testcasesModeOf(run, module) === "import");
+
+// run.json testcasesMode for a run's steps: every module `generate` when testcases is chosen, else `import` for the
+// modules listed (the earlier import-mode modules plus any added). -> {<m>: "import"|"generate"} (empty: none runs)
+export function testcasesModes(run, importModules = []) {
+  const gen = (run.steps ?? STEPS).includes("testcases");
+  const imp = new Set([...Object.entries(run.testcasesMode ?? {}).filter(([, v]) => v === "import").map(([m]) => m), ...importModules]);
+  return Object.fromEntries(run.modules.filter((m) => gen || imp.has(m)).map((m) => [m, gen ? "generate" : "import"]));
+}
+
+// A stage's hard needs in this run: `needs` plus each `needsWhen` entry whose condition holds for the run.
+export const stageNeeds = (stage, run) => [...STAGES[stage].needs, ...Object.entries(STAGES[stage].needsWhen ?? {}).filter(([, when]) => when(run)).map(([dep]) => dep)];
+
 // outputs: paths relative to the repo root. Tokens: {product} {m} (module) {run} (run id).
+// needs: hard needs, complete in this run or (a stage not chosen for it) verified from an earlier one; needsWhen: needs
+// that hold only for some runs; after: soft order, waited for only while chosen for this run, never blocking.
 export const STAGES = {
   // Product pass: product-wide overview/glossary from the run-config's references and requirement docs.
   knowledge: {
@@ -91,15 +142,32 @@ export const STAGES = {
     scope: "module",
     orchestrator: "clarification-orchestrator",
     needs: ["explore"],
+    after: ["module-knowledge"],
     outputs: [
       { path: "artifacts/{product}/modules/{m}/clarifications.csv", check: "clarifications" },
       { path: "artifacts/{product}/modules/{m}/clarifications-summary.md" },
     ],
   },
+  // The module's endpoint catalogue (endpoints.mjs, D-045), its own stage since it serves test cases, API tests and k6.
+  // An empty catalogue is a valid outcome ("no API surface", or discovery blocked with its reason in coverage.json).
+  "api-discovery": {
+    scope: "module",
+    orchestrator: "api-discoverer",
+    needs: ["explore"],
+    outputs: [
+      { path: "artifacts/{product}/modules/{m}/api/discovered-endpoints.json", schema: "discovered-endpoints", check: "api-discovery" },
+      { path: "artifacts/{product}/modules/{m}/api/coverage.json", schema: "api-coverage" },
+      { path: "artifacts/{product}/modules/{m}/api/drift.json" },
+    ],
+  },
+  // Answered clarifications are used when present: a chosen clarifications stage is waited for, never required.
   testcases: {
     scope: "module",
     orchestrator: "testcase-orchestrator",
-    needs: ["clarifications"],
+    needs: ["explore"],
+    // generated typed items need the catalogue; import mode (testcases not chosen) only waits for it while it runs
+    needsWhen: { "api-discovery": (run) => (run.steps ?? STEPS).includes("testcases") && (run.caseTypes ?? deriveCaseTypes(run.steps ?? STEPS)).some((t) => t !== "ui") },
+    after: ["module-knowledge", "clarifications", "api-discovery"],
     outputs: [{ path: "artifacts/{product}/modules/{m}/testcases/testcases-summary.md", check: "testcases" }],
   },
   "playwright-repo": {
@@ -109,25 +177,28 @@ export const STAGES = {
     // The shared files are rendered from templates/ (D-054): done needs foundation.mjs check's verified stamp.
     outputs: [{ path: "playwright-tests/{product}/package.json", check: "foundation-repo" }, { path: "playwright-tests/{product}/playwright.config.ts" }],
   },
-  // approval: only human-approved test cases are automated; with none, the stage awaits approval (scripts/run.mjs, D-053).
+  // approval: the case type a stage automates; only human-approved cases of that type are automated, and with none the
+  // stage awaits approval (scripts/run.mjs, D-053).
   "playwright-ui": {
     scope: "module",
     orchestrator: "playwright-ui-orchestrator",
     needs: ["testcases", "playwright-repo"],
-    approval: true,
+    approval: "ui",
     outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-ui/results.json", schema: "results" }],
   },
   "playwright-api": {
     scope: "module",
     orchestrator: "playwright-api-orchestrator",
-    needs: ["testcases", "playwright-repo"],
-    approval: true,
+    needs: ["testcases", "playwright-repo", "api-discovery"],
+    approval: "api",
     outputs: [{ path: "artifacts/{product}/results/{run}/{m}/playwright-api/results.json", schema: "results" }],
   },
+  // The workload is built from the approved @performance cases only, so k6 no longer waits for the API tests.
   k6: {
     scope: "module",
     orchestrator: "k6-orchestrator",
-    needs: ["playwright-api"],
+    needs: ["testcases", "api-discovery"],
+    approval: "performance",
     outputs: [{ path: "artifacts/{product}/results/{run}/{m}/k6/results.json", schema: "results" }],
   },
   report: {
@@ -199,6 +270,11 @@ const CHECKS = {
     const r = await import("./report.mjs");
     const why = r.reportUnverified(r.reportPaths(paths(ctx.product, ctx.root ?? repoRoot).productDir, ctx.runId));
     return why ? [why] : [];
+  },
+  // the catalogue checks endpoints.mjs check runs (schemas, ids against the registry, links, coverage targets)
+  "api-discovery": async (_file, ctx) => {
+    const e = await import("./endpoints.mjs");
+    return e.check(e.apiPaths(paths(ctx.product, ctx.root ?? repoRoot).productDir, ctx.module), validateData);
   },
   explore: async (_file, ctx) => {
     const x = await import("./explore.mjs");

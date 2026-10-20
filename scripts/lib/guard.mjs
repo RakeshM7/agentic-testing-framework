@@ -88,15 +88,85 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Known limit (accepted, recorded in G3's decision): an agent with `shell: project` can still write approvals.json
 // through code this match can't read -- `node -e` with String.fromCharCode, template literals, base64 or eval, or a
 // shell glob such as appro?als.json. Restricted agents can't: their allow-list never vouches for such a line.
+// `testcases.mjs import --approved` (selectable steps, decision 10) records approvals too: the `--approved` flag and the
+// lib's importCases are matched like `approve`. The bare word `approved` is plain prose and file names
+// (`data/approved-cases.feature`, `--error "case not approved"`), so it counts only where a decoded payload (printf
+// escapes, base64) produced it.
 const JOIN_CONCAT = /(['"`])\s*\+\s*(['"`])/g;
-const HUMAN_ONLY_CMD = /testcases[\s\S]*\bapprove\b|\bapprove\b[\s\S]*testcases/i;
+const HUMAN_ONLY_VERB = /(?<![\w-])--approved\b|\b(?:approve|importCases)\b/i;
+const DECODED_VERB = /\b(?:approve|approved|importCases)\b/gi;
+const humanOnlyCmd = (cmd) => /testcases/i.test(cmd) && HUMAN_ONLY_VERB.test(cmd);
 const HUMAN_ONLY_FILES = /approvals?\.(csv|json)|approv~\d|testcases[\\/]+approv/i;
 const HUMAN_ONLY_PATH = /(^|[\\/])(testcases[\\/]+approv[^\\/]*|approvals?\.(csv|json)|approv~\d[^\\/]*)$/i;
-const HUMAN_ONLY_REASON = "test case approval is human-only: a human edits testcases/approval.csv and runs `node scripts/testcases.mjs approve` in their own terminal";
+const HUMAN_ONLY_REASON = "test case approval is human-only: a human edits testcases/approval.csv and runs `node scripts/testcases.mjs approve` (or `import ... --approved` for a file already approved) in their own terminal";
+// Quotes, a backslash or cmd.exe's caret inside a word only split it for this match (`--appr''oved`, `appr\ove`,
+// `appr^ove` reach the program whole), so they are dropped after the concatenations are joined: stricter only.
+const WORD_SPLITTERS = /['"`]|\\(?=[a-z])|\^(?=[a-z])/gi;
+// The Makefile's human-only targets (V-3): `make approve`, and `make import … APPROVED=yes` (or APPROVED from the
+// environment, which make reads too). Only an actual make invocation counts -- make as a command's program word (after
+// a separator, `$(`, a backtick, env/sudo/npx or leading assignments) with an `approve` target or an `APPROVED=`
+// assignment; or an `APPROVED=` assignment (inline or exported) before any make -- never prose that says "make" and
+// "approve".
+const MAKE = String.raw`\b(?:g|n|mingw32-)?make(?:\.exe)?\b`;
+const MAKE_RUN = String.raw`(?:^|[\n;&|(\x60])\s*(?:(?:npx|env|sudo|exec|command)\s+|\w+=\S*\s+)*(?:\S*[\\/])?${MAKE}`;
+const APPROVED_SET = String.raw`\bAPPROVED\s*[:?+]*=`;
+const HUMAN_ONLY_MAKE = new RegExp(`${MAKE_RUN}[^;&|\\n]*(?:\\sapprove\\b|${APPROVED_SET})|${APPROVED_SET}[\\s\\S]*${MAKE}`, "i");
+// A word written with shell globs or expansions (`testc?ses.mjs`, `test[c]ases`, `--appro${x}ved`, `$(printf …)`,
+// backticks) reaches the program as whatever the shell makes of it, so it is read as the glob it is: an expansion
+// stands for any text, `?` and a `[...]` class for one character (and, on a printf line, a `%s`-style directive for any
+// text). A line is denied when its script (testcases.mjs, or a glob or expansion that a runner -- node, xargs, npx, bun
+// -- starts as its program) and its verb or flag (approve, --approved, importCases) can both be what the human-only
+// command needs, one of them through such a word. A glob word that no runner starts (`grep -n x scripts/*.mjs`) is a
+// file argument, not the script. Plain non-approving testcases.mjs commands keep no such word and stay allowed.
+const GLOBBY = /[$`?*[\]]/;
+const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function globRegex(word, printf) {
+  let t = word.replace(/['"]/g, "").replace(/\$\{[^}]*\}?|\$\([^)]*\)?|`[^`]*`?|\$\w*/g, "\u0001");
+  if (printf) t = t.replace(/%[-#0 +.\d]*[a-z]/gi, "\u0001");
+  t = t.replace(/\[[^\]]*\]/g, "\u0002").replace(/\?/g, "\u0002").replace(/[*[\]]/g, "\u0001");
+  const src = [...t].map((ch) => (ch === "\u0001" ? "[\\s\\S]*" : ch === "\u0002" ? "." : reEscape(ch))).join("");
+  return new RegExp(`^${src}$`, "i");
+}
+const VERBS = ["approve", "approved", "--approved", "importCases"];
+// A word that is all expansion (`${slug}`, `` `code` ``, `$(…)`) is how code and prose quote things: it counts only
+// through the decoded forms below. A word read as a glob keeps at least three characters of its own.
+const literalOf = (word, printf) => {
+  const t = word.replace(/['"]/g, "").replace(/\$\{[^}]*\}?|\$\([^)]*\)?|`[^`]*`?|\$\w*/g, "");
+  return (printf ? t.replace(/%[-#0 +.\d]*[a-z]/gi, "") : t).replace(/\[[^\]]*\]|[?*[\]]/g, "");
+};
+// The program word a runner starts, after its options: `node $S`, `node scripts/test*.mjs`, `xargs node …`.
+const RUNNER_PROGRAM = /\b(?:node(?:\.exe)?|xargs|npx|bun)\s+(?:-\S+\s+)*["']?((?:\$\([^)]*\)|\$\{[^}]*\}|`[^`]*`|[^\s"';|&])+)/gi;
+const globPrograms = (cmd) => [...cmd.matchAll(RUNNER_PROGRAM)].map((m) => m[1]).filter((w) => GLOBBY.test(w));
+// The line names testcases.mjs, or a runner starts a program whose glob or expansion (`node $S …`) could be it.
+const namesScript = (cmd, printf) => /testcases/i.test(cmd) ||
+  globPrograms(cmd).some((w) => [w, w.split(/[\\/]/).pop()].some((p) => ["testcases.mjs", "testcases"].some((s) => globRegex(p, printf).test(s))));
+function expandedHumanOnly(cmd) {
+  const printf = /\bprintf\b/i.test(cmd);
+  const words = cmd.split(/[\s;|&<>]+/).filter((w) => (GLOBBY.test(w) || (printf && /%[-#0 +.\d]*[a-z]/i.test(w))) && literalOf(w, printf).length >= 3);
+  if (!words.length && !globPrograms(cmd).length) return false;
+  const verb = HUMAN_ONLY_VERB.test(cmd) || words.some((w) => VERBS.some((v) => globRegex(w, printf).test(v)));
+  return verb && namesScript(cmd, printf);
+}
+// printf \x / octal escapes and base64 words, decoded where it can be seen (`$(echo YXBwcm92ZWQ= | base64 -d)`).
+function decodedForms(cmd) {
+  const out = [];
+  const esc = cmd.replace(/\\x([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16))).replace(/\\([0-7]{3})/g, (_, o) => String.fromCharCode(parseInt(o, 8)));
+  if (esc !== cmd) out.push(esc);
+  for (const w of cmd.match(/[A-Za-z0-9+/]{8,}={0,2}/g) ?? []) {
+    const d = Buffer.from(w, "base64").toString("utf8");
+    // on a line of its own, so a decoded `make approve` starts a command like a piped `| sh` would run it
+    if (/^[\x20-\x7e\t\r\n]+$/.test(d)) out.push(`${cmd}\n${d}`);
+  }
+  return out;
+}
+const decodedVerbs = (s) => s.match(DECODED_VERB)?.length ?? 0;
 function humanOnly(call) {
   if (call.kind === "shell") {
-    const cmd = String(call.command ?? "").replace(JOIN_CONCAT, "");
-    return HUMAN_ONLY_CMD.test(cmd) || HUMAN_ONLY_FILES.test(cmd);
+    const joined = String(call.command ?? "").replace(JOIN_CONCAT, "");
+    const hit = (cmd) => humanOnlyCmd(cmd) || HUMAN_ONLY_FILES.test(cmd) || HUMAN_ONLY_MAKE.test(cmd) || expandedHumanOnly(cmd);
+    // a decoded form also counts the bare `approved`, but only one the decoding produced (a payload, not the prose)
+    return [joined, joined.replace(WORD_SPLITTERS, "")].some((cmd) => hit(cmd) ||
+      decodedForms(cmd).some((d) => hit(d) || (decodedVerbs(d) > decodedVerbs(cmd) && namesScript(d, /\bprintf\b/i.test(d)))));
   }
   return call.kind === "write" && call.paths.some((p) => HUMAN_ONLY_PATH.test(String(p)));
 }

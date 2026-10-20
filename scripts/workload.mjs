@@ -3,12 +3,13 @@
 // product's active run (state/run.json: the mode; state/config.resolved.json: the k6 section). Never sends a request
 // to the product and never runs k6.
 //
-//   workload.mjs build <product> <module> [--run <run-id>]   catalogue + verified plan + the playwright-api results of
-//                                                            the run (default: the active run; --run names the active
-//                                                            run or a run of the product whose playwright-api results
-//                                                            for the module exist, else an error) + k6 run-config +
-//                                                            workload-overlay.json -> workload.json,
-//                                                            workload-coverage.json, workload-registry.json
+//   workload.mjs build <product> <module> [--run <run-id>]   the human-approved @performance test cases (the only
+//                                                            source of load, D-068) + the api-discovery
+//                                                            catalogue + k6 run-config + workload-overlay.json ->
+//                                                            workload.json, workload-coverage.json,
+//                                                            workload-registry.json, bound to the run (default: the
+//                                                            active run; --run names the active run or a run of the
+//                                                            product with a results/<run>/ folder, else an error)
 //                                                            (exit 1 on problems; nothing is written then)
 //   workload.mjs check <product> <module> [--run <run-id>]   schemas, equal to a fresh build, ids vs registry, the
 //                                                            open-model and safety rules; stamps workload-coverage.json
@@ -19,8 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { loadJson, paths, repoRoot, SLUG_RE, validateData } from "./lib/contract.mjs";
-import { parseCases } from "./lib/gate/testcases.mjs";
-import { approvalSummary, testcasesFile } from "./lib/testcases.mjs";
+import { approvalSummary } from "./lib/testcases.mjs";
 import { build, check, workloadPaths } from "./lib/workload.mjs";
 
 function context(product, module, root, runOpt) {
@@ -31,14 +31,17 @@ function context(product, module, root, runOpt) {
   if (runOpt !== undefined && !SLUG_RE.test(runOpt)) throw new Error("--run must be a run id (lowercase kebab-case)");
   const cfg = loadJson(p.configFile);
   const wp = workloadPaths(p.productDir, module);
-  // --run names a run of this product: the active run, or a run whose playwright-api results for the module exist
-  if (runOpt !== undefined && runOpt !== run.runId && !existsSync(wp.results(runOpt)))
-    throw new Error(`--run ${runOpt} is neither the active run (${run.runId}) nor a run of '${product}' with playwright-api results for ${module} (${path.relative(root, wp.results(runOpt)).replaceAll("\\", "/")} is missing)`);
-  // overlay citations may name approved test cases only (D-053), as in api-plan.mjs
-  const format = cfg.testcases?.output_format ?? "gherkin";
-  const file = testcasesFile(wp.moduleDir, module, format);
-  const approved = new Set(approvalSummary(p.productDir, module).approved);
-  const cases = new Map(existsSync(file) ? parseCases(file, format).filter((c) => c.id && approved.has(c.id)).map((c) => [c.id, { api: c.api, priority: c.priority }]) : []);
+  // --run names a run of this product: the active run, or a run with a results folder
+  const runDir = path.join(p.productDir, "results", runOpt ?? run.runId);
+  if (runOpt !== undefined && runOpt !== run.runId && !existsSync(runDir))
+    throw new Error(`--run ${runOpt} is neither the active run (${run.runId}) nor a run of '${product}' (${path.relative(root, runDir).replaceAll("\\", "/")} is missing)`);
+  // Only cases a human approved exist for the workload (D-053): the approved @performance cases are its only source of
+  // load (decision 13), and overlay citations may name approved cases only. The script-built testcases/coverage.json
+  // carries each case's endpoint or flow and load.
+  const summary = approvalSummary(p.productDir, module);
+  const approved = new Set(summary.approved);
+  const pick = (c) => Object.fromEntries(["title", "type", "priority", "api", "performance", "endpoint", "flow", "load"].filter((k) => c[k] !== undefined).map((k) => [k, c[k]]));
+  const cases = new Map(summary.cases.filter((c) => approved.has(c.id)).map((c) => [c.id, pick(c)]));
   return { wp, opts: { module, cfg, mode: run.mode, runId: runOpt ?? run.runId, cases } };
 }
 
@@ -49,7 +52,7 @@ export async function main(argv, { root = repoRoot } = {}) {
   const [cmd, product, module] = positionals;
   if (!cmd || !product || !module) return { code: 2, out: { errors: ["usage: workload.mjs build|check|paths <product> <module> [--run <run-id>]"] } };
   const { wp, opts } = context(product, module, root, v.run);
-  if (cmd === "paths") return { code: 0, out: { ...Object.fromEntries(["workload", "coverage", "registry", "overlay"].map((k) => [k, rel(root, wp[k])])), results: rel(root, wp.results(opts.runId)) } };
+  if (cmd === "paths") return { code: 0, out: Object.fromEntries(["workload", "coverage", "registry", "overlay", "cases"].map((k) => [k, rel(root, wp[k])])) };
   if (cmd === "build") {
     if (existsSync(wp.overlay)) {
       const bad = await validateData("workload-overlay", loadJson(wp.overlay));

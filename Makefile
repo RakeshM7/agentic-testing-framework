@@ -15,6 +15,10 @@
 #   make status PRODUCT=acme-crm                      every stage and whether it is done
 #   make clarifications PRODUCT=acme-crm              continue from the clarifications stage (after you answered the CSV)
 #   make testcases PRODUCT=acme-crm                   continue from test case generation
+#   make steps PRODUCT=acme-crm STEPS=explore,testcases   choose the run's steps (rewrites only `steps:` in the config)
+#   make import PRODUCT=acme-crm MODULE=contacts [FILE=path] [APPROVED=yes]
+#                                                     bring in your own test case file (APPROVED=yes: it is already
+#                                                     signed off; your own terminal, you type the module slug)
 #   make approve PRODUCT=acme-crm MODULE=contacts     you sign off a module's test cases (your own terminal)
 #   make automate PRODUCT=acme-crm                    Playwright UI + API tests (needs approved cases)
 #   make resume PRODUCT=acme-crm STAGE=k6 MODULE=deals   any stage, optionally one module
@@ -37,11 +41,14 @@ STAGE   ?=
 LOGIN   ?= yes
 MODULE  ?=
 FIX     ?= yes
+STEPS   ?=
+FILE    ?=
+APPROVED ?= no
 
 # The command that opens an orchestrator-agent session with a first prompt. Claude Code by default; for Copilot CLI
 # use make ... AGENT="copilot --agent orchestrator-agent" (check your CLI for how it takes an initial prompt).
 AGENT   ?= claude --agent orchestrator-agent
-STAGES   = knowledge module-knowledge playwright-repo explore clarifications testcases playwright-ui playwright-api k6 report
+STAGES   = knowledge module-knowledge playwright-repo explore clarifications api-discovery testcases playwright-ui playwright-api k6 report
 
 CONFIG  = config/$(PRODUCT).yaml
 AUTH    = playwright-tests/$(PRODUCT)/.auth/state.json
@@ -49,11 +56,12 @@ AUTH    = playwright-tests/$(PRODUCT)/.auth/state.json
 # install chromium, k6 through winget or Homebrew); a config, session or credential problem is reported for you to fix.
 DOCTOR  = node scripts/doctor.mjs $(CONFIG)$(if $(filter yes,$(FIX)), --fix)
 
-.PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve
+.PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve steps import
 
 help:
 	@echo "make setup | config | interview | login | validate | doctor | build-agents | check | test"
-	@echo "make run | resume | status | next | explore | clarifications | testcases | approve | automate | k6 | report"
+	@echo "make run | resume | status | next | steps | explore | clarifications | testcases | import | approve | automate | k6 | report"
+	@echo "steps needs STEPS=<explore,clarifications,testcases,playwright-ui,playwright-api,k6>; import and approve need MODULE=<slug>"
 	@echo "config, login, validate and doctor need PRODUCT=<slug>; config also needs URL=<target url>"
 
 setup:
@@ -145,3 +153,16 @@ automate: require-product
 approve: require-product
 	@test -n "$(MODULE)" || { echo "Set MODULE=<module slug>"; exit 1; }
 	node scripts/testcases.mjs approve $(PRODUCT) $(MODULE)
+
+# The run's steps (D-066), for every module: the script validates them and rewrites only the config's `steps:` line.
+# The orchestrator also asks at the start of each run, pre-selected from this.
+steps: require-product
+	@test -n "$(STEPS)" || { echo "Set STEPS=<comma-separated: explore,clarifications,testcases,playwright-ui,playwright-api,k6>"; exit 1; }
+	node scripts/run-config.mjs set $(CONFIG) --steps $(STEPS)
+
+# Your own test case file for a module (D-066), once the product has a run. FILE defaults to the config's
+# modules[].testcases_file, else testcases.import. APPROVED=yes records the cases as already signed off: human only,
+# like approve (the guard refuses it for agents; you type the module slug to confirm).
+import: require-product
+	@test -n "$(MODULE)" || { echo "Set MODULE=<module slug>"; exit 1; }
+	node scripts/testcases.mjs import $(PRODUCT) $(MODULE)$(if $(FILE), --file $(FILE))$(if $(filter yes,$(APPROVED)), --approved)
