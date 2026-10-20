@@ -100,7 +100,8 @@ npm run build-agents -- --post-hook off     # not registered: faster, but every 
 `run.mjs stage … start` refuses a stage whose needs are missing on this machine (D-064), with each failing check and its fix. Run `make doctor PRODUCT=<product>` in your terminal: it applies the safe installs (`npm install`, the Playwright browser builds) and lists the rest. Then the orchestrator runs `run.mjs doctor <product>` again.
 - **The browser server's `--storage-state`** must be the run-config's `session_state_file` (or absent, with no login). Change it in `config/mcp.yaml`, run `npm run build-agents`, and start a new session: the MCP server reads its arguments at start-up.
 - **A Playwright browser build is not downloaded**: a Playwright update without its browser. `make doctor` installs it.
-- **The saved session expired**: `make login PRODUCT=<product>`.
+- **The saved session is missing, empty or expired**: `make login PRODUCT=<product>`, or let the orchestrator open the login window (it asks first). Microsoft Edge opens on the target with its own profile; sign in within 60 seconds and it closes by itself (D-069). A session with no cookie on the target's host (usual after a single sign-on login) is only a warning.
+- **A stage meets a sign-in page right after a successful login**: the browser server still has a browser open with the old session. Start a new agent session and resume the run.
 - **k6 is not installed**: `make doctor` installs it with winget (Windows) or Homebrew (macOS); on Linux, follow the link it prints. Then open a new terminal, since an install updates PATH for new terminals only.
 
 ## Verified facts (2026-10-11)

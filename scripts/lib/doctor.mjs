@@ -5,9 +5,10 @@
 //
 // Groups, and the stages that need them (STAGE_NEEDS):
 //   base     Node.js and the framework's own node_modules
-//   codegen  the Chromium build of the framework's Playwright (make login)
+//   login    the browser the login opens (lib/login.mjs, D-069): Microsoft Edge, else Google Chrome, else the
+//            Chromium build of the framework's Playwright
 //   browser  the Playwright MCP server's browser, and its --storage-state matching the run's session
-//   session  the saved session and credentials files the run-config names
+//   session  the saved session (present, not empty, not expired) and the credentials files the run-config names
 //   repo     the product Playwright repo's node_modules and its Chromium builds
 //   k6       the k6 binary
 //   target   the target (and API hosts) answer an HTTP HEAD
@@ -22,7 +23,7 @@ import path from "node:path";
 import yaml from "js-yaml";
 import { STAGES, paths } from "./contract.mjs";
 
-export const GROUPS = ["base", "codegen", "browser", "session", "repo", "k6", "target"];
+export const GROUPS = ["base", "login", "browser", "session", "repo", "k6", "target"];
 export const STAGE_NEEDS = {
   knowledge: ["base", "target"],
   "module-knowledge": ["base", "target"],
@@ -36,7 +37,7 @@ export const STAGE_NEEDS = {
   k6: ["base", "k6", "target"],
   report: ["base"],
 };
-export const LOGIN_NEEDS = ["base", "codegen"];
+export const LOGIN_NEEDS = ["base", "login"];
 export const MIN_NODE = 20;
 
 const RECORD = "doctor.json";
@@ -105,12 +106,17 @@ function base({ root, nodeVersion }) {
   return out;
 }
 
-function codegen({ root, sys }) {
+// The login needs a real browser window: some single sign-on providers refuse Playwright's own Chromium, so the login
+// prefers an installed Microsoft Edge, then Google Chrome (lib/login.mjs picks the same way).
+function login({ root, sys, exists }) {
+  const channel = loginChannel({ sys, exists });
+  if (channel === "msedge") return [{ id: "login-browser", ok: true, detail: "the login opens Microsoft Edge" }];
+  if (channel === "chrome") return [{ id: "login-browser", ok: true, level: "warn", detail: "Microsoft Edge is not installed: the login opens Google Chrome", fix: "install Microsoft Edge if your identity provider blocks Chrome" }];
   const b = browserBuilds(path.join(root, "node_modules", "playwright-core"), ["chromium"], sys);
-  if (!b) return [{ id: "login-browser", ok: false, level: "fail", detail: "the framework's Playwright is not installed", fix: "npm install (in the repo root)", autofix: { cmd: "npm", args: ["install"], cwd: root } }];
+  if (!b) return [{ id: "login-browser", ok: false, level: "fail", detail: "neither Microsoft Edge nor Google Chrome is installed, and the framework's Playwright is not installed", fix: "install Microsoft Edge, or npm install (in the repo root)", autofix: { cmd: "npm", args: ["install"], cwd: root } }];
   if (b.missing.length)
-    return [{ id: "login-browser", ok: false, level: "fail", detail: `Playwright ${b.version} needs ${describeMissing(b.missing)}, which is not downloaded`, fix: "npx playwright install chromium (in the repo root)", autofix: { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: root } }];
-  return [{ id: "login-browser", ok: true, detail: `Playwright ${b.version}: Chromium is installed` }];
+    return [{ id: "login-browser", ok: false, level: "fail", detail: `neither Microsoft Edge nor Google Chrome is installed, and Playwright ${b.version} needs ${describeMissing(b.missing)}, which is not downloaded`, fix: "install Microsoft Edge, or npx playwright install chromium (in the repo root)", autofix: { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: root } }];
+  return [{ id: "login-browser", ok: true, level: "warn", detail: `neither Microsoft Edge nor Google Chrome is installed: the login opens Playwright ${b.version}'s Chromium, which some single sign-on providers block`, fix: "install Microsoft Edge" }];
 }
 
 const argValue = (args, flag) => {
@@ -127,6 +133,11 @@ export function channelPaths(channel, { env = process.env, platform = process.pl
     msedge: { win32: win("Microsoft\\Edge\\Application\\msedge.exe"), darwin: ["/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"], linux: ["/opt/microsoft/msedge/msedge"] },
   };
   return table[channel]?.[platform === "win32" || platform === "darwin" ? platform : "linux"] ?? null;
+}
+
+// The branded browser the login opens: "msedge" or "chrome" when installed, else null (Playwright's own Chromium).
+export function loginChannel({ sys = {}, exists = existsSync } = {}) {
+  return ["msedge", "chrome"].find((ch) => (channelPaths(ch, sys) ?? []).some((p) => exists(p))) ?? null;
 }
 
 // The playwright-core of an npx-cached package@version (Playwright MCP runs through npx -y).
@@ -197,6 +208,11 @@ const cookieMatches = (domain, host) => {
   return !!d && (host === d || host.endsWith(`.${d}`));
 };
 
+// The saved session passes when it is present, readable and not empty (D-069). A single sign-on login often leaves no
+// cookie on the target's own host (the session sits with the identity provider, or in local storage), so a missing
+// target cookie only warns: the browser confirms the login when a stage opens the target, and a sign-in page there
+// sends the human back to the login. Expiry still fails, since it is certain: every cookie for the target, or every
+// cookie in the file, has expired.
 function session({ root, cfg, now, product }) {
   const out = [];
   const auth = cfg.authorizations ?? {};
@@ -207,11 +223,16 @@ function session({ root, cfg, now, product }) {
     if (!state) out.push({ id: "session", ok: false, level: "fail", detail: `the saved session ${slash(auth.session_state_file) || "(none set)"} is missing or unreadable`, fix: relogin });
     else {
       const host = hostOf(cfg.target?.url) ?? "";
-      const cookies = (state.cookies ?? []).filter((c) => cookieMatches(c.domain, host));
       const t = now / 1000;
-      const live = cookies.filter((c) => !(c.expires > 0) || c.expires > t);
-      if (!cookies.length) out.push({ id: "session", ok: false, level: "fail", detail: `the saved session has no cookie for ${host}: the login did not finish on the target`, fix: relogin });
-      else if (!live.length) out.push({ id: "session", ok: false, level: "fail", detail: `every cookie for ${host} in the saved session has expired`, fix: relogin });
+      const liveOf = (cs) => cs.filter((c) => !(c.expires > 0) || c.expires > t);
+      const all = state.cookies ?? [];
+      const cookies = all.filter((c) => cookieMatches(c.domain, host));
+      const live = liveOf(cookies);
+      const stored = (state.origins ?? []).some((o) => (o.localStorage ?? []).length);
+      if (!all.length && !stored) out.push({ id: "session", ok: false, level: "fail", detail: `the saved session ${slash(auth.session_state_file)} is empty (no cookie, no local storage): the login did not finish`, fix: relogin });
+      else if (cookies.length && !live.length) out.push({ id: "session", ok: false, level: "fail", detail: `every cookie for ${host} in the saved session has expired`, fix: relogin });
+      else if (all.length && !liveOf(all).length) out.push({ id: "session", ok: false, level: "fail", detail: "every cookie in the saved session has expired", fix: relogin });
+      else if (!cookies.length) out.push({ id: "session", ok: true, level: "warn", detail: `the saved session has no cookie for ${host} (usual after a single sign-on login): the login is confirmed when a stage opens the target`, fix: `if a stage meets a sign-in page, ${relogin}` });
       else {
         const ends = live.filter((c) => c.expires > 0).map((c) => c.expires).sort((a, b) => a - b)[0];
         const soon = ends && ends - t < 24 * 3600;
@@ -284,7 +305,7 @@ async function target({ cfg, fetchImpl }) {
   return out;
 }
 
-const CHECKS = { base, codegen, browser, session, repo, k6, target };
+const CHECKS = { base, login, browser, session, repo, k6, target };
 
 // Whether `cmd args` runs and exits 0 (args: the command's own version flag).
 const defaultWhich = (cmd, args = ["--version"]) => {

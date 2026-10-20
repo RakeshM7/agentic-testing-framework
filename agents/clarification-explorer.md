@@ -62,7 +62,7 @@ Everything below is written to `E = artifacts/<p>/modules/<m>/clarification-evid
   - `steps-ambiguous`: the row's steps can't be followed as written
   - `element-not-found`
 - **`blocked`:** something outside the question stopped you.
-  - `auth`: login, CAPTCHA or MFA. CAPTCHA/MFA is never bypassed.
+  - `auth`: a sign-in page instead of the product (the saved session expired or is not accepted; say so in the reason, so the orchestrator offers the human a fresh login), CAPTCHA or MFA. CAPTCHA/MFA is never bypassed.
   - `no-access`: the role lacks the permission
   - `environment`: an outage or server errors
   - `precondition-missing`
