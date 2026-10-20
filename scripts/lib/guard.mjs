@@ -23,7 +23,7 @@ import path from "node:path";
 import { isMutatingBrowserTool } from "./browser-tools.mjs";
 import { canIdentify, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
-import { atLeast, canWrite, effectiveLiveTarget, isManaged, runCeiling, shellAllowed } from "./permissions.mjs";
+import { atLeast, canWrite, effectiveLiveTarget, isManaged, runCeiling, shellAllowed, shellSegments } from "./permissions.mjs";
 
 const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 
@@ -108,9 +108,34 @@ const WORD_SPLITTERS = /['"`]|\\(?=[a-z])|\^(?=[a-z])/gi;
 // assignment; or an `APPROVED=` assignment (inline or exported) before any make -- never prose that says "make" and
 // "approve".
 const MAKE = String.raw`\b(?:g|n|mingw32-)?make(?:\.exe)?\b`;
-const MAKE_RUN = String.raw`(?:^|[\n;&|(\x60])\s*(?:(?:npx|env|sudo|exec|command)\s+|\w+=\S*\s+)*(?:\S*[\\/])?${MAKE}`;
+const makeRun = (starts) => String.raw`(?:^|[\n;&|(\x60${starts}])\s*(?:(?:npx|env|sudo|exec|command)\s+|\w+=\S*\s+)*(?:\S*[\\/])?${MAKE}`;
 const APPROVED_SET = String.raw`\bAPPROVED\s*[:?+]*=`;
-const HUMAN_ONLY_MAKE = new RegExp(`${MAKE_RUN}[^;&|\\n]*(?:\\sapprove\\b|${APPROVED_SET})|${APPROVED_SET}[\\s\\S]*${MAKE}`, "i");
+const humanOnlyMake = (starts) => new RegExp(`${makeRun(starts)}[^;&|\\n]*(?:\\sapprove\\b|${APPROVED_SET})|${APPROVED_SET}[\\s\\S]*${MAKE}`, "i");
+const HUMAN_ONLY_MAKE = humanOnlyMake("");
+// On a line with a word that runs a string (STRING_RUNNER below: `bash -c "make approve"`, `eval 'make approve'`), a
+// quoted string can be a command, so an opening quote also starts one.
+const HUMAN_ONLY_MAKE_RUN = humanOnlyMake(`'"`);
+// A separator inside quotes is text, not a new command (`grep -n "a\|make approve" f`, `git commit -m 'x; make approve'`),
+// so HUMAN_ONLY_MAKE reads the line with every `; & | ( ` and line break inside quotes blanked. Quotes count only where
+// every shell reads them alike -- the allow-list's rules (shellSegments): no `$`, backtick or `\"` inside double quotes
+// (so `"$(make approve)"` and a backtick substitution stay commands), no expansion, escape or unterminated quote outside
+// them -- and only on a line without an unquoted glob or brace and without a word that can run a string (a shell, eval,
+// an interpreter, ssh, git's --exec, ...), matched anywhere, prose included. Any other line keeps the quote-blind match.
+const STRING_RUNNER = /\b(?:sh|bash|zsh|dash|ksh|ash|fish|csh|tcsh|busybox|cmd|pwsh|powershell|eval|exec|execdir|iex|invoke-expression|invoke-command|start-process|start-job|ssh|wsl|su|sudo|doas|runas|runuser|trap|watch|script|flock|expect|tmux|screen|at|batch|crontab|schtasks|parallel|xargs|alias|foreach|rebase|node|nodejs|nodemon|deno|bun|bunx|npx|npm|pnpm|yarn|python[\d.]*|py|perl|ruby|php|lua|tclsh|awk|gawk|sed|vim?|emacs|gdb|osascript|docker|podman|kubectl)\b/i;
+function quotedSeparatorsBlanked(cmd) {
+  if ([cmd, cmd.replace(WORD_SPLITTERS, "")].some((c) => STRING_RUNNER.test(c)) || !shellSegments(cmd.replace(/[<>]/g, " "))) return cmd;
+  let q = null;
+  let out = "";
+  for (let c of cmd) {
+    if (q) {
+      if (c === q) q = null;
+      else if (";&|(`\n\r".includes(c)) c = " ";
+    } else if (c === "'" || c === '"') q = c;
+    else if ("?*[{".includes(c)) return cmd;
+    out += c;
+  }
+  return out;
+}
 // A word written with shell globs or expansions (`testc?ses.mjs`, `test[c]ases`, `--appro${x}ved`, `$(printf …)`,
 // backticks) reaches the program as whatever the shell makes of it, so it is read as the glob it is: an expansion
 // stands for any text, `?` and a `[...]` class for one character (and, on a printf line, a `%s`-style directive for any
@@ -163,10 +188,12 @@ const decodedVerbs = (s) => s.match(DECODED_VERB)?.length ?? 0;
 function humanOnly(call) {
   if (call.kind === "shell") {
     const joined = String(call.command ?? "").replace(JOIN_CONCAT, "");
-    const hit = (cmd) => humanOnlyCmd(cmd) || HUMAN_ONLY_FILES.test(cmd) || HUMAN_ONLY_MAKE.test(cmd) || expandedHumanOnly(cmd);
+    const hit = (cmd) => humanOnlyCmd(cmd) || HUMAN_ONLY_FILES.test(cmd) || expandedHumanOnly(cmd);
+    const makeHit = (cmd) => HUMAN_ONLY_MAKE.test(cmd) || (STRING_RUNNER.test(cmd) && HUMAN_ONLY_MAKE_RUN.test(cmd));
     // a decoded form also counts the bare `approved`, but only one the decoding produced (a payload, not the prose)
-    return [joined, joined.replace(WORD_SPLITTERS, "")].some((cmd) => hit(cmd) ||
-      decodedForms(cmd).some((d) => hit(d) || (decodedVerbs(d) > decodedVerbs(cmd) && namesScript(d, /\bprintf\b/i.test(d)))));
+    const scan = (line, test, verbs) => [line, line.replace(WORD_SPLITTERS, "")].some((cmd) => test(cmd) ||
+      decodedForms(cmd).some((d) => test(d) || (verbs && decodedVerbs(d) > decodedVerbs(cmd) && namesScript(d, /\bprintf\b/i.test(d)))));
+    return scan(joined, hit, true) || scan(quotedSeparatorsBlanked(joined), makeHit, false);
   }
   return call.kind === "write" && call.paths.some((p) => HUMAN_ONLY_PATH.test(String(p)));
 }
