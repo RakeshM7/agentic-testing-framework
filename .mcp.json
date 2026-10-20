@@ -5,6 +5,8 @@
       "args": [
         "-y",
         "@playwright/mcp@0.0.83",
+        "--browser",
+        "chromium",
         "--isolated",
         "--storage-state",
         "playwright-tests/ami/.auth/state.json"
