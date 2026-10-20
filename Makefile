@@ -4,7 +4,8 @@
 #   make config PRODUCT=acme-crm URL=https://...      create config/acme-crm.yaml from the example, then log in (make login)
 #                                                     add LOGIN=no for a product that needs no login
 #   make interview                                    or: the orchestrator asks a few questions and writes the config for you
-#   make login  PRODUCT=acme-crm                      log in once in a browser and save the session
+#   make login  PRODUCT=acme-crm                      log in once in Microsoft Edge and save the session (WAIT=120: more
+#                                                     time to sign in than the default 60 seconds)
 #   make validate PRODUCT=acme-crm                    check the run-config
 #   make doctor PRODUCT=acme-crm                      check (and install what it safely can) what every stage needs on this
 #                                                     machine; login, run, resume and automate run it first (FIX=no: report only)
@@ -43,6 +44,7 @@ MODULE  ?=
 FIX     ?= yes
 STEPS   ?=
 FILE    ?=
+WAIT    ?= 60
 APPROVED ?= no
 
 # The command that opens an orchestrator-agent session with a first prompt. Claude Code by default; for Copilot CLI
@@ -51,7 +53,6 @@ AGENT   ?= claude --agent orchestrator-agent
 STAGES   = knowledge module-knowledge playwright-repo explore clarifications api-discovery testcases playwright-ui playwright-api k6 report
 
 CONFIG  = config/$(PRODUCT).yaml
-AUTH    = playwright-tests/$(PRODUCT)/.auth/state.json
 # The dependency check (scripts/doctor.mjs, D-064). FIX=yes runs the installs it names (npm install, npx playwright
 # install chromium, k6 through winget or Homebrew); a config, session or credential problem is reported for you to fix.
 DOCTOR  = node scripts/doctor.mjs $(CONFIG)$(if $(filter yes,$(FIX)), --fix)
@@ -84,15 +85,13 @@ config: require-product
 interview:
 	$(AGENT) "I have no run-config yet. Interview me for it (short, one message of questions), draft it with node scripts/run-config.mjs draft, show me the summary, then start the run if I say so."
 
-# Opens a browser: log in yourself (CAPTCHA/MFA included), then close the window to save the session.
+# Opens Microsoft Edge (else Chrome) on the target with its own profile (D-069): sign in yourself (single sign-on,
+# CAPTCHA and MFA included) within WAIT seconds. The window closes by itself, saves the session to the config's
+# session_state_file (default playwright-tests/<product>/.auth/state.json) and sets it in the config.
 login: require-product
 	@test -f "$(CONFIG)" || { echo "Run make config PRODUCT=$(PRODUCT) URL=<target url> first"; exit 1; }
 	$(DOCTOR) --for login
-	@mkdir -p playwright-tests/$(PRODUCT)/.auth
-	npx playwright codegen --save-storage=$(AUTH) "$$(sed -n 's|^  url: *||p' $(CONFIG) | head -1)"
-	@test -s "$(AUTH)" || { echo "No session saved: close the browser window after logging in, then run make login again"; exit 1; }
-	sed -e 's|^  authenticated_crawl:.*|  authenticated_crawl: true|' -e 's|^  session_state_file:.*|  session_state_file: $(AUTH)|' $(CONFIG) > $(CONFIG).tmp && mv $(CONFIG).tmp $(CONFIG)
-	@echo "Saved $(AUTH) (git-ignored; holds live cookies, never share it) and set it in $(CONFIG)."
+	node scripts/run.mjs login $(CONFIG) --seconds $(WAIT)
 
 validate: require-product
 	node scripts/run-config.mjs validate $(CONFIG)

@@ -45,7 +45,7 @@ You don't write any of this. Know it so you can read its output.
 `check` fails on: an open frontier item; a KQ that is not observed, asked or dismissed; an untried input with neither a question nor a reason; a page without its snapshot; a question in `new-questions.json` that is not in the CSV; a flow that names no state id or an unknown one; a missing `module-summary.md`; a schema or overlay error. Entities created while exploring and still live are reported, not a failure.
 
 ## Steps
-1. **Open the module**: its `entry_url`, or follow `nav_path` from the target URL. If a login wall appears and you have no authenticated session, stop and report `blocked: login required`; the human must start the browser server with the run's `session_state_file`.
+1. **Open the module**: its `entry_url`, or follow `nav_path` from the target URL. A single sign-on redirect that signs you in by itself is fine. If a sign-in page stays (no saved session, or the saved one expired or is not accepted), stop and report `blocked: login required`; the orchestrator offers the human a fresh login.
 2. **Record the landing page.** Take an accessibility snapshot and save the tool's output unedited to `explore/captures/<n>-<slug>.md`, then: `node scripts/explore.mjs state <p> <m> --snapshot captures/<file>`.
 3. **Loop** until `frontier` reports nothing open or the budget is reached:
    1. `node scripts/explore.mjs frontier <p> <m>`: open items, in-module navigation first.
@@ -78,7 +78,7 @@ You don't write any of this. Know it so you can read its output.
 ## Rules
 - **Script-owned files.** In `explore/` you write only `flows/`, `module-summary.md`, `new-questions.json`, `overlay.json` and `captures/`. Never edit the model, the ledgers, the registries, the inventory, the sitemap, the interactions or the stored snapshots.
 - **Captures are verbatim.** Save the browser tool's snapshot and network output as returned; never edit them to change what `state` or `ingest-network` sees.
-- **Never type credentials**; CAPTCHA and MFA are never bypassed. A login wall without a session is `blocked: login required`.
+- **Never type credentials**; CAPTCHA and MFA are never bypassed. A sign-in page the saved session does not get past is `blocked: login required`.
 - **Readonly.** You may navigate and click to open menus, dialogs and tabs, sort and paginate. Never type, select, submit, or click a commit button or any dialog button other than Cancel or Close; the guard blocks typing, and the script closes those items as `not-allowed-in-mode`. Ask about what you could not trigger.
 - **Full-run.** Use obviously synthetic data (`ATF <m> <timestamp>`). Record each created entity at once with `node scripts/ledger.mjs add <p> --type <kind> --ref <id or unique name> --module <m> --stage explore --agent module-explorer`. Delete only your own entities: `ledger.mjs owns` must exit 0 first, then `ledger.mjs deleted`. Never touch pre-existing data: exclude such delete or edit controls as `destructive-preexisting`.
 - **Stay in the module.** Links to other modules are recorded, never followed.

@@ -122,7 +122,7 @@ export function buildDraft(answers, { root = process.cwd(), exists = (p) => exis
   for (const [k, f] of [["session_state_file", sessionFile], ["credentials_file", credFile]]) if (f && !existsSync(path.resolve(root, f))) warnings.push(`login.${k}: ${f} does not exist yet`);
   if (needsLogin && !sessionFile) {
     sessionFile = `playwright-tests/${product}/.auth/state.json`;
-    if (!existsSync(path.resolve(root, sessionFile))) next.push(`make login PRODUCT=${product}   # a browser opens: log in yourself (MFA/CAPTCHA included), then close the window`);
+    if (!existsSync(path.resolve(root, sessionFile))) next.push(`make login PRODUCT=${product}   # Microsoft Edge opens on the target: sign in yourself (SSO/MFA included) within 60 seconds; it closes by itself and saves the session`);
   }
 
   const config = {
@@ -136,7 +136,7 @@ export function buildDraft(answers, { root = process.cwd(), exists = (p) => exis
     knowledge: { references: uniq([url, ...refs.links]) },
     modules,
     ...(Object.keys(testcases).length ? { testcases } : {}),
-    // These four keys keep their indentation and one-line shape: `make login` rewrites two of them with sed.
+    // These four keys keep their indentation and one-line shape: the login (lib/login.mjs) rewrites two of them in place.
     authorizations: { mode: "readonly", authenticated_crawl: needsLogin, credentials_file: credFile, session_state_file: sessionFile },
   };
 

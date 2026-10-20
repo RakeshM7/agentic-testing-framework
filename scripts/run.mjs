@@ -12,6 +12,12 @@
 //   run.mjs guard-check <product>                         liveness canary: a working guard BLOCKS this (lib/guard-check.mjs)
 //   run.mjs doctor <product>                              dependency check for every stage (lib/doctor.mjs, D-064): records
 //                                                         state/doctor.json; {checks, blockedStages}; exit 1 if a stage is blocked
+//   run.mjs login <config.yaml> [--seconds N]            the human's login (lib/login.mjs, D-069): opens Microsoft Edge
+//                                                         (else Chrome, else Playwright's Chromium) on the target with a
+//                                                         persistent profile, waits N seconds (default 60) while the human
+//                                                         signs in, closes it, saves session_state_file and sets it in the
+//                                                         config -> {saved, browser, session, configUpdated, next?}; exit 1
+//                                                         when no session was saved or it fails the session check
 //   run.mjs prereqs <product>                             the up-front prerequisite check (after doctor, before the first
 //                                                         stage): {steps, caseTypes, testcasesMode, ok, gaps: [{module,
 //                                                         need, what, steps, options: [{id, label, adds|removes,
@@ -68,6 +74,7 @@ import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
 import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs";
 import { GROUPS, STAGE_NEEDS, clearDoctor, doctorStatus, failures, recordDoctor, runChecks } from "./lib/doctor.mjs";
+import { login as openLogin } from "./lib/login.mjs";
 import { detectShellHost } from "./lib/hosts.mjs";
 import { approvalSummary, caseTypeOf, importStatus, testcasePaths } from "./lib/testcases.mjs";
 import { SCENARIO_ANSWERS, writeScenarios } from "./lib/explore.mjs";
@@ -511,12 +518,26 @@ export async function scenarios(product, { file, root = repoRoot } = {}) {
 export async function doctor(product, { root = repoRoot, ...opts } = {}) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { errors: [`run ${ctx.runId} has ended; start a new run`] };
-  const groups = GROUPS.filter((g) => g !== "codegen");
+  const groups = GROUPS.filter((g) => g !== "login");
   const checks = await runChecks(loadJson(ctx.p.configFile), groups, { root, ...opts });
   recordDoctor(product, root, { groups, checks });
   // a stage not chosen for this run (for any module) is never reported as blocked (B6)
   const blockedStages = Object.keys(STAGE_NEEDS).filter((s) => ctx.run.modules.some((m) => stageChosen(ctx.run, s, STAGES[s].scope === "product" ? null : m)) && failures(checks, STAGE_NEEDS[s]).length);
   return { checks: checks.map(({ autofix, ...c }) => c), blockedStages, ...(blockedStages.length ? { fix: `tell the human each failing check and its fix; they run make doctor PRODUCT=${product} (it applies the safe installs), then run.mjs doctor ${product} again. Stages not listed can start now.` } : {}) };
+}
+
+// The human's login over the run-config at configFile (works before a run exists, and during one).
+export async function login(configFile, { root = repoRoot, ...opts } = {}) {
+  let text;
+  try {
+    text = readFileSync(configFile, "utf8");
+  } catch (e) {
+    return { errors: [`cannot read ${configFile}: ${e.message}`] };
+  }
+  const check = (t) => validateRunConfig(yaml.load(t), { root });
+  const { errors, normalized: cfg } = check(text);
+  if (errors?.length) return { errors: errors.map((e) => `${configFile}: ${e}`) };
+  return openLogin({ cfg, configFile, text, root, validate: (t) => check(t).errors ?? [], ...opts });
 }
 
 export async function setStage(product, stage, module, action, error, { root = repoRoot, reused = false } = {}) {
@@ -668,14 +689,14 @@ async function main() {
   const { values: v, positionals: pos } = parseArgs({
     args: rest,
     allowPositionals: true,
-    options: { "run-id": { type: "string" }, module: { type: "string" }, error: { type: "string" }, resume: { type: "boolean" }, abandon: { type: "boolean" }, add: { type: "string" }, remove: { type: "string" }, "import-mode": { type: "string" }, reopen: { type: "string" }, file: { type: "string" } },
+    options: { "run-id": { type: "string" }, module: { type: "string" }, error: { type: "string" }, resume: { type: "boolean" }, abandon: { type: "boolean" }, add: { type: "string" }, remove: { type: "string" }, "import-mode": { type: "string" }, reopen: { type: "string" }, file: { type: "string" }, seconds: { type: "string" } },
   });
   const out = (x, code = 0) => {
     console.log(JSON.stringify(x, null, 2));
     process.exit(code);
   };
   if (!cmd || !a) {
-    console.error("usage: run.mjs init|guard-check|doctor|prereqs|steps|scenarios|status|next|stage|end|validate ... (see header comment)");
+    console.error("usage: run.mjs init|guard-check|doctor|login|prereqs|steps|scenarios|status|next|stage|end|validate ... (see header comment)");
     process.exit(2);
   }
   try {
@@ -691,6 +712,9 @@ async function main() {
     } else if (cmd === "doctor") {
       const r = await doctor(a);
       out(r, r.errors || r.blockedStages.length ? 1 : 0);
+    } else if (cmd === "login") {
+      const r = await login(a, v.seconds === undefined ? {} : { seconds: Number(v.seconds) });
+      out(r, r.errors ? 1 : 0);
     } else if (cmd === "prereqs") {
       const r = await prereqs(a);
       out(r, r.errors || !r.ok ? 1 : 0);

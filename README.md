@@ -24,7 +24,7 @@ Start a run with the **orchestrator-agent** as the session's agent (Claude Code:
 4. Live browser work (exploration, clarifications) needs an interactive Playwright MCP session on Claude Code or VS Code.
 
 ### 2. Prepare the run-config
-**Either let the orchestrator interview you**: run `make interview`. It asks, in one message, for the product name (public or internal tool), its URL and a short description or overview link, the modules to run, links and file paths it can read (documents, sheets; export Office files to .md, .csv or .pdf), and optionally an API host or spec, whether a login is needed, which steps to run and any test case file you already have. It never asks for a secret. It then writes `config/<slug>.yaml` (always `readonly`), shows you a summary, and starts the run if you say so. If it needs a login it tells you to run `make login` first. **Or write the file by hand**, as below; both end in the same file.
+**Either let the orchestrator interview you**: run `make interview`. It asks, in one message, for the product name (public or internal tool), its URL and a short description or overview link, the modules to run, links and file paths it can read (documents, sheets; export Office files to .md, .csv or .pdf), and optionally an API host or spec, whether a login is needed, which steps to run and any test case file you already have. It never asks for a secret. It then writes `config/<slug>.yaml` (always `readonly`), shows you a summary, and starts the run if you say so. If it needs a login, it offers to open the login window for you (step 4). **Or write the file by hand**, as below; both end in the same file.
 
 1. Create it: `make config PRODUCT=<slug> URL=<target url>`. It writes `config/<slug>.yaml` from the example, with `product` and `target.url` set and `authorizations.mode: readonly`, then runs `make login` for you (step 4). Add `LOGIN=no` for a product that needs no login. [`config/run-config.freshsales.yaml`](config/run-config.freshsales.yaml) is a filled-in sample.
 2. Open the file and fill in what only you know:
@@ -35,9 +35,10 @@ Start a run with the **orchestrator-agent** as the session's agent (Claude Code:
    - your own test cases, if you have them: `modules[].testcases_file`, or one `testcases.import` file whose cases name their module (`@module:<slug>` or a Module column). Tag `@api` and `@performance` cases; untagged ones are UI.
 3. Set `authorizations.mode: full-run` only for a target you own or are authorized to test. `readonly` (the default) is non-mutating everywhere.
 4. Log in (`make config` already did this unless you passed `LOGIN=no`; run `make login PRODUCT=<slug>` yourself to log in again):
-   - a browser opens: log in yourself (CAPTCHA and MFA included), then **close the browser window**;
-   - the session is saved to `playwright-tests/<slug>/.auth/state.json` and set in the config, along with `authenticated_crawl: true`;
-   - the file is git-ignored and holds live cookies, so never share it. Run `make login` again when the session expires.
+   - Microsoft Edge opens on the target (Google Chrome when Edge is not installed), with its own profile: sign in yourself (single sign-on, CAPTCHA and MFA included) within **60 seconds** (`WAIT=120` for more). The window **closes by itself**; don't close it yourself;
+   - the session is saved to `playwright-tests/<slug>/.auth/state.json` and set in the config, along with `authenticated_crawl: true`. The profile (`playwright-tests/<slug>/.auth/browser-profile`) keeps your identity provider's sign-in, so the next login is usually quicker;
+   - both are git-ignored and hold live cookies, so never share them. Log in again when the session expires, or when a stage meets a sign-in page. The orchestrator offers to open the login window for you then, after you confirm.
+   - A single sign-on session often has no cookie on the target's own host. That passes the dependency check with a warning; the login is confirmed when a stage opens the target.
 5. Credentials and API tokens are always a path (`credentials_file`) or a variable name (`api.auth_header`), never a value.
 6. Check it: `make validate PRODUCT=<slug>`.
 
