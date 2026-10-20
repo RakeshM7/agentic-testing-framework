@@ -9,6 +9,18 @@
     "line": { "type": "string", "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$", "description": "One non-empty line." },
     "ci": { "type": "string", "pattern": "^CI-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
     "citation": { "type": "string", "pattern": "^(clarification|knowledge|observation):\\S+$" },
+    "st": { "type": "string", "pattern": "^ST-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+    "load": {
+      "type": "object",
+      "required": ["type", "rps"],
+      "additionalProperties": false,
+      "description": "A @performance case's load: the type, the target rate and the SLO (a field it leaves out: the run-config's k6.slo, else the assumed default).",
+      "properties": {
+        "type": { "enum": ["smoke", "average-load", "stress", "spike", "soak", "breakpoint"] },
+        "rps": { "type": "number", "exclusiveMinimum": 0, "description": "The target rate: requests (or flow iterations) per second." },
+        "slo": { "type": "object", "additionalProperties": false, "properties": { "p95_ms": { "type": "number", "exclusiveMinimum": 0 }, "p99_ms": { "type": "number", "exclusiveMinimum": 0 }, "error_rate": { "type": "number", "minimum": 0, "maximum": 1 } } }
+      }
+    },
     "case": {
       "type": "object",
       "required": ["key", "title", "type", "priority", "action", "steps", "expected", "covers", "evidence"],
@@ -16,7 +28,14 @@
       "properties": {
         "key": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 80, "description": "The stable case key (a slug). Its TC id is assigned once and never changes; never rename a key." },
         "title": { "$ref": "#/$defs/line", "description": "A declarative name of the behavior, unique in the module." },
-        "type": { "enum": ["functional", "negative", "boundary", "security", "visual", "api"] },
+        "type": { "enum": ["functional", "negative", "boundary", "security", "visual", "api", "performance"] },
+        "performance": { "type": "boolean", "description": "A load expectation k6 loads (the workload is built only from approved @performance cases)." },
+        "endpoint": { "type": "string", "pattern": "^EP-", "description": "@api / @performance: the endpoint (EP id of api/discovered-endpoints.json) the case is about." },
+        "flow": { "$ref": "#/$defs/line", "description": "@performance: the user flow under load (a workload-overlay flow or mix name), instead of an endpoint." },
+        "load": { "$ref": "#/$defs/load" },
+        "source": { "enum": ["imported"], "description": "Converted by testcase-writer's import mode from a human's document: covers and evidence may be empty, and `imported` cites the document." },
+        "imported": { "type": "object", "required": ["file", "quote"], "additionalProperties": false, "properties": { "file": { "type": "string", "minLength": 1, "description": "The document, relative to the repo." }, "quote": { "type": "string", "minLength": 1, "description": "Verbatim text of the document the case comes from." }, "line": { "type": "integer", "minimum": 1 } } },
+        "states": { "type": "array", "items": { "$ref": "#/$defs/st" }, "description": "An imported UI case: the exploration states it touches (decision 14)." },
         "priority": { "enum": ["p1", "p2", "p3"] },
         "mutates": { "type": "boolean", "description": "Creates, changes or deletes data." },
         "visual": { "type": "boolean" },
@@ -48,6 +67,12 @@
   "properties": {
     "module": { "type": "string" },
     "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } },
-    "exclude": { "type": "array", "items": { "$ref": "#/$defs/exclude" } }
+    "exclude": { "type": "array", "items": { "$ref": "#/$defs/exclude" } },
+    "links": {
+      "type": "object",
+      "description": "Imported cases (testcases/imported.json, or source: imported) -> the exploration states they touch, by case key (decision 14).",
+      "propertyNames": { "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "additionalProperties": { "type": "array", "items": { "$ref": "#/$defs/st" } }
+    }
   }
 }

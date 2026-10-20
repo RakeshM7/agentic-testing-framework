@@ -112,6 +112,8 @@ export function explorePaths(productDir, module) {
     questions: path.join(dir, "new-questions.json"),
     overlay: path.join(dir, "overlay.json"),
     captures: path.join(dir, "captures"),
+    // scenario mode (selectable steps, decision 15): written by `run.mjs scenarios`, never by this script or the agent
+    scenarios: path.join(moduleDir, "scenarios.json"),
   };
 }
 
@@ -783,9 +785,46 @@ function assignPages(ctx, firstEvents) {
 
 // ---------- the model ----------
 
+// The module's scenarios (scenario mode): [] for a whole-module exploration.
+export const readScenarioList = (xp) => readJson(xp.scenarios, null)?.scenarios ?? [];
+const SC_RE = (module) => new RegExp(`\\bSC-${module.replace(/[-]/g, "\\-")}-\\d+\\b`, "g");
+export const SCENARIO_REASONS = ["unreachable", "guard-denied", "not-allowed-in-mode", "not-in-product"];
+
+// The scenario ledger (scenario mode): every scenario has a recorded flow (a flows/*.md naming its SC id and the states
+// it passes through) or an audited reason in overlay.json scenarios (a reason, a detail and a capture that shows it).
+// -> null (whole-module exploration) | {kind: "scenarios", scenarios: [{id, title, status: flow|explained|pending,
+//    flows?, reason?, detail?, citation?}], problems}
+export function scenarioLedger(ctx) {
+  const { xp, module } = ctx;
+  const list = readScenarioList(xp);
+  if (!list.length) return null;
+  const overlay = readOverlay(xp);
+  const problems = [];
+  const ids = new Set(list.map((s) => s.id));
+  const named = new Map();
+  for (const f of flowFiles(xp)) for (const id of uniq(readFileSync(path.join(xp.flows, f), "utf8").match(SC_RE(module)) ?? [])) {
+    if (!ids.has(id)) problems.push(`flows/${f}: names ${id}, which is not a scenario of scenarios.json`);
+    else named.set(id, [...(named.get(id) ?? []), f]);
+  }
+  for (const id of Object.keys(overlay.scenarios)) if (!ids.has(id)) problems.push(`overlay.json scenarios: '${id}' is not a scenario of scenarios.json`);
+  const scenarios = list.map((s) => {
+    if (named.has(s.id)) return { id: s.id, title: s.title, status: "flow", flows: named.get(s.id) };
+    const o = overlay.scenarios[s.id];
+    if (!o) return { id: s.id, title: s.title, status: "pending" };
+    const at = (p) => problems.push(`overlay.json scenarios.${s.id}: ${p}`);
+    if (!SCENARIO_REASONS.includes(o.reason)) at(`reason must be one of ${SCENARIO_REASONS.join(", ")}`);
+    if (!String(o.detail ?? "").trim()) at("needs a detail");
+    const cite = String(o.citation ?? "");
+    const segs = cite.replaceAll("\\", "/").split("/");
+    if (!/^captures\//.test(cite) || segs.some((x) => x === "" || x === "." || x === "..") || !existsSync(path.join(xp.dir, cite))) at(`cite the capture that shows it (captures/<file>, saved verbatim)${cite ? `; '${cite}' is not one` : ""}`);
+    return { id: s.id, title: s.title, status: "explained", reason: o.reason, detail: String(o.detail ?? "").trim(), citation: cite };
+  });
+  return { kind: "scenarios", scenarios, problems };
+}
+
 export const readOverlay = (xp) => {
   const o = readJson(xp.overlay, {});
-  return { items: o.items ?? {}, kq: o.kq ?? {}, inputs: o.inputs ?? {}, scope: o.scope ?? {} };
+  return { items: o.items ?? {}, kq: o.kq ?? {}, inputs: o.inputs ?? {}, scope: o.scope ?? {}, scenarios: o.scenarios ?? {} };
 };
 export const readQuestions = (xp) => readJson(xp.questions, []);
 
@@ -841,6 +880,7 @@ export function derive(ctx) {
   const stateEvents = events.filter((e) => e.type === "state");
   const problems = [];
   const overlay = readOverlay(xp);
+  const scenarioScoped = readScenarioList(xp).length > 0;
 
   // pages and states, in first-seen order
   const pageFirst = new Map();
@@ -1046,6 +1086,8 @@ export function derive(ctx) {
     else if (ctx.mode === "readonly" && (TYPING_ROLES.includes(c.role) || mutatesControl(c))) set("excluded", { reason: "not-allowed-in-mode", detail: TYPING_ROLES.includes(c.role) ? "readonly: typing and selecting are blocked" : "readonly: never submit or commit", by: "script" });
     else if (budgets.reached.states) set("deferred", { reason: "budget", detail: `explore.max_states (${budgets.max_states}) reached` });
     else if (budgets.reached.pages && target && c.role === "link" && !knownPages.has(target.key)) set("deferred", { reason: "budget", detail: `explore.max_pages (${budgets.max_pages}) reached` });
+    // scenario mode: only the scenarios' flows are explored; every other control is deferred, never dropped
+    else if (scenarioScoped) set("deferred", { reason: "scenario-scope", detail: "outside the described scenarios (scenarios.json): only their flows are explored" });
     else set("pending");
     // fields (best effort, from the snapshot): kept on the item for interactions.json
     Object.defineProperty(item, "control", { value: c, enumerable: false });
@@ -1378,8 +1420,10 @@ export function build(ctx) {
     transitions: m.transitions,
     frontier: m.frontier.map(({ ...i }) => i),
   };
+  const sc = scenarioLedger(ctx);
   const coverage = {
     module: ctx.module, runId: ctx.runId, mode: ctx.mode, budgets: model.budgets,
+    ...(sc ? { scope: { kind: sc.kind, scenarios: sc.scenarios } } : {}),
     frontier: { summary: { ...sum(m.frontier), byReason }, items: frontierLedger },
     kq: { summary: m.kq.summary(), items: m.kq.items.map(({ why, ...x }) => x) },
     inputs: { summary: m.inputs.summary(), items: m.inputs.items.map(({ why, ...x }) => x) },
@@ -1460,6 +1504,8 @@ function stampInputs(ctx) {
     overlay: xp.overlay, questions: xp.questions, summary: xp.summary,
     log: xp.log, registryStates: xp.registry.states, registryPages: xp.registry.pages, registryFrontier: xp.registry.frontier, registryNetwork: xp.registry.network,
     kqModule: kp.module(module).openPoints, kqProduct: kp.openPoints,
+    // only in scenario mode, so a whole-module exploration's stamp stays current
+    ...(existsSync(xp.scenarios) ? { scenarios: xp.scenarios } : {}),
   };
 }
 // The CSV rows the audit relies on (the questions' and KQs' ids with their question text). Later answers and notes from
@@ -1477,6 +1523,12 @@ export async function runCheck(ctx, validateData) {
   const { xp, module } = ctx;
   const { m, model, coverage } = build(ctx);
   const problems = [...m.problems];
+  // scenario mode: every scenario has its flow or an audited reason
+  const sc = scenarioLedger(ctx);
+  if (sc) {
+    problems.push(...sc.problems);
+    for (const s of sc.scenarios.filter((x) => x.status === "pending")) problems.push(`${s.id} (${s.title}): no flow names it -- record its flow in flows/ naming ${s.id} and the states it passes through, or explain it in overlay.json scenarios`);
+  }
   if (!m.states.length) problems.push("no state recorded in this run (record the module's entry page with `explore.mjs state`; if a login wall stopped you, report blocked)");
   for (const [file, schema] of [[xp.model, "explore-model"], [xp.coverage, "explore-coverage"], [xp.sitemap, "sitemap"], [xp.interactions, "interactions"], [xp.inventory, "network-inventory"]])
     for (const e of await validateData(schema, readJson(file))) problems.push(`${path.basename(file)}: ${e}`);
@@ -1553,6 +1605,86 @@ export function stageProblems(ctx) {
   if (why) return [why === unstamped ? why : `the exploration ${why} (run explore.mjs check again)`];
   if (flows !== flowsDigest(ctx.xp)) return ["the flows changed after `explore.mjs check` (run check again)"];
   return clarifications === csvDigest(ctx) ? [] : ["the clarifications.csv rows the exploration's questions rely on changed after `explore.mjs check` (run check again)"];
+}
+
+
+// ---------- scenarios.json (scenario mode) ----------
+
+// A module's scenarios (scenario mode, selectable steps decision 15): artifacts/<product>/modules/<m>/scenarios.json
+// (schema scenarios). The orchestrator interviews the human (per module: title, goal, starting point, key steps, free
+// text) and writes the answers to artifacts/<product>/state/scenario-answers.json; `run.mjs scenarios` validates them and
+// writes each module's scenarios.json with stable SC-<m>-<n> ids (lib/registry.mjs, keyed by the title's slug). The
+// module-explorer then explores only those scenarios' flows (explore.mjs scope `scenarios`), and test cases are
+// enumerated only within them (lib/testcases.mjs).
+//
+// The answers file: {"modules": {"<m>": [{"title", "goal", "start", "steps": ["…"] | "one step per line"}]}}.
+// A module listed with [] goes back to a whole-module exploration (its scenarios.json is removed); a module not listed
+// is left as it is.
+
+export const SCENARIO_ANSWERS = "scenario-answers.json";
+const scOne = (s) => String(s ?? "").replace(/\s*\r?\n\s*/g, " ").trim();
+const scSlug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+const SCENARIO_FIELDS = ["title", "goal", "start"];
+
+
+export function scenarioPaths(productDir, module) {
+  const moduleDir = path.join(productDir, "modules", module);
+  return { file: path.join(moduleDir, "scenarios.json"), registry: path.join(moduleDir, "registry", "scenarios.json") };
+}
+
+// The module's scenarios ([] when it has none: a whole-module exploration).
+export const readScenarios = (productDir, module) => readJson(scenarioPaths(productDir, module).file, null)?.scenarios ?? [];
+
+// Steps as the human gave them: a list, or free text with one step per line (numbering and bullets dropped).
+const stepsOf = (v) => (Array.isArray(v) ? v : String(v ?? "").split(/\r?\n|;/)).map((s) => scOne(s).replace(/^(\d+[.)]|[-*])\s+/, "")).filter(Boolean);
+
+// -> problems[] (nothing is written while any remains)
+export function answersProblems(answers, modules) {
+  const out = [];
+  if (!answers || typeof answers !== "object" || !answers.modules || typeof answers.modules !== "object" || Array.isArray(answers.modules))
+    return ['the answers file must be {"modules": {"<module>": [{"title", "goal", "start", "steps"}]}}'];
+  for (const [m, list] of Object.entries(answers.modules)) {
+    if (!modules.includes(m)) out.push(`modules.${m}: not a module of this run (one of ${modules.join(", ")})`);
+    if (!Array.isArray(list)) {
+      out.push(`modules.${m}: a list of scenarios`);
+      continue;
+    }
+    const seen = new Map();
+    list.forEach((s, i) => {
+      const at = (p) => out.push(`modules.${m}[${i}]: ${p}`);
+      for (const f of SCENARIO_FIELDS) if (!scOne(s?.[f])) at(`needs a ${f === "start" ? "starting point (start)" : f}`);
+      if (!stepsOf(s?.steps).length) at("needs its key steps (steps)");
+      const k = scSlug(scOne(s?.title));
+      if (scOne(s?.title) && !k) at("the title needs a letter or a digit");
+      if (k && seen.has(k)) at(`the same title as modules.${m}[${seen.get(k)}]`);
+      if (k) seen.set(k, i);
+    });
+  }
+  return out;
+}
+
+// Validates the answers, then writes each listed module's scenarios.json. -> {written: {<m>: [SC ids]}, removed: [m]}
+// | {problems}
+export function writeScenarios({ productDir, modules, runId, answers }) {
+  const problems = answersProblems(answers, modules);
+  if (problems.length) return { problems };
+  const written = {};
+  const removed = [];
+  for (const [m, list] of Object.entries(answers.modules)) {
+    const sp = scenarioPaths(productDir, m);
+    const keys = list.map((s) => scSlug(scOne(s.title)));
+    const reg = assignIds(sp.registry, keys, { module: m, runId, prefix: "SC", field: "scenarios" });
+    if (!list.length) {
+      if (existsSync(sp.file)) unlinkSync(sp.file);
+      removed.push(m);
+      continue;
+    }
+    const scenarios = list.map((s, i) => ({ id: reg.scenarios[keys[i]].id, key: keys[i], title: scOne(s.title), goal: scOne(s.goal), start: scOne(s.start), steps: stepsOf(s.steps) }));
+    mkdirSync(path.dirname(sp.file), { recursive: true });
+    writeAtomic(sp.file, JSON.stringify({ module: m, runId, scenarios }, null, 2) + "\n");
+    written[m] = scenarios.map((s) => s.id);
+  }
+  return { written, removed };
 }
 
 export { sha256 };

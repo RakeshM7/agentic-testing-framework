@@ -106,6 +106,14 @@ const num = (n) => (n === null || n === undefined ? "n/a" : String(n));
 const code = (s) => `<code>${esc(s)}</code>`;
 const badge = (s, cls = "") => `<span class="badge${cls ? ` ${cls}` : ""}">${esc(s)}</span>`;
 
+// The title slide's line on the steps: what this run chose and what it did not (absent in a report from before steps).
+function stepsLine(report) {
+  if (!report.steps) return "";
+  const chosen = report.steps.filter((x) => x.chosen).map((x) => x.step);
+  const not = report.steps.filter((x) => !x.chosen).map((x) => x.step);
+  return `<p>Steps: ${esc(chosen.join(", "))}${not.length ? ` &middot; Not chosen for this run: ${esc(not.join(", "))}` : ""}</p>`;
+}
+
 function table(caption, head, rows, { numeric = [] } = {}) {
   const th = head.map((h, i) => `<th scope="col"${numeric.includes(i) ? ' class="num"' : ""}>${esc(h)}</th>`).join("");
   const body = rows.map((r) => `<tr>${r.map((c, i) => `<td${numeric.includes(i) ? ' class="num"' : ""}>${c}</td>`).join("")}</tr>`).join("");
@@ -155,7 +163,7 @@ export function renderDeck(report, narrative = null) {
 
   slides.push(`<section class="slide" id="s-title" aria-labelledby="s-title-h"><h1 id="s-title-h">${esc(report.product)}: test run report</h1>
 <p>Target: ${code(report.target)}</p><p>Run: ${code(report.runId)} &middot; ${esc(report.generatedAt.slice(0, 10))}</p>
-<p>Mode: <strong>${esc(report.mode)}</strong>${report.mode === "readonly" ? " &mdash; nothing that changes data was run; mutating tests and k6 load were not executed." : " &mdash; mutating tests ran; deletes were limited to entities this run created."}</p></section>`);
+<p>Mode: <strong>${esc(report.mode)}</strong>${report.mode === "readonly" ? " &mdash; nothing that changes data was run; mutating tests and k6 load were not executed." : " &mdash; mutating tests ran; deletes were limited to entities this run created."}</p>${stepsLine(report)}</section>`);
 
   const tile = (n, l) => `<div class="tile"><div class="n">${esc(num(n))}</div><div class="l">${esc(l)}</div></div>`;
   slides.push(slide("s-glance", "At a glance", `<div class="tiles">${[
@@ -227,7 +235,11 @@ export function renderDeck(report, narrative = null) {
       table("k6 creates whose id could not be read", ["Script", "Run", "Creates", "Types", "File"], a.k6Untracked.map((x) => [code(x.script), x.retry ? "retry" : "first", String(x.creates), esc(x.types.join(", ")), code(x.file)]), { numeric: [2] })));
 
   const findings = (f) => (f && f.length ? `<ul>${f.slice(0, 5).map((x) => `<li>${esc(typeof x === "string" ? x : [x.severity, x.location, x.reason ?? x.summary ?? x.title].filter(Boolean).join(" ") || JSON.stringify(x))}</li>`).join("")}</ul>${f.length > 5 ? `<p class="muted">and ${f.length - 5} more findings in report.json</p>` : ""}` : "");
+  // a step the human did not choose is shown as such, never as failed or blocked
+  const notChosen = report.notChosenStages ?? [];
   slides.push(slide("s-stages", "Stages that did not finish",
+    (report.steps ? table("Steps of this run", ["Step", "Chosen"], report.steps.map((x) => [code(x.step), x.chosen ? "Chosen" : "Not chosen for this run"])) : "") +
+    (notChosen.length ? table("Not chosen for this run", ["Stage", "Its outputs"], notChosen.map((s) => [code(s.key), s.satisfiedBy === "earlier-run" ? "from an earlier run" : s.satisfiedBy === "import" ? "from your test case file" : "&mdash;"])) : "") +
     table("Failed", ["Stage", "Attempts", "Error and open findings"], report.failedStages.map((s) => [code(s.key), String(s.attempts), esc(s.error ?? "") + findings(s.findings)]), { numeric: [1] }) +
       table("Blocked by a failed stage", ["Stage"], report.blockedStages.map((s) => [code(s.key)])) +
       table("Awaiting human approval", ["Stage"], report.awaitingApprovalStages.map((s) => [code(s.key)])) +

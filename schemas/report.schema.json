@@ -97,7 +97,7 @@
         "triage": { "type": "object", "required": ["byClass", "bugClusters", "unverified"], "additionalProperties": false, "properties": { "byClass": { "type": "object", "additionalProperties": { "$ref": "#/$defs/int" } }, "bugClusters": { "type": "array", "items": { "$ref": "#/$defs/bug" } }, "unverified": { "type": "array", "items": { "type": "object", "required": ["module", "framework"] } } } },
         "coverage": { "$ref": "#/$defs/counts" },
         "assumptions": { "type": "object", "required": ["k6Thresholds", "assumptionCases", "weakRuleFacts", "k6Leftovers", "k6UntrackedCreates"], "additionalProperties": false, "properties": { "k6Thresholds": { "$ref": "#/$defs/int" }, "assumptionCases": { "$ref": "#/$defs/int" }, "weakRuleFacts": { "$ref": "#/$defs/int" }, "k6Leftovers": { "$ref": "#/$defs/int" }, "k6UntrackedCreates": { "$ref": "#/$defs/int" } } },
-        "stages": { "type": "object", "required": ["failed", "blocked", "awaitingApproval"], "additionalProperties": false, "properties": { "failed": { "$ref": "#/$defs/int" }, "blocked": { "$ref": "#/$defs/int" }, "awaitingApproval": { "$ref": "#/$defs/int" } } },
+        "stages": { "type": "object", "required": ["failed", "blocked", "awaitingApproval"], "additionalProperties": false, "properties": { "failed": { "$ref": "#/$defs/int" }, "blocked": { "$ref": "#/$defs/int" }, "awaitingApproval": { "$ref": "#/$defs/int" }, "notChosen": { "$ref": "#/$defs/int", "description": "stages not chosen for this run (never failed or blocked)" } } },
         "missing": { "$ref": "#/$defs/int", "description": "the number of entries of the top-level `missing`" }
       }
     },
@@ -168,6 +168,8 @@
     "blockedStages": { "type": "array", "items": { "$ref": "#/$defs/stageRef" } },
     "awaitingApprovalStages": { "type": "array", "items": { "$ref": "#/$defs/stageRef" } },
     "incompleteStages": { "type": "array", "items": { "type": "object", "required": ["key", "stage", "status", "problems"] } },
+    "steps": { "type": "array", "description": "each step of the menu and whether this run chose it; the deck shows the rest as not chosen for this run", "items": { "type": "object", "required": ["step", "chosen"], "additionalProperties": false, "properties": { "step": { "enum": ["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"] }, "chosen": { "type": "boolean" } } } },
+    "notChosenStages": { "type": "array", "description": "stages outside this run's chosen set: never failed, blocked or incomplete", "items": { "type": "object", "required": ["key", "stage", "module"], "properties": { "key": { "type": "string" }, "stage": { "type": "string" }, "module": { "type": ["string", "null"] }, "satisfiedBy": { "enum": ["earlier-run", "import"], "description": "what stood in for it for the stages that need it" } } } },
     "missing": { "type": "array", "description": "every data source that was absent or unreadable", "items": { "type": "object", "required": ["section", "module", "reason"], "additionalProperties": false, "properties": { "section": { "type": "string" }, "module": { "type": ["string", "null"] }, "reason": { "type": "string" } } } },
     "modules": {
       "type": "array",

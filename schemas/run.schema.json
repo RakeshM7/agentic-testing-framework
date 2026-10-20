@@ -21,6 +21,9 @@
     "mode": { "enum": ["readonly", "full-run"], "description": "Single source of truth for the safety mode; caps every agent's permissions." },
     "configPath": { "type": "string" },
     "permissionsPath": { "type": "string" },
+    "steps": { "type": "array", "uniqueItems": true, "minItems": 1, "items": { "enum": ["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"] }, "description": "The steps chosen for this run (run-config `steps`, frozen at init; the gap menu may change them through run.mjs steps). Absent in older runs = all six. Every stage outside the chosen set (lib/contract.mjs chosenStages) is not-chosen." },
+    "caseTypes": { "type": "array", "uniqueItems": true, "items": { "enum": ["ui", "api", "performance"] }, "description": "The test case types this run derives from its steps and testcases.types: ui always, api with playwright-api, performance with k6." },
+    "testcasesMode": { "type": "object", "propertyNames": { "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" }, "additionalProperties": { "enum": ["import", "generate"] }, "description": "The testcases stage's mode per module (D-066, lib/contract.mjs testcasesModes): generate for every module when the testcases step is chosen; import for a module whose imported cases need converting or linking although testcases is not chosen (run.mjs steps --import-mode): the writer only converts and links, and the generated coverage items are deferred (reason import). A module not listed has no testcases stage this run. Absent in older runs: generate when testcases is chosen, else none." },
     "startedOnHost": { "type": "string", "description": "Host the run was started on, as guessed by run.mjs init (keys of scripts/lib/hosts.mjs HOSTS)." },
     "modules": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" } },
     "stages": {
@@ -40,7 +43,8 @@
           "findings": { "type": "array", "items": { "type": "object" }, "description": "the open blocker/major findings of a failed review" },
           "doneRefusals": { "type": "integer", "minimum": 0 },
           "reused": { "type": "boolean", "description": "done by run.mjs next: the knowledge was reused" },
-          "carriedFrom": { "type": "string", "description": "adopted from this earlier run, which ended awaiting-approval" }
+          "carriedFrom": { "type": "string", "description": "adopted from this earlier run, which ended awaiting-approval" },
+          "reopened": { "type": "string", "description": "why run.mjs steps --reopen sent this completed testcases stage back to pending (new case types, or import mode turning into generate); the human approvals of unchanged cases stand" }
         }
       }
     }

@@ -1,5 +1,11 @@
 // k6-code.mjs (G7, criterion 4 and the script half of 5): generated k6 scripts per workload scenario, the slot file,
 // parking, drift and every check rule. Never runs k6: inspect is injected (or skipped under node --test).
+//
+// D-068 (2026-10-20): the workload is built only from human-approved @performance test cases, one scenario
+// per case, so the setup approves one case per load target (each overlay flow and mix, EP-contacts-3 and the query-like
+// EP-contacts-8) and per type (smoke, average-load and the opted-in types) to keep every kind and type these tests
+// generate. The playwright-api results are no longer a workload input (decision 5); the plan stays, for the expected
+// statuses.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
@@ -10,7 +16,7 @@ import { planPaths } from "./lib/api-plan.mjs";
 import { writeJson } from "./lib/endpoints.mjs";
 import { computeModel, k6CodeContext, k6CodeUnverified, parseOptions, scriptRules, slotFindings, urlPathOf } from "./lib/k6-code.mjs";
 import { stampVerified } from "./lib/verified.mjs";
-import { put, startRun } from "./test-helpers.mjs";
+import { markApproved, put, startRun } from "./test-helpers.mjs";
 
 const MOD = "artifacts/acme/modules/contacts";
 const CITE = "knowledge:modules/contacts/notes.md";
@@ -38,11 +44,6 @@ const PLAN = () => [
   sc(8, 2, { type: "lifecycle", steps: [{ endpoint: "EP-contacts-2" }, { endpoint: "EP-contacts-3" }, { endpoint: "EP-contacts-4" }] }),
   sc(10, 7),
 ];
-const RESULTS = () => ({
-  framework: "playwright-api", module: "contacts", runId: "acme-run-1", mode: "readonly", recordedAt: "2026-10-19T00:00:00Z", status: "ran",
-  totals: { total: 0, passed: 0, failed: 0, flaky: 0, skipped: 0 }, durationMs: 0,
-  items: [1, 2, 3, 4, 5, 7, 8, 9, 10].map((n) => ({ title: `contacts.spec.ts > API-contacts-${n} scenario ${n} @p2 @functional`, scenarioId: `API-contacts-${n}`, status: n === 5 ? "failed" : "passed" })),
-});
 const FLOW = { name: "contact-lifecycle", steps: [{ endpoint: "EP-contacts-2" }, { endpoint: "EP-contacts-3", bind: { param: "id", from: 0, pointer: "/id" } }, { endpoint: "EP-contacts-9", bind: { param: "id", from: 0, pointer: "/id" } }, { endpoint: "EP-contacts-4", bind: { param: "id", from: 0, pointer: "/id" } }], citations: [CITE] };
 const OVERLAY = {
   flows: [FLOW],
@@ -51,14 +52,26 @@ const OVERLAY = {
   data: [{ target: "EP-contacts-3", need: "an existing contact id to read", citation: CITE }],
 };
 
+// The approved @performance cases the workload loads: one per target and type (testcases/coverage.json + approvals).
+function approveCases(root, overlay, catalogue, k6) {
+  const targets = [...(overlay?.flows ?? []).map((x) => x.name), ...(overlay?.mixes ?? []).map((x) => x.name), ...["EP-contacts-3", "EP-contacts-8"].filter((id) => catalogue.some((e) => e.id === id))];
+  const types = ["smoke", "average-load", ...(k6?.modules?.contacts?.types ?? [])];
+  const cases = targets.flatMap((t) => types.map((type) => ({ target: t, type }))).map(({ target, type }, i) => ({
+    id: `TC-contacts-${i + 1}`, key: `perf-${i + 1}`, title: `load ${target} (${type})`, type: "performance", performance: true, priority: "p2", hash: `hash-${i + 1}`,
+    ...(target.startsWith("EP-") ? { endpoint: target } : { flow: target }), load: { type, rps: 10 },
+  }));
+  put(root, `${MOD}/testcases/coverage.json`, JSON.stringify({ cases }));
+  markApproved(root, cases.map((c) => c.id));
+}
+
 // A run with a verified workload; kc runs k6-code.mjs (inspect skipped).
-async function setup({ mode = "full-run", k6, overlay = OVERLAY, plan = PLAN(), catalogue = CATALOGUE(), results = RESULTS() } = {}) {
+async function setup({ mode = "full-run", k6, overlay = OVERLAY, plan = PLAN(), catalogue = CATALOGUE() } = {}) {
   const { root } = startRun({ mode, extra: k6 ? [`k6: ${JSON.stringify(k6)}`] : [] });
   const pp = planPaths(path.join(root, "artifacts/acme"), "contacts");
   writeJson(pp.catalogue, catalogue);
   writeJson(pp.plan, plan);
   writeJson(pp.coverage, { verified: stampVerified({ plan: pp.plan, catalogue: pp.catalogue }) });
-  put(root, "artifacts/acme/results/acme-run-1/contacts/playwright-api/results.json", JSON.stringify(results));
+  approveCases(root, overlay, catalogue, k6);
   put(root, "artifacts/acme/knowledge/modules/contacts/notes.md", "# Contacts\nCreating, reading and deleting a contact is the core flow.\n");
   if (overlay) put(root, `${MOD}/k6/workload-overlay.json`, JSON.stringify(overlay));
   for (const cmd of ["build", "check"]) {
@@ -399,7 +412,8 @@ test("slot scan: the bypass classes are findings", async () => {
 });
 
 test("a realistic filled slot file passes and stamps verified; any later change unverifies", async () => {
-  const s = await filledBuild({ k6: { modules: { contacts: { types: ["stress", "soak"] } } } });
+  // 16 cases (4 targets x 4 types): over the default k6.budget of 10 load units, which now counts cases
+  const s = await filledBuild({ k6: { budget: 16, modules: { contacts: { types: ["stress", "soak"] } } } });
   const r = await s.kc("check");
   assert.equal(r.code, 0, probs(r));
   assert.deepEqual(r.out.slots.emptyNeeded, []);
@@ -535,10 +549,9 @@ const NESTED_CATALOGUE = () => [
   ep(16, "DELETE", "/api/v1/contacts/{id}/notes/{noteId}", { resource: "notes" }),
 ];
 const NESTED_PLAN = () => [...PLAN(), sc(24, 14), sc(25, 15, ok(200)), sc(26, 16, ok(204))];
-const NESTED_RESULTS = () => ({ ...RESULTS(), items: NESTED_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, scenarioId: s.id, status: s.id === "API-contacts-5" ? "failed" : "passed" })) });
 const NB = (from, param = "id") => ({ param, from, pointer: "/id" });
 const NESTED_FLOW = { name: "notes", steps: [{ endpoint: "EP-contacts-2" }, { endpoint: "EP-contacts-14", bind: NB(0) }, { endpoint: "EP-contacts-15", bind: [NB(0), NB(1, "noteId")] }, { endpoint: "EP-contacts-16", bind: [NB(0), NB(1, "noteId")] }, { endpoint: "EP-contacts-4", bind: NB(0) }], citations: [CITE] };
-const nestedSetup = () => setup({ catalogue: NESTED_CATALOGUE(), plan: NESTED_PLAN(), results: NESTED_RESULTS(), overlay: { flows: [NESTED_FLOW] } });
+const nestedSetup = () => setup({ catalogue: NESTED_CATALOGUE(), plan: NESTED_PLAN(), overlay: { flows: [NESTED_FLOW] } });
 
 test("D-3: every create of a flow is tracked by its id; the child is deleted (and trackDeleted) before its parent", async () => {
   const s = await nestedSetup();
@@ -620,8 +633,7 @@ const ACTION_CATALOGUE = () => [
   { ...ep(18, "POST", "/api/v1/contacts/{id}/archive", { crud: "action" }), queryLike: { evidence: "overlay: archive is a filter", source: "overlay" } },
 ];
 const ACTION_PLAN = () => [...PLAN(), sc(27, 17, ok(204)), sc(28, 18, ok(200))];
-const ACTION_RESULTS = () => ({ ...RESULTS(), items: ACTION_PLAN().map((s) => ({ title: `contacts.spec.ts > ${s.id} ${s.title}`, scenarioId: s.id, status: s.id === "API-contacts-5" ? "failed" : "passed" })) });
-const actionSetup = (steps) => setup({ catalogue: ACTION_CATALOGUE(), plan: ACTION_PLAN(), results: ACTION_RESULTS(), overlay: { flows: [{ name: "assign", steps, citations: [CITE] }] } });
+const actionSetup = (steps) => setup({ catalogue: ACTION_CATALOGUE(), plan: ACTION_PLAN(), overlay: { flows: [{ name: "assign", steps, citations: [CITE] }] } });
 
 test("N-1: a DELETE on an action sub-path is a write, never the cleanup: no trackDeleted, the entity stays a leftover", async () => {
   const unassign = await actionSetup([{ endpoint: "EP-contacts-2" }, { endpoint: "EP-contacts-9", bind: NB(0) }, { endpoint: "EP-contacts-17", bind: NB(0) }]);

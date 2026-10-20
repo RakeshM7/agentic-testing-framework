@@ -4,7 +4,8 @@
 // records the result for `stage … start`.
 //
 //   doctor.mjs <config.yaml> [--stage all|<stage>[,<stage>…]] [--for login] [--fix] [--warn-only] [--json]
-//     --stage      the stages to check for (default all); --for login checks what `make login` needs instead
+//     --stage      the stages to check for (default: every stage the run-config's steps choose, see
+//                  lib/contract.mjs chosenStages); --for login checks what `make login` needs instead
 //     --fix        run the installs first (npm install, npx playwright install chromium, in the framework or the
 //                  product's Playwright repo; k6 through winget on Windows or Homebrew on macOS), then check again.
 //                  Never edits a config, session or credential file.
@@ -16,15 +17,23 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import yaml from "js-yaml";
 import { validateRunConfig } from "./run-config.mjs";
-import { STAGES, repoRoot } from "./lib/contract.mjs";
+import { STAGES, chosenStages, deriveCaseTypes, repoRoot } from "./lib/contract.mjs";
 import { LOGIN_NEEDS, STAGE_NEEDS, failures, groupsFor, runChecks } from "./lib/doctor.mjs";
 
 const USAGE = "usage: doctor.mjs <config.yaml> [--stage all|<stage>[,<stage>…]] [--for login] [--fix] [--warn-only] [--json]";
 
-export function scope(v) {
+// cfg (a normalized run-config): without --stage, only the stages its steps choose are checked; a stage it does not choose
+// never reports a problem as blocking.
+export function scope(v, cfg) {
   if (v.for === "login") return { label: "make login", groups: LOGIN_NEEDS, stages: [] };
   if (v.for) return { error: `unknown --for ${v.for} (only: login)` };
-  const stages = !v.stage || v.stage === "all" ? Object.keys(STAGES) : v.stage.split(",").map((s) => s.trim()).filter(Boolean);
+  const all = !v.stage || v.stage === "all";
+  if (all && cfg?.steps) {
+    const chosen = chosenStages({ steps: cfg.steps, caseTypes: deriveCaseTypes(cfg.steps, cfg.testcases?.types) });
+    const stages = Object.keys(STAGES).filter((s) => chosen.has(s));
+    return { label: "every chosen stage", groups: groupsFor(stages), stages };
+  }
+  const stages = all ? Object.keys(STAGES) : v.stage.split(",").map((s) => s.trim()).filter(Boolean);
   const unknown = stages.filter((s) => !STAGES[s]);
   if (unknown.length) return { error: `unknown stage(s) ${unknown.join(", ")} (one of ${Object.keys(STAGES).join(", ")})` };
   return { label: v.stage && v.stage !== "all" ? stages.join(", ") : "every stage", groups: groupsFor(stages), stages };
@@ -67,16 +76,17 @@ export async function main(argv, { root = repoRoot, exec, log = console.log, che
   }
   const { values: v, positionals: [file] } = parsed;
   if (!file) return log(USAGE), 2;
-  const sc = scope(v);
+  let sc = scope(v);
   if (sc.error) return log(`${sc.error}\n${USAGE}`), 2;
   let cfg;
   try {
-    const r = validateRunConfig(yaml.load(readFileSync(file, "utf8")));
+    const r = validateRunConfig(yaml.load(readFileSync(file, "utf8")), { root });
     if (r.errors?.length) return log(`${file} is not a valid run-config:\n  ${r.errors.join("\n  ")}`), 1;
     cfg = r.normalized;
   } catch (e) {
     return log(`cannot read ${file}: ${e.message}`), 1;
   }
+  sc = scope(v, cfg);
 
   let checks = await check(cfg, sc.groups, { root });
   const steps = v.fix ? autofixSteps(checks) : [];

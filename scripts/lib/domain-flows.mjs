@@ -87,7 +87,7 @@ export const FLOWS = {
   },
   "playwright-api": {
     build: [
-      { step: "discover", agent: "api-discoverer" },
+      // The endpoint catalogue is the api-discovery stage's (run.mjs), done before this domain starts.
       // No API surface (or discovery blocked): nothing to plan, build or review; the runner records not-run with the reason.
       // The plan is script-built (D-046): a "done" plan step counts only once api-plan.mjs check passed on what is on disk.
       { step: "plan", agent: "api-test-planner", skipRest: noApiSurface, verify: (c) => planUnverified(planPaths(c.productDir, c.module)) },

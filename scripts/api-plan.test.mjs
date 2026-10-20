@@ -248,6 +248,41 @@ test("the plan overlay may link only human-approved test cases: no priority or t
   assert.ok(!s.plan().some((x) => x.testcases.includes("TC-contacts-1")), "no link, so no raised priority");
 });
 
+test("an approved @api case naming a catalogue endpoint is linked to its happy path and planned top priority; the technique scenarios stay (decision 12)", async () => {
+  const s = setup();
+  // a low-priority case: the link, not the case's own priority, makes its scenario p1
+  put(s.root, `${MOD}/testcases/contacts-testcases.feature`, FEATURE.replace("@TC-contacts-1 @p1 @api", "@TC-contacts-1 @p3 @api"));
+  await s.run("build");
+  const before = s.plan().map((x) => x.key).sort();
+  const post = s.ep("POST", "/api/v1/contacts");
+  const covFile = path.join(s.root, MOD, "testcases", "coverage.json");
+  const cov = JSON.parse(readFileSync(covFile, "utf8"));
+  cov.cases.find((c) => c.id === "TC-contacts-1").endpoint = post; // the endpoint the script-built case names
+  writeFileSync(covFile, JSON.stringify(cov));
+  const r = await s.run("build");
+  assert.ok(!s.cov().pending.some((p) => p.item === "testcase:TC-contacts-1"), "linked by the script, not pending");
+  const linked = s.plan().filter((x) => x.testcases.includes("TC-contacts-1"));
+  assert.deepEqual(linked.map((x) => [x.endpoint, x.key, x.priority]), [[post, "POST /api/v1/contacts|happy-path", "p1"]]);
+  assert.deepEqual(s.plan().map((x) => x.key).sort(), before, "the technique-driven scenarios are unchanged");
+  assert.ok(!r.out.problems.some((p) => /TC-contacts-1/.test(p)), JSON.stringify(r.out.problems));
+
+  // an endpoint the catalogue lacks: reported as pending with the reason, never silently dropped
+  cov.cases.find((c) => c.id === "TC-contacts-1").endpoint = "EP-contacts-999";
+  writeFileSync(covFile, JSON.stringify(cov));
+  await s.run("build");
+  const pending = s.cov().pending.find((p) => p.item === "testcase:TC-contacts-1");
+  assert.match(pending?.reason ?? pending?.detail ?? JSON.stringify(pending), /EP-contacts-999, which is not in the catalogue/);
+  assert.ok(!s.plan().some((x) => x.testcases.includes("TC-contacts-1")));
+
+  // the overlay's own link wins over the script's
+  cov.cases.find((c) => c.id === "TC-contacts-1").endpoint = post;
+  writeFileSync(covFile, JSON.stringify(cov));
+  const list = s.plan().find((x) => x.key.endsWith("GET /api/v1/contacts|happy-path"));
+  s.overlay({ testcases: { "TC-contacts-1": [list.id] } });
+  await s.run("build");
+  assert.deepEqual(s.plan().filter((x) => x.testcases.includes("TC-contacts-1")).map((x) => [x.id, x.priority]), [[list.id, "p1"]]);
+});
+
 test("overlay: citations must resolve, exclusions need a matching item, and generated scenarios cannot be renamed", async () => {
   const s = setup();
   await s.run("build");
@@ -333,7 +368,7 @@ test("budget: the lowest-priority scenarios are not planned and their items are 
 test("orchestration: the plan step counts as done only after api-plan.mjs check passed on what is on disk", async () => {
   const s = setup();
   const go = () => next("acme", "playwright-api", "contacts", { root: s.root, compile: false });
-  for (const name of ["discover", "plan"]) {
+  for (const name of ["plan"]) { // the catalogue is the api-discovery stage's: the domain starts at the plan
     const a = go().actions[0];
     assert.equal(a.step, name);
     step("acme", "playwright-api", "contacts", name, "start", undefined, { root: s.root });
@@ -347,7 +382,7 @@ test("orchestration: the plan step counts as done only after api-plan.mjs check 
 
   const t = setup();
   const go2 = () => next("acme", "playwright-api", "contacts", { root: t.root, compile: false });
-  for (const name of ["discover", "plan"]) {
+  for (const name of ["plan"]) {
     step("acme", "playwright-api", "contacts", go2().actions[0].step, "start", undefined, { root: t.root });
     if (name === "plan") {
       await t.run("build");

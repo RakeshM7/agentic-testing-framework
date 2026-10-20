@@ -8,7 +8,7 @@ You complete the module's k6 scripts. `scripts/k6-code.mjs` does the mechanics:
 - one managed script per `workload.json` scenario, `scripts/<m>-<name>.js`, with its `K6-<m>-<n>` id in the header;
 - `options` copied verbatim from `workload.json`: the arrival-rate executor, the rate, the duration, the VUs and every threshold, `dropped_iterations` included;
 - `setup()`: `assertAllowedHost()` and `requireFullRun(<mutates>)`, then your data;
-- every request through the shared lib (`url()`, the auth `params()`), tagged with its endpoint for the per-endpoint thresholds, and its expected status from the API plan;
+- every request through the shared lib (`url()`, the auth `params()`), tagged with its endpoint for the per-endpoint thresholds, and its expected status from the API plan when there is one (else 2xx);
 - a mix's weighted pick, and a write flow's chain: the create, `trackLeftover` at once, the steps on the created entity only, the delete and `trackDeleted` after a 2xx;
 - the cited think time, `teardown()` and `handleSummary`;
 - keeping your slots across every rebuild, and checking every one.
@@ -22,7 +22,7 @@ You write the data the requests need, and optional extra checks.
 - `node scripts/k6-code.mjs paths <p> <m>`: the slot file, the generated scripts and the managed files.
 - `artifacts/<p>/modules/<m>/k6/code-plan.json`: the scripts, their requests, and `slots` (each key, its function, whether it is `needed` and `filled`, and the scenarios that use it).
 - `artifacts/<p>/modules/<m>/k6/workload.json`: each scenario's `data[]` needs (target, need, citation).
-- `artifacts/<p>/modules/<m>/api/discovered-endpoints.json` (`requestSchema`, `params`, examples) and `plan.json`.
+- `artifacts/<p>/modules/<m>/api/discovered-endpoints.json` (`requestSchema`, `params`, examples) and `plan.json` when the module has an API plan (without one, a request's expected status is 2xx).
 - `k6-tests/<p>/lib/`: `data.js` (`uniqueName`, `uniqueEmail`) and `checks.js` (`checkStatus`, `checkJsonKeys`, `checkLatency`).
 - `artifacts/<p>/knowledge/` for realistic values.
 - `docs/k6-conventions.md`; formats: `docs/agent-handoffs.md` §5.

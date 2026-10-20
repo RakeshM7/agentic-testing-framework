@@ -53,6 +53,17 @@ export function put(root, rel, content) {
   writeFileSync(p, content);
 }
 
+// A module's endpoint catalogue the way the api-discovery stage leaves it: endpoints.mjs build over a one-endpoint
+// network inventory (an empty inventory gives an empty catalogue, which is a valid "no API surface" outcome).
+export async function buildCatalogue(root, { product = "acme", module = "contacts", inventory } = {}) {
+  const { apiPaths, build, writeJson } = await import("./lib/endpoints.mjs");
+  const ap = apiPaths(paths(product, root).productDir, module);
+  writeJson(ap.inventory, inventory ?? [{ method: "GET", pathTemplate: `/api/v1/${module}`, statusCodes: [200], requestKeys: [], responseKeys: ["id"], pages: ["list"] }]);
+  const r = build(ap, { module, cfg: { target: { url: "https://app.acme.test" }, modules: [{ slug: module, name: module }], api: {} }, runId: `${product}-run-1` });
+  if (r.problems.length) throw new Error(r.problems.join("\n"));
+  return ap;
+}
+
 // A valid product-level knowledge pass, the way the knowledge-generator produces it (via the scripts): every heading,
 // one Main areas bullet per module, a tagged open point, rendered, checked and stamped (D-051).
 export function writeProductKnowledge(root, product = "acme") {

@@ -513,6 +513,8 @@ export function touchedStates(c, { itemsById, model, flows }) {
   const known = new Map((model?.states ?? []).map((s) => [s.id, s]));
   const pageBySlug = new Map((model?.pages ?? []).map((p) => [p.slug, p]));
   const out = new Set();
+  // an imported case: the exploration states testcase-writer's import mode linked it to (decision 14)
+  for (const st of c.states ?? []) out.add(st);
   for (const id of c.covers ?? []) {
     const it = itemsById.get(id);
     if (!it) continue;
@@ -615,7 +617,8 @@ export function derivePlan(ctx) {
   if (!model) warnings.push("explore/model.json is missing: no page template can be derived, so no page object is required");
 
   // which cases are automated: approved, not @api, within testcases.max_cases (ranked by priority, then id)
-  const approvedUi = cases.filter((c) => status.get(c.id)?.status === "approved" && !c.api);
+  // a @performance case is k6's (selectable steps): neither side of Playwright automates it
+  const approvedUi = cases.filter((c) => status.get(c.id)?.status === "approved" && !c.api && !c.performance);
   const rank = (c) => [PRIORITIES.indexOf(c.priority ?? "p3"), idNum(c.id)];
   const ranked = approvedUi.slice().sort((a, b) => rank(a)[0] - rank(b)[0] || rank(a)[1] - rank(b)[1]);
   const inBudget = new Set(ranked.slice(0, ctx.maxCases).map((c) => c.id));
@@ -697,7 +700,7 @@ export function derivePlan(ctx) {
   for (const c of cases) {
     ledger.addItem(c.id, { kind: "case", label: one(c.title) });
     const st = status.get(c.id) ?? { status: "awaiting" };
-    if (c.api) ledger.resolve(c.id, { status: "excluded", reason: "api-side", detail: "an @api case: the Playwright API side automates it" });
+    if (c.api || c.performance) ledger.resolve(c.id, { status: "excluded", reason: "api-side", detail: c.performance ? "a @performance case: k6 loads it" : "an @api case: the Playwright API side automates it" });
     else if (st.status !== "approved") ledger.resolve(c.id, { status: "excluded", reason: "not-approved", detail: st.invalidated ? "edited since a human approved it: awaiting a new approval" : why[st.status] ?? st.status });
     else if (!inBudget.has(c.id)) ledger.resolve(c.id, { status: "deferred", reason: "budget", detail: `over testcases.max_cases (${ctx.maxCases})` });
     else ledger.resolve(c.id, { status: "mapped", refs: [spec] });
@@ -713,7 +716,7 @@ export function derivePlan(ctx) {
     ledger.resolve(o.key, { status: "mapped", refs: [o.file] });
   }
 
-  const awaiting = cases.filter((c) => !c.api && status.get(c.id)?.status !== "approved").map((c) => ({ id: c.id, status: status.get(c.id)?.invalidated ? "invalidated" : status.get(c.id)?.status ?? "awaiting" }));
+  const awaiting = cases.filter((c) => !c.api && !c.performance && status.get(c.id)?.status !== "approved").map((c) => ({ id: c.id, status: status.get(c.id)?.invalidated ? "invalidated" : status.get(c.id)?.status ?? "awaiting" }));
   const plan = {
     module, runId: ctx.runId, maxCases: ctx.maxCases,
     files: { spec, smoke: SMOKE_FILE(module), registration: REGISTRATION_FILE(module), data: DATA_FILE(module), index: INDEX_FILE },
@@ -735,7 +738,7 @@ export function noUiCases(ctx) {
   if (!tc) return false;
   const st = approvalStatus(tc.cases ?? [], readApprovals(ctx.tp, ctx.module));
   const approved = (tc.cases ?? []).filter((c) => st.get(c.id)?.status === "approved");
-  return approved.length && approved.every((c) => c.api) ? "every approved test case is @api: nothing to automate on the UI side" : false;
+  return approved.length && approved.every((c) => c.api || c.performance) ? "every approved test case is @api or @performance: nothing to automate on the UI side" : false;
 }
 
 // ---------- rendering ----------

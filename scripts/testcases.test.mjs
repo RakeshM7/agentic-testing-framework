@@ -11,7 +11,7 @@ import { append, csvPath, record } from "./lib/clarifications.mjs";
 import { loadJson, paths, validateData } from "./lib/contract.mjs";
 import { parseCsv, serializeCsv } from "./lib/csv.mjs";
 import { APPROVAL_COLUMNS, CASE_COLUMNS, MAX_COVERS, caseHash, checkTestcases, conditionsOf, countCases, decisionTable, normApproval, parseCases, testcaseContext, testcasesUnverified, versionMatch, versionOf } from "./lib/testcases.mjs";
-import { humanEdit, put, startRun } from "./test-helpers.mjs";
+import { buildCatalogue, humanEdit, put, startRun } from "./test-helpers.mjs";
 
 const MOD = "artifacts/acme/modules/contacts";
 const URL = "https://app.acme.test/contacts";
@@ -43,8 +43,11 @@ const RULE_FACTS = {
   ],
 };
 
-function setup({ format, maxCases, g2 = true } = {}) {
+// steps: the run's steps (decision 11 derives the case types from them). The UI-only default keeps these fixtures free of
+// the @api / @performance items a run with playwright-api or k6 enumerates from the endpoint catalogue.
+function setup({ format, maxCases, g2 = true, steps = ["explore", "clarifications", "testcases", "playwright-ui"] } = {}) {
   const extra = format || maxCases ? [`testcases: {${[format && `output_format: ${format}`, maxCases && `max_cases: ${maxCases}`].filter(Boolean).join(", ")}}`] : [];
+  if (steps) extra.push(`steps: [${steps.join(", ")}]`);
   const { root } = startRun({ extra });
   if (g2) {
     put(root, `${MOD}/explore/model.json`, JSON.stringify(MODEL));
@@ -739,4 +742,239 @@ test("a rule mixing and with or degrades to one decision-table item per conditio
   assert.equal(connective, "mixed");
   const rows = decisionTable(conditions, connective);
   assert.deepEqual(rows.map((r) => [r.key, r.outcome]), [["cond:the-order-is-paid", null], ["cond:the-item-is-unused", null], ["cond:the-seller-agrees", null]]);
+});
+
+// ---------- selectable steps: typed cases, imports, scenario scope ----------
+
+const perfCase = (key, covers, over = {}) =>
+  kase(key, covers, { type: "performance", performance: true, endpoint: "EP-contacts-1", load: { type: "average-load", rps: 5, slo: { p95_ms: 800 } }, expected: "p95 of the contact list stays under 800 ms at 5 rps", ...over });
+
+test("@performance: a typed case with endpoint, load type, rate and SLO, rendered in every format; the parse contract says performance", async () => {
+  for (const format of ["gherkin", "csv", "testrail", "markdown-table"]) {
+    const s = setup({ format, steps: ["explore", "testcases", "k6"] });
+    await buildCatalogue(s.root);
+    const items = (await s.tc("items")).out.items;
+    const load = items.find((i) => i.technique === "load-endpoint");
+    assert.ok(load && items.some((i) => i.technique === "load-flow"), "load items per endpoint and per flow");
+    assert.ok(!items.some((i) => i.technique === "api-endpoint"), "no @api items without playwright-api");
+    s.overlay({ cases: [perfCase("list-under-load", [load.id])] });
+    const r = await s.tc("build");
+    assert.deepEqual(r.out.problems, [], format);
+    const c = s.cov().cases[0];
+    assert.deepEqual([c.type, c.performance, c.api, c.endpoint, c.load.type, c.load.rps], ["performance", true, false, "EP-contacts-1", "average-load", 5]);
+    const file = s.tp.file(format);
+    assert.match(readFileSync(file, "utf8"), /average-load at 5 rps; p95 < 800 ms/, format);
+    assert.equal(parseCases(file, format)[0].performance, true, format);
+    assert.equal(parseCases(file, format)[0].api, false, format);
+  }
+});
+
+test("typed items: @api items need an @api case naming the endpoint; a @performance case needs a target, a load type and a rate", async () => {
+  const s = setup({ steps: ["explore", "testcases", "playwright-api", "k6"] });
+  await buildCatalogue(s.root);
+  const items = (await s.tc("items")).out.items;
+  const api = items.find((i) => i.technique === "api-endpoint");
+  const load = items.find((i) => i.technique === "load-endpoint");
+  assert.equal(api.priority, "p2");
+  assert.equal(load.priority, "p3");
+  s.overlay({
+    cases: [
+      kase("ui-covers-api", [api.id]),
+      kase("api-other-endpoint", [api.id], { type: "api", api: true, endpoint: "EP-contacts-9" }),
+      perfCase("no-target", [load.id], { endpoint: undefined }),
+    ],
+  });
+  const r = await s.tc("build");
+  const p = r.out.problems.join("\n");
+  assert.match(p, /case 'ui-covers-api': covers CI-contacts-\d+ \(api-endpoint\), which only a @api case covers/);
+  assert.match(p, /case 'api-other-endpoint': names the endpoint EP-contacts-9, which is not in api\/discovered-endpoints\.json/);
+  assert.match(p, /case 'no-target': a @performance case names an endpoint \(EP id\) or a user flow/);
+  // a run without a catalogue says so instead of enumerating nothing silently
+  const t = setup({ steps: ["explore", "testcases", "playwright-api"] });
+  assert.match((await t.tc("items")).out.degraded.join("\n"), /discovered-endpoints\.json is missing .* no @api endpoint items/);
+});
+
+const FEATURE_IMPORT = [
+  "Feature: Contacts (the team's own cases)",
+  "",
+  "  @TC-77 @p1 @module:contacts",
+  "  Scenario: A contact can be created from the list",
+  "    Given the user is on the contact list",
+  "    When the user creates a contact named Jane",
+  "    Then the list shows Jane",
+  "",
+  "  @api @module:contacts",
+  "  Scenario: The contact list endpoint answers",
+  "    When the client lists contacts",
+  "    Then the status is 200",
+  "",
+  "  @module:contacts",
+  "  Scenario: A case without an expected result",
+  "    When the user opens the list",
+  "",
+  "  @performance @module:contacts",
+  "  Scenario: The contact list under average load",
+  "    When 5 users per second list contacts",
+  "    Then p95 stays under 800 ms",
+  "    Endpoint: EP-contacts-1",
+  "    Load: average-load at 5 rps; p95 < 800 ms; error rate < 1%",
+  "",
+  "  @module:deals",
+  "  Scenario: A deal case",
+  "    When x",
+  "    Then y",
+  "",
+].join("\n");
+
+test("import: a framework-format file becomes the module's cases (stable ids, source imported, rejected with their line)", async () => {
+  const s = setup();
+  await buildCatalogue(s.root);
+  put(s.root, "data/contacts.feature", FEATURE_IMPORT);
+  const r = await s.tc("import", "--file", "data/contacts.feature");
+  assert.equal(r.code, 1, "a rejected case makes the import exit 1; the valid ones are imported");
+  assert.equal(r.out.imported, 3);
+  assert.equal(r.out.format, "gherkin");
+  assert.deepEqual(r.out.rejected.map((x) => x.replace(/:.*/, "")), ["line 15", "line 26"]);
+  assert.match(r.out.rejected.join("\n"), /line 15: .*has no expected result/);
+  assert.match(r.out.rejected.join("\n"), /line 26: .*names the module 'deals', not 'contacts'/);
+  const cov = s.cov();
+  const byTitle = (t) => cov.cases.find((c) => c.title === t);
+  const created = byTitle("A contact can be created from the list");
+  assert.deepEqual([created.source, created.priority, created.preconditions, created.expected, created.from.id], ["imported", "p1", ["the user is on the contact list"], "the list shows Jane", "TC-77"]);
+  assert.equal(byTitle("The contact list endpoint answers").api, true);
+  const perf = byTitle("The contact list under average load");
+  assert.deepEqual([perf.performance, perf.endpoint, perf.load], [true, "EP-contacts-1", { type: "average-load", rps: 5, slo: { p95_ms: 800, error_rate: 0.01 } }]);
+  assert.deepEqual(r.out.unlinkedUi, [created.id], "an imported UI case is not linked to exploration states yet");
+  assert.ok(readFileSync(s.tp.approvalCsv, "utf8").includes(created.id), "imported cases enter the human's sheet like generated ones");
+  // the same file again: the same TC ids
+  const again = await s.tc("import", "--file", "data/contacts.feature");
+  assert.deepEqual(again.out.ids, r.out.ids);
+  // the imported cases need no coverage item: check does not ask them to cover one; with playwright-ui chosen, it asks
+  // the imported UI case to be linked to the exploration (decision 14)
+  const problems = (await s.tc("check")).out.problems.filter((p) => p.includes(created.id));
+  assert.deepEqual(problems, [`${created.id} (imported UI case '${created.key}') is not linked to the exploration: link it to the states its steps pass through (cases.json links)`]);
+});
+
+test("import: the product-level testcases.import is split by module; the module's own testcases_file wins; other documents go to the writer", async () => {
+  const s = setup();
+  const cfgFile = path.join(s.root, "config", "acme.yaml");
+  assert.equal((await s.tc("paths")).out.importSource, null, "paths: no file named yet");
+  put(s.root, "data/all.csv", serializeCsv([["ID", "Title", "Module", "Priority", "Steps", "Expected"], ["A-1", "Contacts open from the menu", "contacts", "p2", "1. Open the menu\n2. Choose Contacts", "the contact list is shown"], ["A-2", "Deals open", "deals", "p2", "Open Deals", "the deal list is shown"], ["A-3", "No module named", "", "p2", "x", "y is shown"]]));
+  writeFileSync(cfgFile, readFileSync(cfgFile, "utf8") + "\ntestcases: {import: data/all.csv}\n");
+  const r = await s.tc("import");
+  assert.equal(r.out.imported, 1);
+  assert.equal(r.out.skipped, 1, "the deals case is another module's");
+  assert.match(r.out.rejected.join("\n"), /line 4: A-3: names no module/);
+  assert.deepEqual(s.cov().cases[0].steps, ["Open the menu", "Choose Contacts"]);
+  put(s.root, "data/contacts.md", "| ID | Title | Steps | Expected |\n|---|---|---|---|\n| M-1 | Contacts list sorts by name | Open the list | the rows are sorted by name |\n");
+  writeFileSync(cfgFile, readFileSync(cfgFile, "utf8").replace("  - {slug: contacts, name: Contacts,", "  - {slug: contacts, name: Contacts, testcases_file: data/contacts.md,"));
+  const m = await s.tc("import");
+  assert.equal(m.code, 0, JSON.stringify(m.out));
+  assert.deepEqual([m.out.format, m.out.file], ["markdown-table", "data/contacts.md"]);
+  // paths tells testcase-writer's import mode which document the run-config names, and whether it needs converting
+  assert.deepEqual((await s.tc("paths")).out.importSource, { file: "data/contacts.md", productLevel: false, format: "markdown-table", exists: true });
+  put(s.root, "data/spec.docx", "PK\u0000binary");
+  const d = await s.tc("import", "--file", "data/spec.docx");
+  assert.equal(d.code, 1);
+  assert.equal(d.out.convert, true);
+  assert.match(d.out.next, /testcase-writer's import mode/);
+});
+
+test("import --approved is for a human at a terminal: no TTY refuses everything; the typed slug records each imported case approved", async () => {
+  const s = setup();
+  put(s.root, "data/contacts.feature", FEATURE_IMPORT.split("\n").slice(0, 8).join("\n") + "\n");
+  const agent = await s.tcAs({ isTTY: false, ask: async () => "contacts" }, "import", "--file", "data/contacts.feature", "--approved");
+  assert.equal(agent.code, 1);
+  assert.match(agent.out.problems.join("\n"), /human-only/);
+  assert.ok(!existsSync(s.tp.imported), "nothing was imported");
+  const wrong = await s.tcAs({ isTTY: true, ask: async () => "deals" }, "import", "--file", "data/contacts.feature", "--approved");
+  assert.equal(wrong.code, 1);
+  assert.match(wrong.out.problems.join("\n"), /not confirmed/);
+  assert.ok(!existsSync(s.tp.approvals));
+  const ok = await s.tc("import", "--file", "data/contacts.feature", "--approved");
+  assert.equal(ok.code, 0, JSON.stringify(ok.out));
+  assert.deepEqual(ok.out.approved, ok.out.ids);
+  assert.deepEqual((await s.tc("status")).out.approved, ok.out.ids);
+});
+
+test("import mode and links: an imported case cites its document verbatim; links name cases and exploration states", async () => {
+  const s = setup();
+  put(s.root, "docs-in/plan.txt", "Section 3. Saving a contact without an email shows a warning.\n");
+  put(s.root, "data/contacts.feature", FEATURE_IMPORT.split("\n").slice(0, 8).join("\n") + "\n");
+  await s.tc("import", "--file", "data/contacts.feature");
+  const imported = { key: "doc-save-without-email", title: "Verify saving without an email", type: "negative", priority: "p2", action: "save a contact without an email", steps: ["Open a new contact", "Save"], expected: "works as expected", covers: [], evidence: [], source: "imported" };
+  s.overlay({ cases: [{ ...imported, imported: { file: "docs-in/plan.txt", quote: "Saving a contact without an email shows a warning" } }, { ...imported, key: "doc-made-up", title: "Made up", imported: { file: "docs-in/plan.txt", quote: "a sentence the document never says" } }], links: { "imported-tc-77": ["ST-contacts-1"], "doc-save-without-email": ["ST-contacts-2"], nobody: ["ST-contacts-9"] } });
+  const r = await s.tc("build");
+  const p = r.out.problems.join("\n");
+  assert.ok(!/case 'doc-save-without-email'/.test(p), "the human's wording is kept: no title, expected or covers rule; the quote is in the document");
+  assert.match(p, /case 'doc-made-up': imported\.quote .* is not in docs-in\/plan\.txt/);
+  assert.match(p, /links: 'nobody' is not a case key/);
+  assert.match(p, /links: 'nobody' names ST-contacts-9, which is not a state of the exploration/);
+  const linked = s.cov().cases.find((c) => c.key === "imported-tc-77");
+  assert.deepEqual(linked.states, ["ST-contacts-1"]);
+});
+
+test("import mode (D-066): without the testcases step, the module's stage converts and links only; generated items are deferred (import)", async () => {
+  const s = setup({ steps: ["explore", "playwright-ui"] });
+  const { changeSteps } = await import("./run.mjs");
+  assert.deepEqual(changeSteps("acme", { importMode: ["contacts"], root: s.root }).testcasesMode, { contacts: "import" }, "deals is unaffected");
+  assert.equal((await s.tc("paths")).out.mode, "import");
+  put(s.root, "data/contacts.feature", FEATURE_IMPORT.split("\n").slice(0, 8).join("\n") + "\n");
+  put(s.root, "docs-in/plan.txt", "Section 3. Saving a contact without an email shows a warning.\n");
+  await s.tc("import", "--file", "data/contacts.feature");
+  // the writer converts the other document's case; linking the framework-format one is still missing
+  const converted = { key: "doc-save-without-email", title: "Saving without an email warns", type: "negative", priority: "p2", action: "save a contact without an email", steps: ["Open a new contact", "Save"], expected: "a warning is shown", covers: [], evidence: [], source: "imported", imported: { file: "docs-in/plan.txt", quote: "Saving a contact without an email shows a warning" }, states: ["ST-contacts-2"] };
+  s.overlay({ cases: [converted] });
+  let b = await s.tc("build");
+  assert.equal(b.code, 0, JSON.stringify(b.out.problems));
+  assert.equal(b.out.mode, "import");
+  const cov = s.cov();
+  assert.equal(cov.mode, "import");
+  assert.equal(cov.summary.pending, 0, "never pending");
+  assert.equal(cov.summary.deferred, cov.summary.total, "never dropped: every item stays in the ledger, deferred");
+  assert.ok(cov.items.every((i) => i.status === "deferred" && i.reason === "import" && /testcases step is not chosen/.test(i.detail)));
+  let c = await s.tc("check");
+  const tc77 = cov.cases.find((x) => x.key === "imported-tc-77").id;
+  assert.deepEqual(c.out.problems, [`${tc77} (imported UI case 'imported-tc-77') is not linked to the exploration: link it to the states its steps pass through (cases.json links)`], "not required: only the links are asked for");
+  s.overlay({ cases: [converted], links: { "imported-tc-77": ["ST-contacts-1"] } });
+  await s.tc("build");
+  c = await s.tc("check");
+  assert.equal(c.code, 0, JSON.stringify(c.out.problems));
+  assert.equal(testcasesUnverified(testcaseContext({ root: s.root, product: "acme", module: "contacts", run: loadJson(paths("acme", s.root).runFile), cfg: loadJson(paths("acme", s.root).configFile), productDir: paths("acme", s.root).productDir })), null);
+  // a case of the writer's own is not import mode's to add
+  s.overlay({ cases: [converted, kase("own-case", [cov.items[0].id])], links: { "imported-tc-77": ["ST-contacts-1"] } });
+  b = await s.tc("build");
+  assert.match(b.out.problems.join("\n"), /\(case 'own-case'\): import mode generates no case/);
+  // quotes are checked as in generate mode
+  s.overlay({ cases: [{ ...converted, imported: { file: "docs-in/plan.txt", quote: "never said" } }], links: { "imported-tc-77": ["ST-contacts-1"] } });
+  b = await s.tc("build");
+  assert.match(b.out.problems.join("\n"), /imported\.quote "never said" is not in docs-in\/plan\.txt/);
+});
+
+test("import mode needs an imported case; generate mode (testcases chosen) keeps generated and imported cases", async () => {
+  const s = setup({ steps: ["explore", "playwright-api"] });
+  const { changeSteps } = await import("./run.mjs");
+  changeSteps("acme", { importMode: ["contacts"], root: s.root });
+  s.overlay({ cases: [] });
+  assert.match((await s.tc("build")).out.problems.join("\n"), /import mode: no imported case/);
+  const g = setup();
+  assert.equal((await g.tc("paths")).out.mode, "generate");
+  const r = await g.tc("build");
+  assert.equal(g.cov().mode, "generate");
+  assert.ok(r.out.items.pending > 0, "generate mode: uncovered items are pending, as before");
+});
+
+test("scenario scope: only the items within the scenarios' flows (and answered clarifications); no rule items", async () => {
+  const s = setup();
+  put(s.root, `${MOD}/explore/flows/scenario-one.md`, "# Scenario one\n\nSC-contacts-1: ST-contacts-1 only.\n");
+  put(s.root, `${MOD}/explore/coverage.json`, JSON.stringify({ scope: { kind: "scenarios", scenarios: [{ id: "SC-contacts-1", status: "flow", flows: ["scenario-one.md"] }] } }));
+  const r = await s.tc("items");
+  const by = r.out.byTechnique;
+  assert.equal(by.flow, 1, "only the flow naming a scenario");
+  assert.equal(by["state-transition"], undefined, "the transition leaves the scenario's states");
+  assert.equal(by.rule, undefined);
+  assert.equal(by["decision-table"], undefined);
+  assert.equal(by.clarification, 2);
+  assert.equal(by.ep, undefined, "the fields are on ST-contacts-2, outside the scenario");
+  assert.match(r.out.degraded.join("\n"), /scoped to the scenarios SC-contacts-1/);
 });

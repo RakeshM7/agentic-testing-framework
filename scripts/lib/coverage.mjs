@@ -3,11 +3,13 @@
 //   mapped     covered by the refs (ids) that do the work
 //   excluded   left out on purpose, with a reason code and a detail
 //   pending    not resolved yet -- a check fails while any item is pending
-//   deferred   over the budget (reason `budget`, with a detail) -- kept in the ledger, never dropped silently
+//   deferred   not this run's work (reason `budget`: over the budget; or a reason the caller allows, e.g. testcases'
+//              `import`), with a detail -- kept in the ledger, never dropped silently
 export const STATUSES = ["mapped", "excluded", "pending", "deferred"];
 
-// opts.reasons: the allowed exclusion reason codes (any non-empty code when omitted).
-export function createLedger({ reasons } = {}) {
+// opts.reasons: the allowed exclusion reason codes (any non-empty code when omitted); opts.deferReasons: the allowed
+// deferral reasons (budget only when omitted).
+export function createLedger({ reasons, deferReasons = ["budget"] } = {}) {
   const items = [];
   const find = (id) => items.find((i) => i.id === id);
   return {
@@ -42,7 +44,7 @@ export function createLedger({ reasons } = {}) {
         if (i.status === "pending") out.push(`${i.id}: unresolved${i.why ? ` (${i.why})` : ""}`);
         if (i.status === "excluded" && !i.reason) out.push(`${i.id}: excluded without a reason`);
         else if (i.status === "excluded" && reasons && !reasons.includes(i.reason)) out.push(`${i.id}: unknown exclusion reason '${i.reason}'`);
-        if (i.status === "deferred" && i.reason !== "budget") out.push(`${i.id}: deferred without reason 'budget'`);
+        if (i.status === "deferred" && !deferReasons.includes(i.reason)) out.push(`${i.id}: deferred without reason ${deferReasons.map((r) => `'${r}'`).join(" or ")}`);
       }
       return out;
     },

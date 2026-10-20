@@ -35,7 +35,7 @@ function fixture() {
     cases: [{ id: "TC-contacts-1", key: "k", assumption: true, assumptions: ["phone is optional"], hash: "h1" }, { id: "TC-contacts-2", key: "k2", hash: "h2" }],
   });
   json(root, `${M}/k6/workload.json`, { module: "contacts", scenarios: [{ id: "K6-contacts-1", name: "smoke-1", thresholds: [{ metric: "http_req_duration", endpoint: "EP-contacts-1", stat: "p95", limit: 1000, source: "assumed", assumed: true }, { metric: "http_req_failed", endpoint: "EP-contacts-1", stat: "rate", limit: 0.01, source: "slo", assumed: false }] }] });
-  json(root, `${M}/k6/workload-coverage.json`, { loaded: [{ endpoint: "EP-contacts-1", key: "k", ids: ["K6-contacts-1"] }], excluded: [{ endpoint: "EP-contacts-2", key: "k", reason: "mutating-readonly", detail: "POST in readonly" }], deferred: [] });
+  json(root, `${M}/k6/workload-coverage.json`, { loaded: [{ case: "TC-contacts-1", target: "EP-contacts-1", endpoints: ["EP-contacts-1"], type: "smoke", ids: ["K6-contacts-1"] }], excluded: [{ case: "TC-contacts-2", target: "EP-contacts-2", reason: "mutating-readonly", detail: "POST in readonly" }], deferred: [] });
   put(root, "k6-tests/acme/scripts/contacts-smoke-1.js", "// k6");
   put(root, "k6-tests/acme/scripts/contacts-pipeline-smoke-1.js", "// another module's script"); // a module `contacts-pipeline`
   json(root, "k6-tests/acme/results/contacts-smoke-1.untracked.json", [{ type: "contacts", status: 201, count: 2 }]);
@@ -88,7 +88,7 @@ test("collect: every section from fixtures, schema-valid", async () => {
   // coverage per ledger with deferrals and exclusions, and a missing ledger said so
   const tc = r.coverage.ledgers.find((l) => l.ledger === "testcases" && l.module === "contacts");
   assert.deepEqual([tc.counts, tc.byTechnique.ep.total, tc.deferred, tc.excluded], [{ total: 3, mapped: 1, excluded: 1, deferred: 1, pending: 0 }, 3, [{ id: "CI-contacts-3", detail: "over the budget of 1" }], [{ id: "CI-contacts-2", reason: "not-testable", detail: "no UI" }]]);
-  assert.deepEqual(r.coverage.ledgers.find((l) => l.ledger === "workload").excluded.map((e) => [e.id, e.reason]), [["EP-contacts-2", "mutating-readonly"]]);
+  assert.deepEqual(r.coverage.ledgers.find((l) => l.ledger === "workload").excluded.map((e) => [e.id, e.reason]), [["TC-contacts-2", "mutating-readonly"]], "the workload ledger runs over the approved @performance cases (D-068)");
   assert.equal(r.coverage.ledgers.find((l) => l.ledger === "api-code").deferred[0].id, "API-contacts-1");
   const ui = r.coverage.ledgers.find((l) => l.ledger === "ui-code" && l.module === "contacts");
   assert.deepEqual([ui.available, ui.reason], [false, "ui-code ledger not written"]);

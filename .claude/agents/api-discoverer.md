@@ -1,7 +1,7 @@
 ---
 # GENERATED from agents/api-discoverer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: api-discoverer
-description: "Builds a module's endpoint catalogue (discovered-endpoints.json with coverage.json and drift.json) through scripts/endpoints.mjs from OpenAPI/Swagger, GraphQL introspection, vendor API docs, the module explorer's network inventory and guarded GET probes, and records its own judgments in overlay.json. Invoked by playwright-api-orchestrator."
+description: "Builds a module's endpoint catalogue (discovered-endpoints.json with coverage.json and drift.json) through scripts/endpoints.mjs from OpenAPI/Swagger, GraphQL introspection, vendor API docs, the module explorer's network inventory and guarded GET probes, and records its own judgments in overlay.json. Runs the module's api-discovery stage, whose catalogue serves the test cases, the API tests and k6. Invoked by orchestrator-agent."
 tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch
 model: claude-opus-5-5
 color: green
@@ -18,7 +18,7 @@ You find every API operation that belongs to one module: the documented ones on 
 You make the judgment calls the script can't, and record them in `overlay.json`.
 
 ## Invocation
-`product=<p> module=<m>`
+`product=<p> module=<m> run=<run-id> mode=<mode>`: the module's `api-discovery` stage. It runs whenever the run needs the catalogue: `@api` or `@performance` test cases, the Playwright API tests or k6. An empty catalogue ("no API surface", or discovery blocked with its reason in `coverage.json`) is a valid outcome; the stages after it handle it. orchestrator-agent marks the stage done once `endpoints.mjs check` passes.
 
 ## Inputs
 - `artifacts/<p>/state/config.resolved.json`: `target.url`, `target.api_urls`, `api` (specs, graphql, auth_header, budgets) and this module's `name`. Read `authorizations` for paths only.

@@ -63,6 +63,32 @@ test("orchestrators may only spawn their own workers; workers cannot spawn", () 
   assert.equal(spawn("k6-script-writer", "k6-reviewer"), false);
 });
 
+test("selectable steps (D-066, D-067): the orchestrator starts api-discovery, sets steps, writes the scenario answers and imports, never approves", () => {
+  const spawn = (agent, sub) => allowed(FULL.root, call(agent, "Agent", { subagent_type: sub }));
+  assert.equal(spawn("orchestrator-agent", "api-discoverer"), true, "the api-discovery stage is the orchestrator's");
+  assert.equal(spawn("playwright-api-orchestrator", "api-discoverer"), false, "no discover step in the API domain any more");
+  for (const { root } of [RO, FULL]) {
+    const cmd = (agent, c) => allowed(root, sh(agent, c));
+    for (const c of [
+      "node scripts/run-config.mjs set config/acme.yaml --steps explore,testcases,playwright-ui",
+      "node scripts/run-config.mjs set config/acme.yaml --testcases-file contacts=data/contacts.feature",
+      "node scripts/run.mjs prereqs acme",
+      "node scripts/run.mjs steps acme --add explore --remove k6",
+      "node scripts/run.mjs scenarios acme",
+      "node scripts/testcases.mjs import acme contacts",
+    ])
+      assert.equal(cmd("orchestrator-agent", c), true, c);
+    assert.equal(cmd("orchestrator-agent", "node scripts/testcases.mjs build acme contacts"), false, "the orchestrator imports; the writer builds");
+    assert.equal(cmd("orchestrator-agent", "node scripts/testcases.mjs import acme contacts --approved"), false, "human-only");
+    assert.equal(cmd("testcase-writer", "node scripts/testcases.mjs import acme contacts"), false, "import mode writes cases.json only");
+    const w = (agent, rel) => allowed(root, call(agent, "Write", { file_path: path.join(root, rel) }));
+    assert.equal(w("orchestrator-agent", "artifacts/acme/state/scenario-answers.json"), true, "the scenario interview's answers");
+    assert.equal(w("orchestrator-agent", "artifacts/acme/modules/contacts/scenarios.json"), false, "run.mjs scenarios writes it");
+    assert.equal(w("orchestrator-agent", "config/acme.yaml"), false, "run-config.mjs writes the run-config");
+    assert.equal(w("module-explorer", "artifacts/acme/state/scenario-answers.json"), false);
+  }
+});
+
 test("shell: none / restricted / project", () => {
   assert.equal(allowed(FULL.root, sh("testcase-writer", "ls")), false);
   assert.equal(allowed(FULL.root, sh("orchestrator-agent", "node scripts/run.mjs next acme")), true);
@@ -657,6 +683,91 @@ test("test case approval is human-only: no agent can run approve or write approv
     assert.ok(!a.shell_allow.some((p) => /approve/.test(p)), "no shell_allow names approve");
     assert.ok(!a.filesystem.write.some((g) => /approval|testcases\/\*\*|modules\}\/\*\*/.test(g)), `no write glob reaches the approval files: ${a.filesystem.write}`);
   }
+});
+
+test("import --approved is human-only like approve: denied to every agent and every unidentified call, however it is spelled", () => {
+  const agents = Object.keys(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents);
+  const cmd = "node scripts/testcases.mjs import acme contacts --file data/cases.feature --approved";
+  for (const { root } of [RO, FULL])
+    for (const agent of agents) {
+      assert.equal(allowed(root, sh(agent, cmd)), false, `${agent}: import --approved`);
+      assert.equal(allowed(root, sh(agent, `cd "${root}" && ${cmd}`)), false, `${agent}: after cd`);
+    }
+  const unnamed = (host, command) => toolCall({ host, kind: "shell", tool: "bash", command });
+  for (const root of [FULL.root, RO.root, tempRoot()])
+    for (const host of ["copilot-cli", "vscode", "claude-code", "copilot-cloud"]) assert.equal(allowed(root, unnamed(host, cmd)), false, `${host}: import --approved`);
+  assert.equal(allowed(tempRoot(), sh(undefined, cmd)), false, "a human's own session too: they run it in their own terminal");
+  assert.equal(allowed(tempRoot(), sh(undefined, "node scripts/testcases.mjs import acme contacts --file data/cases.feature")), true, "a plain import is not an approval");
+  // spelled to dodge the match, chained, or through the lib
+  for (const c of [
+    "node scripts/testcases.mjs import acme contacts --approved",
+    "node scripts/testcases.mjs import acme contacts --appr''oved",
+    "node scripts/testcases.mjs import acme contacts --appr\"o\"ved",
+    "node scripts/testcases.mjs import acme contacts '--approved'",
+    "node scripts/test''cases.mjs import acme contacts --approved",
+    "node scripts/testcases.mjs import acme contacts --appr^oved",
+    "node scripts/testcases.mjs import acme contacts --appr\\oved",
+    "node scripts/testcases.mjs build acme contacts && node scripts/testcases.mjs import acme contacts --approved",
+    "node -e \"import('./scripts/lib/testcases.mjs').then((m) => m.importCases(ctx, v, { approved: true }))\"",
+    "node -e \"import('./scripts/lib/test'+'cases.mjs').then((m) => m['import'+'Cases'](c, v, {appr'+'oved: true}))\"",
+  ])
+    for (const agent of ["orchestrator-agent", "testcase-writer", "feedback-implementor-agent"]) assert.equal(allowed(FULL.root, sh(agent, c)), false, `${agent}: ${c}`);
+});
+
+test("approve and import --approved through make, shell globs, expansions, printf or base64 are denied to every caller (V-3)", () => {
+  const T = "node scripts/testcases.mjs import acme contacts";
+  const bypasses = [
+    "make approve PRODUCT=acme MODULE=contacts",
+    "make import PRODUCT=acme MODULE=contacts APPROVED=yes",
+    "APPROVED=yes make import PRODUCT=acme MODULE=contacts",
+    "mingw32-make.exe import PRODUCT=acme MODULE=contacts APPROVED=yes",
+    "npx make approve PRODUCT=acme MODULE=contacts",
+    `${T} --appro\${x}ved`,
+    `${T} --appro$()ved`,
+    `${T} --appro$''ved`,
+    `${T} --appro\`echo\`ved`,
+    `${T} $(printf -- '--appr%sved' o)`,
+    `printf -- '--appr%sved' o | xargs ${T}`,
+    `${T} $(printf '\\x2d-approved')`,
+    `${T} --$(echo YXBwcm92ZWQ= | base64 -d)`,
+    "echo bm9kZSBzY3JpcHRzL3Rlc3RjYXNlcy5tanMgYXBwcm92ZSBhY21lIGNvbnRhY3Rz | base64 -d | sh",
+    "node scripts/testc?ses.mjs import acme contacts --approved",
+    "node scripts/test[c]ases.mjs import acme contacts --approved",
+    "node scripts/test${x}cases.mjs import acme contacts --approved",
+    "node scripts/test*.mjs approve acme contacts",
+    "node scripts/testc?ses.mjs approve acme contacts",
+    "node scripts/testcases.mjs appro${x}ve acme contacts",
+    "node scripts/testcases.mjs appr?ve acme contacts",
+    "node $S approve acme contacts",
+    `X=--appro; ${T} \${X}ved`,
+  ];
+  const unnamed = (host, command) => toolCall({ host, kind: "shell", tool: "bash", command });
+  for (const c of bypasses) {
+    for (const { root } of [RO, FULL])
+      for (const agent of ["orchestrator-agent", "testcase-writer", "feedback-implementor-agent", undefined]) assert.equal(allowed(root, sh(agent, c)), false, `${agent ?? "(no agent)"}: ${c}`);
+    for (const host of ["copilot-cli", "vscode", "copilot-cloud"]) assert.equal(allowed(FULL.root, unnamed(host, c)), false, `${host}: ${c}`);
+  }
+  // the legitimate, non-approving commands stay allowed
+  for (const [agent, c] of [
+    ["orchestrator-agent", `${T}`],
+    ["orchestrator-agent", `${T} --file data/cases.feature`],
+    ["testcase-writer", "node scripts/testcases.mjs build acme contacts"],
+    ["testcase-writer", "node scripts/testcases.mjs check acme contacts"],
+    ["testcase-writer", "node scripts/testcases.mjs paths acme contacts"],
+    ["testcase-reviewer", "node scripts/testcases.mjs review-check acme contacts --round 1"],
+    [undefined, "ls artifacts/acme/modules/*/testcases"],
+    [undefined, "make status PRODUCT=acme"],
+    // the bare word `approved` in a file name or prose, "make" in prose, and a glob no runner starts are not approvals
+    ["orchestrator-agent", "node scripts/run-config.mjs set config/acme.yaml --testcases-file contacts=data/approved-cases.feature"],
+    ["orchestrator-agent", `${T} --file data/approved-cases.feature`],
+    [undefined, "node scripts/run-config.mjs set config/acme.yaml --testcases-file contacts=data/approved-cases.feature"],
+    [undefined, `${T} --file data/approved-cases.feature`],
+    [undefined, "node scripts/run.mjs stage acme playwright-ui fail --module contacts --error \"case not approved\""],
+    [undefined, "node scripts/run.mjs stage acme k6 fail --module contacts --error \"make sure a human approved the @performance cases\""],
+    [undefined, "git commit -m \"docs: only a human runs make approve, in their own terminal\""],
+    [undefined, "grep -n approved scripts/*.mjs"],
+  ])
+    assert.equal(allowed(FULL.root, sh(agent, c)), true, `${agent ?? "(no agent)"}: ${c}`);
 });
 
 test("worker requests (G10, D-060): only the askers run requests.mjs add; nobody writes requests.json; the repo owner reads every module's", () => {

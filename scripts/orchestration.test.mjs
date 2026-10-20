@@ -269,7 +269,7 @@ test("heal rounds are bounded by limits.heal_rounds", async () => {
 
 test("Playwright API with no API surface skips the build and review and goes to the runner", () => {
   const { root } = startRun();
-  perform(root, "playwright-api", { step: "discover", agent: "api-discoverer" }, () => put(root, "artifacts/acme/modules/contacts/api/discovered-endpoints.json", "[]"));
+  put(root, "artifacts/acme/modules/contacts/api/discovered-endpoints.json", "[]"); // the api-discovery stage found nothing
   perform(root, "playwright-api", { step: "run-1", agent: "pw-api-test-runner-triager" });
   const s = show("acme", "playwright-api", "contacts", { root }).steps;
   assert.deepEqual(["plan", "scaffold", "clients", "tests", "review"].map((k) => [s[k].status, s[k].note]), Array(5).fill(["skipped", "no API surface found"]));
@@ -518,7 +518,7 @@ test("a domain that waits too long for pw-repo-owner declines the request instea
   for (let i = 1; i <= 20; i++) assert.equal(go(root, "playwright-api").waiting.attempt, i);
   const r = go(root, "playwright-api");
   assert.equal(r.waiting, undefined);
-  assert.equal(r.actions[0].step, "discover", "declined; the domain's own flow goes on");
+  assert.equal(r.actions[0].step, "run-1", "declined; the domain's own flow goes on (no catalogue here, so nothing to plan)");
   assert.match(reqs(root, "playwright-api")[0].note, /pw-repo-owner stayed busy with playwright-ui\/contacts for 20 asks/);
 });
 

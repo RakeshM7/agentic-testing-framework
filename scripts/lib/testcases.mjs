@@ -24,6 +24,24 @@
 //   flow                                    per explore/flows/*.md
 //   rule / decision-table                   per rule fact of knowledge/modules/<m>/rule-facts.json (D-051)
 //   clarification                           per answered clarifications.csv row
+//   api-endpoint                            per catalogue endpoint (api/discovered-endpoints.json), when the run derives
+//                                           the api case type (run.json caseTypes, decision 11)
+//   load-endpoint / load-flow               per catalogue endpoint and per explore flow, when the run derives the
+//                                           performance case type; ranked last, so the budget defers them first
+// A scenario-scoped exploration (explore/coverage.json scope, scenarios.json) limits the items to the scenarios' flows:
+// the flows naming an SC id, the fields and transitions of the states they pass through, plus answered clarifications.
+//
+// Imported cases (`import`): a human's file in a framework format (gherkin, csv, testrail, markdown-table) is parsed into
+// testcases/imported.json (script-owned, schema testcases-imported, `source: imported`, stable keys and TC ids,
+// malformed cases rejected with their line); `build` merges them with the writer's cases. Any other document is
+// converted by testcase-writer's import mode into cases.json cases with `source: imported` and an `imported` citation
+// the script checks. An imported UI case is automatable once linked to exploration states (cases.json `links`, or the
+// case's own `states`); with playwright-ui chosen, `check` requires every imported UI case linked.
+//
+// Mode (D-066, run.json testcasesMode via lib/contract.mjs testcasesModeOf): `generate` when the run chose the testcases
+// step (generated and imported cases, every item covered or excluded); otherwise `import`: the module's testcases stage
+// runs only to convert and link the human's cases, so the writer adds no case of its own and every item no case covers
+// is `deferred` with reason `import` (kept in the ledger, never pending, not required).
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -32,18 +50,29 @@ import { csvPath, evidenceDir, isAnswered, isAuthoritative, readRows } from "./c
 import { createLedger } from "./coverage.mjs";
 import { detectDelimiter, parseCsv, serializeCsv, withFileLock, writeAtomic } from "./csv.mjs";
 import { explorePaths } from "./explore.mjs";
+import { planPaths } from "./api-plan.mjs";
 import { knowledgePaths } from "./knowledge.mjs";
 import { assignIds } from "./registry.mjs";
+import { STEPS, testcasesModeOf } from "./contract.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 
 export const EXT = { gherkin: "feature", csv: "csv", testrail: "csv", "markdown-table": "md" };
 export const FORMATS = Object.keys(EXT);
 export const PRIORITIES = ["p1", "p2", "p3"];
-export const TYPES = ["functional", "negative", "boundary", "security", "visual", "api"];
+export const TYPES = ["functional", "negative", "boundary", "security", "visual", "api", "performance"];
+// A @performance case's load type: the names of lib/workload.mjs TYPES (D-057).
+export const LOAD_TYPES = ["smoke", "average-load", "stress", "spike", "soak", "breakpoint"];
+export const SLO_KEYS = ["p95_ms", "p99_ms", "error_rate"];
+// The case types (decision 11): ui is every case that is neither @api nor @performance.
+export const isPerformance = (c) => !!c?.performance || c?.type === "performance";
+export const isApi = (c) => !isPerformance(c) && (!!c?.api || c?.type === "api");
+export const caseTypeOf = (c) => (isPerformance(c) ? "performance" : isApi(c) ? "api" : "ui");
 export const DEFAULT_MAX_CASES = 200;
 // Technique order breaks priority ties when the budget ranks the items.
-export const TECHNIQUES = ["clarification", "flow", "decision-table", "rule", "state-transition", "required", "ep", "bva", "boolean", "enum"];
-const PRIORITY_OF = { clarification: "p1", flow: "p1", "decision-table": "p1", rule: "p1", "state-transition": "p2", required: "p2", ep: "p2", bva: "p2", boolean: "p2", enum: "p3" };
+export const TECHNIQUES = ["clarification", "flow", "decision-table", "rule", "state-transition", "required", "ep", "bva", "boolean", "enum", "api-endpoint", "load-endpoint", "load-flow"];
+const PRIORITY_OF = { clarification: "p1", flow: "p1", "decision-table": "p1", rule: "p1", "state-transition": "p2", required: "p2", ep: "p2", bva: "p2", boolean: "p2", enum: "p3", "api-endpoint": "p2", "load-endpoint": "p3", "load-flow": "p3" };
+// The case type that may cover an item of a typed technique (any other item: a UI or @api case).
+const TYPED_TECHNIQUE = { "api-endpoint": "api", "load-endpoint": "performance", "load-flow": "performance" };
 export const EXCLUDE_REASONS = ["not-testable", "not-applicable", "out-of-scope", "duplicate-of"];
 export const EVIDENCE_KINDS = ["clarification", "knowledge", "observation"];
 export const APPROVAL_COLUMNS = ["TC ID", "Title", "Key steps", "Expected", "Priority", "Approved", "Comment", "Rendered in run", "Version"];
@@ -79,6 +108,7 @@ export function testcasePaths(productDir, module) {
     moduleDir,
     dir,
     overlay: path.join(dir, "cases.json"),
+    imported: path.join(dir, "imported.json"),
     coverage: path.join(dir, "coverage.json"),
     registry: { items: path.join(dir, "registry", "items.json"), cases: path.join(dir, "registry", "cases.json") },
     summary: path.join(dir, "testcases-summary.md"),
@@ -89,11 +119,20 @@ export function testcasePaths(productDir, module) {
   };
 }
 
-// ctx for every command: {root, product, module, moduleName, runId, cfg, format, maxCases, productDir, tp, xp, kp}
+// ctx for every command: {root, product, module, moduleName, runId, cfg, format, maxCases, caseTypes, steps, mode,
+// configPath, productDir, tp, xp, kp, catalogue}. caseTypes: the run's (run.json, decision 11); a run from before them
+// enumerates no typed (api-endpoint, load-*) items, as before. mode: generate when the run chose the testcases step,
+// import when the module's stage runs in import mode (D-066), else null (no testcases stage for the module this run,
+// e.g. a human's `import`): only generate leaves uncovered items pending.
 export function testcaseContext({ root, product, module, run, cfg, productDir }) {
   return {
     root, product, module, productDir, cfg,
     runId: run?.runId ?? null,
+    caseTypes: run?.caseTypes ?? ["ui"],
+    steps: run?.steps ?? STEPS,
+    mode: testcasesModeOf(run, module),
+    configPath: run?.configPath ?? null,
+    catalogue: planPaths(productDir, module).catalogue,
     moduleName: cfg.modules?.find((m) => m.slug === module)?.name ?? module,
     format: cfg.testcases?.output_format ?? "gherkin",
     maxCases: cfg.testcases?.max_cases ?? DEFAULT_MAX_CASES,
@@ -107,7 +146,7 @@ export function testcaseContext({ root, product, module, run, cfg, productDir })
 
 const yes = (v) => /^(yes|y|true|x|1)$/i.test(String(v ?? "").trim());
 
-// A case: {id, line, priority, type, clarifications[], mutates, assumption, api, visual}.
+// A case: {id, line, priority, type, clarifications[], mutates, assumption, api, visual, performance}.
 function fromTags(tags, line) {
   const t = tags.map((s) => s.replace(/^@/, ""));
   return {
@@ -120,6 +159,7 @@ function fromTags(tags, line) {
     assumption: t.includes("assumption"),
     api: t.includes("api"),
     visual: t.includes("visual"),
+    performance: t.includes("performance"),
   };
 }
 
@@ -136,6 +176,7 @@ function fromColumns(get, line) {
     assumption: yes(get("assumption")) || tags.includes("assumption"),
     api: type === "api" || tags.includes("api"),
     visual: type === "visual" || tags.includes("visual"),
+    performance: type === "performance" || tags.includes("performance"),
   };
 }
 
@@ -201,13 +242,32 @@ export function checkTestcases(summaryFile, { module, testcasesFormat = "gherkin
 const flowFiles = (xp) => (existsSync(xp.flows) ? readdirSync(xp.flows).filter((f) => f.endsWith(".md")).sort() : []);
 const flowsDigest = (xp) => sha256Text(flowFiles(xp).map((f) => `${f}\n${readFileSync(path.join(xp.flows, f), "utf8")}`).join("\n\u0000"));
 const rowsDigest = (rows) => sha256Text(JSON.stringify(rows.map((r) => [r.id.trim(), r.answer, r.answerStatus])));
-const configDigest = (ctx) => sha256Text(JSON.stringify({ format: ctx.format, maxCases: ctx.maxCases, name: ctx.moduleName }));
+// the case types join the digest only when they add typed items, so a UI-only build keeps the digest it had
+// import mode joins it too, so a stamp from an import-mode check does not stand for a generate run
+const configDigest = (ctx) => sha256Text(JSON.stringify({ format: ctx.format, maxCases: ctx.maxCases, name: ctx.moduleName, ...(wantsCatalogue(ctx) ? { caseTypes: ctx.caseTypes } : {}), ...(ctx.mode === "import" ? { mode: "import" } : {}) }));
 // G2 field constraints: interactions.json entries carry their frontier item id (D-052). An older exploration has none.
 const isG2Interactions = (x) => Array.isArray(x) && x.every((e) => /^FR-/.test(e?.id ?? ""));
 
+const ST_RE = /\bST-[a-z0-9]+(?:-[a-z0-9]+)*-\d+\b/g;
+const SC_RE = /\bSC-[a-z0-9]+(?:-[a-z0-9]+)*-\d+\b/g;
+const wantsCatalogue = (ctx) => ctx.caseTypes.some((t) => t === "api" || t === "performance");
+
+// The exploration's scope (explore/coverage.json, D-052 + scenario mode): null for a whole-module exploration, else
+// {kind: "scenarios", scenarios: [SC ids], flows: [files], states: [ST ids]} -- the flows that name a scenario and the
+// states they pass through.
+export function exploreScope(xp) {
+  const scope = readJson(xp.coverage, null)?.scope;
+  if (scope?.kind !== "scenarios") return null;
+  const ids = (scope.scenarios ?? []).map((s) => s.id);
+  const flows = flowFiles(xp).filter((f) => (readFileSync(path.join(xp.flows, f), "utf8").match(SC_RE) ?? []).some((id) => ids.includes(id)));
+  const states = uniq(flows.flatMap((f) => readFileSync(path.join(xp.flows, f), "utf8").match(ST_RE) ?? [])).sort(byNum);
+  return { kind: "scenarios", scenarios: ids, flows, states };
+}
+
 export function readInputs(ctx) {
   const { xp, kp, module, productDir } = ctx;
-  const flows = flowFiles(xp).map((f) => {
+  const scope = exploreScope(xp);
+  const flows = (scope ? scope.flows : flowFiles(xp)).map((f) => {
     const title = /^#\s+(.+)$/m.exec(readFileSync(path.join(xp.flows, f), "utf8"))?.[1]?.trim();
     return { file: f, title: title || f.replace(/\.md$/, "") };
   });
@@ -218,6 +278,9 @@ export function readInputs(ctx) {
     openPoints: readJson(kp.module(module).openPoints, null),
     flows,
     rows: readRows(csvPath(productDir, module)),
+    caseTypes: ctx.caseTypes,
+    catalogue: wantsCatalogue(ctx) ? readJson(ctx.catalogue, null) : null,
+    scope,
   };
 }
 
@@ -357,19 +420,44 @@ export function ruleItems(facts) {
 export const clarificationItems = (rows) =>
   rows.filter(isAnswered).map((r) => ({ key: `clarification|${r.id.trim()}`, technique: "clarification", source: "clarifications", subject: r.id.trim(), label: clip(one(r.question)), clarification: { id: r.id.trim(), answerStatus: r.answerStatus } }));
 
+const endpointLabel = (e) => `${e.id} ${e.method ?? e.kind ?? ""} ${e.path ?? e.key ?? ""}`.replace(/\s+/g, " ").trim();
+// @api items: one per catalogue endpoint (the api-discovery stage's discovered-endpoints.json).
+export const apiItems = (catalogue) =>
+  (catalogue ?? []).map((e) => ({ key: `api|${e.key ?? e.id}`, technique: "api-endpoint", source: "catalogue", subject: e.id, label: `the API contract of ${endpointLabel(e)}`, endpoint: { id: e.id, key: e.key ?? null, mutates: !!e.mutates } }));
+// @performance items: one per catalogue endpoint and one per explore flow (a user flow under load).
+export const loadItems = (catalogue, flows) => [
+  ...(catalogue ?? []).map((e) => ({ key: `load|${e.key ?? e.id}`, technique: "load-endpoint", source: "catalogue", subject: e.id, label: `${endpointLabel(e)} under load`, endpoint: { id: e.id, key: e.key ?? null, mutates: !!e.mutates } })),
+  ...flows.map((f) => ({ key: `load-flow|${f.file.replace(/\.md$/, "")}`, technique: "load-flow", source: "flows", subject: `flows/${f.file}`, label: `${f.title} under load` })),
+];
+
 // Every coverage item of the module, without ids. G2 inputs that are missing degrade the enumeration: the module then
-// gets items per flow, clarification (and rule fact), and `degraded` says what is missing.
+// gets items per flow, clarification (and rule fact), and `degraded` says what is missing. The run's case types add
+// @api and @performance items (decision 11). A scenario-scoped exploration keeps only the items within the scenarios'
+// flows: those flows, the fields and transitions of their states, and every answered clarification (the gate requires
+// each one covered); rule facts are outside any flow.
 export function enumerateItems(inputs) {
   const degraded = [];
   const items = [];
-  if (isG2Interactions(inputs.interactions)) items.push(...fieldItems(inputs.interactions));
+  const scope = inputs.scope;
+  const inScope = (states) => !scope || (states ?? []).some((s) => scope.states.includes(s));
+  if (isG2Interactions(inputs.interactions)) items.push(...fieldItems(inputs.interactions).filter((i) => inScope(i.field.states)));
   else degraded.push(inputs.interactions ? "explore/interactions.json has no field constraints (an older exploration): no EP/BVA items" : "explore/interactions.json is missing: no EP/BVA items");
-  if (inputs.model?.transitions) items.push(...transitionItems(inputs.model));
+  if (inputs.model?.transitions) items.push(...transitionItems(inputs.model).filter((i) => !scope || (inScope([i.transition.from]) && inScope([i.transition.to]))));
   else degraded.push("explore/model.json is missing (an older exploration): no state-transition items");
   items.push(...flowItems(inputs.flows));
-  if (inputs.ruleFacts) items.push(...ruleItems(inputs.ruleFacts.facts));
+  if (scope) degraded.push(`the exploration is scoped to the scenarios ${scope.scenarios.join(", ")}: items within their flows (${scope.flows.length}) only, no rule or decision-table items`);
+  else if (inputs.ruleFacts) items.push(...ruleItems(inputs.ruleFacts.facts));
   else degraded.push("knowledge rule-facts.json is missing: no rule or decision-table items");
   items.push(...clarificationItems(inputs.rows));
+  const types = inputs.caseTypes ?? ["ui"];
+  if (types.includes("api") || types.includes("performance")) {
+    // the typed items rest on the catalogue (a flow under load is its requests): none without it, and it is said
+    if (!inputs.catalogue) degraded.push(`api/discovered-endpoints.json is missing (the api-discovery stage writes it): no ${types.filter((t) => t !== "ui").map((t) => `@${t}`).join(" or ")} endpoint items`);
+    else {
+      if (types.includes("api")) items.push(...apiItems(inputs.catalogue));
+      if (types.includes("performance")) items.push(...loadItems(inputs.catalogue, inputs.catalogue.length ? inputs.flows : [])); // no API surface: nothing to load
+    }
+  }
   for (const i of items) i.priority = PRIORITY_OF[i.technique];
   return { items, degraded };
 }
@@ -551,6 +639,47 @@ function overlaySets(overlay, { itemsById, rows, openPoints }) {
   };
 }
 
+// A @performance case names an endpoint of the catalogue or a user flow, its load type and target rate (rps), and may
+// give its SLO; an @api case may name its endpoint. -> string[]
+export function typedCaseProblems(c, { catalogue = null } = {}) {
+  const out = [];
+  const eps = new Set((catalogue ?? []).map((e) => e.id));
+  if (c.endpoint && !eps.has(c.endpoint)) out.push(`names the endpoint ${c.endpoint}, which is not in api/discovered-endpoints.json${catalogue ? "" : " (no catalogue: the api-discovery stage writes it)"}`);
+  if (isPerformance(c)) {
+    if (!c.endpoint && !String(c.flow ?? "").trim()) out.push("a @performance case names an endpoint (EP id) or a user flow (flow)");
+    if (c.endpoint && String(c.flow ?? "").trim()) out.push("a @performance case names one target: an endpoint or a flow, not both");
+    if (!LOAD_TYPES.includes(c.load?.type)) out.push(`a @performance case needs load.type (one of ${LOAD_TYPES.join(", ")})`);
+    if (!(typeof c.load?.rps === "number" && c.load.rps > 0)) out.push("a @performance case needs load.rps, its target rate (requests or iterations per second, > 0)");
+    for (const k of Object.keys(c.load?.slo ?? {})) if (!SLO_KEYS.includes(k)) out.push(`load.slo.${k} is not one of ${SLO_KEYS.join(", ")}`);
+  } else if (c.load || c.flow) out.push("load and flow belong to a @performance case (type performance)");
+  return out;
+}
+
+// An import-mode case cites the human's document it was converted from: a file inside the repo and a quote of it.
+function importedCiteProblem(cite, ctx) {
+  if (!cite?.file || !String(cite.quote ?? "").trim()) return "an imported case cites its source (imported: {file, quote})";
+  const segs = String(cite.file).replaceAll("\\", "/").split("/");
+  if (path.isAbsolute(cite.file) || /^[a-z]:/i.test(cite.file) || segs.some((s) => s === "" || s === "." || s === ".."))
+    return `imported.file '${cite.file}': cite the document by its plain path relative to the repo`;
+  const text = readText(path.join(ctx.root, cite.file));
+  if (!existsSync(path.join(ctx.root, cite.file))) return `imported.file '${cite.file}': no such file`;
+  if (text.includes("\u0000")) return null; // a binary document (docx, pdf): its quote can't be read back
+  return normQuote(text).includes(normQuote(cite.quote)) ? null : `imported.quote "${clip(one(cite.quote), 60)}" is not in ${cite.file} (quote the document verbatim)`;
+}
+
+// cases.json `links`: an imported UI case's exploration states (decision 14). Keys must be cases, states known to the
+// model. -> string[]
+function linkProblems(overlay, { model, keys }) {
+  const out = [];
+  const known = new Set((model?.states ?? []).map((s) => s.id));
+  const all = { ...(overlay.links ?? {}), ...Object.fromEntries((overlay.cases ?? []).filter((c) => c.states).map((c) => [c.key, c.states])) };
+  for (const [k, states] of Object.entries(all)) {
+    if (!keys.includes(k)) out.push(`links: '${k}' is not a case key`);
+    for (const s of states ?? []) if (!known.has(s)) out.push(`links: '${k}' names ${s}, which is not a state of the exploration (explore/model.json)`);
+  }
+  return out;
+}
+
 // The exclusions that take their item out: valid, and the first one per item. -> Map item -> exclusion
 export function validExclusions(ctx, overlay, { itemsById, rows, openPoints }) {
   const sets = overlaySets(overlay, { itemsById, rows, openPoints });
@@ -560,12 +689,16 @@ export function validExclusions(ctx, overlay, { itemsById, rows, openPoints }) {
 }
 
 // Problems of the overlay against this build's items and the module's files (beyond the schema). -> string[]
-export function overlayProblems(ctx, overlay, { itemsById, rows, openPoints }) {
+// catalogue: the endpoint catalogue (for @api / @performance endpoints); model: explore/model.json (for links);
+// importedKeys: the keys of testcases/imported.json's cases (they may be linked, not redefined).
+export function overlayProblems(ctx, overlay, { itemsById, rows, openPoints, catalogue = null, model = null, importedKeys = [] }) {
   const problems = [];
   const sets = overlaySets(overlay, { itemsById, rows, openPoints });
   const { rowsById, kqIds } = sets;
   const keys = new Map();
   const titles = new Map();
+  for (const k of importedKeys) if ((overlay.cases ?? []).some((c) => c.key === k)) problems.push(`case '${k}': the key is an imported case's (testcases/imported.json); pick another key`);
+  problems.push(...linkProblems(overlay, { model, keys: [...(overlay.cases ?? []).map((c) => c.key), ...importedKeys] }));
   for (const c of overlay.cases ?? []) {
     const at = (p) => problems.push(`case '${c.key}': ${p}`);
     if (keys.has(c.key)) at("the key is used twice; keys are unique and never change");
@@ -573,27 +706,38 @@ export function overlayProblems(ctx, overlay, { itemsById, rows, openPoints }) {
     const t = one(c.title).toLowerCase();
     if (titles.has(t)) at(`the title repeats case '${titles.get(t)}' (scenario names are unique)`);
     else titles.set(t, c.key);
-    if (STEP_TITLE.test(one(c.title))) at("the title is a step, not a declarative name of the behavior (gherkin-lint)");
-    if (UI_MECHANICS.test(c.action ?? "")) at("the action (the one When) names UI mechanics; keep it declarative and put clicks and keys in steps");
-    const rawTexts = (c.evidence ?? []).map((e) => evidenceText(e, ctx, rowsById));
-    const ep = expectedProblem(c.expected, anchorNames(effectiveCovers(c, itemsById).map((id) => itemsById.get(id)), rawTexts));
-    if (ep) at(ep);
-    if (!(c.covers ?? []).length) at("covers no coverage item (link the CI ids it covers)");
+    // a case testcase-writer's import mode converted from a human's document keeps the human's wording: it is checked
+    // against the document it cites instead of the writer's authoring rules (title, action, expected, covers, evidence)
+    const imported = c.source === "imported";
+    if (imported) {
+      const p = importedCiteProblem(c.imported, ctx);
+      if (p) at(p);
+    } else {
+      if (STEP_TITLE.test(one(c.title))) at("the title is a step, not a declarative name of the behavior (gherkin-lint)");
+      if (UI_MECHANICS.test(c.action ?? "")) at("the action (the one When) names UI mechanics; keep it declarative and put clicks and keys in steps");
+      const rawTexts = (c.evidence ?? []).map((e) => evidenceText(e, ctx, rowsById));
+      const ep = expectedProblem(c.expected, anchorNames(effectiveCovers(c, itemsById).map((id) => itemsById.get(id)), rawTexts));
+      if (ep) at(ep);
+      if (!(c.covers ?? []).length) at("covers no coverage item (link the CI ids it covers)");
+    }
+    for (const p of typedCaseProblems(c, { catalogue })) at(p);
     for (const id of c.covers ?? []) {
       const i = itemsById.get(id);
       if (!i) at(`covers ${id}, which is not a coverage item of this build`);
       else if (i.technique === "clarification" && !(c.evidence ?? []).includes(`clarification:${i.clarification.id}`))
         at(`covers ${id} (clarification ${i.clarification.id}) without citing clarification:${i.clarification.id}`);
+      else if (TYPED_TECHNIQUE[i.technique] && caseTypeOf(c) !== TYPED_TECHNIQUE[i.technique]) at(`covers ${id} (${i.technique}), which only a @${TYPED_TECHNIQUE[i.technique]} case covers`);
+      else if (TYPED_TECHNIQUE[i.technique] && i.source === "catalogue" && c.endpoint !== i.subject) at(`covers ${id} (${i.subject}) but names the endpoint ${c.endpoint ?? "(none)"}; a case covers the endpoint it names`);
     }
     for (const p of coverProblems(effectiveCovers(c, itemsById).map((id) => ({ id, ...itemsById.get(id) })))) at(p);
-    if (!(c.evidence ?? []).length) at("cites no evidence (clarification:, knowledge: or observation:)");
+    if (!imported && !(c.evidence ?? []).length) at("cites no evidence (clarification:, knowledge: or observation:)");
     for (const e of c.evidence ?? []) {
       const p = citeProblem(e, ctx, { rows, kqIds });
       if (p) at(p);
     }
     if (c.assumption && !String(c.assumes ?? "").trim()) at("tagged assumption without saying what it assumes (assumes)");
     const texts = (c.evidence ?? []).map((e) => normQuote(evidenceText(e, ctx, rowsById)));
-    for (const m of String(c.expected ?? "").matchAll(QUOTE_RE)) {
+    if (!imported) for (const m of String(c.expected ?? "").matchAll(QUOTE_RE)) {
       const q = normQuote(m[1] ?? m[2]);
       if (q && !texts.some((t) => t.includes(q))) at(`the expected result quotes "${m[1] ?? m[2]}", which appears in none of its evidence (quote the product's messages verbatim)`);
     }
@@ -646,6 +790,12 @@ export function caseHash(c, assumption = !!c.assumption) {
     preconditions: (c.preconditions ?? []).map(one), action: one(c.action), steps: (c.steps ?? []).map(one), expected: one(c.expected), data,
     covers: sorted(c.covers), evidence: sorted(c.evidence), assumption: !!assumption,
   };
+  // the typed and imported fields only when set, so a case without them keeps the hash (and approval) it had
+  if (isPerformance(c)) content.performance = true;
+  for (const k of ["endpoint", "flow", "source"]) if (c[k]) content[k] = c[k];
+  if (c.load) content.load = { type: c.load.type, rps: c.load.rps, ...(c.load.slo ? { slo: Object.fromEntries(SLO_KEYS.filter((k) => c.load.slo[k] !== undefined).map((k) => [k, c.load.slo[k]])) } : {}) };
+  if (c.imported) content.imported = { file: c.imported.file, quote: one(c.imported.quote) };
+  // not the exploration states an imported case is linked to: linking is the writer's mapping, not the human's content
   return sha256Text(JSON.stringify(content));
 }
 // The Version cell of approval.csv: `v` + 12 hex, so Excel keeps it text.
@@ -663,12 +813,34 @@ export function versionMatch(cell, hash) {
 
 // ---------- rendering ----------
 
-const tagsOf = (c) => uniq([c.id, c.priority, c.type, ...(c.mutates ? ["mutates"] : []), ...(c.visual ? ["visual"] : []), ...(c.api ? ["api"] : []), ...c.clarifications, ...(c.assumption ? ["assumption"] : [])]);
-const flags = (c) => ["mutates", "visual", "api", "assumption"].filter((f) => c[f]);
+const flagOn = (c, f) => (f === "imported" ? c.source === "imported" : !!c[f]);
+const flags = (c) => ["mutates", "visual", "api", "performance", "imported", "assumption"].filter((f) => flagOn(c, f));
+const tagsOf = (c) => uniq([c.id, c.priority, c.type, ...flags(c).filter((f) => f !== "assumption"), ...c.clarifications, ...(c.assumption ? ["assumption"] : [])]);
 const numbered = (steps) => steps.map((s, i) => `${i + 1}. ${one(s)}`).join("\n");
 const dataText = (c) => Object.entries(c.data ?? {}).map(([k, v]) => `${k} = ${v}`).join("\n");
-export const CASE_COLUMNS = ["ID", "Title", "Priority", "Type", "Preconditions", "Steps", "Expected", "Test data", "Clarifications", "Mutates", "Assumption", "Tags", "Covers", "Evidence"];
-const caseRow = (c) => [c.id, one(c.title), c.priority, c.type, c.preconditions.map(one).join("\n"), numbered(c.steps), one(c.expected), dataText(c), c.clarifications.join(" "), c.mutates ? "yes" : "", c.assumption ? "yes" : "", flags(c).join(" "), c.covers.join(" "), c.evidence.join(" ")];
+// A @performance case's load in one line, read back by the import parser: "average-load at 5 rps; p95 < 800 ms; error rate < 1%".
+export function loadText(load) {
+  if (!load) return "";
+  const s = load.slo ?? {};
+  return [`${load.type} at ${load.rps} rps`, ...(s.p95_ms !== undefined ? [`p95 < ${s.p95_ms} ms`] : []), ...(s.p99_ms !== undefined ? [`p99 < ${s.p99_ms} ms`] : []), ...(s.error_rate !== undefined ? [`error rate < ${Math.round(s.error_rate * 1e6) / 1e4}%`] : [])].join("; ");
+}
+export function parseLoad(text) {
+  const t = one(text);
+  if (!t) return null;
+  const m = /^([a-z-]+)\s+at\s+(\d+(?:\.\d+)?)\s*rps\b/i.exec(t);
+  if (!m) return null;
+  const slo = {};
+  const num = (re) => (re.exec(t) ? Number(re.exec(t)[1]) : undefined);
+  const p95 = num(/p95\s*<\s*(\d+(?:\.\d+)?)\s*ms/i);
+  const p99 = num(/p99\s*<\s*(\d+(?:\.\d+)?)\s*ms/i);
+  const err = num(/error rate\s*<\s*(\d+(?:\.\d+)?)\s*%/i);
+  if (p95 !== undefined) slo.p95_ms = p95;
+  if (p99 !== undefined) slo.p99_ms = p99;
+  if (err !== undefined) slo.error_rate = Math.round(err * 1e4) / 1e6;
+  return { type: m[1].toLowerCase(), rps: Number(m[2]), ...(Object.keys(slo).length ? { slo } : {}) };
+}
+export const CASE_COLUMNS = ["ID", "Title", "Priority", "Type", "Preconditions", "Steps", "Expected", "Test data", "Clarifications", "Mutates", "Assumption", "Tags", "Covers", "Evidence", "Endpoint", "Flow", "Load"];
+const caseRow = (c) => [c.id, one(c.title), c.priority, c.type, c.preconditions.map(one).join("\n"), numbered(c.steps), one(c.expected), dataText(c), c.clarifications.join(" "), c.mutates ? "yes" : "", c.assumption ? "yes" : "", flags(c).join(" "), c.covers.join(" "), c.evidence.join(" "), c.endpoint ?? "", c.flow ?? "", loadText(c.load)];
 const HEADER_NOTE = "Rendered by scripts/testcases.mjs build from testcases/cases.json. Do not edit this file: change cases.json and build again.";
 
 function renderGherkin(feature, cases) {
@@ -678,6 +850,9 @@ function renderGherkin(feature, cases) {
     lines.push(`  ${tagsOf(c).map((t) => `@${t}`).join(" ")}`, `  Scenario: ${one(c.title)}`, "    Steps:");
     c.steps.forEach((s, i) => lines.push(`      ${i + 1}. ${one(s)}`));
     if (c.assumption) lines.push(`    Assumes: ${c.assumptions.join("; ")}`);
+    if (c.endpoint) lines.push(`    Endpoint: ${c.endpoint}`);
+    if (c.flow) lines.push(`    Flow: ${one(c.flow)}`);
+    if (c.load) lines.push(`    Load: ${loadText(c.load)}`);
     lines.push(`    Covers: ${c.covers.join(", ")}`, `    Evidence: ${c.evidence.join(", ")}`);
     c.preconditions.forEach((p, i) => lines.push(`    ${i ? "And" : "Given"} ${one(p)}`));
     lines.push(`    When ${one(c.action)}`);
@@ -953,8 +1128,16 @@ function inputDigests(ctx, rows) {
     cases: sha256(tp.overlay), model: sha256(xp.model), interactions: sha256(xp.interactions),
     ruleFacts: sha256(kp.module(module).ruleFacts), openPoints: sha256(kp.module(module).openPoints),
     flows: flowsDigest(xp), clarifications: rowsDigest(rows ?? readRows(csvPath(ctx.productDir, module))), config: configDigest(ctx),
+    // added with the typed items, imports and scenario scope; a build from before them has none (compared as null)
+    imported: sha256(tp.imported), catalogue: wantsCatalogue(ctx) ? sha256(ctx.catalogue) : null, scope: scopeDigest(ctx),
   };
 }
+const scopeDigest = (ctx) => {
+  const s = exploreScope(ctx.xp);
+  return s ? sha256Text(JSON.stringify(s)) : null;
+};
+// A changed input: a digest key a build from before it lacks counts as null.
+const staleInputs = (now, built) => Object.keys(now).filter((k) => (now[k] ?? null) !== (built?.[k] ?? null));
 const outputFiles = (ctx) => ({ file: ctx.tp.file(ctx.format), summary: ctx.tp.summary });
 
 // Seeds the TC registry of a module whose cases were hand-written before this script, so old ids are never reused.
@@ -984,36 +1167,44 @@ export async function build(ctx, validateData) {
   const itemsById = new Map(items.map((i) => [i.id, i]));
   const rowsById = new Map(inputs.rows.map((r) => [r.id.trim(), r]));
   const facts = (inputs.ruleFacts?.facts ?? []).map((f) => ({ ...f }));
-  const problems = overlayProblems(ctx, overlay, { itemsById, rows: inputs.rows, openPoints: inputs.openPoints });
+  const importedCases = readJson(tp.imported, { cases: [] }).cases ?? [];
+  const problems = overlayProblems(ctx, overlay, { itemsById, rows: inputs.rows, openPoints: inputs.openPoints, catalogue: readJson(ctx.catalogue, null), model: inputs.model, importedKeys: importedCases.map((c) => c.key) });
   const warnings = [];
 
-  // cases: stable ids, derived tags
+  // cases: stable ids, derived tags; the writer's cases, then the ones `import` parsed from the human's file
   seedCaseRegistry(ctx);
-  const caseReg = assignIds(tp.registry.cases, uniq(overlay.cases.map((c) => c.key)), { module, runId: ctx.runId, prefix: "TC", field: "cases" });
+  const all = [...overlay.cases, ...importedCases.map((c) => ({ ...c, covers: [], evidence: [], source: "imported" }))];
+  const caseReg = assignIds(tp.registry.cases, uniq(all.map((c) => c.key)), { module, runId: ctx.runId, prefix: "TC", field: "cases" });
+  const known = new Set((inputs.model?.states ?? []).map((s) => s.id));
   const seenKeys = new Set();
   const cases = [];
-  for (const c of overlay.cases) {
+  for (const c of all) {
     if (seenKeys.has(c.key)) continue;
     seenKeys.add(c.key);
     const covers = effectiveCovers(c, itemsById).sort(byNum);
     const assumptions = assumptionsOf(c, { itemsById, rowsById, facts });
     const hash = caseHash(c, assumptions.length > 0);
+    const states = uniq([...(overlay.links?.[c.key] ?? []), ...(c.states ?? [])]).filter((s) => known.has(s)).sort(byNum);
     cases.push({
       id: caseReg.cases[c.key].id, key: c.key, title: one(c.title), type: c.type, priority: c.priority,
-      mutates: !!c.mutates, visual: !!c.visual || c.type === "visual", api: !!c.api || c.type === "api",
+      mutates: !!c.mutates, visual: !!c.visual || c.type === "visual", api: isApi(c), performance: isPerformance(c),
       assumption: assumptions.length > 0, assumptions,
       preconditions: c.preconditions ?? [], action: c.action, steps: c.steps, expected: c.expected, data: c.data ?? {},
       covers, evidence: uniq(c.evidence ?? []), clarifications: clarificationsOfCase(c), hash,
       version: versionOf(hash), // what a review verdict and a human approval are pinned to
+      ...(c.endpoint ? { endpoint: c.endpoint } : {}), ...(c.flow ? { flow: one(c.flow) } : {}), ...(c.load ? { load: c.load } : {}),
+      ...(c.source === "imported" ? { source: "imported", ...(c.imported ? { imported: c.imported } : {}), ...(c.from ? { from: c.from } : {}) } : {}),
+      ...(states.length ? { states } : {}),
     });
   }
   cases.sort((a, b) => byNum(a.id, b.id));
+  problems.push(...importModeProblems(ctx, cases));
   const gone = Object.entries(caseReg.cases).filter(([, e]) => e.status === "gone").map(([k, e]) => `${e.id} (${k})`);
   if (gone.length) warnings.push(`cases no longer in cases.json (their ids are never reused): ${gone.join(", ")}`);
   if (cases.length > ctx.maxCases) warnings.push(`${cases.length} cases, over testcases.max_cases (${ctx.maxCases})`);
 
   // the coverage ledger: mapped by the cases, excluded by a valid cited exclusion, the rest pending or over the budget
-  const ledger = createLedger({ reasons: EXCLUDE_REASONS });
+  const ledger = createLedger({ reasons: EXCLUDE_REASONS, deferReasons: ["budget", "import"] });
   const refs = new Map();
   for (const c of cases) for (const id of c.covers) refs.set(id, [...(refs.get(id) ?? []), c.id]);
   const exclusions = validExclusions(ctx, overlay, { itemsById, rows: inputs.rows, openPoints: inputs.openPoints });
@@ -1035,6 +1226,9 @@ export async function build(ctx, validateData) {
     const [x, y] = [rank(a), rank(b)];
     return x[0] - y[0] || x[1] - y[1] || (x[2] < y[2] ? -1 : x[2] > y[2] ? 1 : 0);
   };
+  // Import mode (D-066): the testcases step is not chosen, so nothing is generated: an item no case covers is deferred
+  // (reason import), kept in the ledger for a later run that chooses the step.
+  if (ctx.mode !== "generate") for (const i of ledger.items) if (i.status === "pending") ledger.resolve(i.id, { status: "deferred", reason: "import", detail: IMPORT_DEFERRED });
   const inPlay = ledger.items.filter((i) => i.status === "mapped" || i.status === "pending").sort(cmp);
   for (const i of inPlay.slice(ctx.maxCases)) if (i.status === "pending") ledger.resolve(i.id, { status: "deferred", reason: "budget", detail: `over testcases.max_cases (${ctx.maxCases})` });
   for (const i of ledger.items) if (i.status === "pending") i.why = "no case covers it yet";
@@ -1062,7 +1256,8 @@ export async function build(ctx, validateData) {
   const approvalFindings = renderApprovalFindings(ctx, cases, approvals);
 
   const coverage = {
-    module, runId: ctx.runId, format, maxCases: ctx.maxCases, degraded,
+    module, runId: ctx.runId, format, maxCases: ctx.maxCases, degraded, caseTypes: ctx.caseTypes, mode: ctx.mode === "generate" ? "generate" : "import",
+    ...(inputs.scope ? { scope: { kind: "scenarios", scenarios: inputs.scope.scenarios, flows: inputs.scope.flows } } : {}),
     summary: ledger.summary(), byTechnique,
     items: ledger.items.map(({ why, ...i }) => i),
     cases,
@@ -1076,7 +1271,7 @@ export async function build(ctx, validateData) {
   return {
     code: problems.length ? 1 : 0,
     out: {
-      cases: cases.length, assumption: cases.filter((c) => c.assumption).length, items: ledger.summary(), degraded,
+      mode: ctx.mode, cases: cases.length, assumption: cases.filter((c) => c.assumption).length, items: ledger.summary(), degraded,
       pending: pending.slice(0, 40).map((i) => ({ id: i.id, technique: i.technique, label: i.label })),
       approvals: approvalCounts(cases, approvals), approvalFindings,
       written: [file, tp.summary, tp.coverage, tp.approvalCsv].map((f) => rel(ctx.root, f)),
@@ -1094,11 +1289,243 @@ export function listItems(ctx) {
   return { total: items.length, byTechnique: counts, degraded, items: items.map((i) => ({ id: i.id, technique: i.technique, priority: i.priority, subject: i.subject, label: i.label })) };
 }
 
+// ---------- imports: the human's own test case file ----------
+
+// The format of a file to import, by its extension (a .csv whose header has a Section column is TestRail's). -> format | null
+export function importFormat(file) {
+  const ext = path.extname(file).toLowerCase();
+  if (ext === ".feature") return "gherkin";
+  if (ext === ".md" || ext === ".markdown") return "markdown-table";
+  if (ext !== ".csv") return null;
+  const head = String(parseCsv(readFileSync(file, "utf8"), { delimiter: detectDelimiter(readFileSync(file, "utf8")) })[0] ?? []).toLowerCase();
+  return /(^|,)section(,|$)/.test(head) ? "testrail" : "csv";
+}
+
+const unnumber = (s) => one(s).replace(/^(\d+[.)]|[-*])\s+/, "");
+const linesOf = (cell) => String(cell ?? "").split(/\r?\n|<br\s*\/?>/i).map(unnumber).filter(Boolean);
+const dataOf = (lines) => Object.fromEntries(lines.map((l) => /^(.+?)\s*[=:]\s*(.*)$/.exec(l)).filter(Boolean).map((m) => [m[1].trim(), m[2].trim()]));
+
+// Raw cases of a framework-format file: {line, id, title, tags[], module, type, priority, preconditions, action, steps,
+// expected, data, endpoint, flow, load(text)}. Gherkin: tags, Given/When/Then (And/But continue the last keyword), a
+// numbered "Steps:" block, Endpoint:/Flow:/Load: lines and a | field | value | table. Tables (csv, testrail, markdown):
+// columns by name, the ones the framework renders plus Module.
+function rawCases(file, format) {
+  const text = readFileSync(file, "utf8").replace(/^﻿/, "");
+  if (format === "gherkin") {
+    const out = [];
+    let tags = [];
+    let cur = null;
+    let kw = null;
+    let inSteps = false;
+    text.split(/\r?\n/).forEach((raw, i) => {
+      const l = raw.trim();
+      if (!l || l.startsWith("#")) return;
+      if (l.startsWith("@")) {
+        tags.push(...l.split(/\s+/).filter((s) => s.startsWith("@")).map((s) => s.slice(1)));
+        cur = null;
+        return;
+      }
+      const sc = /^Scenario(?: Outline)?:\s*(.*)$/.exec(l);
+      if (sc) {
+        cur = { line: i + 1, title: sc[1].trim(), tags, preconditions: [], whens: [], thens: [], steps: [], data: {} };
+        out.push(cur);
+        tags = [];
+        kw = null;
+        inSteps = false;
+        return;
+      }
+      tags = [];
+      if (!cur) return;
+      const m = /^(Given|When|Then|And|But)\s+(.*)$/.exec(l);
+      const meta = /^(Steps|Endpoint|Flow|Load|Covers|Evidence|Assumes|Examples):\s*(.*)$/.exec(l);
+      if (m) {
+        inSteps = false;
+        kw = m[1] === "And" || m[1] === "But" ? kw : m[1];
+        (kw === "Given" ? cur.preconditions : kw === "When" ? cur.whens : kw === "Then" ? cur.thens : cur.preconditions).push(m[2].trim());
+      } else if (meta) {
+        inSteps = meta[1] === "Steps";
+        if (["Endpoint", "Flow", "Load"].includes(meta[1])) cur[meta[1].toLowerCase()] = meta[2].trim();
+      } else if (inSteps && /^(\d+[.)]|[-*])\s+/.test(l)) cur.steps.push(unnumber(l));
+      else if (l.startsWith("|") && kw === "When") {
+        const cells = l.replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|").replace(/\\n/g, "\n").replace(/\\\\/g, "\\"));
+        if (cells.length === 2 && !(cells[0].toLowerCase() === "field" && cells[1].toLowerCase() === "value")) cur.data[cells[0]] = cells[1];
+      }
+    });
+    return out.map((c) => {
+      const t = c.tags;
+      return {
+        line: c.line, title: c.title, tags: t, id: t.find((s) => /^TC-/i.test(s)) ?? null, module: t.find((s) => /^module:/i.test(s))?.slice(7) ?? null,
+        type: null, priority: null, preconditions: c.preconditions, action: c.whens[0] ?? null,
+        steps: c.steps.length ? c.steps : c.whens, expected: c.thens.join("; "), data: c.data, endpoint: c.endpoint ?? null, flow: c.flow ?? null, load: c.load ?? null,
+      };
+    });
+  }
+  let rows;
+  if (format === "csv" || format === "testrail") {
+    const [header = [], ...body] = parseCsv(text, { delimiter: detectDelimiter(text) });
+    rows = { header, rows: body.map((cells, i) => ({ cells, line: i + 2 })) };
+  } else {
+    const lines = text.split(/\r?\n/);
+    const split = (l) => l.trim().replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|"));
+    const h = lines.findIndex((l, i) => l.trim().startsWith("|") && /^\|?\s*:?-{3,}/.test((lines[i + 1] ?? "").trim()) && split(l).some((c) => c.toLowerCase() === "id" || c.toLowerCase() === "title"));
+    rows = { header: h < 0 ? [] : split(lines[h]), rows: [] };
+    for (let i = h + 2; h >= 0 && i < lines.length && lines[i].trim().startsWith("|"); i++) rows.rows.push({ cells: split(lines[i]), line: i + 1 });
+  }
+  const idx = Object.fromEntries(rows.header.map((h, i) => [String(h).trim().toLowerCase(), i]));
+  return rows.rows
+    .filter((r) => r.cells.some((c) => String(c).trim()))
+    .map(({ cells, line }) => {
+      const get = (k) => String(cells[idx[k]] ?? "").trim();
+      const tags = get("tags").split(/[\s,;]+/).map((s) => s.replace(/^@/, "")).filter(Boolean);
+      const steps = linesOf(get("steps"));
+      return {
+        line, title: get("title"), tags, id: get("id") || null, module: get("module") || tags.find((s) => /^module:/i.test(s))?.slice(7) || null,
+        type: get("type").toLowerCase() || null, priority: get("priority").toLowerCase() || null, preconditions: linesOf(get("preconditions")), action: null,
+        steps, expected: one(get("expected")), data: dataOf(linesOf(get("test data"))), endpoint: get("endpoint") || null, flow: get("flow") || null, load: get("load") || null,
+        mutates: yes(get("mutates")),
+      };
+    });
+}
+
+// A framework-format file -> this module's imported cases (with keys), the rejected ones with their line, and how many
+// name another module. productLevel: the run-config's testcases.import, whose cases name their module (@module:<slug> or
+// a Module column). catalogue: checked when present (the api-discovery stage may not have run yet).
+// -> {cases, rejected: [{line, problem}], skipped}
+export function parseImport(file, format, { module, productLevel = false, catalogue = null }) {
+  const cases = [];
+  const rejected = [];
+  let skipped = 0;
+  const keys = new Map();
+  for (const r of rawCases(file, format)) {
+    const at = (problem) => rejected.push({ line: r.line, problem: `${r.id ?? (clip(r.title || "(untitled)", 60))}: ${problem}` });
+    if (productLevel && !r.module) {
+      at("names no module (tag @module:<slug>, or a Module column)");
+      continue;
+    }
+    if (r.module && r.module !== module) {
+      if (productLevel) skipped++;
+      else at(`names the module '${r.module}', not '${module}'`);
+      continue;
+    }
+    const tags = r.tags.map((t) => t.toLowerCase());
+    const performance = r.type === "performance" || tags.includes("performance");
+    const api = !performance && (r.type === "api" || tags.includes("api"));
+    const type = performance ? "performance" : api ? "api" : r.type ?? tags.find((t) => TYPES.includes(t)) ?? "functional";
+    const priority = r.priority ?? tags.find((t) => PRIORITIES.includes(t)) ?? "p2";
+    const problems = [];
+    if (!one(r.title)) problems.push("has no title");
+    if (!r.steps.length && !r.action) problems.push("has no steps");
+    if (!one(r.expected)) problems.push("has no expected result (Then / Expected)");
+    if (!TYPES.includes(type)) problems.push(`type '${type}' is not one of ${TYPES.join(", ")}`);
+    if (!PRIORITIES.includes(priority)) problems.push(`priority '${priority}' is not one of ${PRIORITIES.join(", ")}`);
+    const load = r.load ? parseLoad(r.load) : null;
+    if (r.load && !load) problems.push(`Load '${r.load}' is not "<type> at <rate> rps[; p95 < <ms> ms][; error rate < <n>%]"`);
+    const c = {
+      key: `imported-${slug(r.id ?? r.title)}`, title: one(r.title), type, priority,
+      ...(r.mutates || tags.includes("mutates") ? { mutates: true } : {}), ...(tags.includes("visual") ? { visual: true } : {}),
+      ...(api ? { api: true } : {}), ...(performance ? { performance: true } : {}),
+      ...(tags.includes("assumption") ? { assumption: true, assumes: "the imported case is tagged @assumption" } : {}),
+      preconditions: r.preconditions.map(one), action: one(r.action ?? r.steps[0] ?? ""), steps: (r.steps.length ? r.steps : [r.action]).map(one), expected: one(r.expected), data: r.data,
+      ...(r.endpoint ? { endpoint: r.endpoint } : {}), ...(r.flow ? { flow: one(r.flow) } : {}), ...(load ? { load } : {}),
+      from: { line: r.line, ...(r.id ? { id: r.id } : {}) },
+    };
+    if (!problems.length) problems.push(...typedCaseProblems(c, { catalogue }).filter((p) => catalogue || !/not in api\/discovered-endpoints/.test(p)));
+    if (keys.has(c.key)) problems.push(`the same ${r.id ? "id" : "title"} as the case on line ${keys.get(c.key)}`);
+    if (problems.length) {
+      at(problems.join("; "));
+      continue;
+    }
+    keys.set(c.key, r.line);
+    cases.push(c);
+  }
+  return { cases, rejected, skipped };
+}
+
+// The file `import` reads: --file, else the run-config's modules[].testcases_file, else its product-level
+// testcases.import (read from the config file itself: `run-config.mjs set` changes it during a run, while
+// config.resolved.json is frozen at init). -> {file (absolute), productLevel} | {error}
+export function importSource(ctx, { file, config }) {
+  if (file) return { file: path.resolve(ctx.root, file), productLevel: false };
+  const m = (config?.modules ?? []).find((x) => x.slug === ctx.module);
+  if (m?.testcases_file) return { file: path.resolve(ctx.root, m.testcases_file), productLevel: false };
+  if (config?.testcases?.import) return { file: path.resolve(ctx.root, config.testcases.import), productLevel: true };
+  return { error: `no test case file for '${ctx.module}': pass --file, or set modules[].testcases_file or testcases.import (run-config.mjs set)` };
+}
+
+// `testcases.mjs import`: parse the human's file into testcases/imported.json (schema testcases-imported), then build,
+// so the cases get their TC ids (stable by key), the rendered file and approval.csv like generated ones. A document in
+// another format is refused with what to do instead (testcase-writer's import mode). approved: HUMAN ONLY, like
+// `approve` -- an interactive terminal and the module slug typed to confirm, and the guard denies it to every tool call
+// it sees; each imported case is then recorded approved in approvals.json, pinned to its content.
+// -> {code, out}
+export async function importCases(ctx, validateData, { file, config, approved = false, interactive = terminal() } = {}) {
+  const fail = (problems, extra = {}) => ({ code: 1, out: { imported: 0, ...extra, problems } });
+  if (approved && !interactive?.isTTY) return fail(["import --approved is human-only: run it yourself in an interactive terminal (in Git Bash's mintty: winpty node scripts/testcases.mjs import ... --approved); nothing was imported"]);
+  const src = importSource(ctx, { file, config });
+  if (src.error) return fail([src.error]);
+  if (!existsSync(src.file) || !statSync(src.file).isFile()) return fail([`${rel(ctx.root, src.file)}: no such file`]);
+  const format = importFormat(src.file);
+  if (!format)
+    return fail([`${rel(ctx.root, src.file)} is not in a framework format (gherkin .feature, csv, testrail csv, markdown-table .md)`], {
+      convert: true,
+      next: "testcase-writer's import mode converts the document into testcases/cases.json (source: imported, each case citing imported.file and a verbatim imported.quote); then testcases.mjs build and check",
+    });
+  const { cases, rejected, skipped } = parseImport(src.file, format, { module: ctx.module, productLevel: src.productLevel, catalogue: readJson(ctx.catalogue, null) });
+  const record = { module: ctx.module, file: rel(ctx.root, src.file), format, productLevel: src.productLevel, sha256: sha256(src.file), runId: ctx.runId, importedAt: new Date().toISOString(), cases, rejected, skipped };
+  const bad = await validateData("testcases-imported", record);
+  if (bad.length) return fail(bad.map((e) => `imported.json (internal): ${e}`), { rejected });
+  if (!cases.length) return fail([rejected.length ? "every case was rejected" : `${record.file} has no case for '${ctx.module}'`], { rejected, skipped, file: record.file });
+  writeJson(ctx.tp.imported, record);
+  const b = await build(ctx, validateData);
+  const cov = readJson(ctx.tp.coverage, { cases: [] });
+  const keys = new Set(cases.map((c) => c.key));
+  const mine = cov.cases.filter((c) => keys.has(c.key));
+  const out = {
+    file: record.file, format, imported: mine.length, ids: mine.map((c) => c.id), rejected: rejected.map((r) => `line ${r.line}: ${r.problem}`), skipped,
+    build: { code: b.code, problems: b.out.problems, warnings: b.out.warnings },
+    unlinkedUi: mine.filter((c) => caseTypeOf(c) === "ui" && !(c.states ?? []).length).map((c) => c.id),
+  };
+  if (approved) {
+    const answer = await interactive.ask(`Record the ${mine.length} imported case(s) of ${record.file} as already approved for module '${ctx.module}'. Type the module slug to confirm: `);
+    if (String(answer ?? "").trim() !== ctx.module) return { code: 1, out: { ...out, approved: [], problems: [`not confirmed (expected '${ctx.module}'); the cases were imported, no approval was recorded`] } };
+    const next = readApprovals(ctx.tp, ctx.module);
+    const at = new Date().toISOString();
+    for (const c of mine) next.cases[c.id] = { decision: "yes", comment: `imported as already approved (${record.file})`, hash: c.hash, version: versionOf(c.hash), run: ctx.runId, at };
+    const vbad = await validateData("testcases-approvals", next);
+    if (vbad.length) return { code: 1, out: { ...out, approved: [], problems: [...vbad.map((e) => `approvals.json: ${e}`), "no approval was recorded"] } };
+    withFileLock(ctx.tp.approvals, () => writeJson(ctx.tp.approvals, next));
+    renderApprovalCsv(ctx, cov.cases, next);
+    renderApprovalFindings(ctx, cov.cases, next);
+    out.approved = mine.map((c) => c.id);
+  }
+  out.next = out.unlinkedUi.length
+    ? "testcase-writer's import mode links the imported UI cases to exploration states (cases.json links), then testcases.mjs build and check"
+    : approved ? "the imported cases are approved" : "a human approves the imported cases in approval.csv (testcases.mjs approve), or imports the file again with --approved in a terminal";
+  return { code: rejected.length || b.code ? 1 : 0, out: { ...out, problems: [...out.rejected, ...b.out.problems] } };
+}
+
+// What the module's imports give (run.mjs: an imported file standing in for the testcases stage, the UI link check):
+// -> {imported (cases), current (the build is from the import and cases.json on disk), problems (the build's), file,
+//     unlinkedUi: [TC ids of imported UI cases with no exploration state]}
+export function importStatus(productDir, module) {
+  const tp = testcasePaths(productDir, module);
+  const imp = readJson(tp.imported, null);
+  const cov = readJson(tp.coverage, null);
+  const cases = (cov?.cases ?? []).filter((c) => c.source === "imported");
+  const current = !!cov && (cov.built?.inputs?.imported ?? null) === sha256(tp.imported) && (cov.built?.inputs?.cases ?? null) === sha256(tp.overlay);
+  return { imported: cases.length, current, problems: cov?.problems ?? [], file: imp?.file ?? null, unlinkedUi: cases.filter((c) => caseTypeOf(c) === "ui" && !(c.states ?? []).length).map((c) => c.id) };
+}
+
 // ---------- check and the verified stamp ----------
 
 function verifiedInputs(ctx) {
   const { tp, xp, kp, module } = ctx;
-  return { cases: tp.overlay, file: tp.file(ctx.format), summary: tp.summary, model: xp.model, interactions: xp.interactions, ruleFacts: kp.module(module).ruleFacts, openPoints: kp.module(module).openPoints };
+  return {
+    cases: tp.overlay, file: tp.file(ctx.format), summary: tp.summary, model: xp.model, interactions: xp.interactions, ruleFacts: kp.module(module).ruleFacts, openPoints: kp.module(module).openPoints,
+    // only when present, so a stamp from before imports and typed items stays current
+    ...(existsSync(tp.imported) ? { imported: tp.imported } : {}),
+    ...(wantsCatalogue(ctx) && existsSync(ctx.catalogue) ? { catalogue: ctx.catalogue } : {}),
+  };
 }
 const extraDigests = (ctx) => ({ flows: flowsDigest(ctx.xp), clarifications: rowsDigest(readRows(csvPath(ctx.productDir, ctx.module))), config: configDigest(ctx) });
 
@@ -1113,6 +1540,26 @@ export function testcasesUnverified(ctx) {
   return flows === now.flows && clarifications === now.clarifications && config === now.config ? null : "the flows, the clarifications or the run-config changed after testcases.mjs check";
 }
 
+const IMPORT_DEFERRED = "import mode: the testcases step is not chosen for this run, so the module's test cases are the human's imported ones (D-066); a run that chooses testcases covers it";
+
+// Import mode (D-066) converts and links the human's cases and adds none: at least one imported case, and no case of the
+// writer's own new this run (cases kept from an earlier run stay). -> string[]
+function importModeProblems(ctx, cases) {
+  if (ctx.mode !== "import") return [];
+  const out = [];
+  if (!cases.some((c) => c.source === "imported")) out.push("import mode: no imported case (testcases.mjs import the human's file, or convert their document into cases.json cases with source: imported)");
+  const reg = readJson(ctx.tp.registry.cases, { cases: {} }).cases ?? {};
+  for (const c of cases) if (c.source !== "imported" && ctx.runId && reg[c.key]?.firstSeen === ctx.runId) out.push(`${c.id} (case '${c.key}'): import mode generates no case (the testcases step is not chosen): convert and link the human's cases only, and remove this case from cases.json`);
+  return out;
+}
+
+// With playwright-ui chosen, every imported UI case is linked to the exploration states it touches (decision 14): an
+// unlinked one is never automated. -> string[]
+function unlinkedProblems(ctx, cases) {
+  if (!ctx.steps.includes("playwright-ui")) return [];
+  return cases.filter((c) => c.source === "imported" && caseTypeOf(c) === "ui" && !(c.states ?? []).length).map((c) => `${c.id} (imported UI case '${c.key}') is not linked to the exploration: link it to the states its steps pass through (cases.json links)`);
+}
+
 // Every rule; a pass stamps coverage.json `verified`. -> {valid, problems, ...counts}
 export async function runCheck(ctx, validateData) {
   const { tp, module } = ctx;
@@ -1125,19 +1572,22 @@ export async function runCheck(ctx, validateData) {
   problems.push(...(await validateData("testcases-coverage", unstamped)).map((e) => `coverage.json: ${e}`));
   const inputs = readInputs(ctx);
   const now = inputDigests(ctx, inputs.rows);
-  const stale = Object.keys(now).filter((k) => now[k] !== cov.built?.inputs?.[k]);
+  const stale = staleInputs(now, cov.built?.inputs);
   if (stale.length) problems.push(`stale: ${stale.join(", ")} changed after the last build (run testcases.mjs build again)`);
   for (const [k, f] of Object.entries(outputFiles(ctx))) if (sha256(f) !== cov.built?.outputs?.[k]) problems.push(`${rel(ctx.root, f)} changed after the last build (it is script-owned; run build again)`);
   if (!stale.length) {
     const itemsById = new Map(cov.items.map((i) => [i.id, i]));
-    problems.push(...overlayProblems(ctx, overlay, { itemsById, rows: inputs.rows, openPoints: inputs.openPoints }));
+    const importedKeys = (readJson(tp.imported, { cases: [] }).cases ?? []).map((c) => c.key);
+    problems.push(...overlayProblems(ctx, overlay, { itemsById, rows: inputs.rows, openPoints: inputs.openPoints, catalogue: readJson(ctx.catalogue, null), model: inputs.model, importedKeys }));
   }
   for (const i of cov.items) if (i.status === "pending") problems.push(`${i.id} pending: ${i.label} (${i.subject})`);
-  for (const c of cov.cases) if (!c.covers.length) problems.push(`${c.id} (case '${c.key}') covers no coverage item`);
+  problems.push(...importModeProblems(ctx, cov.cases), ...unlinkedProblems(ctx, cov.cases));
+  // an imported case covers what the human wrote, not a coverage item of ours
+  for (const c of cov.cases) if (!c.covers.length && c.source !== "imported") problems.push(`${c.id} (case '${c.key}') covers no coverage item`);
   if (existsSync(tp.summary)) problems.push(...checkTestcases(tp.summary, { module, testcasesFormat: ctx.format }));
   const valid = !uniq(problems).length;
   if (valid) writeJson(tp.coverage, { ...unstamped, verified: { ...stampVerified(verifiedInputs(ctx)), ...extraDigests(ctx) } });
-  return { valid, cases: cov.cases.length, assumption: cov.cases.filter((c) => c.assumption).length, items: cov.summary, deferred: cov.summary.deferred, degraded: cov.degraded, problems: uniq(problems) };
+  return { valid, mode: ctx.mode, cases: cov.cases.length, assumption: cov.cases.filter((c) => c.assumption).length, items: cov.summary, deferred: cov.summary.deferred, degraded: cov.degraded, problems: uniq(problems) };
 }
 
 // ---------- downstream: which cases may be automated ----------

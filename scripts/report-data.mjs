@@ -19,10 +19,12 @@
 // assumptions          assumed k6 thresholds, @assumption cases, agent-captured or stale rule facts, known limits (D-052)
 // k6                   leftover entities of this run in the ledger, and the untracked creates of each script
 // failedStages, blockedStages, awaitingApprovalStages   what the run did not finish, with open review findings
+// steps, notChosenStages  each step chosen or not for this run, and the stages it did not choose (never failed or blocked;
+//                      `satisfiedBy` when an earlier run's outputs or an imported file stood in for one)
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { STEPS, loadJson, paths, repoRoot } from "./lib/contract.mjs";
 import { csvPath, readRows, isAnswered, isAuthoritative } from "./lib/clarifications.mjs";
 import { live as liveEntities } from "./lib/ledger.mjs";
 import { FRAMEWORKS } from "./results.mjs";
@@ -120,11 +122,12 @@ const READERS = {
   }),
   "api-code": (d) => ({ entries: fromItems(d.items) }),
   "ui-code": (d) => ({ entries: fromItems(d.items) }),
+  // one entry per approved @performance case (D-068); a ledger of an older build listed endpoints
   workload: (d) => ({
     entries: [
-      ...arrayItems(d.loaded).map((i) => entry(i.endpoint, "mapped")),
-      ...arrayItems(d.excluded).map((i) => entry(i.endpoint, "excluded", i.reason, i.detail)),
-      ...arrayItems(d.deferred).map((i) => entry(i.endpoint, "deferred", i.reason, i.detail)),
+      ...arrayItems(d.loaded).map((i) => entry(i.case ?? i.endpoint, "mapped")),
+      ...arrayItems(d.excluded).map((i) => entry(i.case ?? i.endpoint, "excluded", i.reason, i.detail)),
+      ...arrayItems(d.deferred).map((i) => entry(i.case ?? i.endpoint, "deferred", i.reason, i.detail)),
     ],
   }),
   knowledge: (d) => ({ entries: fromItems(d.items) }),
@@ -318,7 +321,10 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
     .map(([key, s]) => ({ key, error: s.error ?? null, attempts: s.attempts ?? 0, ...(s.reviewFailed ? { reviewFailed: true, findings: s.findings ?? [] } : {}) }));
   const blockedStages = rows.filter((r) => r.blocked).map((r) => ({ key: keyOf(r), stage: r.stage, module: r.module ?? null }));
   const awaitingApprovalStages = rows.filter((r) => r.awaitingApproval).map((r) => ({ key: keyOf(r), stage: r.stage, module: r.module ?? null }));
-  const incompleteStages = rows.filter((r) => !r.complete && r.status !== "failed" && !r.blocked && !r.awaitingApproval).map((r) => ({ key: keyOf(r), stage: r.stage, module: r.module ?? null, status: r.status, problems: r.problems ?? [] }));
+  // a stage not chosen for this run is reported as such, never as failed, blocked or incomplete
+  const notChosenStages = rows.filter((r) => r.notChosen).map((r) => ({ key: keyOf(r), stage: r.stage, module: r.module ?? null, ...(r.satisfiedBy ? { satisfiedBy: r.satisfiedBy } : {}) }));
+  const steps = STEPS.map((step) => ({ step, chosen: (run.steps ?? STEPS).includes(step) }));
+  const incompleteStages = rows.filter((r) => !r.complete && !r.notChosen && r.status !== "failed" && !r.blocked && !r.awaitingApproval).map((r) => ({ key: keyOf(r), stage: r.stage, module: r.module ?? null, status: r.status, problems: r.problems ?? [] }));
 
   const cov = ledgers.reduce((a, l) => (l.available ? { total: a.total + l.counts.total, mapped: a.mapped + l.counts.mapped, excluded: a.excluded + l.counts.excluded, deferred: a.deferred + l.counts.deferred, pending: a.pending + l.counts.pending } : a), { total: 0, mapped: 0, excluded: 0, deferred: 0, pending: 0 });
   return {
@@ -341,7 +347,7 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
       triage: { byClass: classCounts, bugClusters, unverified: triagesUnverified },
       coverage: cov,
       assumptions: { k6Thresholds: assumptions.k6Thresholds.length, assumptionCases: assumptions.assumptionCases.length, weakRuleFacts: assumptions.ruleFacts.length, k6Leftovers: assumptions.k6Leftovers.length, k6UntrackedCreates: assumptions.k6Untracked.reduce((n, x) => n + x.creates, 0) },
-      stages: { failed: failedStages.length, blocked: blockedStages.length, awaitingApproval: awaitingApprovalStages.length },
+      stages: { failed: failedStages.length, blocked: blockedStages.length, awaitingApproval: awaitingApprovalStages.length, notChosen: notChosenStages.length },
       missing: missing.length,
     },
     bugs: bugClusters,
@@ -352,6 +358,8 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
     blockedStages,
     awaitingApprovalStages,
     incompleteStages,
+    steps,
+    notChosenStages,
     missing,
     modules: perModule,
   };
