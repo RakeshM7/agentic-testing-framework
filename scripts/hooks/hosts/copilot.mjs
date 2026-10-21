@@ -26,6 +26,8 @@ const KINDS = {
   web_fetch: "web_fetch", task: "spawn", ask_user: "ask", rg: "read", read_bash: "read",
   // Loads deferred tools' definitions (e.g. the Playwright MCP tools) and runs nothing; each loaded tool is judged on use.
   tool_search_tool: "other",
+  // Autopilot's end-of-turn signal (args: { summary }); runs nothing and touches no run state (seen 2026-10-19).
+  task_complete: "other",
   // VS Code Copilot Chat (Local harness)
   read_file: "read", view_image: "read", list_dir: "read", file_search: "read", grep_search: "read", semantic_search: "read",
   get_errors: "read", get_changed_files: "read", test_failure: "read", get_terminal_output: "read",
