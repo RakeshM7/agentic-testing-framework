@@ -111,6 +111,23 @@ test("an unmapped tool fails closed for a managed agent during a run, and only t
   assert.equal(checkTool(noPath, FULL.root, {}).rule, "fs-write", "a write whose target is unknown is refused");
 });
 
+test("task_complete (autopilot's end-of-turn signal) is allowed during a full-run; unknown tools still fail closed", () => {
+  // Payload as Copilot's autopilot sends it (session record, 2026-10-19): { summary } only, in every casing.
+  const shapes = [
+    { toolName: "task_complete", toolArgs: { summary: "done" } },
+    { toolName: "task_complete", toolArgs: '{"summary":"done"}' },
+    { tool_name: "task_complete", tool_input: { summary: "done" } },
+  ];
+  for (const p of shapes) {
+    const c = cli(p);
+    assert.deepEqual([c.kind, c.tool, c.paths, c.command], ["other", "task_complete", [], undefined]);
+    assert.equal(allowed(FULL.root, c), true, "under the combined ceiling");
+  }
+  assert.equal(allowed(startRun().root, cli(shapes[0])), true, "readonly run");
+  assert.equal(checkTool(cli({ toolName: "brand_new_tool", toolArgs: {} }), FULL.root, {}).rule, "unmapped-tool");
+  assert.equal(checkTool(cli({ toolName: "task_complete_v2", toolArgs: {} }), FULL.root, {}).rule, "unmapped-tool", "an exact name, not a prefix");
+});
+
 test("a Copilot block of the canary (exit 2, shown by the host as 'hook errored') shows as guard.ready in run.mjs status", async () => {
   const { root } = startRun({ verified: false });
   assert.equal((await status("acme", { root })).guard.ready, false, "nothing recorded yet");
@@ -179,6 +196,20 @@ test("hook entry: Copilot CLI gets a deny decision on stdout and exit 2", () => 
   const r = hook(["--host", "copilot"], { cwd: FULL.root, toolName: "create", toolArgs: { path: path.join(FULL.root, "config/permissions.yaml") } });
   assert.equal(r.status, 2);
   assert.equal(JSON.parse(r.stdout).permissionDecision, "deny");
+});
+
+test("hook entry: Copilot's task_complete passes during a full-run and leaves the run's state alone", async () => {
+  const { root } = startRun({ mode: "full-run" });
+  const state = path.join(root, "artifacts/acme/state");
+  const snapshot = () =>
+    readdirSync(state, { recursive: true, withFileTypes: true }).filter((e) => e.isFile()).map((e) => [path.join(e.parentPath, e.name), readFileSync(path.join(e.parentPath, e.name), "utf8")]);
+  const before = snapshot();
+  const r = hook(["--host", "copilot"], { cwd: root, toolName: "task_complete", toolArgs: { summary: "Implemented the fix; tests pass." } });
+  assert.deepEqual([r.status, r.stdout, r.stderr], [0, "", ""]);
+  assert.deepEqual(snapshot(), before, "completing the assistant's task is not a stage or run transition");
+  const s = await status("acme", { root });
+  assert.deepEqual([s.active, s.mode], [true, "full-run"], "the run stays active in full-run");
+  assert.equal(hook(["--host", "copilot"], { cwd: root, toolName: "brand_new_tool", toolArgs: {} }).status, 2, "unknown tools still fail closed");
 });
 
 test("hook entry: VS Code blocks with a deny decision and exit 0, never by exit code (D-040)", () => {
