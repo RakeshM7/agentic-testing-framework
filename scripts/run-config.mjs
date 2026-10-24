@@ -22,6 +22,7 @@ const MODES = ["readonly", "full-run"];
 const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
 const KNOWN = ["product", "about", "steps", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
 const posInt = (v) => Number.isInteger(v) && v > 0;
+export const MAX_MODULE_CONCURRENCY = 1;
 const strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
 const httpUrl = (v) => {
   try {
@@ -229,6 +230,10 @@ export function validateRunConfig(cfg, { root = repoRoot } = {}) {
     errors.push(`clarifications.unresolved_policy: not in [${UNRESOLVED_POLICIES}]`);
   for (const k of ["review_rounds", "heal_rounds"]) if (cfg.limits?.[k] !== undefined && !posInt(cfg.limits[k])) errors.push(`limits.${k}: must be a positive integer`);
   for (const k of ["modules", "clarification_rows"]) if (cfg.concurrency?.[k] !== undefined && !posInt(cfg.concurrency[k])) errors.push(`concurrency.${k}: must be a positive integer`);
+  // D-072: modules run one at a time until parallel modules are safe (they share one browser server, and the product-level
+  // files they write are not yet audited for parallel writers)
+  if (posInt(cfg.concurrency?.modules) && cfg.concurrency.modules > MAX_MODULE_CONCURRENCY)
+    errors.push(`concurrency.modules: at most ${MAX_MODULE_CONCURRENCY} for now (D-072): modules share one browser server and product-level files, so parallel modules are not safe yet`);
   if (cfg.k6 !== undefined) errors.push(...k6Errors(cfg.k6, Array.isArray(cfg.modules) ? cfg.modules.map((m) => m?.slug) : []));
 
   if (errors.length) return { errors };

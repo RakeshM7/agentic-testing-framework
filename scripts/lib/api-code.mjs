@@ -32,7 +32,7 @@ import { actionLike, crudOf } from "./endpoints.mjs";
 import { citationProblem } from "./citations.mjs";
 import { csvPath, readRows } from "./clarifications.mjs";
 import { createLedger } from "./coverage.mjs";
-import { writeAtomic } from "./csv.mjs";
+import { tryReadJson, writeAtomic, writeIfChanged, writeJsonIfChanged } from "./files.mjs";
 import { finding, walk } from "./gate/common.mjs";
 import { AUTH_HEADER_RE, HEADER_NAME_RE, SECRET_RES, URL_RE, indexProblem, literalProblems, looksLikeSecret, writeIndex } from "./foundation.mjs";
 import { approvalStatus, readApprovals, testcasePaths } from "./testcases.mjs";
@@ -66,21 +66,7 @@ const SAFE_HTTP = new Set(["GET", "HEAD", "OPTIONS"]);
 const RESERVED = new Set(["send", "constructor", "api", "then", "catch", "finally", "toString", "valueOf", "hasOwnProperty"]);
 const SCALARS = new Set(["String", "Int", "Float", "Boolean", "ID"]);
 
-const readJson = (f, fallback = null) => {
-  try {
-    return JSON.parse(readFileSync(f, "utf8"));
-  } catch {
-    return fallback;
-  }
-};
 const readText = (f) => (existsSync(f) ? readFileSync(f, "utf8").replace(/\r\n?/g, "\n") : null);
-function writeIfChanged(f, text) {
-  if (existsSync(f) && readFileSync(f, "utf8") === text) return false;
-  mkdirSync(path.dirname(f), { recursive: true });
-  writeAtomic(f, text);
-  return true;
-}
-const writeJson = (f, data) => writeIfChanged(f, JSON.stringify(data, null, 2) + "\n");
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 const uniq = (xs) => [...new Set(xs)];
 const idNum = (id) => Number(String(id).split("-").at(-1));
@@ -219,7 +205,7 @@ function citedText(ctx, c) {
   const text = readText(path.join(base, file));
   if (text === null) return null;
   if (!frag || !frag.startsWith("/")) return text;
-  const node = getPointer(readJson(path.join(base, file), null), frag);
+  const node = getPointer(tryReadJson(path.join(base, file), null), frag);
   return node === undefined ? null : JSON.stringify(node);
 }
 function getPointer(doc, pointer) {
@@ -478,6 +464,9 @@ export function referenceNames(ctx, catalogue) {
 function methodMeta(ctx, e, catalogue) {
   const meta = {};
   if (isCreate(e)) meta.creates = { type: resourceSlug(ctx, e), pointer: e.kind === "graphql" ? `/data/${e.graphql.field}/id` : idPointer(catalogue, e) };
+  // the delete that removes what it creates, recorded with the entity so a human's ledger.mjs sweep can (D-075)
+  const cleanup = isCreate(e) && e.kind === "rest" ? deleteFor(catalogue, e) : null;
+  if (cleanup) meta.creates.cleanup = { endpoint: cleanup.endpoint, param: cleanup.param };
   if (e.kind === "rest" && e.crud === "delete") {
     const c = catalogue.find((x) => isCreate(x) && x.kind === "rest" && deleteFor(catalogue, x)?.endpoint === e.id);
     const params = (e.params ?? []).filter((p) => p.in === "path");
@@ -548,13 +537,13 @@ export function derive(ctx) {
   const { module } = ctx;
   const problems = [];
   const warnings = [];
-  const catalogue = readJson(ctx.pp.catalogue, null);
-  const scenarios = readJson(ctx.pp.plan, null);
+  const catalogue = tryReadJson(ctx.pp.catalogue, null);
+  const scenarios = tryReadJson(ctx.pp.plan, null);
   if (!catalogue) return { problems: ["api/discovered-endpoints.json is missing: the endpoint catalogue comes first (endpoints.mjs build)"] };
   if (!scenarios) return { problems: ["api/plan.json is missing: the API plan comes first (api-plan.mjs build, then check)"] };
-  const planCov = readJson(ctx.pp.coverage, {});
-  const clientOverlay = readJson(ctx.ap.clientOverlay, null);
-  const testsOverlay = readJson(ctx.ap.testsOverlay, null);
+  const planCov = tryReadJson(ctx.pp.coverage, {});
+  const clientOverlay = tryReadJson(ctx.ap.clientOverlay, null);
+  const testsOverlay = tryReadJson(ctx.ap.testsOverlay, null);
   if (existsSync(ctx.ap.clientOverlay) && !clientOverlay) problems.push("client-overlay.json is not valid JSON");
   if (existsSync(ctx.ap.testsOverlay) && !testsOverlay) problems.push("tests-overlay.json is not valid JSON");
   const overlayBad = clientOverlayProblems(ctx, clientOverlay, catalogue);
@@ -599,7 +588,7 @@ export function derive(ctx) {
   const fixtureOf = (id) => clientBySlug.get(methodOf.get(id)?.slug)?.fixture;
 
   // approvals: a test's TC tags name only cases a human approved now (D-053); an edited case loses its tag
-  const tc = readJson(ctx.tp.coverage, null);
+  const tc = tryReadJson(ctx.tp.coverage, null);
   const status = approvalStatus(tc?.cases ?? [], readApprovals(ctx.tp, module));
   const approvedNow = (id) => status.get(id)?.status === "approved";
 
@@ -797,12 +786,12 @@ export type RequestParts = { query?: Record<string, QueryValue>; body?: Record<s
 export type Mutation = { pointer: string; op: 'remove' | 'set' | 'type' | 'length' | 'items' | 'duplicate'; value?: unknown };
 // A body changed by one of the plan's mutations: on purpose no longer the request type.
 export type Mutated = { readonly [key: string]: unknown };
-export type Entity = { type: string; ref: string; module: string; label?: string };
+export type Entity = { type: string; ref: string; module: string; label?: string; cleanup?: { endpoint: string; param: string } };
 // What a generated client method tells the sender about its endpoint: what it creates and deletes (ledger types), the
 // entity type and format of each path parameter, the entity type an id field of its body, query or variables names.
 export type PathRef = { type: string | null; kind: string; format: string | null };
 export type Meta = {
-  creates?: { type: string; pointer: string };
+  creates?: { type: string; pointer: string; cleanup?: { endpoint: string; param: string } };
   deletes?: { type: string; param: string };
   path?: Record<string, PathRef>;
   self?: string | null;
@@ -1140,7 +1129,7 @@ async function afterResponse(res: APIResponse, ref: string | null, meta: Meta): 
     const body = await bodyOf(res);
     const id = getPointer(body, meta.creates.pointer);
     if (id === undefined || id === null || typeof id === 'object') throw new Error('created ' + meta.creates.type + ' without an id at ' + meta.creates.pointer + ': it can not be cleaned up');
-    const e: Entity = { type: meta.creates.type, ref: String(id), module: s.ledger.module, label: s.ledger.label };
+    const e: Entity = { type: meta.creates.type, ref: String(id), module: s.ledger.module, label: s.ledger.label, ...(meta.creates.cleanup ? { cleanup: meta.creates.cleanup } : {}) };
     s.ledger.recordCreated(e);
     s.created.push(e);
     s.marked.set(res, e);
@@ -1846,7 +1835,7 @@ export const renderCompositeSeed = (ctx) =>
 
 function inputDigests(ctx) {
   return {
-    catalogue: sha256(ctx.pp.catalogue), plan: sha256(ctx.pp.plan), planCoverage: sha(JSON.stringify(readJson(ctx.pp.coverage, {})?.deferred ?? [])),
+    catalogue: sha256(ctx.pp.catalogue), plan: sha256(ctx.pp.plan), planCoverage: sha(JSON.stringify(tryReadJson(ctx.pp.coverage, {})?.deferred ?? [])),
     testcases: sha256(ctx.tp.coverage), approvals: sha256(ctx.tp.approvals),
     clientOverlay: sha256(ctx.ap.clientOverlay), testsOverlay: sha256(ctx.ap.testsOverlay),
     config: sha(JSON.stringify({ name: ctx.moduleName, hosts: ctx.hosts })),
@@ -1875,7 +1864,7 @@ const validateOverlays = async (ctx, validate) => {
   const out = [];
   for (const [file, schema, name] of [[ctx.ap.clientOverlay, "api-code-client-overlay", "client-overlay.json"], [ctx.ap.testsOverlay, "api-code-tests-overlay", "tests-overlay.json"]]) {
     if (!existsSync(file)) continue;
-    const data = readJson(file, null);
+    const data = tryReadJson(file, null);
     if (data === null) out.push(`${name} is not valid JSON`);
     else out.push(...(await validate(schema, data)).map((e) => `${name}: ${e}`));
   }
@@ -1940,8 +1929,8 @@ export async function build(ctx, validate, { adopt = false } = {}) {
           removed.push(f);
         }
     // the slot files: the skeleton around the agent's slot bodies; a body whose slot is gone is parked, and comes back
-    const parked = readJson(ap.parked, { module, regions: {} });
-    const reasons = new Map((readJson(ap.testsOverlay, {})?.glue ?? []).map((g) => [g.scenario, one(g.reason)]));
+    const parked = tryReadJson(ap.parked, { module, regions: {} });
+    const reasons = new Map((tryReadJson(ap.testsOverlay, {})?.glue ?? []).map((g) => [g.scenario, one(g.reason)]));
     const slotFiles = [[model.files.payloads, (r) => renderPayloads(ctx, model, r), ["imports", "helpers", ...model.payloads.map((p) => payloadKey(p.name))]]];
     if (model.glue.length || existsSync(pw(ctx, model.files.glue))) slotFiles.push([model.files.glue, (r) => renderGlue(ctx, model, r, reasons), ["imports", ...model.glue.map((g) => glueKey(g.name))]]);
     for (const [f, render, keys] of slotFiles) {
@@ -1976,7 +1965,7 @@ export async function build(ctx, validate, { adopt = false } = {}) {
     if (newlyParked.length || restored.length || existsSync(ap.parked)) {
       const pb = await validate("api-code-parked", parked);
       if (pb.length) problems.push(...pb.map((e) => `parked.json (internal): ${e}`));
-      writeJson(ap.parked, parked);
+      writeJsonIfChanged(ap.parked, parked);
     }
     if (!existsSync(pw(ctx, model.files.composite))) {
       writeIfChanged(pw(ctx, model.files.composite), renderCompositeSeed(ctx));
@@ -1985,8 +1974,8 @@ export async function build(ctx, validate, { adopt = false } = {}) {
   }
   const pbad = await validate("api-code-plan", model);
   if (pbad.length) problems.push(...pbad.map((e) => `plan.json (internal): ${e}`));
-  writeJson(ap.plan, model);
-  const old = readJson(ap.coverage, {});
+  writeJsonIfChanged(ap.plan, model);
+  const old = tryReadJson(ap.coverage, {});
   const coverage = {
     module, runId: ctx.runId, summary: ledger.summary(), items: ledger.items, parked: model.parked, blocked: model.blocked, problems,
     built: { inputs: inputDigests(ctx) },
@@ -1994,14 +1983,14 @@ export async function build(ctx, validate, { adopt = false } = {}) {
   };
   const cbad = await validate("api-code-coverage", coverage);
   if (cbad.length) problems.push(...cbad.map((e) => `coverage.json (internal): ${e}`));
-  writeJson(ap.coverage, { ...coverage, problems });
+  writeJsonIfChanged(ap.coverage, { ...coverage, problems });
   const slots = recordSlots(ctx);
   return {
     code: problems.length ? 1 : 0,
     out: {
       clients: model.clients.length, methods: model.clients.reduce((n, c) => n + c.methods.length, 0),
       tests: model.tests.length, runnable: model.tests.filter((t) => t.kind === "test").length, blocked: model.blocked, parked: model.parked, deferred: model.deferred.length,
-      payloads: slots.payloads, glue: slots.glue, items: readJson(ap.coverage, {}).summary,
+      payloads: slots.payloads, glue: slots.glue, items: tryReadJson(ap.coverage, {}).summary,
       written, removed, restored, parkedSlots: newlyParked, ...(adopt ? { adopted } : {}), problems, warnings,
       next: problems.length ? "fix the problems, then build again" : "write the slots (or the overlay, composite helpers and the registration), then run api-code.mjs check",
     },
@@ -2014,8 +2003,8 @@ const filled = (lines) => scanTs((lines ?? []).join("\n")).some((t) => t.type !=
 // Records the payload and glue slots in coverage.json: a filled slot is mapped to its builder, an empty one pending.
 // -> {payloads: {filled, empty: [names]}, glue: {filled, empty}}
 export function recordSlots(ctx) {
-  const cov = readJson(ctx.ap.coverage, null);
-  const model = readJson(ctx.ap.plan, null);
+  const cov = tryReadJson(ctx.ap.coverage, null);
+  const model = tryReadJson(ctx.ap.plan, null);
   if (!cov || !model) return { payloads: { filled: 0, empty: [] }, glue: { filled: 0, empty: [] } };
   const regionsOf = (f) => parseSlots(readText(pw(ctx, f)) ?? "").regions;
   const pr = regionsOf(model.files.payloads);
@@ -2032,13 +2021,13 @@ export function recordSlots(ctx) {
     else out[i.kind === "payload" ? "payloads" : "glue"].empty.push(name);
   }
   cov.summary = { total: cov.items.length, ...Object.fromEntries(["mapped", "excluded", "pending", "deferred"].map((s) => [s, cov.items.filter((i) => i.status === s).length])) };
-  writeJson(ctx.ap.coverage, cov);
+  writeJsonIfChanged(ctx.ap.coverage, cov);
   return out;
 }
 
 // ---------- the rules (shared by `check` and the gate, scripts/lib/gate/playwright.mjs) ----------
 
-const readPlan = (ctx) => readJson(ctx.ap.plan, null);
+const readPlan = (ctx) => tryReadJson(ctx.ap.plan, null);
 // Member names that reach around a check: the function constructor, a call with another receiver, a raw request.
 const DANGEROUS_MEMBERS = new Set(["constructor", "prototype", "__proto__", "call", "apply", "bind", "fetch", "newContext", "request", "__defineGetter__", "__lookupGetter__", "__defineSetter__", "__lookupSetter__"]);
 const RAW = new Set(["request", "APIRequestContext", "newContext", "playwright", "playwrightRequest", "fetch", "axios", "http", "https", "http2", "net", "tls", "XMLHttpRequest", "WebSocket", "EventSource", "child_process"]);
@@ -2493,8 +2482,8 @@ export function apiCodeFindings(ctx, { scope = "tests" } = {}) {
   const out = [];
   const { module } = ctx;
   const rebuild = `node scripts/api-code.mjs build ${ctx.product} ${ctx.module}`;
-  const catalogue = readJson(ctx.pp.catalogue, []);
-  const scenarios = readJson(ctx.pp.plan, []);
+  const catalogue = tryReadJson(ctx.pp.catalogue, []);
+  const scenarios = tryReadJson(ctx.pp.plan, []);
   let files;
   try {
     files = generatedFiles(ctx, model, catalogue, scenarios);
@@ -2530,7 +2519,7 @@ export function apiCodeFindings(ctx, { scope = "tests" } = {}) {
   if (scope === "clients") return out;
 
   // the slot files: the skeleton intact around the slots, every needed slot filled, the slot rules
-  for (const [f, render, kind] of [[model.files.payloads, (r) => renderPayloads(ctx, model, r), "payload"], [model.files.glue, (r) => renderGlue(ctx, model, r, new Map((readJson(ctx.ap.testsOverlay, {})?.glue ?? []).map((g) => [g.scenario, one(g.reason)]))), "glue"]]) {
+  for (const [f, render, kind] of [[model.files.payloads, (r) => renderPayloads(ctx, model, r), "payload"], [model.files.glue, (r) => renderGlue(ctx, model, r, new Map((tryReadJson(ctx.ap.testsOverlay, {})?.glue ?? []).map((g) => [g.scenario, one(g.reason)]))), "glue"]]) {
     const text = readText(pw(ctx, f));
     if (kind === "glue" && !model.glue.length && text === null) continue;
     if (text === null) {
@@ -2618,7 +2607,7 @@ function stampInputs(ctx, model, scope) {
 
 // Problems that are not rules on the code: the build missing or stale, the plan not verified. -> string[]
 export function buildProblems(ctx) {
-  const cov = readJson(ctx.ap.coverage, null);
+  const cov = tryReadJson(ctx.ap.coverage, null);
   const model = readPlan(ctx);
   const cmd = `node scripts/api-code.mjs build ${ctx.product} ${ctx.module}`;
   if (!cov || !model) return [`api-code/plan.json is missing: run ${cmd} first`];
@@ -2633,23 +2622,23 @@ export function buildProblems(ctx) {
 }
 
 export function stampCheck(ctx, scope) {
-  const cov = readJson(ctx.ap.coverage, null);
+  const cov = tryReadJson(ctx.ap.coverage, null);
   const model = readPlan(ctx);
   if (!cov || !model) return;
   const verified = { ...(cov.verified ?? {}) };
   verified.clients = stampVerified(stampInputs(ctx, model, "clients"));
   if (scope === "tests") verified.tests = stampVerified(stampInputs(ctx, model, "tests"));
-  writeJson(ctx.ap.coverage, { ...cov, verified });
+  writeJsonIfChanged(ctx.ap.coverage, { ...cov, verified });
 }
 export function clearStamp(ctx, scope) {
-  const cov = readJson(ctx.ap.coverage, null);
+  const cov = tryReadJson(ctx.ap.coverage, null);
   if (!cov?.verified?.[scope]) return;
-  writeJson(ctx.ap.coverage, { ...cov, verified: { ...cov.verified, [scope]: null, ...(scope === "clients" ? { tests: null } : {}) } });
+  writeJsonIfChanged(ctx.ap.coverage, { ...cov, verified: { ...cov.verified, [scope]: null, ...(scope === "clients" ? { tests: null } : {}) } });
 }
 
 // null when the scope passed `api-code.mjs check` on exactly what is on disk, else why not (the domain flow's verify).
 export function apiCodeUnverified(ctx, scope) {
-  const cov = readJson(ctx.ap.coverage, null);
+  const cov = tryReadJson(ctx.ap.coverage, null);
   const model = readPlan(ctx);
   const cmd = `api-code.mjs check ${ctx.product} ${ctx.module}${scope === "clients" ? " --clients" : ""}`;
   if (!cov || !model) return `api-code/coverage.json is missing: the writer must run api-code.mjs build, then ${cmd}`;

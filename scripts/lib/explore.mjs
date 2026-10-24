@@ -28,7 +28,7 @@
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { withFileLock, writeAtomic } from "./csv.mjs";
+import { readJson, withFileLock, writeAtomic, writeJson } from "./files.mjs";
 import { assignIds } from "./registry.mjs";
 import { createLedger } from "./coverage.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
@@ -77,11 +77,6 @@ const FP_ROLES = new Set([...CONTROL_ROLES, "heading", "dialog", "alertdialog", 
 const FP_NAMED = new Set([...CONTROL_ROLES, "heading", "dialog", "alertdialog", "tabpanel", "alert", "status", "form", "region"]);
 const MESSAGE_RE = /\b(required|invalid|must|cannot|can't|at least|at most|too (long|short)|not valid|error|no (\w+ )?(results|records|items|found)|nothing (found|to show))\b/i;
 
-const readJson = (f, fallback) => (existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : fallback);
-const writeJson = (f, data) => {
-  mkdirSync(path.dirname(f), { recursive: true });
-  writeAtomic(f, JSON.stringify(data, null, 2) + "\n");
-};
 const uniq = (xs) => [...new Set(xs)];
 const sortedUniq = (xs) => uniq(xs).sort();
 const idNum = (id) => Number(String(id).split("-").at(-1));

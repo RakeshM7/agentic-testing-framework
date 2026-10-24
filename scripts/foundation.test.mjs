@@ -68,7 +68,8 @@ test("render is deterministic: the same inputs give the same bytes, a re-render 
   const config = read(pw(a.root, "playwright.config.ts"));
   for (const p of ["setup-ui", "'ui'", "setup-api", "'api'", "grepInvert: fullRun ? undefined : /@mutates/", "fullyParallel: false", "retries: 2", "on-first-retry", "reporter: 'list'"]) assert.ok(config.includes(p), p);
   for (const n of ["BASE_URL=", "API_BASE_URL=", "STORAGE_STATE=", "ATF_MODE=", "ATF_PRODUCT=", "ATF_RUN_ID=", "ATF_REPO_ROOT="]) assert.match(read(pw(a.root, ".env.example")), new RegExp(`^${n}$`, "m"));
-  for (const x of ["recordCreated", "owns", "recordDeleted"]) assert.match(read(pw(a.root, "utils/shared/ledger.ts")), new RegExp(`export function ${x}\\(`));
+  for (const x of ["recordCreated", "owns", "recordDeleted", "ownsAny", "destructiveRefusal"]) assert.match(read(pw(a.root, "utils/shared/ledger.ts")), new RegExp(`export function ${x}\\(`));
+  assert.match(read(pw(a.root, "config/ui/settings.ts")), /productHosts: \["app\.acme\.test"\],/, "the target's host, rendered for the UI guard (D-073)");
   assert.match(read(pw(a.root, "utils/shared/data.ts")), /export function uniqueName\(prefix: string\)/);
   assert.match(read(pw(a.root, "fixtures/api/base.ts")), /Mutation blocked: readonly run/);
   for (const f of ["noAuth", "malformedAuth", "identity"]) assert.match(read(pw(a.root, "fixtures/api/base.ts")), new RegExp(`\\n  ${f}: async`));
@@ -245,6 +246,9 @@ test("check rules: the guard fixtures, grepInvert, hard-coded URLs and secrets, 
   };
   edit(pw(root, "fixtures/ui/base.ts"), "{ auto: true }", "{ auto: false }");
   await expectProblem("ui", /mutationGuard must be an auto fixture/);
+  await restore("ui");
+  edit(pw(root, "fixtures/ui/base.ts"), "const why = destructiveRefusal(method, request.url());", "const why = null;");
+  await expectProblem("ui", /refuse a destructive request on an entity this run did not create \(destructiveRefusal, D-074\)/);
   await restore("ui");
   edit(pw(root, "fixtures/ui/base.ts"), "['GET', 'HEAD', 'OPTIONS']", "['GET', 'HEAD', 'OPTIONS', 'POST']");
   await expectProblem("ui", /the guard allows POST in readonly/);
@@ -513,4 +517,13 @@ test("the gate: a freshly rendered foundation passes; drift between renders and 
   const f = listFindings(listed, { idRe: /TC-contacts-\d+/g, unapproved: new Set(["TC-contacts-9"]), what: "test case", root: pw(root, ""), dir: "tests/ui/contacts", setupFile: "fixtures/ui/auth.setup.ts" });
   assert.deepEqual(f.map((x) => [x.file, x.rule]), [["fixtures/ui/sneaky.setup.ts", "approval"]]);
   assert.equal(listFindings(listed.slice(0, 1), { idRe: /TC-contacts-\d+/g, unapproved: new Set(), what: "test case", root: pw(root, ""), dir: "tests/ui/contacts" }).length, 1, "without a rendered foundation nothing is exempt");
+});
+
+test("the UI guard's product hosts are the target's and every API host's, once each, subdomains included (D-073)", async () => {
+  const { root } = startRun({ apiUrls: ["https://api.acme.test/v2", "https://API.acme.test"] });
+  await renderFoundation(root, ["repo", "ui"]);
+  assert.match(read(pw(root, "config/ui/settings.ts")), /productHosts: \["app\.acme\.test","api\.acme\.test"\],/);
+  const base = read(pw(root, "fixtures/ui/base.ts"));
+  assert.match(base, /hosts\.some\(\(h\) => host === h \|\| host\.endsWith\(`\.\$\{h\}`\)\)/, "a subdomain of a product host is the product's");
+  assert.match(base, /if \(process\.env\.ATF_MODE !== 'full-run'\) return route\.abort\('blockedbyclient'\);/);
 });

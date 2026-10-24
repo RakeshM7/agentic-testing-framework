@@ -6,6 +6,10 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+// The message the generated UI guard fails a test with when it refused a destructive request (utils/shared/ledger.ts
+// destructiveRefusal, D-074): results.mjs prefers that error and triage classifies it.
+export const LEDGER_GUARD_RE = /Delete blocked by the ledger guard \(D-005\)/;
+
 const REQUIRED = ["runId", "event", "type", "ref", "module", "stage", "agent"];
 
 export function append(ledgerFile, entry) {
@@ -43,3 +47,10 @@ export function live(ledgerFile, runId) {
 }
 
 export const owns = (ledgerFile, runId, type, ref) => live(ledgerFile, runId).some((e) => e.type === type && e.ref === ref);
+
+// Whether any of `refs` is a live entity this run created, of `type` when given (any type otherwise): the run-time guard
+// of a destructive request knows the ids in its URL, not their entity type (D-074).
+export const ownsAny = (ledgerFile, runId, refs, type) => {
+  const want = new Set(refs);
+  return live(ledgerFile, runId).some((e) => want.has(e.ref) && (type === undefined || e.type === type));
+};

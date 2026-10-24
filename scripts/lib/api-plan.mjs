@@ -26,10 +26,10 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { writeAtomic } from "./csv.mjs";
+import { readJson, writeAtomic, writeJson } from "./files.mjs";
 import { citationProblem } from "./citations.mjs";
 import { append, csvPath, isAnswered, readRows } from "./clarifications.mjs";
-import { apiPaths, erase, readJson, writeJson } from "./endpoints.mjs";
+import { apiPaths, erase } from "./endpoints.mjs";
 import { assignIds } from "./registry.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 

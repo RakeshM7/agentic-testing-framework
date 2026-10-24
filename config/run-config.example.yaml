@@ -146,7 +146,8 @@ k6:
           "GET /api/v1/contacts": { p95_ms: 400, p99_ms: 900, rps: 5 }   # endpoint key or EP id
 
 concurrency:
-  modules: 1                    # modules explored/processed in parallel (1 = sequential, one browser)
+  modules: 1                    # modules processed at a time; only 1 is accepted for now (D-072): modules share one
+                                # browser server and product-level files, so parallel modules are not safe yet
   clarification_rows: 1         # ignored: clarification rows run one at a time, each in a fresh browser session (D-047)
 
 feedback_loop:

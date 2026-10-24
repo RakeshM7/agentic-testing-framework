@@ -4,9 +4,9 @@
 // `snapshot` before it spawns the fixer (sha256 of the domain's owned code files, fix-snapshot.json); `check` compares
 // the files now with that snapshot: a `fixed` entry must list files that really changed this round, and a changed file
 // that scripts own (a managed file, a generated plan) is a finding whoever wrote it. Never runs anything against the product.
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { writeAtomic } from "./csv.mjs";
+import { readJson, writeAtomic } from "./files.mjs";
 import { unresolvedFindings } from "./domain-flows.mjs";
 import { apiCodePaths } from "./api-code.mjs";
 import { isManaged } from "./permissions.mjs";
@@ -18,7 +18,6 @@ export const FIX_SOURCES = ["review", "triage"];
 export const NOT_FIXED_REASONS = ["disagree-with-cited-reason", "needs-product-change", "needs-human", "out-of-scope"];
 const TRIAGE_DOMAIN = { "playwright-ui": "ui", "playwright-api": "api", k6: "k6" };
 
-const readJson = (f, fallback) => (existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : fallback);
 const posix = (p) => p.replaceAll("\\", "/");
 const dimFindings = (v) => (v === "ok" || v == null ? [] : Array.isArray(v) ? v : [v]);
 

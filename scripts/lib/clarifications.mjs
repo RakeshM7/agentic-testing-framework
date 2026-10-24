@@ -16,7 +16,8 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { parseCsv, serializeCsv, withFileLock, writeAtomic } from "./csv.mjs";
+import { parseCsv, serializeCsv } from "./csv.mjs";
+import { withFileLock, writeAtomic } from "./files.mjs";
 
 export const HEADERS = ["ID", "Module", "Question", "Steps to execute", "Answer", "Answer status", "Clarification agent notes", "Run ID"];
 const KEYS = ["id", "module", "question", "steps", "answer", "answerStatus", "notes", "runId"];

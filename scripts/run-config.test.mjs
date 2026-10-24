@@ -282,3 +282,9 @@ test("set's arguments: lists, module=path pairs, an empty value clears; nothing 
   assert.match(parseSetArgs(["--testcases-file", "docs/c.feature"]).errors[0], /expected <module>=<path>/);
   assert.match(parseSetArgs([]).errors[0], /^nothing to set/);
 });
+
+test("concurrency.modules is capped at 1 until parallel modules are safe (D-072)", () => {
+  assert.deepEqual(validateRunConfig({ ...base, concurrency: { modules: 1 } }).errors, []);
+  assert.match(validateRunConfig({ ...base, concurrency: { modules: 2 } }).errors.join("\n"), /concurrency\.modules: at most 1 for now \(D-072\)/);
+  assert.match(validateRunConfig({ ...base, concurrency: { modules: 0 } }).errors.join("\n"), /positive integer/);
+});

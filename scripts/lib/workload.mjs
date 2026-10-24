@@ -56,7 +56,7 @@ import path from "node:path";
 import { citationProblem } from "./citations.mjs";
 import { csvPath, readRows } from "./clarifications.mjs";
 import { applyBudget, createLedger } from "./coverage.mjs";
-import { readJson, writeJson } from "./endpoints.mjs";
+import { readJson, writeJson } from "./files.mjs";
 import { planPaths } from "./api-plan.mjs";
 import { assignIds } from "./registry.mjs";
 import { testcasePaths } from "./testcases.mjs";

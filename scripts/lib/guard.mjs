@@ -8,7 +8,8 @@
 //   - ownership:    that run's state/ledger.jsonl, entries of the CURRENT run only
 //   - caller:       the call's `agent` (set by the adapter only from a trusted source) and `host`
 // The env var AUTHORIZATIONS_MODE=readonly can only downgrade. No active run => readonly, no per-agent rules.
-// One rule holds for every call, in or out of a run, whoever calls: test case approval is human-only (humanOnly()).
+// Two rules hold for every call, in or out of a run, whoever calls: test case approval is human-only (humanOnly()), and
+// so is the ledger sweep that deletes what ended runs left in the target (humanOnlySweep(), D-075).
 // During a run, no caller (named or not, in any mode) writes a managed foundation file directly (managedPath(), D-054),
 // nor a file scripts/api-code.mjs generates (the API clients, types, schemas, registration and specs, D-056).
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
@@ -185,6 +186,16 @@ function decodedForms(cmd) {
   return out;
 }
 const decodedVerbs = (s) => s.match(DECODED_VERB)?.length ?? 0;
+// The ledger sweep (D-075) deletes in the target outside any run, so no tool call may start it: a line that names the
+// ledger script (or a make target) together with the sweep verb, read with quotes and word splitters dropped (stricter
+// only). The script itself also refuses without an interactive terminal and the typed product slug.
+const SWEEP_REASON = "the ledger sweep is human-only: a human runs `node scripts/ledger.mjs sweep <product>` (or `make sweep PRODUCT=<product>`) in their own terminal, between runs";
+const SWEEP_MAKE = new RegExp(`${makeRun("")}[^;&|\\n]*\\ssweep\\b`, "i");
+function humanOnlySweep(call) {
+  if (call.kind !== "shell") return false;
+  const joined = String(call.command ?? "").replace(JOIN_CONCAT, "");
+  return [joined, joined.replace(WORD_SPLITTERS, "")].some((cmd) => (/\bsweep\b/i.test(cmd) && /ledger/i.test(cmd)) || SWEEP_MAKE.test(cmd));
+}
 function humanOnly(call) {
   if (call.kind === "shell") {
     const joined = String(call.command ?? "").replace(JOIN_CONCAT, "");
@@ -343,6 +354,7 @@ export function checkTool(call, root, env = process.env) {
   if (canary)
     return { allowed: false, rule: "canary", reason: `guard is active on ${labelOf(call.host)} (caller: ${call.agent ?? "unidentified"}); this block is expected`, canary: { product: canary[1] } };
   if (humanOnly(call)) return deny("human-only", HUMAN_ONLY_REASON);
+  if (humanOnlySweep(call)) return deny("human-only", SWEEP_REASON);
   const runs = findActiveRuns(root, env);
   if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHosts: [] }, null) : ALLOW;
   // Managed foundation files (D-054) are rendered by scripts/foundation.mjs through node, never by a hooked write: no

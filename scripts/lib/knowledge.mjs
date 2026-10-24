@@ -34,7 +34,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { createLedger } from "./coverage.mjs";
-import { withFileLock, writeAtomic } from "./csv.mjs";
+import { readJson, withFileLock, writeAtomic, writeJson } from "./files.mjs";
 import { firstPartyHosts } from "./probe.mjs";
 import { assignIds } from "./registry.mjs";
 import { stampVerified, unverifiedReason } from "./verified.mjs";
@@ -105,8 +105,6 @@ function passFiles(kp, module) {
   return { pass: module, coverage: m.coverage, openPoints: m.openPoints, withOpenPoints: [m.overview, m.notes] };
 }
 
-const readJson = (f, fallback) => (existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : fallback);
-const writeJson = (f, data) => writeAtomic(f, JSON.stringify(data, null, 2) + "\n");
 const sha1 = (s) => createHash("sha1").update(s).digest("hex");
 const sha256Text = (s) => createHash("sha256").update(s).digest("hex");
 const nonEmpty = (f) => existsSync(f) && statSync(f).size > 0;

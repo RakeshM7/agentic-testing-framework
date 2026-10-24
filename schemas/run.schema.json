@@ -42,6 +42,7 @@
           "reviewFailed": { "type": "boolean", "description": "the domain's review used up its rounds with findings open: final, dependants are blocked (G10)" },
           "findings": { "type": "array", "items": { "type": "object" }, "description": "the open blocker/major findings of a failed review" },
           "doneRefusals": { "type": "integer", "minimum": 0 },
+          "interrupted": { "type": "boolean", "description": "init --resume found the stage still running: the session that ran it ended, so the attempt counts as failed and next offers it again while attempts remain (D-071)" },
           "reused": { "type": "boolean", "description": "done by run.mjs next: the knowledge was reused" },
           "carriedFrom": { "type": "string", "description": "adopted from this earlier run, which ended awaiting-approval" },
           "reopened": { "type": "string", "description": "why run.mjs steps --reopen sent this completed testcases stage back to pending (new case types, or import mode turning into generate); the human approvals of unchanged cases stand" }

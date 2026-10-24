@@ -25,11 +25,11 @@
 // expected result), so `check` re-renders the skeleton around the file's own region bodies and any other difference is
 // an edit of generated code. The step bodies close over the test's fixtures, so they need no plumbing.
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { createLedger } from "./coverage.mjs";
 import { citationProblem } from "./citations.mjs";
-import { writeAtomic } from "./csv.mjs";
+import { tryReadJson, writeIfChanged, writeJsonIfChanged } from "./files.mjs";
 import { explorePaths, extractControls, mutatesControl, parseAction, parseSnapshot } from "./explore.mjs";
 import { finding, walk } from "./gate/common.mjs";
 import { indexProblem, writeIndex } from "./foundation.mjs";
@@ -67,20 +67,6 @@ const LOGOUT = /\b(log ?out|sign ?out|log ?off)\b|logout|signout/i;
 const REASON_RE = /locator:\s*(css|xpath|evaluate)\s+because\s+(\S.{2,}?)\s*\[(observation:[^\]\s]+)\]/i;
 const ST_RE = /ST-[a-z0-9]+(?:-[a-z0-9]+)*-\d+/g;
 
-const readJson = (f, fallback = null) => {
-  try {
-    return JSON.parse(readFileSync(f, "utf8"));
-  } catch {
-    return fallback;
-  }
-};
-const writeJson = (f, data) => writeIfChanged(f, JSON.stringify(data, null, 2) + "\n");
-function writeIfChanged(f, text) {
-  if (existsSync(f) && readFileSync(f, "utf8") === text) return false;
-  mkdirSync(path.dirname(f), { recursive: true });
-  writeAtomic(f, text);
-  return true;
-}
 const readText = (f) => (existsSync(f) ? readFileSync(f, "utf8").replace(/\r\n?/g, "\n") : null);
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 const uniq = (xs) => [...new Set(xs)];
@@ -573,7 +559,7 @@ function smokeRoute(ctx, state, { viaReach, model }) {
   const url = pathOf(reach.url, ctx.targetUrl);
   if (!url) return skip(`the recorded path to ${state.id} starts off the target's host`);
   const statesById = new Map((model?.states ?? []).map((s) => [s.id, s]));
-  const inventory = readJson(ctx.xp.inventory, []);
+  const inventory = tryReadJson(ctx.xp.inventory, []);
   const writes = (Array.isArray(inventory) ? inventory : []).filter((e) => String(e.method ?? "").toUpperCase() !== "GET");
   const steps = reach.steps ?? [];
   const clicks = [];
@@ -605,8 +591,8 @@ function smokeRoute(ctx, state, { viaReach, model }) {
 // The plan and the ledger from the approved cases and the exploration. -> {plan, ledger, warnings, approvals}
 export function derivePlan(ctx) {
   const { module } = ctx;
-  const tc = readJson(ctx.tp.coverage, null);
-  const model = readJson(ctx.xp.model, null);
+  const tc = tryReadJson(ctx.tp.coverage, null);
+  const model = tryReadJson(ctx.xp.model, null);
   const cases = (tc?.cases ?? []).slice().sort((a, b) => byNum(a.id, b.id));
   const itemsById = new Map((tc?.items ?? []).map((i) => [i.id, i]));
   const status = approvalStatus(cases, readApprovals(ctx.tp, module));
@@ -734,7 +720,7 @@ export function derivePlan(ctx) {
 // -> reason | false. A module whose cases are not built, or with none approved, is not this: run.mjs keeps its stage
 // awaiting approval.
 export function noUiCases(ctx) {
-  const tc = readJson(ctx.tp.coverage, null);
+  const tc = tryReadJson(ctx.tp.coverage, null);
   if (!tc) return false;
   const st = approvalStatus(tc.cases ?? [], readApprovals(ctx.tp, ctx.module));
   const approved = (tc.cases ?? []).filter((c) => st.get(c.id)?.status === "approved");
@@ -892,7 +878,7 @@ function smokeProps(parsed, facts) {
 
 export function renderSmoke(ctx, plan) {
   const { product, module } = ctx;
-  const statesById = new Map((readJson(ctx.xp.model, null)?.states ?? []).map((s) => [s.id, s]));
+  const statesById = new Map((tryReadJson(ctx.xp.model, null)?.states ?? []).map((s) => [s.id, s]));
   const L = [
     `// ${HEADER} Rebuilt from the page objects by \`node scripts/ui-code.mjs build ${product} ${module}\`.`,
     "// The locator smoke (docs/playwright-conventions.md): readonly-safe in every mode. Each test opens a page template at a",
@@ -979,7 +965,7 @@ export async function build(ctx, validate) {
   if (!foundation) problems.push(`the UI foundation is not rendered (playwright-tests/${ctx.product}/fixtures/ui/base.ts is missing): it comes first (foundation.mjs render --side ui)`);
 
   // the spec: the skeleton around the agent's region bodies; a body whose key is gone is parked, and comes back with it
-  const parked = readJson(up.parked, { module, regions: {} });
+  const parked = tryReadJson(up.parked, { module, regions: {} });
   const restored = [];
   const newlyParked = [];
   const changedSteps = [];
@@ -1031,13 +1017,13 @@ export async function build(ctx, validate) {
   }
   const planBad = await validate("ui-code-plan", plan);
   if (planBad.length) problems.push(...planBad.map((e) => `plan.json (internal): ${e}`));
-  writeJson(up.plan, plan);
+  writeJsonIfChanged(up.plan, plan);
   if (newlyParked.length || restored.length || existsSync(up.parked)) {
     const parkedBad = await validate("ui-code-parked", parked);
     if (parkedBad.length) problems.push(...parkedBad.map((e) => `parked.json (internal): ${e}`));
-    writeJson(up.parked, parked);
+    writeJsonIfChanged(up.parked, parked);
   }
-  const old = readJson(up.coverage, {});
+  const old = tryReadJson(up.coverage, {});
   const coverage = {
     module, runId: ctx.runId, maxCases: ctx.maxCases,
     summary: ledger.summary(), items: ledger.items, problems,
@@ -1046,7 +1032,7 @@ export async function build(ctx, validate) {
   };
   const covBad = await validate("ui-code-coverage", coverage);
   if (covBad.length) problems.push(...covBad.map((e) => `coverage.json (internal): ${e}`));
-  writeJson(up.coverage, coverage);
+  writeJsonIfChanged(up.coverage, coverage);
   out.parkedCases = recordParked(ctx);
   return {
     code: problems.length ? 1 : 0,
@@ -1059,7 +1045,7 @@ export async function build(ctx, validate) {
 
 // ---------- the rules (shared by `check` and the gate, scripts/lib/gate/playwright.mjs) ----------
 
-const readPlan = (ctx) => readJson(ctx.up.plan, null);
+const readPlan = (ctx) => tryReadJson(ctx.up.plan, null);
 const strip = (lines) => lines.join("\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").trim();
 const declaresTest = (code) => {
   const sig = scanTs(code).filter((t) => t.type !== "comment");
@@ -1085,7 +1071,7 @@ export function uiCodeFindings(ctx, { scope = "tests" } = {}) {
   if (!plan) return [];
   const out = [];
   const { module } = ctx;
-  const statesById = new Map((readJson(ctx.xp.model, null)?.states ?? []).map((s) => [s.id, s]));
+  const statesById = new Map((tryReadJson(ctx.xp.model, null)?.states ?? []).map((s) => [s.id, s]));
   const rebuild = `node scripts/ui-code.mjs build ${ctx.product} ${module}`;
   const code = moduleCode(ctx);
   const usage = []; // the builder values that reach a data-driven locator
@@ -1572,7 +1558,7 @@ export function parkedOf(ctx, plan = readPlan(ctx)) {
 // Records the parked cases in coverage.json: `parked: [{id, reason}]`, and each one's ledger item excluded with reason
 // `parked` (approved, but not covered); a case no longer parked is mapped to its test again. -> the parked list
 export function recordParked(ctx) {
-  const cov = readJson(ctx.up.coverage, null);
+  const cov = tryReadJson(ctx.up.coverage, null);
   const plan = readPlan(ctx);
   if (!cov || !plan) return [];
   const parked = parkedOf(ctx, plan);
@@ -1589,13 +1575,13 @@ export function recordParked(ctx) {
     }
   }
   cov.summary = { total: cov.items.length, ...Object.fromEntries(["mapped", "excluded", "pending", "deferred"].map((st) => [st, cov.items.filter((i) => i.status === st).length])) };
-  writeJson(ctx.up.coverage, cov);
+  writeJsonIfChanged(ctx.up.coverage, cov);
   return cov.parked;
 }
 
 // Problems that are not rules on the code: the build missing or stale. -> string[]
 export function buildProblems(ctx) {
-  const cov = readJson(ctx.up.coverage, null);
+  const cov = tryReadJson(ctx.up.coverage, null);
   const plan = readPlan(ctx);
   const cmd = `node scripts/ui-code.mjs build ${ctx.product} ${ctx.module}`;
   if (!cov || !plan) return [`ui-code/plan.json is missing: run ${cmd} first`];
@@ -1607,23 +1593,23 @@ export function buildProblems(ctx) {
 
 // Writes the scope's verified stamp (and, for tests, the pages stamp too: a full check covers both).
 export function stampCheck(ctx, scope) {
-  const cov = readJson(ctx.up.coverage, null);
+  const cov = tryReadJson(ctx.up.coverage, null);
   const plan = readPlan(ctx);
   if (!cov || !plan) return;
   const verified = { ...(cov.verified ?? {}) };
   verified.pages = stampVerified(stampInputs(ctx, plan, "pages"));
   if (scope === "tests") verified.tests = stampVerified(stampInputs(ctx, plan, "tests"));
-  writeJson(ctx.up.coverage, { ...cov, verified });
+  writeJsonIfChanged(ctx.up.coverage, { ...cov, verified });
 }
 export function clearStamp(ctx, scope) {
-  const cov = readJson(ctx.up.coverage, null);
+  const cov = tryReadJson(ctx.up.coverage, null);
   if (!cov?.verified?.[scope]) return;
-  writeJson(ctx.up.coverage, { ...cov, verified: { ...cov.verified, [scope]: null, ...(scope === "pages" ? { tests: null } : {}) } });
+  writeJsonIfChanged(ctx.up.coverage, { ...cov, verified: { ...cov.verified, [scope]: null, ...(scope === "pages" ? { tests: null } : {}) } });
 }
 
 // null when the scope passed `ui-code.mjs check` on exactly what is on disk, else why not (the domain flow's verify).
 export function uiCodeUnverified(ctx, scope) {
-  const cov = readJson(ctx.up.coverage, null);
+  const cov = tryReadJson(ctx.up.coverage, null);
   const plan = readPlan(ctx);
   const cmd = `ui-code.mjs check ${ctx.product} ${ctx.module}${scope === "pages" ? " --pages" : ""}`;
   if (!cov || !plan) return `ui-code/coverage.json is missing: the writer must run ui-code.mjs build, then ${cmd}`;

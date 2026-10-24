@@ -21,10 +21,11 @@
 // failedStages, blockedStages, awaitingApprovalStages   what the run did not finish, with open review findings
 // steps, notChosenStages  each step chosen or not for this run, and the stages it did not choose (never failed or blocked;
 //                      `satisfiedBy` when an earlier run's outputs or an imported file stood in for one)
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { STEPS, loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { tryReadJson, writeJson } from "./lib/files.mjs";
 import { csvPath, readRows, isAnswered, isAuthoritative } from "./lib/clarifications.mjs";
 import { live as liveEntities } from "./lib/ledger.mjs";
 import { FRAMEWORKS } from "./results.mjs";
@@ -52,13 +53,6 @@ function walk(dir, pred) {
   });
 }
 
-const readJson = (f) => {
-  try {
-    return existsSync(f) ? loadJson(f) : null;
-  } catch {
-    return null;
-  }
-};
 
 export function testcaseTotal(summaryFile) {
   if (!existsSync(summaryFile)) return null;
@@ -69,7 +63,7 @@ export function testcaseTotal(summaryFile) {
 // The k6 scripts of a module: the scenarios of its workload.json name them (<module>-<scenario name>.js), so a module
 // `deals` never counts the scripts of a module `deals-pipeline`. -> {planned, scripts, names} or null (no workload.json)
 export function k6ScriptsOf(productDir, k6Project, module) {
-  const wl = readJson(workloadPaths(productDir, module).workload);
+  const wl = tryReadJson(workloadPaths(productDir, module).workload);
   const scenarios = wl && !Array.isArray(wl) && Array.isArray(wl.scenarios) ? wl.scenarios : null;
   if (!scenarios) return null;
   const names = [...new Set(scenarios.map((s) => s.name))].map((n) => `${module}-${n}`);
@@ -83,9 +77,9 @@ export function k6ScriptsOf(productDir, k6Project, module) {
 export function triageSummary(productDir, module, runId, fw) {
   const tp = triagePaths(productDir, module, runId, TRIAGE_DOMAIN[fw]);
   if (!existsSync(tp.triage)) return null;
-  const t = readJson(tp.triage);
+  const t = tryReadJson(tp.triage);
   if (!t) return null;
-  const drafts = existsSync(tp.overlay) ? (readJson(tp.overlay)?.bugs ?? []) : [];
+  const drafts = existsSync(tp.overlay) ? (tryReadJson(tp.overlay)?.bugs ?? []) : [];
   const bugClusters = (t.clusters ?? [])
     .filter((c) => t.rows.some((r) => r.cluster === c.id && r.class === "product-bug"))
     .map((c) => {
@@ -145,7 +139,7 @@ function ledger(name, module, file, read, miss) {
     miss("coverage", module, `${name} ledger: ${slash(path.basename(file))} does not exist`);
     return { ledger: name, module, available: false, reason: `${name} ledger not written`, file: null };
   }
-  const data = readJson(file);
+  const data = tryReadJson(file);
   if (!data) {
     miss("coverage", module, `${name} ledger of ${where} is not valid JSON`);
     return { ledger: name, module, available: false, reason: "not valid JSON", file: null };
@@ -181,7 +175,7 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
   const perModule = run.modules.map((m) => {
     const mdir = p.module(m);
     // explored: a valid, non-empty sitemap (an empty one means nothing was found)
-    const sitemap = readJson(path.join(mdir, "explore", "sitemap.json"));
+    const sitemap = tryReadJson(path.join(mdir, "explore", "sitemap.json"));
     const explored = Array.isArray(sitemap) && sitemap.length > 0;
     if (!explored) miss("modules", m, Array.isArray(sitemap) ? "explore/sitemap.json is empty: no page was explored" : "explore/sitemap.json is missing or not a list");
 
@@ -218,7 +212,7 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
     const results = Object.fromEntries(
       FRAMEWORKS.map((fw) => {
         const f = path.join(p.results(run.runId), m, fw, "results.json");
-        const r = readJson(f);
+        const r = tryReadJson(f);
         if (!r) miss("results", m, `${fw}: results.json is missing`);
         return [fw, r ? (({ status, reason, totals, durationMs }) => ({ status, reason, totals, durationMs }))(r) : null];
       })
@@ -234,14 +228,14 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
     for (const name of k6?.names ?? [])
       for (const retry of [false, true]) {
         const f = path.join(k6Dir, `${name}${retry ? ".retry" : ""}.untracked.json`);
-        const list = readJson(f);
+        const list = tryReadJson(f);
         if (Array.isArray(list)) assumptions.k6Untracked.push({ module: m, script: name, retry, file: rel(f), creates: list.reduce((n, x) => n + (Number(x.count) || 0), 0), types: [...new Set(list.map((x) => x.type))].sort() });
       }
 
     // coverage ledgers of the module
     const exp = path.join(mdir, "explore", "coverage.json");
     if (existsSync(exp)) {
-      const d = readJson(exp);
+      const d = tryReadJson(exp);
       if (d) {
         for (const [name, key] of [["explore-frontier", "frontier"], ["explore-open-points", "kq"], ["explore-inputs", "inputs"]]) {
           const entries = fromItems(d[key]?.items);
@@ -257,9 +251,9 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
     ledgers.push(ledger("workload", m, workloadPaths(p.productDir, m).coverage, READERS.workload, miss));
 
     // @assumption cases and weak rule facts
-    for (const c of readJson(tpaths.coverage)?.cases ?? []) if (c.assumption) assumptions.assumptionCases.push({ module: m, id: c.id, assumptions: arrayItems(c.assumptions).map(String) });
+    for (const c of tryReadJson(tpaths.coverage)?.cases ?? []) if (c.assumption) assumptions.assumptionCases.push({ module: m, id: c.id, assumptions: arrayItems(c.assumptions).map(String) });
     const rf = path.join(p.knowledge, "modules", m, "rule-facts.json");
-    const facts = readJson(rf);
+    const facts = tryReadJson(rf);
     if (!facts) miss("assumptions", m, "knowledge rule-facts.json is missing: agent-captured and stale facts are unknown");
     for (const f of facts?.facts ?? []) if (f.evidence && f.evidence !== "script-fetched") assumptions.ruleFacts.push({ module: m, file: f.file, line: f.line, evidence: f.evidence, text: String(f.text).slice(0, 300) });
 
@@ -371,8 +365,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (!product) throw new Error("usage: report-data.mjs <product>");
     const data = await collect(product);
     const file = path.join(paths(product).results(data.runId), "report", "report.json");
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, JSON.stringify(data, null, 2) + "\n", "utf8");
+    writeJson(file, data);
     console.log(JSON.stringify({ written: path.relative(repoRoot, file).replaceAll("\\", "/"), totals: data.totals }, null, 2));
   } catch (e) {
     console.log(JSON.stringify({ errors: [e.message] }));

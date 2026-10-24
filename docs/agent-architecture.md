@@ -8,7 +8,7 @@ Status: **implemented** — all 34 agents, written once in `agents/` and generat
 3. **No agent talks to a sibling.** Every hand-off goes through the parent orchestrator, using files as the medium (e.g. the triager's `triage.mjs` writes `triage.json`; the orchestrator then starts the fixer with that path).
 4. Permissions per agent live in `config/permissions.yaml` and are enforced in code (generated tool lists and subagent allow-lists per platform; the guard keyed on the calling agent, which each host adapter learns from a trusted source; write allow-list), not only in prompts.
 5. Single writer per file/cell wherever possible; agents never overwrite human-entered answers.
-6. Concurrency is **sequential by default**, configurable in the run-config.
+6. Concurrency is **sequential**: modules run one at a time (`concurrency.modules` is capped at 1, D-072) and clarification rows always do (D-047).
 
 ## Roster (34 agents)
 

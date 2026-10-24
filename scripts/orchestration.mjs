@@ -24,7 +24,7 @@ import { parseArgs } from "node:util";
 import { gate } from "./gate.mjs";
 import { csvPath, isAnswered, isAuthoritative, readRecord, readRows, record, renderSummary } from "./lib/clarifications.mjs";
 import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
-import { withFileLock, writeAtomic } from "./lib/csv.mjs";
+import { withFileLock, writeAtomic } from "./lib/files.mjs";
 import { FLOWS, healableRows, runTriage, unresolvedFindings } from "./lib/domain-flows.mjs";
 import { fixCheck, fixSnapshot } from "./lib/fix.mjs";
 import { fixContext } from "./fix.mjs";

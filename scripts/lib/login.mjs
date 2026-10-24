@@ -8,9 +8,10 @@
 //
 // The script navigates once, to the target URL, and never types or clicks: everything on the page is the human's. It
 // snapshots the session every few seconds, so a window closed early still leaves the last session it saw.
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { loginChannel, runChecks } from "./doctor.mjs";
+import { writeAtomic, writeJson } from "./files.mjs";
 
 export const LOGIN_SECONDS = 60;
 const SNAPSHOT_MS = 2000;
@@ -88,8 +89,7 @@ export async function login({ cfg, configFile, text, validate, root, seconds = L
   if (!state) return { errors: ["the browser closed before a session could be saved: run the login again and leave the window open until it closes by itself"] };
 
   const stateFile = path.resolve(root, p.state);
-  mkdirSync(path.dirname(stateFile), { recursive: true });
-  writeFileSync(stateFile, JSON.stringify(state, null, 2) + "\n");
+  writeJson(stateFile, state);
   log(`Saved ${p.state} (git-ignored; it holds live cookies, never share it).`);
 
   const keys = setLoginKeys(text, p.state);
@@ -99,7 +99,7 @@ export async function login({ cfg, configFile, text, validate, root, seconds = L
   else if (keys.changed) {
     const errors = validate(keys.text);
     if (errors.length) next.push(`set authorizations.authenticated_crawl: true and session_state_file: ${p.state} in ${slash(configFile)} (not written: ${errors.join("; ")})`);
-    else writeFileSync(configFile, keys.text), (configUpdated = true);
+    else writeAtomic(configFile, keys.text), (configUpdated = true);
   }
   if (configUpdated) next.push("a run already active keeps the config it started with: the login applies to it only if it already used this session file");
 

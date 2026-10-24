@@ -11,10 +11,11 @@
 //                                 report-check.json (the `report` stage requires the stamp); a failure removes it.
 //   report.mjs paths <product>    the files of the report
 // Exits: 0 ok, 1 problems, 2 usage.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { writeAtomic, writeJson } from "./lib/files.mjs";
 import { narrativeProblems, renderDeck, reportPaths, stampReport } from "./lib/report.mjs";
 
 const USAGE = "usage: report.mjs render <product> | check <product> | paths <product>";
@@ -49,8 +50,7 @@ export async function main(argv, { root = repoRoot } = {}) {
 
   if (cmd === "render") {
     if (problems.length) return { code: 1, out: { rendered: false, problems } };
-    mkdirSync(rp.dir, { recursive: true });
-    writeFileSync(rp.html, renderDeck(report.data, narrative.data), "utf8");
+    writeAtomic(rp.html, renderDeck(report.data, narrative.data));
     return { code: 0, out: { rendered: true, file: files.html, narrative: !!narrative.data, next: narrative.data ? "run report.mjs check" : "write narrative.json, render again, then check" } };
   }
   // check
@@ -62,7 +62,7 @@ export async function main(argv, { root = repoRoot } = {}) {
     rmSync(rp.state, { force: true });
     return { code: 1, out: { valid: false, problems } };
   }
-  writeFileSync(rp.state, JSON.stringify({ product, runId: run.runId, verified: stampReport(rp) }, null, 2) + "\n", "utf8");
+  writeJson(rp.state, { product, runId: run.runId, verified: stampReport(rp) });
   return { code: 0, out: { valid: true, problems: [], file: files.html, stamp: files.state } };
 }
 

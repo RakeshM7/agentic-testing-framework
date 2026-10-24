@@ -894,17 +894,32 @@ test("feedback-implementor-agent writes the G0-G11 framework files and never a s
 
 test("every framework script is writable by feedback-implementor-agent or deliberately carved out, so a new file forces a decision (D-062)", () => {
   const carved = new Set([
-    "scripts/feedback.mjs", "scripts/ledger.mjs", "scripts/feedback.test.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs",
-    ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "hook-log", "agent-scope", "feedback"].map((n) => `scripts/lib/${n}.mjs`),
+    "scripts/feedback.mjs", "scripts/ledger.mjs", "scripts/feedback.test.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs", "scripts/ledger.test.mjs",
+    ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "hook-log", "agent-scope", "feedback", "sweep"].map((n) => `scripts/lib/${n}.mjs`),
   ]);
   const files = [];
+  // node_modules is git-ignored and never the framework's own code, wherever an install put it
   const walk = (dir) => {
     for (const d of readdirSync(dir, { withFileTypes: true })) {
       const rel = `${dir}/${d.name}`;
-      if (d.isDirectory()) { if (!["hooks", "agents", "fixtures"].includes(d.name)) walk(rel); } else if (rel.endsWith(".mjs")) files.push(rel);
+      if (d.isDirectory()) { if (!["hooks", "agents", "fixtures", "node_modules"].includes(d.name)) walk(rel); } else if (rel.endsWith(".mjs")) files.push(rel);
     }
   };
   walk("scripts");
   const w = (rel) => allowed(FULL.root, call("feedback-implementor-agent", "Write", { file_path: path.join(FULL.root, rel) }));
   for (const rel of files) assert.equal(w(rel), !carved.has(rel), `${rel}: ${carved.has(rel) ? "carved out" : "writable"}`);
+});
+
+test("the ledger sweep is human-only: denied to every agent and every unidentified call, in or out of a run (D-075)", () => {
+  const agents = Object.keys(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents);
+  const cmds = ["node scripts/ledger.mjs sweep acme", "node scripts/ledger.mjs sweep acme --dry-run", "make sweep PRODUCT=acme", "cd x && node scripts/led''ger.mjs swe''ep acme"];
+  for (const { root } of [RO, FULL])
+    for (const agent of agents) for (const c of cmds) assert.equal(allowed(root, sh(agent, c)), false, `${agent}: ${c}`);
+  const unnamed = (host, command) => toolCall({ host, kind: "shell", tool: "bash", command });
+  for (const root of [FULL.root, RO.root, tempRoot()])
+    for (const host of ["copilot-cli", "vscode", "claude-code", "copilot-cloud"]) for (const c of cmds) assert.equal(allowed(root, unnamed(host, c)), false, `${host}: ${c}`);
+  assert.equal(allowed(tempRoot(), sh(undefined, cmds[0])), false, "a human's own session too: they run it in their own terminal");
+  // the rest of the ledger stays as it was, and prose about sweeping is not a sweep
+  assert.equal(allowed(FULL.root, sh("pw-ui-test-runner-triager", "node scripts/ledger.mjs list acme --live")), true);
+  assert.equal(allowed(tempRoot(), sh(undefined, "echo make sure the floor gets a sweep")), true);
 });

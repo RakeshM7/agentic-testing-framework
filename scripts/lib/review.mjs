@@ -9,7 +9,7 @@
 // stamp that is still fresh. Never runs anything against the product.
 import { existsSync, readFileSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
-import { writeAtomic } from "./csv.mjs";
+import { readJson, writeAtomic } from "./files.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 
 export const REVIEW_DOMAINS = ["playwright-ui", "playwright-api", "k6"];
@@ -17,7 +17,6 @@ export const DIMENSIONS = ["intent", "assertion", "flakiness", "data-safety"];
 export const SEVERITIES = ["blocker", "major", "minor", "info"];
 export const BLOCKING = ["blocker", "major"];
 
-const readJson = (f, fallback) => (existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : fallback);
 const one = (s) => String(s ?? "").replace(/\s*\r?\n\s*/g, " ").trim();
 const cell = (s) => one(s).replace(/\|/g, "\\|");
 const uniq = (a) => [...new Set(a)];

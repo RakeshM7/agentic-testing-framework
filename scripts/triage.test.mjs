@@ -130,6 +130,20 @@ test("rules: locator-drift from the smoke count 0 or a page-object locator timeo
   assert.ok(t.rows[0].fixHint);
 });
 
+test("rules: the UI ledger guard's refusal is a healable test-bug, never the product's (D-074); results prefer that error", async () => {
+  const guard = "Error: Delete blocked by the ledger guard (D-005): DELETE /api/contacts/7 names no entity this run created. Record the product's own id as the ref with recordCreated, and delete only what owns() confirms.";
+  const s = setup({ mode: "full-run", items: [item(1, "failed", { error: guard }), item(2, "failed", { error: ASSERT_ERR })] });
+  await s.cli("build");
+  const t = s.triage();
+  const row = (id) => t.rows.find((r) => r.key === `ui:${id}`);
+  assert.deepEqual([row("TC-contacts-1").class, row("TC-contacts-1").rule, row("TC-contacts-1").healable], ["test-bug", "ledger-guard", true]);
+  assert.equal(row("TC-contacts-2").class, null, "any other failure stays open for the triager");
+  assert.match(row("TC-contacts-1").fixHint, /id the product uses as its ref/);
+  // the guard fails the test when it ends, after the step that broke because of it: the report's errors[] holds both
+  const r = fromPlaywright(pwReport([spec("TC-contacts-1 del @p1", [{ status: "unexpected", projectName: "ui", results: [run("failed", { error: err("Timeout 5000ms exceeded"), errors: [err("Timeout 5000ms exceeded"), err(guard.replace(/^Error: /, ""))] })] }])]), { module: "contacts", side: "ui" });
+  assert.match(r.items[0].error, /^Delete blocked by the ledger guard/);
+});
+
 test("rules: api class-only expectation inside the class is not a failure, outside it a candidate product-bug", async () => {
   const sc = (n, expect) => ({ id: `API-contacts-${n}`, endpoint: "EP-contacts-1", mutates: false, title: `s${n}`, expect });
   const it = (n, status) => ({ title: `API-contacts-${n} s`, scenarioId: `API-contacts-${n}`, status: "failed", attempts: 3, passedOnRetry: false, project: "api", error: `Error: status\n\nExpected: >= 200\nReceived: ${status}` });

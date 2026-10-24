@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
-import { writeAtomic } from "./lib/csv.mjs";
+import { writeAtomic } from "./lib/files.mjs";
 import { SEVERITIES, renderFindings } from "./lib/gate/common.mjs";
 import { gateK6 } from "./lib/gate/k6.mjs";
 import { gatePlaywright } from "./lib/gate/playwright.mjs";

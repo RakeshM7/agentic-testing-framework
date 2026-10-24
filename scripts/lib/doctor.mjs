@@ -16,12 +16,13 @@
 // blocks; a warning is reported and never blocks. `autofix` is an install that scripts/doctor.mjs --fix may run in a
 // human's terminal (never run by an agent): npm install, a Playwright browser download, or k6 through the OS's package
 // manager (K6_INSTALL).
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
 import { STAGES, paths } from "./contract.mjs";
+import { tryReadJson, writeJson } from "./files.mjs";
 
 export const GROUPS = ["base", "login", "browser", "session", "repo", "k6", "target"];
 export const STAGE_NEEDS = {
@@ -42,13 +43,6 @@ export const MIN_NODE = 20;
 
 const RECORD = "doctor.json";
 const slash = (p) => String(p ?? "").replaceAll("\\", "/").replace(/^\.\//, "");
-const readJson = (f) => {
-  try {
-    return JSON.parse(readFileSync(f, "utf8"));
-  } catch {
-    return null;
-  }
-};
 
 export function groupsFor(stages) {
   return GROUPS.filter((g) => stages.some((s) => STAGE_NEEDS[s]?.includes(g)));
@@ -67,9 +61,9 @@ export function browsersDir(pkgRoot, { env = process.env, platform = process.pla
 // The browser builds a Playwright install expects and which of them are missing. coreDir: a playwright-core folder.
 // -> null when there is no playwright-core there, else {version, missing: [{name, revision, dir}]}
 export function browserBuilds(coreDir, names, opts = {}) {
-  const spec = readJson(path.join(coreDir, "browsers.json"));
+  const spec = tryReadJson(path.join(coreDir, "browsers.json"));
   if (!spec) return null;
-  const version = readJson(path.join(coreDir, "package.json"))?.version ?? "unknown";
+  const version = tryReadJson(path.join(coreDir, "package.json"))?.version ?? "unknown";
   const dir = browsersDir(path.resolve(coreDir, "..", ".."), opts);
   const missing = [];
   for (const name of names) {
@@ -91,12 +85,12 @@ function base({ root, nodeVersion }) {
   out.push(major >= MIN_NODE
     ? { id: "node", ok: true, detail: `Node.js ${nodeVersion}` }
     : { id: "node", ok: false, level: "fail", detail: `Node.js ${nodeVersion} is older than ${MIN_NODE}`, fix: `install Node.js ${MIN_NODE} or later (https://nodejs.org)` });
-  const pkg = readJson(path.join(root, "package.json"));
+  const pkg = tryReadJson(path.join(root, "package.json"));
   if (!pkg) return out;
   const wanted = { ...pkg.dependencies, ...pkg.devDependencies };
   const problems = [];
   for (const [name, spec] of Object.entries(wanted)) {
-    const got = readJson(path.join(root, "node_modules", name, "package.json"));
+    const got = tryReadJson(path.join(root, "node_modules", name, "package.json"));
     if (!got) problems.push(`${name} is not installed`);
     else if (/^\d+\.\d+\.\d+$/.test(spec) && got.version !== spec) problems.push(`${name} is ${got.version}, package.json pins ${spec}`);
   }
@@ -147,7 +141,7 @@ export function npxCore(pkgName, version, { env = process.env, platform = proces
   if (!existsSync(npx)) return null;
   for (const h of readdirSync(npx)) {
     const nm = path.join(npx, h, "node_modules");
-    if (readJson(path.join(nm, ...pkgName.split("/"), "package.json"))?.version !== version) continue;
+    if (tryReadJson(path.join(nm, ...pkgName.split("/"), "package.json"))?.version !== version) continue;
     for (const core of [path.join(nm, ...pkgName.split("/"), "node_modules", "playwright-core"), path.join(nm, "playwright-core")])
       if (existsSync(path.join(core, "browsers.json"))) return core;
   }
@@ -219,7 +213,7 @@ function session({ root, cfg, now, product }) {
   const relogin = `make login PRODUCT=${product}`;
   if (auth.authenticated_crawl) {
     const file = path.resolve(root, auth.session_state_file ?? "");
-    const state = auth.session_state_file ? readJson(file) : null;
+    const state = auth.session_state_file ? tryReadJson(file) : null;
     if (!state) out.push({ id: "session", ok: false, level: "fail", detail: `the saved session ${slash(auth.session_state_file) || "(none set)"} is missing or unreadable`, fix: relogin });
     else {
       const host = hostOf(cfg.target?.url) ?? "";
@@ -330,8 +324,7 @@ export const failures = (checks, groups = GROUPS) => checks.filter((c) => !c.ok 
 
 export function recordDoctor(product, root, { groups, checks }) {
   const file = path.join(paths(product, root).state, RECORD);
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify({ at: new Date().toISOString(), groups, checks: checks.map(({ autofix, ...c }) => c) }, null, 2) + "\n");
+  writeJson(file, { at: new Date().toISOString(), groups, checks: checks.map(({ autofix, ...c }) => c) });
 }
 
 export function clearDoctor(product, root) {
@@ -340,7 +333,7 @@ export function clearDoctor(product, root) {
 
 // -> { ready, reason? } for starting `stage`
 export function doctorStatus(product, stage, root) {
-  const rec = readJson(path.join(paths(product, root).state, RECORD));
+  const rec = tryReadJson(path.join(paths(product, root).state, RECORD));
   const rerun = `node scripts/run.mjs doctor ${product}`;
   if (!rec) return { ready: false, reason: `the dependency check has not run in this session: run \`${rerun}\`` };
   const needs = STAGE_NEEDS[stage] ?? [];

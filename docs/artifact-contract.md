@@ -74,6 +74,8 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 ```
 
 - `init` refuses while another run holds the product's lock (`--resume` returns the active run; `end --abandon` releases it).
+- `--resume` turns every stage still `running` into a failed attempt with `interrupted: true` (D-071): the session that ran it has ended, so nothing else would ever mark it. `next` offers it again while it has attempts left, and the result lists it under `interrupted`.
+- Every read-modify-write of `run.json` (`stage`, `steps`, `--resume`, carry-forward) holds `state/run.json.lock`, and every state file is written atomically through `scripts/lib/files.mjs` (D-072). `concurrency.modules` is capped at 1 until parallel modules are safe.
 - `config/permissions.yaml` is validated and frozen into `state/permissions.resolved.json` at `init`; edits take effect on the next run.
 - `init` records `startedOnHost`.
 - Guard liveness: `init` and `--resume` clear `state/guard-check/`; the orchestrator then runs `run.mjs guard-check <product>`, which every working hook blocks — the hook entry records the blocking host/agent there; if the command runs instead, it records `absent.json`. `stage … start` refuses until a record fits the mode. Any hook's record counts, with one exception: a full-run on VS Code's local agent needs a record from an agent's own hook.
@@ -108,7 +110,7 @@ A stage is complete only if `run.json` marks it `done` **and** every declared ou
 
 `next` returns, per stage, the agent and the exact prompt (run id, mode, test case format, module), marks reusable knowledge done itself (`reused`), and, with nothing left to start, `end`: `completed`, `awaiting-approval` (with `sheets`) or `incomplete` (`failed`, `blocked`, `running`). A refused `done` returns `retry: {agent, prompt}` the first time and fails the stage the second (`doneRefusals`; a clarifications refusal waits for a human instead). A domain whose review used up its rounds is failed at `done` (`reviewFailed`, `findings`) and blocks its dependants at once.
 
-Each stage gets at most **two attempts** per run (`attempts` in `run.json`); a stage that failed twice is *exhausted*, everything depending on it is *blocked*, and `next` no longer offers either — so the report still becomes ready and states what did not run.
+Each stage gets at most **two attempts** per run (`attempts` in `run.json`; an `interrupted` attempt counts); a stage that failed twice is *exhausted*, everything depending on it is *blocked*, and `next` no longer offers either — so the report still becomes ready and states what did not run.
 
 **`awaiting-approval` (D-053, per type since D-066).** Once a module's test cases are complete, each automation stage is `awaiting-approval` while no case of its type is approved by a human: `playwright-ui` waits for a UI case, `playwright-api` for an `@api` case, `k6` for an `@performance` case (an imported UI case also needs its exploration states linked). Such a stage is never offered, `stage … start` refuses it without spending an attempt, and it counts as settled, so the report still runs; `next` offers the report stage, and `end` reports the run `awaiting-approval` (listing the approval sheets) when nothing else is left. A new run for the product then adopts that run's complete stages whose product-level outputs still verify (`carriedFrom`, D-060; consistent with D-003: the first run has ended and released the lock). A later run picks the module up once cases are approved.
 
@@ -170,12 +172,19 @@ Stage check: with `clarifications.unresolved_policy: stop` (default) every row n
 
 ```bash
 node scripts/ledger.mjs add     <product> --type T --ref R --module M --stage S --agent A [--label --url --note]
+                                [--cleanup-endpoint EP-<m>-<n> --cleanup-param P]   # the delete that removes it (D-075)
 node scripts/ledger.mjs deleted <product> --type T --ref R --module M --stage S --agent A
 node scripts/ledger.mjs owns    <product> --type T --ref R      # exit 0 only if the CURRENT run created it and it is live
+node scripts/ledger.mjs owns    <product> --ref R [--ref R2 …]  # the same for any type and any of the refs (D-074)
 node scripts/ledger.mjs list    <product> [--live] [--all-runs]
+node scripts/ledger.mjs sweep   <product> [--run RUN] [--dry-run]   # HUMAN-ONLY, between runs (D-075)
 ```
 
-Agents record immediately after creating anything, run `owns` before any delete/cancel/remove, and record `deleted` after.
+Agents record immediately after creating anything, run `owns` before any delete/cancel/remove, and record `deleted` after. `ref` is the id the product itself uses for the entity, so the run-time guard can match it in a URL.
+
+**Run time (D-074).** In a full-run, the generated UI guard (`fixtures/ui/base.ts`, through `destructiveRefusal` in `utils/shared/ledger.ts`) aborts a destructive request to a product host — any DELETE, or another non-safe method whose path names a destructive action — unless one of its path segments or query values is a live entity of this run (`owns --ref`), and fails the test with `Delete blocked by the ledger guard (D-005)`; triage classifies that as a healable `test-bug` (rule `ledger-guard`). The API side needs no such guard: the generated sender refuses any change to an entity the test did not create, and `api-code.mjs check` keeps raw requests and deletes out of agent code (D-056).
+
+**Leftovers (D-075).** An entity an ended run left live (a crash, an abandoned run, a type without a delete) can't be deleted by a later run. Between runs, a human may run `ledger.mjs sweep` (`make sweep PRODUCT=<p>`) in their own terminal: with no active run, and with the run-config the last run started from in `full-run`, it deletes each live entity whose recorded cleanup recipe names a delete endpoint of the module's catalogue on a product host (with the run-config's credentials, no redirects; 2xx, 404 and 410 count as gone) and records `deleted` (`stage: sweep`, `agent: human-sweep`). Every other leftover is listed for manual cleanup. It needs an interactive terminal and the typed product slug, `--dry-run` sends nothing, and the guard denies it to every tool call.
 
 ## Module exploration
 

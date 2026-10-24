@@ -1,6 +1,4 @@
 // Minimal RFC-4180 CSV I/O that round-trips what Excel writes (BOM, CRLF, quoted multi-line cells).
-import { closeSync, existsSync, mkdirSync, openSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
 
 // delimiter: "," (default) or ";" (Excel in locales whose decimal mark is a comma); detectDelimiter() tells which.
 export function parseCsv(text, { delimiter = "," } = {}) {
@@ -58,57 +56,4 @@ export function detectDelimiter(text) {
     else if (!q && c === ";") semi++;
   }
   return semi > comma ? ";" : ",";
-}
-
-export function writeAtomic(file, text) {
-  mkdirSync(dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
-  writeFileSync(tmp, text, "utf8");
-  // On Windows a rename fails while another process (a virus scanner, an indexer) briefly holds the file: retry a few
-  // times before reporting it as locked (Excel holds it for good).
-  for (let attempt = 0; ; attempt++) {
-    try {
-      renameSync(tmp, file);
-      return;
-    } catch (e) {
-      if (e.code !== "EPERM" && e.code !== "EBUSY") throw e;
-      if (attempt < 10) {
-        sleep(25 * (attempt + 1));
-        continue;
-      }
-      unlinkSync(tmp);
-      throw new Error(`${file} is locked by another program (is it open in Excel?). Close it and retry.`);
-    }
-  }
-}
-
-const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-
-// Cross-process mutual exclusion for a read-modify-write of `file`. A lock older than staleMs is broken.
-export function withFileLock(file, fn, { retries = 100, waitMs = 50, staleMs = 60_000 } = {}) {
-  const lock = `${file}.lock`;
-  mkdirSync(dirname(lock), { recursive: true });
-  for (let i = 0; ; i++) {
-    try {
-      closeSync(openSync(lock, "wx"));
-      break;
-    } catch (e) {
-      if (e.code !== "EEXIST") throw e;
-      if (existsSync(lock) && Date.now() - statSync(lock).mtimeMs > staleMs) {
-        try {
-          unlinkSync(lock);
-        } catch {}
-        continue;
-      }
-      if (i >= retries) throw new Error(`timed out waiting for ${lock}`);
-      sleep(waitMs);
-    }
-  }
-  try {
-    return fn();
-  } finally {
-    try {
-      unlinkSync(lock);
-    } catch {}
-  }
 }

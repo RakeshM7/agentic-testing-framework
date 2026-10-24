@@ -6,11 +6,13 @@
 //   results.mjs k6 <product> <module> <summary.json>...                          (written by lib/summary.js handleSummary;
 //                                                                                 <script>.retry.summary.json = the smoke re-run)
 //   results.mjs not-run <product> <module> playwright-ui|playwright-api|k6 --reason TEXT
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { writeJson } from "./lib/files.mjs";
+import { LEDGER_GUARD_RE } from "./lib/ledger.mjs";
 import { HEADER_RE as K6_HEADER_RE } from "./lib/k6-code.mjs";
 
 export const FRAMEWORKS = ["playwright-ui", "playwright-api", "k6"];
@@ -25,8 +27,7 @@ function target(product, module, framework, root) {
 }
 
 function write(file, data) {
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(data, null, 2) + "\n", "utf8");
+  writeJson(file, data);
   return data;
 }
 
@@ -73,7 +74,8 @@ export function fromPlaywright(report, { module, side } = {}) {
         const last = runs[runs.length - 1];
         const status = { expected: "passed", unexpected: "failed", flaky: "flaky", skipped: "skipped" }[t.status] ?? t.status;
         const failedRun = status === "flaky" ? runs.find((r) => r.status !== "passed" && r.status !== "skipped") : status === "failed" ? last : null;
-        const err = failedRun?.error;
+        // the ledger guard's refusal (D-074) is raised when the test ends, after whatever failed because of it: it names the cause
+        const err = (failedRun?.errors ?? []).find((e) => LEDGER_GUARD_RE.test(e?.message ?? "")) ?? failedRun?.error;
         const attachments = failedRun ? (failedRun.attachments ?? []).filter((a) => a.path).map((a) => ({ name: String(a.name ?? ""), path: slash(a.path) })) : [];
         const skipReason = status === "skipped" ? (t.annotations ?? []).map((a) => a.description).find(Boolean) : undefined;
         items.push({

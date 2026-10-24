@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { carryForward, endInfo, endRun, initRun, makeRunId, next, nextStep, setStage, stagePrompt, status, validateProduct } from "./run.mjs";
-import { loadJson, paths } from "./lib/contract.mjs";
+import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { GROUPS, recordDoctor } from "./lib/doctor.mjs";
+import { recordCanary } from "./lib/guard-check.mjs";
 import { collect } from "./report-data.mjs";
 import { buildCatalogue, markApproved, put, renderFoundation, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
 
@@ -542,4 +546,48 @@ test("scenarios: the interview's answers become each module's scenarios.json wit
   answers({ contacts: [] });
   assert.deepEqual((await scenarios("acme", { root })).removed, ["contacts"]);
   assert.ok(!existsSync(file), "back to a whole-module exploration");
+});
+
+test("resume after a crash: a stage left running becomes an interrupted failed attempt that next offers again; a second interruption exhausts it (D-071)", async () => {
+  const { root } = startRun();
+  const cfg = path.join(root, "config", "acme.yaml");
+  const resume = () => {
+    const r = initRun(cfg, { root, resume: true });
+    recordCanary("acme", root, { host: "claude-code", agent: "orchestrator-agent" });
+    recordDoctor("acme", root, { groups: GROUPS, checks: [] });
+    return r;
+  };
+  assert.equal((await setStage("acme", "knowledge", undefined, "start", undefined, { root })).status, "running");
+  assert.ok(!(await ready("acme", root)).includes("knowledge"), "a running stage is not offered while its session lives");
+  const first = resume();
+  assert.deepEqual(first.interrupted, ["_product/knowledge"]);
+  const rec = loadJson(paths("acme", root).runFile).stages["_product/knowledge"];
+  assert.deepEqual([rec.status, rec.interrupted, rec.attempts], ["failed", true, 1]);
+  assert.match(rec.error, /^interrupted: /);
+  assert.deepEqual(await validateProduct("acme", { root }), [], "run.json with an interrupted stage passes its schema");
+  const offered = (await next("acme", { root })).find((s) => s.stage === "knowledge");
+  assert.deepEqual([offered.attempt, offered.retry], [2, true]);
+  assert.equal(resume().interrupted, undefined, "nothing running, nothing interrupted");
+  assert.equal((await setStage("acme", "knowledge", undefined, "start", undefined, { root })).attempts, 2);
+  resume();
+  const st = await status("acme", { root });
+  assert.equal(st.stages.find((r) => r.stage === "knowledge").exhausted, true, "interrupted attempts count toward the two attempts (D-011)");
+  assert.ok(st.stages.filter((r) => r.stage === "module-knowledge").every((r) => r.blocked));
+});
+
+test("run.json updates from parallel processes are never lost: each holds the run lock (D-072)", async () => {
+  const { root } = startRun();
+  const run = pathToFileURL(path.join(repoRoot, "scripts", "run.mjs")).href;
+  // six processes record a failure on six different stages at once; without the lock one write overwrites another
+  const calls = [["explore", "contacts"], ["explore", "deals"], ["clarifications", "contacts"], ["clarifications", "deals"], ["testcases", "contacts"], ["testcases", "deals"]];
+  const codes = await Promise.all(calls.map(([stage, module]) => new Promise((resolve, reject) => {
+    const code = `import { setStage } from ${JSON.stringify(run)}; await setStage("acme", ${JSON.stringify(stage)}, ${JSON.stringify(module)}, "fail", "x", { root: ${JSON.stringify(root)} });`;
+    const child = spawn(process.execPath, ["--input-type=module", "-e", code], { stdio: "ignore" });
+    child.on("error", reject);
+    child.on("close", resolve);
+  })));
+  assert.deepEqual(codes, calls.map(() => 0));
+  const stages = loadJson(paths("acme", root).runFile).stages;
+  for (const [stage, module] of calls) assert.equal(stages[`${module}/${stage}`]?.status, "failed", `${module}/${stage}`);
+  assert.ok(!existsSync(`${paths("acme", root).runFile}.lock`), "the lock is released");
 });
