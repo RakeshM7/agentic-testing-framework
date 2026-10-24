@@ -10,6 +10,9 @@
 #   make doctor PRODUCT=acme-crm                      check (and install what it safely can) what every stage needs on this
 #                                                     machine; login, run, resume and automate run it first (FIX=no: report only)
 #   make check                                        drift check + tests (what CI runs)
+#   make e2e                                          the live end-to-end check: the rendered foundation against a local
+#                                                     demo app in a real browser, readonly and full-run, then the sweep
+#                                                     (needs the network once and a machine that can start Chromium)
 #
 # Running and resuming (start the run in a session of the orchestrator-agent; a finished stage stays done):
 #   make run PRODUCT=acme-crm                         start the run, or continue the active one
@@ -23,6 +26,10 @@
 #   make approve PRODUCT=acme-crm MODULE=contacts     you sign off a module's test cases (your own terminal)
 #   make automate PRODUCT=acme-crm                    Playwright UI + API tests (needs approved cases)
 #   make resume PRODUCT=acme-crm STAGE=k6 MODULE=deals   any stage, optionally one module
+#   make run PRODUCT=acme-crm ENV=staging             any target, in another environment of the product
+#                                                     (config/acme-crm-staging.yaml with `environment: staging`)
+#   make sweep PRODUCT=acme-crm [RUN=<run id>] [DRY=yes]  between runs, delete what ended runs left in the target
+#                                                     (full-run config; your own terminal, you type the product slug)
 
 # The recipes are POSIX sh. On Windows, make falls back to cmd.exe when no sh.exe is on PATH, so point it at Git for
 # Windows' sh (bin/sh.exe also puts sed, head, mkdir and friends on PATH). Override with make ... SHELL=<path to sh.exe>.
@@ -46,22 +53,32 @@ STEPS   ?=
 FILE    ?=
 WAIT    ?= 60
 APPROVED ?= no
+RUN     ?=
+RUNS    ?=
+DRY     ?= no
 
 # The command that opens an orchestrator-agent session with a first prompt. Claude Code by default; for Copilot CLI
 # use make ... AGENT="copilot --agent orchestrator-agent" (check your CLI for how it takes an initial prompt).
 AGENT   ?= claude --agent orchestrator-agent
 STAGES   = knowledge module-knowledge playwright-repo explore clarifications api-discovery testcases playwright-ui playwright-api k6 report
 
-CONFIG  = config/$(PRODUCT).yaml
+# ENV=<name> (D-081): work in that environment of the product -- its own runs, lock, ledger and history, with knowledge,
+# exploration and test cases shared -- from config/<product>-<env>.yaml (whose `environment:` names it). Every command,
+# and the agent session it starts, inherits ATF_ENV.
+ENV     ?=
+ifneq ($(ENV),)
+export ATF_ENV := $(ENV)
+endif
+CONFIG  = config/$(PRODUCT)$(if $(ENV),-$(ENV)).yaml
 # The dependency check (scripts/doctor.mjs, D-064). FIX=yes runs the installs it names (npm install, npx playwright
 # install chromium, k6 through winget or Homebrew); a config, session or credential problem is reported for you to fix.
 DOCTOR  = node scripts/doctor.mjs $(CONFIG)$(if $(filter yes,$(FIX)), --fix)
 
-.PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve steps import
+.PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve steps import sweep diff e2e
 
 help:
 	@echo "make setup | config | interview | login | validate | doctor | build-agents | check | test"
-	@echo "make run | resume | status | next | steps | explore | clarifications | testcases | import | approve | automate | k6 | report"
+	@echo "make run | resume | status | next | steps | explore | clarifications | testcases | import | approve | automate | k6 | report | sweep"
 	@echo "steps needs STEPS=<explore,clarifications,testcases,playwright-ui,playwright-api,k6>; import and approve need MODULE=<slug>"
 	@echo "config, login, validate and doctor need PRODUCT=<slug>; config also needs URL=<target url>"
 
@@ -111,6 +128,10 @@ check:
 test:
 	npm test
 
+# The live end-to-end check (D-084, scripts/e2e.mjs): KEEP=yes leaves its scratch folder.
+e2e:
+	node scripts/e2e.mjs$(if $(filter yes,$(KEEP)), --keep)
+
 # ---- run and resume ----------------------------------------------------------------------------------------------
 # The run's state lives in artifacts/<product>/state/, so a stage finished yesterday is still done today as long as
 # the run was not ended (make never ends it). The orchestrator only offers what is not done yet; STAGE narrows it
@@ -121,6 +142,10 @@ status: require-product
 
 next: require-product
 	node scripts/run.mjs next $(PRODUCT)
+
+# What changed between two ended runs (D-078): RUNS="<run-a> <run-b>", or the last two.
+diff: require-product
+	node scripts/run.mjs diff $(PRODUCT) $(RUNS)
 
 run: require-product
 	@test -f "$(CONFIG)" || { echo "No $(CONFIG). Run make config PRODUCT=$(PRODUCT) URL=<target url>, or make interview to be asked instead"; exit 1; }
@@ -152,6 +177,11 @@ automate: require-product
 approve: require-product
 	@test -n "$(MODULE)" || { echo "Set MODULE=<module slug>"; exit 1; }
 	node scripts/testcases.mjs approve $(PRODUCT) $(MODULE)
+
+# Human-only, between runs (D-075): deletes the live entities ended runs left, through the cleanup recipe recorded with
+# each; the rest is listed for you to clean up by hand. DRY=yes shows what it would do and sends nothing.
+sweep: require-product
+	node scripts/ledger.mjs sweep $(PRODUCT)$(if $(RUN), --run $(RUN))$(if $(filter yes,$(DRY)), --dry-run)
 
 # The run's steps (D-066), for every module: the script validates them and rewrites only the config's `steps:` line.
 # The orchestrator also asks at the start of each run, pre-selected from this.

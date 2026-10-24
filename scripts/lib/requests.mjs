@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { SLUG_RE } from "./contract.mjs";
-import { withFileLock, writeAtomic } from "./csv.mjs";
+import { withFileLock, writeAtomic } from "./files.mjs";
 
 export const KINDS = ["repo-change", "missing-method", "lib-export", "foundation-gap"];
 export const STATUSES = ["pending", "handled", "declined"];

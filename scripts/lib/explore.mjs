@@ -28,7 +28,8 @@
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { withFileLock, writeAtomic } from "./csv.mjs";
+import { readJson, withFileLock, writeAtomic, writeJson } from "./files.mjs";
+import { networkGuarded } from "./browser-tools.mjs";
 import { assignIds } from "./registry.mjs";
 import { createLedger } from "./coverage.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
@@ -44,7 +45,8 @@ export const DEFAULT_BUDGETS = { max_pages: 40, max_states: 150 };
 export const CONTROL_ROLES = ["link", "button", "tab", "menuitem", "menuitemcheckbox", "menuitemradio", "treeitem", "checkbox", "radio", "switch", "combobox", "listbox", "textbox", "searchbox", "spinbutton", "slider"];
 // Input-bearing controls: one not tried needs a question or a reason.
 export const INPUT_ROLES = ["textbox", "searchbox", "spinbutton", "slider", "combobox", "listbox", "checkbox", "radio", "switch"];
-// What a readonly run can't do (the guard blocks typing, selects and form filling).
+// What a readonly run can do only while the browser server's init page guards the network (D-076): the guard blocks
+// typing, selects and form filling otherwise.
 const TYPING_ROLES = ["textbox", "searchbox", "spinbutton", "slider", "combobox", "listbox"];
 // Frontier exclusion reasons.
 export const FRONTIER_REASONS = ["not-allowed-in-mode", "out-of-module", "external", "logout", "destructive-preexisting", "duplicate-of", "disabled", "guard-denied", "unreachable"];
@@ -77,11 +79,6 @@ const FP_ROLES = new Set([...CONTROL_ROLES, "heading", "dialog", "alertdialog", 
 const FP_NAMED = new Set([...CONTROL_ROLES, "heading", "dialog", "alertdialog", "tabpanel", "alert", "status", "form", "region"]);
 const MESSAGE_RE = /\b(required|invalid|must|cannot|can't|at least|at most|too (long|short)|not valid|error|no (\w+ )?(results|records|items|found)|nothing (found|to show))\b/i;
 
-const readJson = (f, fallback) => (existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : fallback);
-const writeJson = (f, data) => {
-  mkdirSync(path.dirname(f), { recursive: true });
-  writeAtomic(f, JSON.stringify(data, null, 2) + "\n");
-};
 const uniq = (xs) => [...new Set(xs)];
 const sortedUniq = (xs) => uniq(xs).sort();
 const idNum = (id) => Number(String(id).split("-").at(-1));
@@ -122,6 +119,8 @@ export function exploreContext({ root, product, module, run, cfg, productDir, le
   const mode = env.AUTHORIZATIONS_MODE === "readonly" ? "readonly" : run.mode; // the environment can only downgrade
   return {
     root, product, module, runId: run.runId, mode, cfg, productDir, ledgerFile,
+    // readonly typing and selecting: allowed exactly when the guard allows them (scripts/lib/browser-tools.mjs, D-076)
+    readonlyInput: networkGuarded(root),
     xp: explorePaths(productDir, module),
     kp: knowledgePaths(productDir),
     budgets: { ...DEFAULT_BUDGETS, ...(cfg.explore ?? {}) },
@@ -1083,7 +1082,7 @@ export function derive(ctx) {
     else if (route && c.role === "link" && !inPrefix(route.route, prefixes)) set("excluded", { reason: "out-of-module", detail: `${route.route} is outside ${prefixes.join(", ") || "the module"}`, by: "script" });
     else if (canon && canon.itemKey !== c.itemKey) set("excluded", { reason: "duplicate-of", detail: itemId(canon.itemKey), by: "script" });
     else if (c.disabled) set("excluded", { reason: "disabled", detail: "disabled when captured", by: "script" });
-    else if (ctx.mode === "readonly" && (TYPING_ROLES.includes(c.role) || mutatesControl(c))) set("excluded", { reason: "not-allowed-in-mode", detail: TYPING_ROLES.includes(c.role) ? "readonly: typing and selecting are blocked" : "readonly: never submit or commit", by: "script" });
+    else if (ctx.mode === "readonly" && ((TYPING_ROLES.includes(c.role) && !ctx.readonlyInput) || mutatesControl(c))) set("excluded", { reason: "not-allowed-in-mode", detail: TYPING_ROLES.includes(c.role) && !ctx.readonlyInput ? "readonly: typing and selecting are blocked (the browser server does not run the network guard)" : "readonly: never submit or commit", by: "script" });
     else if (budgets.reached.states) set("deferred", { reason: "budget", detail: `explore.max_states (${budgets.max_states}) reached` });
     else if (budgets.reached.pages && target && c.role === "link" && !knownPages.has(target.key)) set("deferred", { reason: "budget", detail: `explore.max_pages (${budgets.max_pages}) reached` });
     // scenario mode: only the scenarios' flows are explored; every other control is deferred, never dropped

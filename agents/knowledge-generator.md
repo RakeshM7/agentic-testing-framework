@@ -90,3 +90,5 @@ A short report only; don't paste file contents. From the last `check` output:
 - the `captured_by: agent` count and the stale-source count;
 - the rule facts by evidence, and the lines under `agentCapturedRuleFacts` and `staleRuleFacts`: allowed, but weaker evidence;
 - the final `check` result.
+
+<!-- include: _shared/framework-issues.md -->

@@ -8,8 +8,8 @@
         "--browser",
         "chromium",
         "--isolated",
-        "--storage-state",
-        "playwright-tests/ami/.auth/state.json"
+        "--init-page",
+        "scripts/browser/init-page.cjs"
       ]
     }
   }

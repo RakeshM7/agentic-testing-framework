@@ -31,7 +31,7 @@ You don't write any of this. Know it so you can read its output.
 - **Pages** (`PG-<m>-<n>`): the URL path with ids erased. Each state's snapshot is kept verbatim in `pages/<slug>/states/<ST>.md`; a page's first state is also `pages/<slug>/dom-snapshot.md`.
 - **The frontier** (`FR-<m>-<n>`): every candidate control of every state (link, button, tab, menu item, checkbox, radio, switch, combobox, listbox, textbox, searchbox, spinbutton, slider, tree item), and any other element the snapshot marks `[cursor=pointer]` (a clickable column header, row, image or text). The links of table rows, and clickable rows, count once. An item is closed only by:
   - an explored transition (`state --via`);
-  - a script derivation: `logout`, `external` (another host), `out-of-module` (a link outside the module's path prefixes), `duplicate-of` (the same control on the same page and container, the same link target, or the same global header and footer control, explored once), `disabled`, or `not-allowed-in-mode` (in readonly: typing, selecting, any button in a dialog other than Cancel or Close, and commit verbs such as save, delete, send, confirm, approve, assign, mark, resolve, "Cancel order");
+  - a script derivation: `logout`, `external` (another host), `out-of-module` (a link outside the module's path prefixes), `duplicate-of` (the same control on the same page and container, the same link target, or the same global header and footer control, explored once), `disabled`, or `not-allowed-in-mode` (in readonly: any button in a dialog other than Cancel or Close, and commit verbs such as save, delete, send, confirm, approve, assign, mark, resolve, "Cancel order");
   - your exclusion in `overlay.json`, cited (see step 3);
   - `deferred: budget`, set by the script.
 - **Budgets.** Over `explore.max_states` (default 150) or `explore.max_pages` (default 40) a new state or page is not recorded: `state` returns `deferred: true`, and the item that led there is `deferred: budget`. Once the state budget is full, every open item is deferred. Transitions into known states are always recorded.
@@ -79,7 +79,7 @@ You don't write any of this. Know it so you can read its output.
 - **Script-owned files.** In `explore/` you write only `flows/`, `module-summary.md`, `new-questions.json`, `overlay.json` and `captures/`. Never edit the model, the ledgers, the registries, the inventory, the sitemap, the interactions or the stored snapshots.
 - **Captures are verbatim.** Save the browser tool's snapshot and network output as returned; never edit them to change what `state` or `ingest-network` sees.
 - **Never type credentials**; CAPTCHA and MFA are never bypassed. A sign-in page the saved session does not get past is `blocked: login required`.
-- **Readonly.** You may navigate and click to open menus, dialogs and tabs, sort and paginate. Never type, select, submit, or click a commit button or any dialog button other than Cancel or Close; the guard blocks typing, and the script closes those items as `not-allowed-in-mode`. Ask about what you could not trigger.
+- **Readonly.** You may navigate and click to open menus, dialogs and tabs, sort and paginate, and type, select and press keys to search, filter and see a field's validation: the browser aborts every write to the product (D-076). Never submit, or click a commit button or any dialog button other than Cancel or Close; the script closes those items as `not-allowed-in-mode`. If the guard refuses typing (the browser server lacks its network guard), the script closes inputs the same way. Ask about what you could not trigger.
 - **Full-run.** Use obviously synthetic data (`ATF <m> <timestamp>`). Record each created entity at once with `node scripts/ledger.mjs add <p> --type <kind> --ref <id or unique name> --module <m> --stage explore --agent module-explorer`. Delete only your own entities: `ledger.mjs owns` must exit 0 first, then `ledger.mjs deleted`. Never touch pre-existing data: exclude such delete or edit controls as `destructive-preexisting`.
 - **Stay in the module.** Links to other modules are recorded, never followed.
 - **No personal data or secrets** in flows, questions, the summary or overlay notes.
@@ -95,3 +95,8 @@ A short report only; don't paste file contents. From the last `check` output:
 - mutations performed (ledger refs) or `none`, and live entities left;
 - in scenario mode, each scenario with its flow or its reason;
 - anything not explored and why, and the final `check` result.
+
+## When the framework itself is wrong
+If a problem is the framework's, not the product's and not the test code's -- this prompt contradicts a script or the contract, a script fails on valid input or says something untrue, a template or a doc is wrong -- record it once and go on with your task as well as you can:
+`node scripts/framework-issues.mjs add <p> --from <your name> --kind <prompt|script|contract|doc|config|template|other> --target <the framework file, from the repo root> --summary "<one line>" --evidence "<what you saw: the error, the command and its output, file:line>" [--fix "<what would fix it>"] [--severity blocking|high|medium|low]`.
+At the end of the run it becomes a feedback file for the framework's maintainers. Never change a framework file yourself, and never record the product's bugs or your own mistakes here.

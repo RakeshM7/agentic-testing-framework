@@ -37,3 +37,8 @@ Keep it short; do not paste file contents.
 `<domain>` is `testcases`: testcase-writer (its cases must pass `testcases.mjs check`), then a bounded gate -> testcase-reviewer -> testcase-writer revision loop until the derived per-case review verdict passes. The writer works on generated cases and the human's imported cases (`generate`, when the run chose test cases), or on the imported cases only (`import` mode: converting a document, linking imported UI cases to explored states, for this module only); the mode (`testcases.mjs paths`) and the case types come from the script. It has no request handlers.
 
 `summary` to report: the total test cases, the assumption-based count, the approval counts (approved, rejected, changes, awaiting; only approved cases are automated), and the unresolved findings. A `failed` outcome means, for example, that the writer's cases never passed `testcases.mjs check` or the review missed a case.
+
+## When the framework itself is wrong
+If a problem is the framework's, not the product's and not the test code's -- this prompt contradicts a script or the contract, a script fails on valid input or says something untrue, a template or a doc is wrong -- record it once and go on with your task as well as you can:
+`node scripts/framework-issues.mjs add <p> --from <your name> --kind <prompt|script|contract|doc|config|template|other> --target <the framework file, from the repo root> --summary "<one line>" --evidence "<what you saw: the error, the command and its output, file:line>" [--fix "<what would fix it>"] [--severity blocking|high|medium|low]`.
+At the end of the run it becomes a feedback file for the framework's maintainers. Never change a framework file yourself, and never record the product's bugs or your own mistakes here.

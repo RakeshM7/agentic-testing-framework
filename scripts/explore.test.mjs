@@ -2,7 +2,7 @@
 // modelled on the browser tool's accessibility snapshots (YAML-like aria lines with [ref=eN]) and network listings.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { main } from "./explore.mjs";
@@ -12,8 +12,8 @@ import { append as appendCsv, csvPath, record as recordRow, setSteps } from "./l
 import { append as ledgerAdd } from "./lib/ledger.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
 import { normalizePath, restKey } from "./lib/endpoints.mjs";
-import { explorePaths, extractControls, fingerprint, graphqlOps, modulePrefixes, mutatesControl, normalizeRequest, pageOf, parseGraphqlDocument, parseNetworkCapture, parseSnapshot, templatePath } from "./lib/explore.mjs";
-import { startRun, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
+import { extractControls, fingerprint, graphqlOps, modulePrefixes, mutatesControl, normalizeRequest, pageOf, parseGraphqlDocument, parseNetworkCapture, parseSnapshot, templatePath } from "./lib/explore.mjs";
+import { exploreFixture, exploreSession, finishExploration, startRun, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
 
 const FIX = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "explore");
 const fixture = (name) => readFileSync(path.join(FIX, name), "utf8");
@@ -24,94 +24,11 @@ function setup({ mode = "readonly", extra = [] } = {}) {
   const { root } = startRun({ mode, extra });
   writeProductKnowledge(root);
   writeModuleKnowledge(root, "contacts");
-  const xp = explorePaths(paths("acme", root).productDir, "contacts");
-  const ex = (...args) => main(args, { root, env: {} });
-  let n = 0;
-  // the agent saves a capture under explore/captures/ and passes its path
-  const cap = (name) => {
-    mkdirSync(xp.captures, { recursive: true });
-    const to = `captures/${++n}-${name}`;
-    copyFileSync(path.join(FIX, name), path.join(xp.dir, to));
-    return to;
-  };
-  const state = async (name, via, ...actions) => {
-    const args = ["state", "acme", "contacts", "--snapshot", cap(name)];
-    if (via) args.push("--via", via, ...actions.flatMap((a) => (/^FR-/.test(a) ? ["--item", a] : ["--action", a])));
-    const r = await ex(...args);
-    assert.equal(r.code, 0, JSON.stringify(r.out));
-    return r.out;
-  };
-  const model = async () => {
-    await ex("build", "acme", "contacts");
-    return read(xp.model);
-  };
-  const item = async (st, role, name) => (await model()).frontier.find((i) => i.state === st && i.role === role && (i.name === name || (i.examples ?? []).includes(name)));
-  const write = (rel, data) => {
-    mkdirSync(path.dirname(path.join(xp.dir, rel)), { recursive: true });
-    writeFileSync(path.join(xp.dir, rel), typeof data === "string" ? data : JSON.stringify(data, null, 2));
-  };
-  return { root, xp, ex, cap, state, model, item, write };
+  return exploreSession(root);
 }
 
-// The whole readonly exploration of the fixture module, as the agent would do it. -> ids for the tests
-async function explore(s) {
-  const list = await s.state("contacts-list.md");
-  const dialog = await s.state("contacts-list-dialog.md", list.state, 'button "New contact"');
-  await s.state("contacts-list.md", dialog.state, 'button "Cancel"');
-  const mine = await s.state("contacts-list-tab-mine.md", list.state, 'tab "Mine"');
-  await s.state("contacts-list.md", mine.state, 'tab "All"');
-  await s.state("contacts-list.md", list.state, 'tab "All"');
-  const detail = await s.state("contacts-detail.md", list.state, 'link "Jane Doe"');
-  await s.state("contacts-list.md", detail.state, 'link "Back to contacts"');
-  await s.state("contacts-detail.md", detail.state, 'link "Jane Doe"'); // the breadcrumb's own page
-  const sorted = await s.state("contacts-list-sorted.md", list.state, 'columnheader "Name"');
-  await s.state("contacts-list.md", sorted.state, 'columnheader "Name ▲"');
-  await s.state("contacts-list.md", list.state, 'link "Acme CRM"');
-  await s.state("contacts-list.md", list.state, 'link "Contacts"');
-  const ids = { list: list.state, dialog: dialog.state, mine: mine.state, detail: detail.state, sorted: sorted.state };
-  ids.name = (await s.item(ids.dialog, "textbox", "Name *")).id;
-  ids.email = (await s.item(ids.dialog, "textbox", "Email")).id;
-  ids.owner = (await s.item(ids.dialog, "combobox", "Owner")).id;
-  ids.subscribed = (await s.item(ids.dialog, "checkbox", "Subscribed")).id;
-  ids.search = (await s.item(ids.list, "searchbox", "Search contacts")).id;
-  ids.sort = (await s.item(ids.list, "combobox", "Sort by")).id;
-  ids.edit = (await s.item(ids.detail, "button", "Edit")).id;
-  return ids;
-}
-
-// The agent's judgments and files after exploring, so that check passes.
-function finish(s, ids) {
-  const questions = [
-    { question: "Is \"Name\" required when creating a contact?", steps: "1. Sign in.\n2. Open \"Contacts\".\n3. Click \"New contact\".\n4. Leave \"Name *\" empty and click \"Save\".\n5. Observe whether the contact is saved.", item: [ids.name], kq: ["KQ-contacts-1"] },
-    { question: "What format does \"Email\" accept?", steps: "1. Sign in.\n2. Open \"Contacts\".\n3. Click \"New contact\".\n4. Type \"not-an-email\" in \"Email\" and click \"Save\".\n5. Observe the message.", item: [ids.email] },
-  ];
-  s.write("new-questions.json", questions);
-  appendCsv(csvPath(paths("acme", s.root).productDir, "contacts"), "contacts", "acme-run-1", questions);
-  s.write("captures/owner-note.md", "Billing shows the seat limit per plan: 5 seats on the starter plan.");
-  s.write("captures/edit-popup.md", "Clicking Edit opened a new window; the browser tool stayed on the detail page.");
-  s.write("captures/deals-link.md", "The deal page lists its contacts: deals reference records by id.");
-  s.write("captures/subscribed.md", "Toggling \"Subscribed\" changes nothing on screen until the dialog is saved.");
-  s.write("captures/deals-note.md", "Admin guide: there is a maximum number of records per plan, set under Billing.");
-  s.write("overlay.json", {
-    items: {
-      [ids.subscribed]: { reason: "unreachable", detail: "toggling it changes nothing on screen until the dialog is saved", citation: "observation:explore/captures/subscribed.md" },
-      [ids.edit]: { reason: "unreachable", detail: "opens the edit form in a new window the browser tool cannot follow", citation: "observation:explore/captures/edit-popup.md" },
-    },
-    kq: {
-      "KQ-contacts-2": { status: "observed", evidence: "observation:explore/captures/deals-link.md" },
-      "KQ-contacts-3": { status: "dismissed", reason: "the admin guide sets it per plan; nothing to explore here", citation: "observation:explore/captures/deals-note.md" },
-      "KQ-product-1": { status: "observed", evidence: "observation:explore/captures/owner-note.md" },
-    },
-    inputs: {
-      [ids.owner]: { reason: "its options are listed in interactions.json; no rule to ask about" },
-      [ids.subscribed]: { reason: "a plain opt-in flag" },
-      [ids.search]: { reason: "search is covered by the list flow" },
-      [ids.sort]: { reason: "its options are listed in interactions.json" },
-    },
-  });
-  s.write("flows/create-contact.md", `# Create a contact\nPreconditions: signed in.\n1. Open "Contacts" (${ids.list}).\n2. Click "New contact" (${ids.dialog}).\nExpected result: the "New contact" dialog opens.\n`);
-  s.write("module-summary.md", "# Contacts\n## Pages\n- contacts, contacts-id\n");
-}
+const explore = exploreFixture;
+const finish = finishExploration;
 
 // ---------- the fingerprint ----------
 
@@ -180,6 +97,19 @@ test("state: a known state is not duplicated, its transition is; ids are stable 
   const l = await s.state("contacts-list.md", d.state, 'link "Back to contacts"');
   assert.equal(l.state, ids.list);
   assert.equal((await s.item(ids.list, "tab", "Mine")).id, m.frontier.find((i) => i.state === ids.list && i.name === "Mine").id);
+});
+
+test("readonly behind the browser's network guard (D-076): inputs are explored, commits still never are", async () => {
+  const s = setup();
+  writeFileSync(path.join(s.root, "config", "mcp.yaml"), `servers:\n  playwright:\n    args:\n      - "--isolated"\n      - "--init-page"\n      - "scripts/browser/init-page.cjs"\n`);
+  const list = await s.state("contacts-list.md");
+  const added = Object.fromEntries(list.frontierAdded.map((i) => [`${i.role} ${i.name}`, i]));
+  assert.equal(added["searchbox Search contacts"].status, "pending", "typing is explorable: the network guard aborts any write it could cause");
+  assert.equal(added["combobox Sort by"].status, "pending");
+  const dialog = await s.state("contacts-list-dialog.md", list.state, 'button "New contact"');
+  const d = Object.fromEntries(dialog.frontierAdded.map((i) => [`${i.role} ${i.name}`, i]));
+  assert.equal(d["textbox Name *"].status, "pending");
+  assert.equal(d["button Save"].reason, "not-allowed-in-mode", "readonly: still never submit");
 });
 
 test("frontier: every candidate control; row links collapse; script-derived exclusions; navigation comes first", async () => {

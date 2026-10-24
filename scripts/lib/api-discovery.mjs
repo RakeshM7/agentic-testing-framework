@@ -8,7 +8,8 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { normalizePath, parseSpecText, readJson, saveSource, segments, writeJson } from "./endpoints.mjs";
+import { normalizePath, parseSpecText, saveSource, segments } from "./endpoints.mjs";
+import { readJson, writeJson } from "./files.mjs";
 import { INTROSPECTION_QUERY } from "./graphql.mjs";
 import { specVersion } from "./openapi.mjs";
 import { probeEndpoints } from "./probe.mjs";

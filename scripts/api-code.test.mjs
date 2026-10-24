@@ -21,7 +21,8 @@ import { renderIndex } from "./lib/foundation.mjs";
 import { scanTs } from "./lib/ts-scan.mjs";
 import { planPaths } from "./lib/api-plan.mjs";
 import { paths } from "./lib/contract.mjs";
-import { apiPaths, build as buildCatalogue, saveSource, writeJson } from "./lib/endpoints.mjs";
+import { apiPaths, build as buildCatalogue, saveSource } from "./lib/endpoints.mjs";
+import { writeJson } from "./lib/files.mjs";
 import { checkTool } from "./lib/guard.mjs";
 import { normalize } from "./hooks/hosts/claude.mjs";
 import { listedTests, listFindings } from "./lib/gate/playwright.mjs";
@@ -797,6 +798,18 @@ test("B2 runtime: a change to an entity this test did not create is refused, a c
   assert.deepEqual(deleters, [], "8 is not owned by this run (ledger owns() false), 7 is already deleted, tags has no delete operation");
   assert.deepEqual(calls, ["created contacts 7", "deleted contacts 7", "created tags 9", "created contacts 8"], "M1: no recordDeleted for a delete that did not happen");
   await assert.rejects(m.sendRequest(api, "DELETE", "/contacts/{contactId}", { path: { contactId: "7" } }), /refused/, "the session is over: nothing is owned any more");
+});
+
+test("a create carries its delete as a cleanup recipe, which the sender records with the entity for a human's sweep (D-075)", async () => {
+  const s = await setup();
+  await s.ac("build");
+  const create = s.model().clients.flatMap((c) => c.methods).find((x) => x.meta?.creates?.type === "contacts");
+  assert.deepEqual(create.meta.creates.cleanup, { endpoint: "EP-contacts-1", param: "contactId" }, "the catalogue's delete of what it creates, and the path parameter that takes the id");
+  const { sender: m } = await runtime(s);
+  const recorded = [];
+  m.beginTest({ module: "contacts", label: "API-contacts-1", recordCreated: (e) => recorded.push(e), recordDeleted: () => {}, owns: () => true });
+  await m.sendRequest({ fetch: async () => fakeRes(201, { id: 7 }) }, "POST", "/contacts", { body: {} }, create.meta);
+  assert.deepEqual(recorded, [{ type: "contacts", ref: "7", module: "contacts", label: "API-contacts-1", cleanup: { endpoint: "EP-contacts-1", param: "contactId" } }]);
 });
 
 test("B2 facade and B3 captured built-ins: glue and composite helpers get no delete or update; a later patch of a built-in can't change an assertion", async () => {

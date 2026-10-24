@@ -57,18 +57,23 @@
 //                                                         to give the same agent once; the second refusal fails the stage itself (D-011).
 //                                                         A domain whose review used up its rounds is failed (reviewFailed, with its open
 //                                                         findings) and blocks its dependants at once.
-//   run.mjs end <product> [--abandon]                     write state/history/<run-id>.json and release the lock
+//   run.mjs end <product> [--abandon]                     write state/history/<run-id>.json and results/<run>/manifest.json
+//                                                         (the sha256 of every working file and test code file, D-078), and
+//                                                         release the lock
+//   run.mjs diff <product> [<run-a> <run-b>]              what changed between two ended runs' manifests (default: the last
+//                                                         two), per area: added, removed, changed
 //   run.mjs validate <product>                            schema-check run.json, ledger, permissions, module outputs
 //
 // All commands print JSON; exit 1 = refused/invalid, 2 = usage error.
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { parseArgs } from "node:util";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import { validateRunConfig } from "./run-config.mjs";
-import { LAYOUT_VERSION, PRODUCT_SCOPE, SLUG_RE, STAGES, STEPS, chosenStages, deriveCaseTypes, loadJson, paths, repoRoot, stageChosen, stageKey, stageNeeds, testcasesModeOf, testcasesModes, validateData, validateFile, verifyOutputs } from "./lib/contract.mjs";
+import { DEFAULT_ENV, LAYOUT_VERSION, PRODUCT_SCOPE, SLUG_RE, STAGES, STEPS, chosenStages, deriveCaseTypes, envName, loadJson, paths, repoRoot, stageChosen, stageKey, stageNeeds, testcasesModeOf, testcasesModes, validateData, validateFile, verifyOutputs } from "./lib/contract.mjs";
+import { withFileLock, withFileLockAsync, writeJson } from "./lib/files.mjs";
 import { read as readLedger } from "./lib/ledger.mjs";
 import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
@@ -76,30 +81,39 @@ import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs
 import { GROUPS, STAGE_NEEDS, clearDoctor, doctorStatus, failures, recordDoctor, runChecks } from "./lib/doctor.mjs";
 import { login as openLogin } from "./lib/login.mjs";
 import { detectShellHost } from "./lib/hosts.mjs";
+import { collectProvenance } from "./lib/provenance.mjs";
+import { diffManifests, readManifest, writeManifest } from "./lib/history.mjs";
+import { issuesPath, readIssues, writeFeedback } from "./lib/framework-issues.mjs";
 import { approvalSummary, caseTypeOf, importStatus, testcasePaths } from "./lib/testcases.mjs";
 import { SCENARIO_ANSWERS, writeScenarios } from "./lib/explore.mjs";
 
 const now = () => new Date().toISOString();
-const writeJson = (file, data) => {
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(data, null, 2) + "\n", "utf8");
-};
 const rel = (root, p) => path.relative(root, p).replaceAll("\\", "/");
 
-export const makeRunId = (product, date = new Date()) =>
-  `${product}-${date.toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-")}`; // eventhub-20261007-1230
+export const makeRunId = (product, date = new Date(), environment = DEFAULT_ENV) =>
+  `${product}${environment === DEFAULT_ENV ? "" : `-${environment}`}-${date.toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-")}`; // eventhub-20261007-1230, eventhub-staging-20261007-1230
 
 export function initRun(configFile, { resume = false, runId, root = repoRoot, env = process.env } = {}) {
-  const { errors, normalized: cfg } = validateRunConfig(yaml.load(readFileSync(configFile, "utf8")), { root });
+  const { errors, warnings = [], normalized: cfg } = validateRunConfig(yaml.load(readFileSync(configFile, "utf8")), { root });
   if (errors?.length) return { errors };
-  const p = paths(cfg.product, root);
+  // the session's environment (D-081) must be the config's: every script and hook of the session works in it
+  let environment;
+  try {
+    environment = envName(env);
+  } catch (e) {
+    return { errors: [e.message] };
+  }
+  if (cfg.environment !== environment)
+    return { errors: [`${rel(root, path.resolve(configFile))} is for environment '${cfg.environment}', but this session's is '${environment}' (ATF_ENV): start the session with ATF_ENV=${cfg.environment} (make run PRODUCT=${cfg.product} ENV=${cfg.environment}), so every script and hook works in that environment`] };
+  const p = paths(cfg.product, root, environment);
 
   if (existsSync(p.lockFile)) {
     const lock = loadJson(p.lockFile);
     if (resume) {
       clearGuardChecks(cfg.product, root); // a resumed session must verify its own guard
       clearDoctor(cfg.product, root); // ... and check its own machine
-      return { resumed: true, product: cfg.product, run: loadJson(p.runFile) };
+      const { run, interrupted } = interruptRunning(p.runFile);
+      return { resumed: true, product: cfg.product, run, ...(interrupted.length ? { interrupted } : {}) };
     }
     return { errors: [`run ${lock.runId} is active for product '${cfg.product}' (started ${lock.createdAt}). Use --resume, or end it: run.mjs end ${cfg.product} --abandon`] };
   }
@@ -110,13 +124,14 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
   const perms = resolvePermissions(yaml.load(readFileSync(permPath, "utf8")));
   if (perms.errors.length) return { errors: perms.errors.map((e) => `permissions: ${e}`) };
 
-  let id = runId ?? makeRunId(cfg.product);
+  let id = runId ?? makeRunId(cfg.product, undefined, environment);
   if (!SLUG_RE.test(id)) return { errors: [`run id '${id}' must be lowercase kebab-case`] };
-  for (let n = 2; existsSync(path.join(p.historyDir, `${id}.json`)) || existsSync(p.results(id)); n++) id = `${runId ?? makeRunId(cfg.product)}-${n}`;
+  for (let n = 2; existsSync(path.join(p.historyDir, `${id}.json`)) || existsSync(p.results(id)); n++) id = `${runId ?? makeRunId(cfg.product, undefined, environment)}-${n}`;
 
   const run = {
     layoutVersion: LAYOUT_VERSION,
     product: cfg.product,
+    environment,
     runId: id,
     createdAt: now(),
     target: { url: cfg.target.url, ...(cfg.target.api_urls?.length ? { api_urls: cfg.target.api_urls } : {}) },
@@ -131,6 +146,8 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
     // per module by run.mjs steps --import-mode
     testcasesMode: testcasesModes({ steps: STEPS.filter((s) => cfg.steps.includes(s)), modules: cfg.modules.map((m) => m.slug) }),
     startedOnHost: detectShellHost(env),
+    // what the run is made with (D-077): framework commit, browser server, models, templates, Node.js
+    provenance: collectProvenance(root),
     stages: {},
   };
   clearGuardChecks(cfg.product, root);
@@ -144,7 +161,30 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
     mkdirSync(p.module(m), { recursive: true });
     ensureCsv(csvPath(p.productDir, m)); // header-only file, so a module with no open questions still has its CSV
   }
-  return { product: cfg.product, run };
+  return { product: cfg.product, run, ...(warnings.length ? { warnings } : {}) };
+}
+
+// Every read-modify-write of run.json holds its lock (D-072), so two run.mjs processes never lose each other's update. A
+// holder older than RUN_LOCK.staleMs is taken to be dead (a `stage done` verifies outputs, which takes seconds, not minutes).
+// Without run state there is nothing to lock: `fn` reports that itself.
+const RUN_LOCK = { staleMs: 300_000, retries: 600 };
+const runFileOf = (product, root) => paths(product, root).runFile;
+const lockedRun = (product, root, fn) => (existsSync(runFileOf(product, root)) ? withFileLock(runFileOf(product, root), fn, RUN_LOCK) : fn());
+const lockedRunAsync = (product, root, fn) => (existsSync(runFileOf(product, root)) ? withFileLockAsync(runFileOf(product, root), fn, RUN_LOCK) : fn());
+
+// init --resume (D-071): a stage still `running` belonged to a session that has ended, so nothing will ever mark it. It
+// becomes a failed attempt (`interrupted`), which next offers again while it has attempts left (D-011 counts it).
+function interruptRunning(runFile) {
+  return withFileLock(runFile, () => {
+    const run = loadJson(runFile);
+    const interrupted = Object.keys(run.stages ?? {}).filter((k) => run.stages[k].status === "running");
+    for (const k of interrupted) {
+      const { doneRefusals, ...rec } = run.stages[k];
+      run.stages[k] = { ...rec, status: "failed", interrupted: true, finishedAt: now(), error: "interrupted: the session running this stage ended before it was marked done or failed" };
+    }
+    if (interrupted.length) writeJson(runFile, run);
+    return { run, interrupted };
+  }, RUN_LOCK);
 }
 
 function ctxFor(product, root) {
@@ -451,6 +491,10 @@ export async function prereqs(product, { root = repoRoot } = {}) {
 // configChanged: whether the config needs them written. -> {steps, caseTypes, testcasesMode, stages, reopened,
 // configSteps, configChanged} or {errors}
 export function changeSteps(product, { add = [], remove = [], importMode = [], reopen = [], root = repoRoot } = {}) {
+  return lockedRun(product, root, () => applySteps(product, { add, remove, importMode, reopen, root }));
+}
+
+function applySteps(product, { add, remove, importMode, reopen, root }) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { errors: [`run ${ctx.runId} has ended; start a new run`] };
   const unknown = [...add, ...remove].filter((s) => !STEPS.includes(s));
@@ -542,6 +586,10 @@ export async function login(configFile, { root = repoRoot, ...opts } = {}) {
 
 export async function setStage(product, stage, module, action, error, { root = repoRoot, reused = false } = {}) {
   if (!STAGES[stage]) return { errors: [`unknown stage '${stage}' (one of ${Object.keys(STAGES).join(", ")})`] };
+  return lockedRunAsync(product, root, () => applyStage(product, stage, module, action, error, { root, reused }));
+}
+
+async function applyStage(product, stage, module, action, error, { root, reused }) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { errors: [`run ${ctx.runId} has ended; start a new run`] };
   if (STAGES[stage].scope === "module" && !ctx.run.modules.includes(module)) return { errors: [`--module must be one of [${ctx.run.modules.join(", ")}]`] };
@@ -617,6 +665,11 @@ export async function endRun(product, { abandon = false, root = repoRoot } = {})
     ...(({ outcome, ...rest }) => ({ outcome: abandon ? "abandoned" : outcome, ...rest }))(endInfo(st, ctx)),
     stages: st.stages.map(({ stage, module, status: s, complete }) => ({ stage, module, status: s, complete })),
   };
+  // what this run left behind, so a later run can be diffed against it (D-078)
+  summary.manifest = writeManifest(root, product, ctx.p.results(ctx.runId), ctx.runId);
+  // the framework problems agents recorded, as feedback files for feedback-implementor-agent (D-083)
+  const { issues } = readIssues(issuesPath(ctx.p.results(ctx.runId)));
+  if (issues.length) summary.feedback = writeFeedback(root, { issues, runId: ctx.runId, product });
   writeJson(path.join(ctx.p.historyDir, `${ctx.runId}.json`), summary);
   unlinkSync(ctx.p.lockFile);
   return summary;
@@ -625,11 +678,36 @@ export async function endRun(product, { abandon = false, root = repoRoot } = {})
 // A new run after one that ended awaiting-approval (G10): adopts what that run completed and whose product-level outputs (no
 // run id in their path) still verify, so the run continues at the stages that waited for the sign-off. Anything else, and
 // every run-level stage, starts fresh. -> {carried: [stage keys], from}
-export async function carryForward(product, { root = repoRoot } = {}) {
+// The ended runs of a product, oldest first, from state/history/.
+function endedRuns(ctx) {
+  if (!existsSync(ctx.p.historyDir)) return [];
+  return readdirSync(ctx.p.historyDir).filter((n) => n.endsWith(".json")).map((n) => loadJson(path.join(ctx.p.historyDir, n))).sort((x, y) => String(x.endedAt).localeCompare(String(y.endedAt)));
+}
+
+// What changed between two ended runs (D-078); without ids, the last two. -> diffManifests() | {errors}
+export function diffRuns(product, runA, runB, { root = repoRoot } = {}) {
   const ctx = ctxFor(product, root);
-  const last = existsSync(ctx.p.historyDir)
-    ? readdirSync(ctx.p.historyDir).filter((n) => n.endsWith(".json")).map((n) => loadJson(path.join(ctx.p.historyDir, n))).filter((h) => h.runId !== ctx.runId).sort((a, b) => String(a.endedAt).localeCompare(String(b.endedAt))).pop()
-    : null;
+  let [a, b] = [runA, runB];
+  if (!a !== !b) return { errors: ["give two run ids, or none for the last two ended runs"] };
+  if (!a) {
+    const ended = endedRuns(ctx).map((h) => h.runId);
+    if (ended.length < 2) return { errors: [`${product} has ${ended.length} ended run(s): a diff needs two`] };
+    [a, b] = ended.slice(-2);
+  }
+  const ma = readManifest(ctx.p.results(a));
+  const mb = readManifest(ctx.p.results(b));
+  const missing = [[a, ma], [b, mb]].filter(([, m]) => !m).map(([id]) => id);
+  if (missing.length) return { errors: missing.map((id) => `${id} has no manifest (it has not ended, or it ended before D-078)`) };
+  return diffManifests(ma, mb, product);
+}
+
+export async function carryForward(product, { root = repoRoot } = {}) {
+  return lockedRunAsync(product, root, () => adoptCompleted(product, root));
+}
+
+async function adoptCompleted(product, root) {
+  const ctx = ctxFor(product, root);
+  const last = endedRuns(ctx).filter((h) => h.runId !== ctx.runId).pop() ?? null;
   if (last?.outcome !== "awaiting-approval") return { carried: [] };
   const carried = [];
   // Knowledge is adopted only where its reuse plan says reuse (inputs unchanged), as in the normal reuse path.
@@ -703,7 +781,7 @@ async function main() {
     if (cmd === "init") {
       const r = initRun(a, { resume: v.resume, runId: v["run-id"] });
       const carried = r.errors || r.resumed ? null : await carryForward(r.product);
-      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, steps: r.run.steps ?? STEPS, caseTypes: r.run.caseTypes, resumed: !!r.resumed, ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: [`node scripts/run.mjs guard-check ${r.product}`, `node scripts/run.mjs doctor ${r.product}`, `node scripts/run.mjs prereqs ${r.product}`] }, r.errors ? 1 : 0);
+      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, steps: r.run.steps ?? STEPS, caseTypes: r.run.caseTypes, resumed: !!r.resumed, ...(r.warnings ? { warnings: r.warnings } : {}), ...(r.interrupted ? { interrupted: r.interrupted } : {}), ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: [`node scripts/run.mjs guard-check ${r.product}`, `node scripts/run.mjs doctor ${r.product}`, `node scripts/run.mjs prereqs ${r.product}`] }, r.errors ? 1 : 0);
     } else if (cmd === "guard-check") {
       // Reaching this line means no hook blocked the command: the guard is not active in this session.
       if (!SLUG_RE.test(a) || !existsSync(paths(a).state)) out({ errors: [`no run state for product '${a}'`] }, 1);
@@ -732,6 +810,9 @@ async function main() {
       out(r, r.errors ? 1 : 0);
     } else if (cmd === "end") {
       const r = await endRun(a, { abandon: v.abandon });
+      out(r, r.errors ? 1 : 0);
+    } else if (cmd === "diff") {
+      const r = diffRuns(a, pos[0], pos[1]);
       out(r, r.errors ? 1 : 0);
     } else if (cmd === "validate") {
       const problems = await validateProduct(a);

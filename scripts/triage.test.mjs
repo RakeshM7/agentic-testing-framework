@@ -130,6 +130,20 @@ test("rules: locator-drift from the smoke count 0 or a page-object locator timeo
   assert.ok(t.rows[0].fixHint);
 });
 
+test("rules: the UI ledger guard's refusal is a healable test-bug, never the product's (D-074); results prefer that error", async () => {
+  const guard = "Error: Delete blocked by the ledger guard (D-005): DELETE /api/contacts/7 names no entity this run created. Record the product's own id as the ref with recordCreated, and delete only what owns() confirms.";
+  const s = setup({ mode: "full-run", items: [item(1, "failed", { error: guard }), item(2, "failed", { error: ASSERT_ERR })] });
+  await s.cli("build");
+  const t = s.triage();
+  const row = (id) => t.rows.find((r) => r.key === `ui:${id}`);
+  assert.deepEqual([row("TC-contacts-1").class, row("TC-contacts-1").rule, row("TC-contacts-1").healable], ["test-bug", "ledger-guard", true]);
+  assert.equal(row("TC-contacts-2").class, null, "any other failure stays open for the triager");
+  assert.match(row("TC-contacts-1").fixHint, /id the product uses as its ref/);
+  // the guard fails the test when it ends, after the step that broke because of it: the report's errors[] holds both
+  const r = fromPlaywright(pwReport([spec("TC-contacts-1 del @p1", [{ status: "unexpected", projectName: "ui", results: [run("failed", { error: err("Timeout 5000ms exceeded"), errors: [err("Timeout 5000ms exceeded"), err(guard.replace(/^Error: /, ""))] })] }])]), { module: "contacts", side: "ui" });
+  assert.match(r.items[0].error, /^Delete blocked by the ledger guard/);
+});
+
 test("rules: api class-only expectation inside the class is not a failure, outside it a candidate product-bug", async () => {
   const sc = (n, expect) => ({ id: `API-contacts-${n}`, endpoint: "EP-contacts-1", mutates: false, title: `s${n}`, expect });
   const it = (n, status) => ({ title: `API-contacts-${n} s`, scenarioId: `API-contacts-${n}`, status: "failed", attempts: 3, passedOnRetry: false, project: "api", error: `Error: status\n\nExpected: >= 200\nReceived: ${status}` });
@@ -213,6 +227,25 @@ function failing() {
 const ROW1 = { key: "ui:TC-contacts-1", class: "product-bug", reason: "save returns 500", evidence: ["playwright-tests/acme/test-results/ui/t/trace.zip"], expectation: "testcase:TC-contacts-1" };
 const ROW2 = { key: "ui:TC-contacts-2", class: "test-bug", reason: "wrong wait", healable: true, fixHint: "wait for the dialog" };
 const BUG = (over = {}) => ({ cluster: "BUG-contacts-1", title: "Save fails with 500", steps: ["open Contacts", "save"], expected: { text: "the contact is saved", source: "testcase:TC-contacts-1" }, actual: { quote: "Received: 500" }, evidence: ["playwright-tests/acme/test-results/ui/t/trace.zip"], affected: ["TC-contacts-1"], severity: "major", ...over });
+
+test("bug export: each drafted product-bug cluster becomes an issue-ready file and a bugs.json entry; a re-export drops gone drafts (D-080)", async () => {
+  const { exportBugs } = await import("./lib/bug-export.mjs");
+  const s = failing();
+  s.overlay({ rows: [ROW1, ROW2], bugs: [BUG()] });
+  await s.cli("build");
+  const r = exportBugs("acme", { root: s.root });
+  assert.equal(r.dir, `${A}/results/acme-run-1/bugs`);
+  assert.deepEqual(r.bugs, [{ id: "BUG-contacts-1", module: "contacts", framework: "playwright-ui", title: "Save fails with 500", severity: "major", draft: true, file: `${A}/results/acme-run-1/bugs/BUG-contacts-1.md` }]);
+  const md = readFileSync(path.join(s.root, r.bugs[0].file), "utf8");
+  for (const part of ["# BUG-contacts-1: Save fails with 500", "- **Severity:** major", "1. open Contacts\n2. save", "the contact is saved (source: `testcase:TC-contacts-1`)", "```\nReceived: 500\n```", "- `playwright-tests/acme/test-results/ui/t/trace.zip`", "- TC-contacts-1"]) assert.ok(md.includes(part), part);
+  const list = s.json(`${A}/results/acme-run-1/bugs/bugs.json`);
+  assert.deepEqual([list.runId, list.bugs[0].steps, list.bugs[0].cluster], ["acme-run-1", ["open Contacts", "save"], undefined]);
+  // no draft any more (the triager has not written one yet): listed, no file, and the old file is gone
+  s.overlay({ rows: [ROW1, ROW2] });
+  const again = exportBugs("acme", { root: s.root });
+  assert.deepEqual(again.bugs.map((b) => [b.id, b.draft, b.file]), [["BUG-contacts-1", false, null]]);
+  assert.ok(!existsSync(path.join(s.root, `${A}/results/acme-run-1/bugs/BUG-contacts-1.md`)));
+});
 
 test("check: unclassified rows, then a verified stamp once classified; stale after a results change", async () => {
   const s = failing();

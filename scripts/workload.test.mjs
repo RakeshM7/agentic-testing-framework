@@ -14,7 +14,7 @@ import path from "node:path";
 import { main } from "./workload.mjs";
 import { gate } from "./gate.mjs";
 import { planPaths } from "./lib/api-plan.mjs";
-import { writeJson } from "./lib/endpoints.mjs";
+import { writeJson } from "./lib/files.mjs";
 import { caseType, profileFor, rateLimitRps, sizing, typesFor, workloadPaths, workloadRules, workloadScenarios, workloadUnverified, K6_DEFAULTS } from "./lib/workload.mjs";
 import { validateRunConfig } from "./run-config.mjs";
 import { markApproved, put, startRun } from "./test-helpers.mjs";

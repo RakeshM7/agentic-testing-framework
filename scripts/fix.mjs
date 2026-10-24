@@ -29,7 +29,7 @@ export function fixContext(product, module, root = repoRoot) {
   const run = loadJson(p.runFile);
   if (!run.modules.includes(module)) throw new Error(`module must be one of [${run.modules.join(", ")}]`);
   return {
-    root, product, module, run, runId: run.runId, productDir: p.productDir, pwProject: p.pwProject, k6Project: p.k6Project,
+    root, product, module, run, runId: run.runId, productDir: p.productDir, stateDir: p.state, pwProject: p.pwProject, k6Project: p.k6Project,
     permissions: existsSync(p.permissionsFile) ? loadJson(p.permissionsFile) : null,
   };
 }

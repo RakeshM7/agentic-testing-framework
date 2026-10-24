@@ -6,6 +6,7 @@ export type Selector = { role: Role; name: string };
 export type LoginForm = { path: string; username: Selector; password: Selector; submit: Selector };
 
 export type UiSettings = {
+  productHosts: string[];
   actionTimeoutMs: number;
   navigationTimeoutMs: number;
   viewport: { width: number; height: number };

@@ -5,7 +5,7 @@
 //
 //   { module, next, <field>: { <key>: { id, status: active|gone, firstSeen, lastSeen } } }
 import { existsSync, readFileSync } from "node:fs";
-import { withFileLock, writeAtomic } from "./csv.mjs";
+import { withFileLock, writeAtomic } from "./files.mjs";
 
 const defaultFormat = ({ prefix, module, n }) => `${prefix}-${module}-${n}`;
 

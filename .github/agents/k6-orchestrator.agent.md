@@ -45,3 +45,8 @@ Keep it short; do not paste file contents.
 The workload is built only from the module's approved `@performance` test cases, over the endpoint catalogue of the `api-discovery` stage. The domain does not wait for the Playwright API tests: when API results exist (this run or an earlier one), they only exclude a case whose endpoint failed (`failed-functional`) or was blocked (`blocked`) functionally.
 
 `summary` to report: the results' status (or `not-run` and its reason), the thresholds outcome in the totals, the product findings (k6 ids), how many were healed, and the unresolved findings.
+
+## When the framework itself is wrong
+If a problem is the framework's, not the product's and not the test code's -- this prompt contradicts a script or the contract, a script fails on valid input or says something untrue, a template or a doc is wrong -- record it once and go on with your task as well as you can:
+`node scripts/framework-issues.mjs add <p> --from <your name> --kind <prompt|script|contract|doc|config|template|other> --target <the framework file, from the repo root> --summary "<one line>" --evidence "<what you saw: the error, the command and its output, file:line>" [--fix "<what would fix it>"] [--severity blocking|high|medium|low]`.
+At the end of the run it becomes a feedback file for the framework's maintainers. Never change a framework file yourself, and never record the product's bugs or your own mistakes here.

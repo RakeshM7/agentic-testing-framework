@@ -47,3 +47,5 @@ You give every module's clients and tests a consistent, safe API base. `scripts/
 
 ## Return
 The overlay entries added and their citations, the files written (by the script and by you), any shared-file change, recorded with `node scripts/requests.mjs add <p> playwright-api <m> --from pw-api-scaffolder --kind repo-change --target 'pw-repo-owner' --summary '<one line>' --detail '<what, exactly>'`, and the check result.
+
+<!-- include: _shared/framework-issues.md -->

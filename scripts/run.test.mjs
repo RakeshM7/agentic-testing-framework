@@ -1,11 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { carryForward, endInfo, endRun, initRun, makeRunId, next, nextStep, setStage, stagePrompt, status, validateProduct } from "./run.mjs";
-import { loadJson, paths } from "./lib/contract.mjs";
+import { pathToFileURL } from "node:url";
+import { carryForward, diffRuns, endInfo, endRun, initRun, makeRunId, next, nextStep, setStage, stagePrompt, status, validateProduct } from "./run.mjs";
+import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { GROUPS, recordDoctor } from "./lib/doctor.mjs";
+import { recordCanary } from "./lib/guard-check.mjs";
 import { collect } from "./report-data.mjs";
 import { buildCatalogue, markApproved, put, renderFoundation, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
+import { append, read as readLedger } from "./lib/ledger.mjs";
 
 const SITEMAP = JSON.stringify([{ url: "https://app.acme.test/contacts", slug: "contacts-list", title: "Contacts" }]);
 const CSV_HEADER = "ID,Module,Question,Steps to execute,Answer,Clarification agent notes,Run ID\r\n";
@@ -542,4 +547,167 @@ test("scenarios: the interview's answers become each module's scenarios.json wit
   answers({ contacts: [] });
   assert.deepEqual((await scenarios("acme", { root })).removed, ["contacts"]);
   assert.ok(!existsSync(file), "back to a whole-module exploration");
+});
+
+test("resume after a crash: a stage left running becomes an interrupted failed attempt that next offers again; a second interruption exhausts it (D-071)", async () => {
+  const { root } = startRun();
+  const cfg = path.join(root, "config", "acme.yaml");
+  const resume = () => {
+    const r = initRun(cfg, { root, resume: true });
+    recordCanary("acme", root, { host: "claude-code", agent: "orchestrator-agent" });
+    recordDoctor("acme", root, { groups: GROUPS, checks: [] });
+    return r;
+  };
+  assert.equal((await setStage("acme", "knowledge", undefined, "start", undefined, { root })).status, "running");
+  assert.ok(!(await ready("acme", root)).includes("knowledge"), "a running stage is not offered while its session lives");
+  const first = resume();
+  assert.deepEqual(first.interrupted, ["_product/knowledge"]);
+  const rec = loadJson(paths("acme", root).runFile).stages["_product/knowledge"];
+  assert.deepEqual([rec.status, rec.interrupted, rec.attempts], ["failed", true, 1]);
+  assert.match(rec.error, /^interrupted: /);
+  assert.deepEqual(await validateProduct("acme", { root }), [], "run.json with an interrupted stage passes its schema");
+  const offered = (await next("acme", { root })).find((s) => s.stage === "knowledge");
+  assert.deepEqual([offered.attempt, offered.retry], [2, true]);
+  assert.equal(resume().interrupted, undefined, "nothing running, nothing interrupted");
+  assert.equal((await setStage("acme", "knowledge", undefined, "start", undefined, { root })).attempts, 2);
+  resume();
+  const st = await status("acme", { root });
+  assert.equal(st.stages.find((r) => r.stage === "knowledge").exhausted, true, "interrupted attempts count toward the two attempts (D-011)");
+  assert.ok(st.stages.filter((r) => r.stage === "module-knowledge").every((r) => r.blocked));
+});
+
+test("run.json updates from parallel processes are never lost: each holds the run lock (D-072)", async () => {
+  const { root } = startRun();
+  const run = pathToFileURL(path.join(repoRoot, "scripts", "run.mjs")).href;
+  // six processes record a failure on six different stages at once; without the lock one write overwrites another
+  const calls = [["explore", "contacts"], ["explore", "deals"], ["clarifications", "contacts"], ["clarifications", "deals"], ["testcases", "contacts"], ["testcases", "deals"]];
+  const codes = await Promise.all(calls.map(([stage, module]) => new Promise((resolve, reject) => {
+    const code = `import { setStage } from ${JSON.stringify(run)}; await setStage("acme", ${JSON.stringify(stage)}, ${JSON.stringify(module)}, "fail", "x", { root: ${JSON.stringify(root)} });`;
+    const child = spawn(process.execPath, ["--input-type=module", "-e", code], { stdio: "ignore" });
+    child.on("error", reject);
+    child.on("close", resolve);
+  })));
+  assert.deepEqual(codes, calls.map(() => 0));
+  const stages = loadJson(paths("acme", root).runFile).stages;
+  for (const [stage, module] of calls) assert.equal(stages[`${module}/${stage}`]?.status, "failed", `${module}/${stage}`);
+  assert.ok(!existsSync(`${paths("acme", root).runFile}.lock`), "the lock is released");
+});
+
+test("init records what the run is made with: framework commit, browser server, models, templates digest, Node.js (D-077)", async () => {
+  const { collectProvenance } = await import("./lib/provenance.mjs");
+  const here = collectProvenance(repoRoot);
+  assert.match(here.framework.commit, /^[0-9a-f]{40}$/);
+  assert.equal(typeof here.framework.dirty, "boolean");
+  assert.match(here.browserServer, /^@playwright\/mcp@/);
+  assert.ok(here.models.default.claude, "the configured default model");
+  assert.match(here.templates, /^[0-9a-f]{64}$/);
+  assert.equal(here.node, process.version);
+  const { root, run } = startRun();
+  assert.deepEqual(Object.keys(run.provenance).sort(), ["browserServer", "framework", "models", "node", "templates"]);
+  assert.equal(run.provenance.framework, null, "not a git checkout: unknown, never guessed");
+  assert.deepEqual(await validateProduct("acme", { root }), []);
+  const { renderDeck } = await import("./lib/report.mjs");
+  const report = await collect("acme", { root });
+  assert.deepEqual(report.provenance, run.provenance);
+  assert.match(renderDeck({ ...report, provenance: here }), new RegExp(`Made with framework <code>${here.framework.commit.slice(0, 10)}</code>`));
+});
+
+test("end keeps a manifest of what the run left behind, and diff compares two ended runs, never reading a secret (D-078)", async () => {
+  const { root } = startRun();
+  const cfg = path.join(root, "config", "acme.yaml");
+  put(root, "artifacts/acme/modules/contacts/explore/model.json", "{\"v\":1}");
+  put(root, "artifacts/acme/knowledge/overview.md", "# A");
+  put(root, "playwright-tests/acme/tests/ui/contacts/cases.spec.ts", "// one");
+  put(root, "playwright-tests/acme/.auth/state.json", "{\"cookies\":[]}");
+  put(root, "playwright-tests/acme/.env", "API_TOKEN=s3cret");
+  put(root, "playwright-tests/acme/node_modules/x/index.js", "x");
+  const first = await endRun("acme", { root });
+  assert.deepEqual(first.manifest, { file: "artifacts/acme/results/acme-run-1/manifest.json", files: 5 }, "the three above and the two header-only CSVs init writes");
+  const m = loadJson(path.join(root, first.manifest.file));
+  assert.deepEqual(Object.keys(m.files).filter((f) => !f.endsWith("clarifications.csv")).sort(), ["artifacts/acme/knowledge/overview.md", "artifacts/acme/modules/contacts/explore/model.json", "playwright-tests/acme/tests/ui/contacts/cases.spec.ts"], "no .auth, .env or node_modules file");
+  assert.match(m.files["artifacts/acme/knowledge/overview.md"].sha256, /^[0-9a-f]{64}$/);
+
+  initRun(cfg, { root, runId: "acme-run-2" });
+  put(root, "artifacts/acme/modules/contacts/explore/model.json", "{\"v\":2}");
+  put(root, "playwright-tests/acme/tests/ui/contacts/more.spec.ts", "// two");
+  rmSync(path.join(root, "artifacts/acme/knowledge/overview.md"));
+  assert.match(diffRuns("acme", undefined, undefined, { root }).errors[0], /has 1 ended run\(s\): a diff needs two/);
+  await endRun("acme", { root });
+  const d = diffRuns("acme", undefined, undefined, { root });
+  assert.deepEqual([d.from, d.to, d.totals], ["acme-run-1", "acme-run-2", { added: 1, removed: 1, changed: 1, unchanged: 3 }]);
+  assert.deepEqual(d.areas, {
+    modules: { added: [], removed: [], changed: ["artifacts/acme/modules/contacts/explore/model.json"] },
+    playwright: { added: ["playwright-tests/acme/tests/ui/contacts/more.spec.ts"], removed: [], changed: [] },
+    knowledge: { added: [], removed: ["artifacts/acme/knowledge/overview.md"], changed: [] },
+  });
+  assert.deepEqual(diffRuns("acme", "acme-run-2", "acme-run-1", { root }).totals, { added: 1, removed: 1, changed: 1, unchanged: 3 });
+  assert.match(diffRuns("acme", "acme-run-1", "acme-run-9", { root }).errors[0], /acme-run-9 has no manifest/);
+  assert.match(diffRuns("acme", "acme-run-1", undefined, { root }).errors[0], /two run ids, or none/);
+});
+
+test("environments (D-081): each has its own lock, run state, ledger and history; knowledge and modules are shared; the session's ATF_ENV must match the config", async () => {
+  const root = tempRoot();
+  const staging = writeConfig(root, { product: "acme", extra: ["environment: staging"] });
+  const stagingFile = path.join(root, "config", "acme-staging.yaml");
+  writeFileSync(stagingFile, readFileSync(staging, "utf8"));
+  const prodCfg = writeConfig(root, { product: "acme" });
+  assert.match(initRun(stagingFile, { root, env: {} }).errors[0], /is for environment 'staging', but this session's is 'default' \(ATF_ENV\): start the session with ATF_ENV=staging \(make run PRODUCT=acme ENV=staging\)/);
+  assert.match(initRun(stagingFile, { root, env: { ATF_ENV: "Bad Env" } }).errors[0], /ATF_ENV 'Bad Env' must be/);
+
+  const saved = process.env.ATF_ENV;
+  try {
+    process.env.ATF_ENV = "staging";
+    const s = initRun(stagingFile, { root, env: process.env, runId: undefined });
+    assert.match(s.run.runId, /^acme-staging-\d{8}-\d{4}$/);
+    assert.equal(s.run.environment, "staging");
+    const ps = paths("acme", root);
+    assert.equal(path.relative(root, ps.state).replaceAll("\\", "/"), "artifacts/acme/envs/staging/state");
+    assert.ok(existsSync(ps.lockFile) && existsSync(ps.runFile));
+    assert.equal(path.relative(root, ps.results(s.run.runId)).replaceAll("\\", "/"), `artifacts/acme/results/${s.run.runId}`, "results stay product-level: the run id names the environment");
+    append(ps.ledgerFile, { runId: s.run.runId, event: "created", type: "contact", ref: "1", module: "contacts", stage: "explore", agent: "module-explorer" });
+
+    delete process.env.ATF_ENV;
+    const d = initRun(prodCfg, { root, env: {} });
+    assert.ok(!d.errors, "the default environment runs beside staging: its own lock");
+    const pd = paths("acme", root);
+    assert.equal(path.relative(root, pd.state).replaceAll("\\", "/"), "artifacts/acme/state", "default keeps the layout before D-081");
+    assert.deepEqual(readLedger(pd.ledgerFile), [], "staging's ledger is not default's");
+    assert.equal(pd.knowledge, ps.knowledge);
+    assert.equal(pd.module("contacts"), ps.module("contacts"));
+
+    const { findActiveRuns } = await import("./lib/guard.mjs");
+    assert.deepEqual(findActiveRuns(root).map((r) => [r.environment, r.runId === s.run.runId || r.runId === d.run.runId]).sort(), [["default", true], ["staging", true]]);
+    // the guard expands ${state} with each run's own folder: the orchestrator writes its notes in staging's state
+    const { checkTool } = await import("./lib/guard.mjs");
+    const { normalize } = await import("./hooks/hosts/claude.mjs");
+    const write = (rel) => checkTool(normalize({ agent_type: "orchestrator-agent", tool_name: "Write", tool_input: { file_path: path.join(root, rel) } }, { env: { CLAUDE_PROJECT_DIR: root }, host: "claude-code" }), root).allowed;
+    assert.equal(write("artifacts/acme/envs/staging/state/notes.md"), true);
+    assert.equal(write("artifacts/acme/envs/staging/state/run.json"), false);
+  } finally {
+    if (saved === undefined) delete process.env.ATF_ENV;
+    else process.env.ATF_ENV = saved;
+  }
+});
+
+test("framework issues (D-083): agents record them during the run, deduped; end writes one feedback file per reporting agent in the feedback format", async () => {
+  const { main: issues } = await import("./framework-issues.mjs");
+  const { parseFrontmatter } = await import("./lib/feedback.mjs");
+  const { root } = startRun();
+  const add = (from, extra = {}) => issues(["add", "acme", "--from", from, "--kind", "prompt", "--target", "agents/module-explorer.md", "--summary", "Step 3 names a flag explore.mjs refuses", "--evidence", "explore.mjs state: unknown option --via-item", ...Object.entries(extra).flatMap(([k, v]) => [`--${k}`, v])], { root });
+  const first = add("module-explorer", { fix: "use --item", severity: "high" });
+  assert.deepEqual([first.code, first.out.added, /^FI-[0-9a-f]{8}$/.test(first.out.id)], [0, true, true]);
+  assert.deepEqual(add("clarification-explorer").out, { id: first.out.id, duplicate: true }, "the same issue from another agent is one issue");
+  assert.match(issues(["add", "acme", "--from", "module-explorer", "--kind", "bug", "--target", "/etc/passwd", "--summary", "x"], { root }).out.errors.join("\n"), /kind must be one of[\s\S]*target is required[\s\S]*evidence is required/);
+  issues(["add", "acme", "--from", "pw-ui-pom-writer", "--kind", "script", "--target", "scripts/lib/ui-code.mjs", "--summary", "check rejects a valid getByLabel", "--evidence", "ui-code.mjs check: locator not grounded for 'Email *'"], { root });
+  const listed = issues(["list", "acme"], { root }).out.issues;
+  assert.deepEqual(listed.map((i) => [i.from, i.reporters]), [["module-explorer", ["module-explorer", "clarification-explorer"]], ["pw-ui-pom-writer", ["pw-ui-pom-writer"]]]);
+
+  const end = await endRun("acme", { root });
+  assert.deepEqual(end.feedback.map((f) => f.replace(/\d{4}-\d{2}-\d{2}/, "D")), ["feedback/run-acme-run-1/D-module-explorer.md", "feedback/run-acme-run-1/D-pw-ui-pom-writer.md"]);
+  const text = readFileSync(path.join(root, end.feedback[0]), "utf8");
+  const doc = parseFrontmatter(text);
+  assert.deepEqual(doc.problems, [], "a valid feedback file, ready for feedback-implementor-agent");
+  assert.deepEqual([doc.front.source_agent, doc.front.target, doc.front.related_files, doc.front.severity], ["module-explorer", "framework", ["agents/module-explorer.md"], "high"]);
+  assert.match(text, /## Finding 1: Step 3 names a flag explore\.mjs refuses\n\*\*Summary:\*\* .*also reported by clarification-explorer\)\n\*\*Evidence:\*\* explore\.mjs state: unknown option --via-item\n\*\*Suggested fix:\*\* use --item/);
+  assert.equal((await endRun("acme", { root })).errors?.length, 1, "nothing to write twice: the run has ended");
 });

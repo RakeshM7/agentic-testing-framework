@@ -76,3 +76,5 @@ From the last `build` and `check` output, report:
 - what you put in the overlay, and why;
 - the notes the script reported (type caps, functional exclusions, missing results);
 - the check result.
+
+<!-- include: _shared/framework-issues.md -->

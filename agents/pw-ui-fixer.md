@@ -25,3 +25,5 @@ Page objects (`pages/<m>/`), the regions of `tests/ui/<m>/cases.spec.ts`, the da
 
 ### Verification
 After every change run `node scripts/ui-code.mjs build <p> <m>` (it re-renders the smoke from the page objects), then `node scripts/ui-code.mjs check <p> <m>`, which also runs `tsc` and `playwright test --list`. Outside a scaffolded module, run `npx tsc --noEmit` and `npx playwright test --project=ui tests/ui/<m> --list`.
+
+<!-- include: _shared/framework-issues.md -->

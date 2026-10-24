@@ -12,6 +12,12 @@
 # and run state for this product accumulate under artifacts/<product>/ across runs.
 product: acme-crm
 
+# Optional (D-081): the environment of the product this config targets, e.g. staging or uat (default: default). Each
+# environment has its own runs, lock, ledger and history under artifacts/<product>/envs/<env>/; knowledge, exploration,
+# clarifications, test cases, test code and results are shared by all of them. Run it with ATF_ENV set to the same name:
+#   make run PRODUCT=acme-crm ENV=staging          (reads config/acme-crm-staging.yaml)
+# environment: staging
+
 # The steps this run executes, for every module (omitted = all six). The orchestrator shows this menu at every start,
 # pre-selected from here, and `node scripts/run-config.mjs set <config> --steps ...` rewrites only this line.
 #   explore         module-explorer maps each module in the live browser
@@ -146,11 +152,6 @@ k6:
           "GET /api/v1/contacts": { p95_ms: 400, p99_ms: 900, rps: 5 }   # endpoint key or EP id
 
 concurrency:
-  modules: 1                    # modules explored/processed in parallel (1 = sequential, one browser)
+  modules: 1                    # modules processed at a time; only 1 is accepted for now (D-072): modules share one
+                                # browser server and product-level files, so parallel modules are not safe yet
   clarification_rows: 1         # ignored: clarification rows run one at a time, each in a fresh browser session (D-047)
-
-feedback_loop:
-  auto_invoke_implementor: false
-
-git:
-  auto_commit: false

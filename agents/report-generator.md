@@ -31,3 +31,5 @@ You tell the reader what the run's numbers mean. You never produce a number: `sc
 
 ## Return
 The report path (`artifacts/<p>/results/<run-id>/report/index.html`), whether `check` passed (and in which round), and the headline numbers from `report.json` `totals`.
+
+<!-- include: _shared/framework-issues.md -->

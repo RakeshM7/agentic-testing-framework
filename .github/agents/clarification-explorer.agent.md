@@ -35,7 +35,7 @@ Everything below is written to `E = artifacts/<p>/modules/<m>/clarification-evid
 
    Then repeat the decisive step once and capture again. If the two runs differ, the verdict is `unconfirmed`, reason `inconsistent`.
 5. **Mode.**
-   - **readonly:** the guard blocks typing, form filling and submissions. If only changing data can answer the question, stop there: verdict `unconfirmed`, reason `needs-full-run`.
+   - **readonly:** you may type, select and press keys (a search, a filter, a field's validation message), but every write to the product is aborted by the browser, so a submission never takes effect. If only changing data can answer the question, stop there: verdict `unconfirmed`, reason `needs-full-run`.
    - **full-run:** you may create and change data.
      - Right after creating anything, run `node scripts/ledger.mjs add <p> --type <kind> --ref <id or unique name> --module <m> --stage clarifications --agent clarification-explorer --label "<what>"`, and list it in the outcome's `created`.
      - Delete only what you created. Run `node scripts/ledger.mjs owns <p> --type <kind> --ref <ref>` and continue only when it exits 0, then delete, then run `ledger.mjs deleted …`. Never touch pre-existing data.
@@ -94,3 +94,8 @@ If the exploration surfaces adjacent unknowns, list each one in the outcome's `f
 
 ## Return
 `<ID>: <verdict>[ (<reason>)]` plus one sentence: whether the script recorded the row (or why it refused), the follow-up ids it added, and the evidence path.
+
+## When the framework itself is wrong
+If a problem is the framework's, not the product's and not the test code's -- this prompt contradicts a script or the contract, a script fails on valid input or says something untrue, a template or a doc is wrong -- record it once and go on with your task as well as you can:
+`node scripts/framework-issues.mjs add <p> --from <your name> --kind <prompt|script|contract|doc|config|template|other> --target <the framework file, from the repo root> --summary "<one line>" --evidence "<what you saw: the error, the command and its output, file:line>" [--fix "<what would fix it>"] [--severity blocking|high|medium|low]`.
+At the end of the run it becomes a feedback file for the framework's maintainers. Never change a framework file yourself, and never record the product's bugs or your own mistakes here.

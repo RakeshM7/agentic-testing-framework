@@ -60,3 +60,5 @@ From the last `build` and `check` output, report:
 - the composite helpers written;
 - any foundation gap, recorded with `node scripts/requests.mjs add <p> playwright-api <m> --from pw-api-client-writer --kind foundation-gap --target 'pw-api-scaffolder' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
 - the check result.
+
+<!-- include: _shared/framework-issues.md -->

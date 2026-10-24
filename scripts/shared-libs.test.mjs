@@ -1,11 +1,13 @@
-// The helpers every script-built agent shares (D-049): stable ids, citations, the verified stamp, the coverage ledger.
+// The helpers every script-built agent shares (D-049): stable ids, citations, the verified stamp, the coverage ledger;
+// and the file helpers every script writes state through (D-072).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { CITATION_KINDS, CITATION_PREFIXES, citationProblem } from "./lib/citations.mjs";
 import { STATUSES, applyBudget, createLedger } from "./lib/coverage.mjs";
+import { readJson, tryReadJson, withFileLock, withFileLockAsync, writeAtomic, writeIfChanged, writeJson, writeJsonIfChanged } from "./lib/files.mjs";
 import { assignIds } from "./lib/registry.mjs";
 import { stampVerified, unverifiedReason } from "./lib/verified.mjs";
 import { put } from "./test-helpers.mjs";
@@ -158,4 +160,52 @@ test("coverage: applyBudget refuses a budget that is not an integer >= 0, and ch
   for (const bad of [NaN, -1, 1.5, "2", undefined, Infinity]) assert.throws(() => applyBudget(led.items, bad, () => 0), /budget must be an integer >= 0/, String(bad));
   assert.equal(led.items[0].status, "pending");
   assert.deepEqual(applyBudget(led.items, 0, () => 0).deferred.map((i) => i.id), ["x"], "a budget of 0 is valid");
+});
+
+test("files: atomic writes leave no temp file behind and create the directory; JSON reads tell a missing file from a broken one", () => {
+  const dir = tmp();
+  const f = path.join(dir, "a", "b", "state.json");
+  writeJson(f, { x: 1 });
+  assert.deepEqual(readJson(f), { x: 1 });
+  assert.equal(readFileSync(f, "utf8"), '{\n  "x": 1\n}\n');
+  assert.deepEqual(readdirSync(path.dirname(f)), ["state.json"], "the unique temp file is renamed away");
+  assert.equal(readJson(path.join(dir, "none.json"), "fallback"), "fallback");
+  writeFileSync(f, "{broken");
+  assert.throws(() => readJson(f), SyntaxError, "a corrupt file is never read as absent");
+  assert.equal(tryReadJson(f, "fallback"), "fallback");
+  writeAtomic(f, "text");
+  assert.equal(readFileSync(f, "utf8"), "text");
+});
+
+test("files: writeIfChanged keeps an unchanged file untouched; eol any treats a CRLF copy as unchanged", () => {
+  const f = path.join(tmp(), "gen.js");
+  assert.equal(writeIfChanged(f, "a\nb\n"), true);
+  const old = new Date(Date.now() - 60_000);
+  utimesSync(f, old, old);
+  assert.equal(writeIfChanged(f, "a\nb\n"), false);
+  assert.equal(statSync(f).mtimeMs, old.getTime());
+  writeFileSync(f, "a\r\nb\r\n");
+  assert.equal(writeIfChanged(f, "a\nb\n", { eol: "any" }), false);
+  assert.equal(writeIfChanged(f, "a\nb\n"), true);
+  assert.equal(writeJsonIfChanged(f, { y: 2 }), true);
+  assert.equal(writeJsonIfChanged(f, { y: 2 }), false);
+});
+
+test("files: the lock is exclusive, released after a throw, broken when stale, and held across an async body", async () => {
+  const f = path.join(tmp(), "run.json");
+  const lock = `${f}.lock`;
+  assert.throws(() => withFileLock(f, () => { throw new Error("boom"); }), /boom/);
+  assert.ok(!existsSync(lock), "released after a throw");
+  writeFileSync(lock, "");
+  assert.throws(() => withFileLock(f, () => 1, { retries: 2, waitMs: 1 }), /timed out waiting/);
+  const stale = new Date(Date.now() - 120_000);
+  utimesSync(lock, stale, stale);
+  assert.equal(withFileLock(f, () => 2), 2, "a holder older than staleMs is taken to be dead");
+  let held = false;
+  const r = await withFileLockAsync(f, async () => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    held = existsSync(lock);
+    return 3;
+  });
+  assert.deepEqual([r, held, existsSync(lock)], [3, true, false]);
 });

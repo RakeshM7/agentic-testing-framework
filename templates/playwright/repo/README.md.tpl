@@ -27,8 +27,9 @@ npx tsc --noEmit                      # or: npm run typecheck
 - the UI fixtures abort every request to the product's hosts whose method is not GET, HEAD or OPTIONS;
 - the API fixtures throw `Mutation blocked: readonly run` on any other method.
 
-In full-run, every entity a test creates is recorded in the framework's ledger (`utils/shared/ledger.ts`), and only
-entities the current run created may be deleted.
+In full-run, every entity a test creates is recorded in the framework's ledger (`utils/shared/ledger.ts`), with the id
+the product uses for it as its ref, and only entities the current run created may be deleted: the UI fixtures refuse
+any other destructive request and fail the test.
 
 ## Managed files
 

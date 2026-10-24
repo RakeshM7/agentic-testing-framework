@@ -66,3 +66,8 @@ You don't redo or override any of this, except where a rule says an override wit
 
 ## Return
 Per script: passed/failed thresholds, p95, error rate (from the last `build` output); the count per class; the healable count; the product bugs (cluster id, K6 ids, one line each); the leftovers registered, and the untracked ones; whether `check` passed.
+
+## When the framework itself is wrong
+If a problem is the framework's, not the product's and not the test code's -- this prompt contradicts a script or the contract, a script fails on valid input or says something untrue, a template or a doc is wrong -- record it once and go on with your task as well as you can:
+`node scripts/framework-issues.mjs add <p> --from <your name> --kind <prompt|script|contract|doc|config|template|other> --target <the framework file, from the repo root> --summary "<one line>" --evidence "<what you saw: the error, the command and its output, file:line>" [--fix "<what would fix it>"] [--severity blocking|high|medium|low]`.
+At the end of the run it becomes a feedback file for the framework's maintainers. Never change a framework file yourself, and never record the product's bugs or your own mistakes here.

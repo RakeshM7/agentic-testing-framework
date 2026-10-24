@@ -11,18 +11,18 @@
 // Classes (8 values; the interview's seventh class is awaiting-approval / known-issue):
 //   product-bug  test-bug (healable)  locator-drift (healable)  flaky  environment  blocked-by-mode  awaiting-approval  known-issue
 // Rules, in order, the first that matches decides (RULES below documents each):
-//   awaiting-approval, blocked-by-mode, flaky, known-issue, environment, locator-drift, api-class-only
+//   awaiting-approval, blocked-by-mode, flaky, known-issue, ledger-guard (ui), environment, locator-drift, api-class-only
 import { existsSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
-import { writeAtomic } from "./csv.mjs";
+import { readJson, writeAtomic, writeJson } from "./files.mjs";
 import { citationProblem } from "./citations.mjs";
 import { csvPath, readRows } from "./clarifications.mjs";
 import { planPaths } from "./api-plan.mjs";
-import { readJson, writeJson } from "./endpoints.mjs";
 import { assignIds } from "./registry.mjs";
 import { approvalStatus, approvalSummary, readApprovals, testcasePaths } from "./testcases.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 import { workloadPaths, workloadScenarios } from "./workload.mjs";
+import { LEDGER_GUARD_RE } from "./ledger.mjs";
 
 export const DOMAINS = { ui: "playwright-ui", api: "playwright-api", k6: "k6" };
 export const CLASSES = ["product-bug", "test-bug", "locator-drift", "flaky", "environment", "blocked-by-mode", "awaiting-approval", "known-issue"];
@@ -39,6 +39,7 @@ export const RULES = {
   "setup-failed": "an auth setup test failed, so the tests that depend on it never ran",
   "locator-drift": "the locator smoke found a locator with count 0, or a page-object locator timed out",
   "api-class-only": "a class-only API expectation: an actual status in the class is not a failure, outside it a candidate product bug",
+  "ledger-guard": "the UI guard refused a destructive request on an entity this run did not create (D-074): the test's fault, never the product's",
 };
 
 const clip = (s, n) => String(s ?? "").slice(0, n);
@@ -253,7 +254,8 @@ function ruleRows(ctx, tp, g) {
     } else {
       const env = isEnvironment(it);
       const drift = env ? null : isLocatorDrift(it, ctx.domain);
-      if (env) set(row, "environment", "environment", env);
+      if (ctx.domain === "ui" && LEDGER_GUARD_RE.test(stripAnsi(it.error ?? ""))) set(row, "test-bug", "ledger-guard", RULES["ledger-guard"], { healable: true, fixHint: "record the entity with the id the product uses as its ref (recordCreated), and delete only what owns() confirms this run created" });
+      else if (env) set(row, "environment", "environment", env);
       else if (drift) set(row, "locator-drift", "locator-drift", drift, { healable: true, fixHint: "re-ground the page-object locator in the exploration snapshot of its state (the locator smoke names it)" });
       else if (ctx.domain === "api" && it.status === "failed") {
         const exp = plan.get(id)?.expect;

@@ -20,10 +20,10 @@
 //   - an inventory entry is cited by its stable id, explore/network-inventory.json#NI-<m>-<n> (D-052); an older
 //     inventory without ids is still read, and cited by its array index (#/<index>)
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
-import { writeAtomic, withFileLock } from "./csv.mjs";
+import { readJson, withFileLock, writeJson } from "./files.mjs";
 import { operationsFromIntrospection } from "./graphql.mjs";
 import { parseSpec, specVersion } from "./openapi.mjs";
 import { assignIds } from "./registry.mjs";
@@ -64,11 +64,6 @@ export function apiPaths(productDir, module) {
   };
 }
 
-export const readJson = (f, fallback) => (existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : fallback);
-export const writeJson = (f, data) => {
-  mkdirSync(path.dirname(f), { recursive: true });
-  writeAtomic(f, JSON.stringify(data, null, 2) + "\n");
-};
 const uniq = (xs) => [...new Set(xs)];
 const sortNum = (xs) => uniq(xs.map(Number).filter(Number.isFinite)).sort((a, b) => a - b);
 

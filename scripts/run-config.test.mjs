@@ -12,7 +12,7 @@ test("minimal config normalizes with safe defaults", () => {
   assert.equal(normalized.clarifications.unresolved_policy, "stop");
   assert.deepEqual(normalized.limits, { review_rounds: 3, heal_rounds: 3 });
   assert.deepEqual(normalized.concurrency, { modules: 1, clarification_rows: 1 });
-  assert.equal(normalized.git.auto_commit, false);
+  assert.equal(normalized.git, undefined, "no default for a key nothing reads (D-083)");
 });
 
 test("product and an explicit module list are required", () => {
@@ -281,4 +281,18 @@ test("set's arguments: lists, module=path pairs, an empty value clears; nothing 
   assert.deepEqual(parseSetArgs(["--steps", "explore, k6", "--testcases-file", "contacts=docs/c.feature", "--testcases-file", "deals=", "--testcases-import", "", "--testcases-types", "ui,api"]).changes, { steps: ["explore", "k6"], testcasesFiles: { contacts: "docs/c.feature", deals: null }, testcasesImport: null, testcasesTypes: ["ui", "api"] });
   assert.match(parseSetArgs(["--testcases-file", "docs/c.feature"]).errors[0], /expected <module>=<path>/);
   assert.match(parseSetArgs([]).errors[0], /^nothing to set/);
+});
+
+test("concurrency.modules is capped at 1 until parallel modules are safe (D-072)", () => {
+  assert.deepEqual(validateRunConfig({ ...base, concurrency: { modules: 1 } }).errors, []);
+  assert.match(validateRunConfig({ ...base, concurrency: { modules: 2 } }).errors.join("\n"), /concurrency\.modules: at most 1 for now \(D-072\)/);
+  assert.match(validateRunConfig({ ...base, concurrency: { modules: 0 } }).errors.join("\n"), /positive integer/);
+});
+
+test("keys nothing reads are accepted with a warning, never silently (D-083)", () => {
+  const r = validateRunConfig({ ...base, feedback_loop: { auto_invoke_implementor: true }, git: { auto_commit: true } });
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.warnings.length, 2);
+  assert.match(r.warnings.join("\n"), /auto_invoke_implementor has no effect[\s\S]*auto_commit has no effect/);
+  assert.deepEqual(validateRunConfig(base).warnings, []);
 });

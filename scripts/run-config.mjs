@@ -14,14 +14,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual, parseArgs } from "node:util";
 import yaml from "js-yaml";
-import { CASE_TYPES, SLUG_RE, STEPS, repoRoot } from "./lib/contract.mjs";
+import { CASE_TYPES, DEFAULT_ENV, SLUG_RE, STEPS, repoRoot } from "./lib/contract.mjs";
 import { UNRESOLVED_POLICIES } from "./lib/clarifications.mjs";
 import { VISIBILITIES, applyChanges, buildDraft, rewriteKeys } from "./lib/run-config-draft.mjs";
 
 const MODES = ["readonly", "full-run"];
 const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
-const KNOWN = ["product", "about", "steps", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
+const KNOWN = ["product", "environment", "about", "steps", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
 const posInt = (v) => Number.isInteger(v) && v > 0;
+export const MAX_MODULE_CONCURRENCY = 1;
 const strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
 const httpUrl = (v) => {
   try {
@@ -105,6 +106,7 @@ function fileError(v, where, root) {
 // root: what relative file paths (test case files) resolve against.
 export function validateRunConfig(cfg, { root = repoRoot } = {}) {
   const errors = [];
+  const warnings = [];
   if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return { errors: ["config is not a YAML mapping"] };
   for (const k of Object.keys(cfg)) if (!KNOWN.includes(k)) errors.push(`${k}: unknown top-level key`);
   // The steps this run executes (absent = all of them); the stages a chosen step needs run automatically.
@@ -118,6 +120,8 @@ export function validateRunConfig(cfg, { root = repoRoot } = {}) {
   }
 
   if (typeof cfg.product !== "string" || !SLUG_RE.test(cfg.product)) errors.push("product: required, lowercase kebab-case (folder name under artifacts/, playwright-tests/, k6-tests/)");
+  if (cfg.environment !== undefined && (typeof cfg.environment !== "string" || !SLUG_RE.test(cfg.environment)))
+    errors.push("environment: lowercase kebab-case (D-081: e.g. staging; the session runs it with ATF_ENV set to the same name)");
   if (cfg.about !== undefined) {
     if (!isMap(cfg.about)) errors.push("about: must be a mapping {name?, visibility?, description?}");
     else {
@@ -229,14 +233,24 @@ export function validateRunConfig(cfg, { root = repoRoot } = {}) {
     errors.push(`clarifications.unresolved_policy: not in [${UNRESOLVED_POLICIES}]`);
   for (const k of ["review_rounds", "heal_rounds"]) if (cfg.limits?.[k] !== undefined && !posInt(cfg.limits[k])) errors.push(`limits.${k}: must be a positive integer`);
   for (const k of ["modules", "clarification_rows"]) if (cfg.concurrency?.[k] !== undefined && !posInt(cfg.concurrency[k])) errors.push(`concurrency.${k}: must be a positive integer`);
+  // D-072: modules run one at a time until parallel modules are safe (they share one browser server, and the product-level
+  // files they write are not yet audited for parallel writers)
+  if (posInt(cfg.concurrency?.modules) && cfg.concurrency.modules > MAX_MODULE_CONCURRENCY)
+    errors.push(`concurrency.modules: at most ${MAX_MODULE_CONCURRENCY} for now (D-072): modules share one browser server and product-level files, so parallel modules are not safe yet`);
   if (cfg.k6 !== undefined) errors.push(...k6Errors(cfg.k6, Array.isArray(cfg.modules) ? cfg.modules.map((m) => m?.slug) : []));
 
   if (errors.length) return { errors };
+  // accepted for older configs, but nothing reads them (D-083)
+  if (cfg.feedback_loop?.auto_invoke_implementor !== undefined)
+    warnings.push("feedback_loop.auto_invoke_implementor has no effect (D-083): run.mjs end writes the framework issues agents recorded to feedback/run-<run-id>/; start feedback-implementor-agent on them yourself");
+  if (cfg.git?.auto_commit !== undefined) warnings.push("git.auto_commit has no effect: the framework never commits; a human does");
   return {
     errors,
+    warnings,
     normalized: {
       ...cfg,
       steps: cfg.steps ?? [...STEPS],
+      environment: cfg.environment ?? DEFAULT_ENV,
       about: { name: cfg.product, visibility: "public", description: "", ...cfg.about },
       target: { api_urls: [], ...cfg.target },
       api: { ...API_DEFAULTS, ...cfg.api },
@@ -249,8 +263,6 @@ export function validateRunConfig(cfg, { root = repoRoot } = {}) {
       clarifications: { unresolved_policy: "stop", ...cfg.clarifications },
       limits: { review_rounds: 3, heal_rounds: 3, ...cfg.limits },
       concurrency: { modules: 1, clarification_rows: 1, ...cfg.concurrency },
-      feedback_loop: { auto_invoke_implementor: false, ...cfg.feedback_loop },
-      git: { auto_commit: false, ...cfg.git },
       k6: { ...K6_DEFAULTS, ...cfg.k6, caps: { ...K6_DEFAULTS.caps, ...cfg.k6?.caps } },
     },
   };
@@ -361,10 +373,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error("usage: run-config.mjs validate <config.yaml> | draft <answers.json> | set <config.yaml> [--steps ...] (see header comment)");
     process.exit(2);
   }
-  const { errors, normalized } = validateRunConfig(yaml.load(readFileSync(file, "utf8")));
+  const { errors, warnings = [], normalized } = validateRunConfig(yaml.load(readFileSync(file, "utf8")));
   if (errors.length) {
     console.error(errors.map((e) => `- ${e}`).join("\n"));
     process.exit(1);
   }
+  if (warnings.length) console.error(warnings.map((w) => `warning: ${w}`).join("\n"));
   console.log(JSON.stringify(normalized, null, 2));
 }

@@ -48,7 +48,8 @@ import path from "node:path";
 import { citationProblem } from "./citations.mjs";
 import { csvPath, evidenceDir, isAnswered, isAuthoritative, readRows } from "./clarifications.mjs";
 import { createLedger } from "./coverage.mjs";
-import { detectDelimiter, parseCsv, serializeCsv, withFileLock, writeAtomic } from "./csv.mjs";
+import { detectDelimiter, parseCsv, serializeCsv } from "./csv.mjs";
+import { readJson, withFileLock, writeAtomic, writeIfChanged, writeJson } from "./files.mjs";
 import { explorePaths } from "./explore.mjs";
 import { planPaths } from "./api-plan.mjs";
 import { knowledgePaths } from "./knowledge.mjs";
@@ -84,11 +85,6 @@ const FIELD_ROLES = ["textbox", "searchbox", "spinbutton", "slider", "combobox",
 const NOT_FIELDS = ["duplicate-of", "out-of-module", "external", "logout"];
 const WEAK_EVIDENCE = ["agent-capture", "stale"];
 
-const readJson = (f, fallback) => (existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : fallback);
-const writeJson = (f, data) => {
-  mkdirSync(path.dirname(f), { recursive: true });
-  writeAtomic(f, JSON.stringify(data, null, 2) + "\n");
-};
 const sha256Text = (s) => createHash("sha256").update(s).digest("hex");
 const sha1 = (s) => createHash("sha1").update(s).digest("hex");
 const uniq = (xs) => [...new Set(xs)];
@@ -1242,9 +1238,6 @@ export async function build(ctx, validateData) {
   // render
   const file = tp.file(format);
   mkdirSync(tp.dir, { recursive: true });
-  const writeIfChanged = (f, text) => {
-    if (!(existsSync(f) && readFileSync(f, "utf8") === text)) writeAtomic(f, text);
-  };
   writeIfChanged(file, renderCases(format, ctx.moduleName, cases));
   writeIfChanged(tp.summary, renderSummary(ctx, cases, ledger, byTechnique, degraded, file));
   const parsed = parseCases(file, format).map((c) => c.id);

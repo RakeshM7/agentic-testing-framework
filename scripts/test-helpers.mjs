@@ -3,7 +3,11 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { HEADERS } from "./lib/clarifications.mjs";
+import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
+import { main as exploreMain } from "./explore.mjs";
+import { HEADERS, append as appendCsv, csvPath } from "./lib/clarifications.mjs";
+import { explorePaths } from "./lib/explore.mjs";
 import { paths, repoRoot } from "./lib/contract.mjs";
 import { parseCsv, serializeCsv } from "./lib/csv.mjs";
 import { knowledgePaths, mergeGlossary, registerSource, render, runCheck, storeSnapshot } from "./lib/knowledge.mjs";
@@ -18,7 +22,12 @@ export function tempRoot() {
   return root;
 }
 
-export function writeConfig(root, { mode = "readonly", policy, product = "acme", apiUrls, extra = [] } = {}) {
+const MODULE_LINES = {
+  contacts: "  - {slug: contacts, name: Contacts, entry_url: 'https://app.acme.test/contacts'}",
+  deals: "  - {slug: deals, name: Deals, nav_path: [Deals]}",
+};
+
+export function writeConfig(root, { mode = "readonly", policy, product = "acme", apiUrls, extra = [], modules = ["contacts", "deals"] } = {}) {
   const file = path.join(root, "config", `${product}.yaml`);
   writeFileSync(
     file,
@@ -27,8 +36,7 @@ export function writeConfig(root, { mode = "readonly", policy, product = "acme",
       apiUrls ? `target: {url: 'https://app.acme.test', api_urls: [${apiUrls.map((u) => `'${u}'`).join(", ")}]}` : "target: {url: 'https://app.acme.test'}",
       ...extra,
       "modules:",
-      "  - {slug: contacts, name: Contacts, entry_url: 'https://app.acme.test/contacts'}",
-      "  - {slug: deals, name: Deals, nav_path: [Deals]}",
+      ...modules.map((m) => MODULE_LINES[m]),
       `authorizations: {mode: ${mode}}`,
       ...(policy ? [`clarifications: {unresolved_policy: ${policy}}`] : []),
     ].join("\n")
@@ -56,7 +64,8 @@ export function put(root, rel, content) {
 // A module's endpoint catalogue the way the api-discovery stage leaves it: endpoints.mjs build over a one-endpoint
 // network inventory (an empty inventory gives an empty catalogue, which is a valid "no API surface" outcome).
 export async function buildCatalogue(root, { product = "acme", module = "contacts", inventory } = {}) {
-  const { apiPaths, build, writeJson } = await import("./lib/endpoints.mjs");
+  const { apiPaths, build } = await import("./lib/endpoints.mjs");
+  const { writeJson } = await import("./lib/files.mjs");
   const ap = apiPaths(paths(product, root).productDir, module);
   writeJson(ap.inventory, inventory ?? [{ method: "GET", pathTemplate: `/api/v1/${module}`, statusCodes: [200], requestKeys: [], responseKeys: ["id"], pages: ["list"] }]);
   const r = build(ap, { module, cfg: { target: { url: "https://app.acme.test" }, modules: [{ slug: module, name: module }], api: {} }, runId: `${product}-run-1` });
@@ -301,4 +310,99 @@ export async function scaffoldApiCode(root, { product = "acme", module = "contac
   const c = await ac("check", product, module, ...(scope === "clients" ? ["--clients"] : []));
   if (c.code) throw new Error(`scaffoldApiCode: check: ${JSON.stringify(c.out.problems)}`);
   return { ctx, model, out: c.out };
+}
+
+const EXPLORE_FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "explore");
+
+// A module-explorer session over the fixture module (scripts/fixtures/explore): records states from the fixture
+// snapshots through explore.mjs as the agent would. -> {root, xp, ex, cap, state, model, item, write}
+export function exploreSession(root) {
+  const xp = explorePaths(paths("acme", root).productDir, "contacts");
+  const ex = (...args) => exploreMain(args, { root, env: {} });
+  let n = 0;
+  // the agent saves a capture under explore/captures/ and passes its path
+  const cap = (name) => {
+    mkdirSync(xp.captures, { recursive: true });
+    const to = `captures/${++n}-${name}`;
+    copyFileSync(path.join(EXPLORE_FIXTURES, name), path.join(xp.dir, to));
+    return to;
+  };
+  const state = async (name, via, ...actions) => {
+    const args = ["state", "acme", "contacts", "--snapshot", cap(name)];
+    if (via) args.push("--via", via, ...actions.flatMap((a) => (/^FR-/.test(a) ? ["--item", a] : ["--action", a])));
+    const r = await ex(...args);
+    assert.equal(r.code, 0, JSON.stringify(r.out));
+    return r.out;
+  };
+  const model = async () => {
+    await ex("build", "acme", "contacts");
+    return JSON.parse(readFileSync(xp.model, "utf8"));
+  };
+  const item = async (st, role, name) => (await model()).frontier.find((i) => i.state === st && i.role === role && (i.name === name || (i.examples ?? []).includes(name)));
+  const write = (rel, data) => {
+    mkdirSync(path.dirname(path.join(xp.dir, rel)), { recursive: true });
+    writeFileSync(path.join(xp.dir, rel), typeof data === "string" ? data : JSON.stringify(data, null, 2));
+  };
+  return { root, xp, ex, cap, state, model, item, write };
+}
+
+
+// The whole readonly exploration of the fixture module, as the agent would do it. -> ids for the tests
+export async function exploreFixture(s) {
+  const list = await s.state("contacts-list.md");
+  const dialog = await s.state("contacts-list-dialog.md", list.state, 'button "New contact"');
+  await s.state("contacts-list.md", dialog.state, 'button "Cancel"');
+  const mine = await s.state("contacts-list-tab-mine.md", list.state, 'tab "Mine"');
+  await s.state("contacts-list.md", mine.state, 'tab "All"');
+  await s.state("contacts-list.md", list.state, 'tab "All"');
+  const detail = await s.state("contacts-detail.md", list.state, 'link "Jane Doe"');
+  await s.state("contacts-list.md", detail.state, 'link "Back to contacts"');
+  await s.state("contacts-detail.md", detail.state, 'link "Jane Doe"'); // the breadcrumb's own page
+  const sorted = await s.state("contacts-list-sorted.md", list.state, 'columnheader "Name"');
+  await s.state("contacts-list.md", sorted.state, 'columnheader "Name ▲"');
+  await s.state("contacts-list.md", list.state, 'link "Acme CRM"');
+  await s.state("contacts-list.md", list.state, 'link "Contacts"');
+  const ids = { list: list.state, dialog: dialog.state, mine: mine.state, detail: detail.state, sorted: sorted.state };
+  ids.name = (await s.item(ids.dialog, "textbox", "Name *")).id;
+  ids.email = (await s.item(ids.dialog, "textbox", "Email")).id;
+  ids.owner = (await s.item(ids.dialog, "combobox", "Owner")).id;
+  ids.subscribed = (await s.item(ids.dialog, "checkbox", "Subscribed")).id;
+  ids.search = (await s.item(ids.list, "searchbox", "Search contacts")).id;
+  ids.sort = (await s.item(ids.list, "combobox", "Sort by")).id;
+  ids.edit = (await s.item(ids.detail, "button", "Edit")).id;
+  return ids;
+}
+
+// The agent's judgments and files after exploring, so that check passes.
+export function finishExploration(s, ids) {
+  const questions = [
+    { question: "Is \"Name\" required when creating a contact?", steps: "1. Sign in.\n2. Open \"Contacts\".\n3. Click \"New contact\".\n4. Leave \"Name *\" empty and click \"Save\".\n5. Observe whether the contact is saved.", item: [ids.name], kq: ["KQ-contacts-1"] },
+    { question: "What format does \"Email\" accept?", steps: "1. Sign in.\n2. Open \"Contacts\".\n3. Click \"New contact\".\n4. Type \"not-an-email\" in \"Email\" and click \"Save\".\n5. Observe the message.", item: [ids.email] },
+  ];
+  s.write("new-questions.json", questions);
+  appendCsv(csvPath(paths("acme", s.root).productDir, "contacts"), "contacts", "acme-run-1", questions);
+  s.write("captures/owner-note.md", "Billing shows the seat limit per plan: 5 seats on the starter plan.");
+  s.write("captures/edit-popup.md", "Clicking Edit opened a new window; the browser tool stayed on the detail page.");
+  s.write("captures/deals-link.md", "The deal page lists its contacts: deals reference records by id.");
+  s.write("captures/subscribed.md", "Toggling \"Subscribed\" changes nothing on screen until the dialog is saved.");
+  s.write("captures/deals-note.md", "Admin guide: there is a maximum number of records per plan, set under Billing.");
+  s.write("overlay.json", {
+    items: {
+      [ids.subscribed]: { reason: "unreachable", detail: "toggling it changes nothing on screen until the dialog is saved", citation: "observation:explore/captures/subscribed.md" },
+      [ids.edit]: { reason: "unreachable", detail: "opens the edit form in a new window the browser tool cannot follow", citation: "observation:explore/captures/edit-popup.md" },
+    },
+    kq: {
+      "KQ-contacts-2": { status: "observed", evidence: "observation:explore/captures/deals-link.md" },
+      "KQ-contacts-3": { status: "dismissed", reason: "the admin guide sets it per plan; nothing to explore here", citation: "observation:explore/captures/deals-note.md" },
+      "KQ-product-1": { status: "observed", evidence: "observation:explore/captures/owner-note.md" },
+    },
+    inputs: {
+      [ids.owner]: { reason: "its options are listed in interactions.json; no rule to ask about" },
+      [ids.subscribed]: { reason: "a plain opt-in flag" },
+      [ids.search]: { reason: "search is covered by the list flow" },
+      [ids.sort]: { reason: "its options are listed in interactions.json" },
+    },
+  });
+  s.write("flows/create-contact.md", `# Create a contact\nPreconditions: signed in.\n1. Open "Contacts" (${ids.list}).\n2. Click "New contact" (${ids.dialog}).\nExpected result: the "New contact" dialog opens.\n`);
+  s.write("module-summary.md", "# Contacts\n## Pages\n- contacts, contacts-id\n");
 }

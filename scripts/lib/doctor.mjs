@@ -7,7 +7,7 @@
 //   base     Node.js and the framework's own node_modules
 //   login    the browser the login opens (lib/login.mjs, D-069): Microsoft Edge, else Google Chrome, else the
 //            Chromium build of the framework's Playwright
-//   browser  the Playwright MCP server's browser, and its --storage-state matching the run's session
+//   browser  the Playwright MCP server's browser, and its init page (which loads the run's session, D-076)
 //   session  the saved session (present, not empty, not expired) and the credentials files the run-config names
 //   repo     the product Playwright repo's node_modules and its Chromium builds
 //   k6       the k6 binary
@@ -16,12 +16,14 @@
 // blocks; a warning is reported and never blocks. `autofix` is an install that scripts/doctor.mjs --fix may run in a
 // human's terminal (never run by an agent): npm install, a Playwright browser download, or k6 through the OS's package
 // manager (K6_INSTALL).
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
+import { INIT_PAGE } from "./browser-tools.mjs";
 import { STAGES, paths } from "./contract.mjs";
+import { tryReadJson, writeJson } from "./files.mjs";
 
 export const GROUPS = ["base", "login", "browser", "session", "repo", "k6", "target"];
 export const STAGE_NEEDS = {
@@ -42,13 +44,6 @@ export const MIN_NODE = 20;
 
 const RECORD = "doctor.json";
 const slash = (p) => String(p ?? "").replaceAll("\\", "/").replace(/^\.\//, "");
-const readJson = (f) => {
-  try {
-    return JSON.parse(readFileSync(f, "utf8"));
-  } catch {
-    return null;
-  }
-};
 
 export function groupsFor(stages) {
   return GROUPS.filter((g) => stages.some((s) => STAGE_NEEDS[s]?.includes(g)));
@@ -67,9 +62,9 @@ export function browsersDir(pkgRoot, { env = process.env, platform = process.pla
 // The browser builds a Playwright install expects and which of them are missing. coreDir: a playwright-core folder.
 // -> null when there is no playwright-core there, else {version, missing: [{name, revision, dir}]}
 export function browserBuilds(coreDir, names, opts = {}) {
-  const spec = readJson(path.join(coreDir, "browsers.json"));
+  const spec = tryReadJson(path.join(coreDir, "browsers.json"));
   if (!spec) return null;
-  const version = readJson(path.join(coreDir, "package.json"))?.version ?? "unknown";
+  const version = tryReadJson(path.join(coreDir, "package.json"))?.version ?? "unknown";
   const dir = browsersDir(path.resolve(coreDir, "..", ".."), opts);
   const missing = [];
   for (const name of names) {
@@ -91,12 +86,12 @@ function base({ root, nodeVersion }) {
   out.push(major >= MIN_NODE
     ? { id: "node", ok: true, detail: `Node.js ${nodeVersion}` }
     : { id: "node", ok: false, level: "fail", detail: `Node.js ${nodeVersion} is older than ${MIN_NODE}`, fix: `install Node.js ${MIN_NODE} or later (https://nodejs.org)` });
-  const pkg = readJson(path.join(root, "package.json"));
+  const pkg = tryReadJson(path.join(root, "package.json"));
   if (!pkg) return out;
   const wanted = { ...pkg.dependencies, ...pkg.devDependencies };
   const problems = [];
   for (const [name, spec] of Object.entries(wanted)) {
-    const got = readJson(path.join(root, "node_modules", name, "package.json"));
+    const got = tryReadJson(path.join(root, "node_modules", name, "package.json"));
     if (!got) problems.push(`${name} is not installed`);
     else if (/^\d+\.\d+\.\d+$/.test(spec) && got.version !== spec) problems.push(`${name} is ${got.version}, package.json pins ${spec}`);
   }
@@ -147,7 +142,7 @@ export function npxCore(pkgName, version, { env = process.env, platform = proces
   if (!existsSync(npx)) return null;
   for (const h of readdirSync(npx)) {
     const nm = path.join(npx, h, "node_modules");
-    if (readJson(path.join(nm, ...pkgName.split("/"), "package.json"))?.version !== version) continue;
+    if (tryReadJson(path.join(nm, ...pkgName.split("/"), "package.json"))?.version !== version) continue;
     for (const core of [path.join(nm, ...pkgName.split("/"), "node_modules", "playwright-core"), path.join(nm, "playwright-core")])
       if (existsSync(path.join(core, "browsers.json"))) return core;
   }
@@ -182,16 +177,16 @@ function browser({ root, cfg, sys, exists }) {
     else out.push({ id: "mcp-browser", ok: true, detail: `@playwright/mcp@${pkgVersion}: ${channel} is installed` });
   }
 
-  const storage = argValue(args, "--storage-state");
+  // D-076: the framework's init page loads the run's session and guards readonly writes; a --storage-state would load
+  // one product's session for every product
   const auth = cfg.authorizations ?? {};
-  const fixMcp = "change --storage-state in config/mcp.yaml, run npm run build-agents, then restart the agent session";
-  if (auth.authenticated_crawl) {
-    if (slash(storage) !== slash(auth.session_state_file))
-      out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server starts from ${storage ? `--storage-state ${slash(storage)}` : "no --storage-state"}, but this run's session is ${slash(auth.session_state_file)}`, fix: `set --storage-state ${slash(auth.session_state_file)}: ${fixMcp}` });
-    else out.push({ id: "mcp-session", ok: true, detail: `the browser server starts from ${slash(storage)}` });
-  } else if (storage && !exists(path.resolve(root, storage)))
-    out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server's --storage-state ${slash(storage)} does not exist, so the server cannot start`, fix: `remove --storage-state or point it at an existing session: ${fixMcp}` });
-  else if (storage) out.push({ id: "mcp-session", ok: true, level: "warn", detail: `authenticated_crawl is off, but the browser server starts from ${slash(storage)} (another session)`, fix: `remove --storage-state if this product needs no login: ${fixMcp}` });
+  const fixMcp = "in config/mcp.yaml, then run npm run build-agents and restart the agent session";
+  const initPage = argValue(args, "--init-page") ?? args.find((a) => a.startsWith("--init-page="))?.slice("--init-page=".length);
+  if (slash(initPage) !== INIT_PAGE)
+    out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server does not run the framework's init page (--init-page ${INIT_PAGE}), which loads the run's session and aborts every write in a readonly run`, fix: `add "--init-page", "${INIT_PAGE}" to the browser server's args ${fixMcp}` });
+  else if (argValue(args, "--storage-state"))
+    out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server also starts from --storage-state ${slash(argValue(args, "--storage-state"))}, one product's session for every product`, fix: `remove --storage-state (the init page loads this run's session) ${fixMcp}` });
+  else if (auth.authenticated_crawl) out.push({ id: "mcp-session", ok: true, detail: `the init page loads ${slash(auth.session_state_file)} into every new browser` });
   else out.push({ id: "mcp-session", ok: true, detail: "no login: the browser server starts logged out" });
   return out;
 }
@@ -219,7 +214,7 @@ function session({ root, cfg, now, product }) {
   const relogin = `make login PRODUCT=${product}`;
   if (auth.authenticated_crawl) {
     const file = path.resolve(root, auth.session_state_file ?? "");
-    const state = auth.session_state_file ? readJson(file) : null;
+    const state = auth.session_state_file ? tryReadJson(file) : null;
     if (!state) out.push({ id: "session", ok: false, level: "fail", detail: `the saved session ${slash(auth.session_state_file) || "(none set)"} is missing or unreadable`, fix: relogin });
     else {
       const host = hostOf(cfg.target?.url) ?? "";
@@ -330,8 +325,7 @@ export const failures = (checks, groups = GROUPS) => checks.filter((c) => !c.ok 
 
 export function recordDoctor(product, root, { groups, checks }) {
   const file = path.join(paths(product, root).state, RECORD);
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify({ at: new Date().toISOString(), groups, checks: checks.map(({ autofix, ...c }) => c) }, null, 2) + "\n");
+  writeJson(file, { at: new Date().toISOString(), groups, checks: checks.map(({ autofix, ...c }) => c) });
 }
 
 export function clearDoctor(product, root) {
@@ -340,7 +334,7 @@ export function clearDoctor(product, root) {
 
 // -> { ready, reason? } for starting `stage`
 export function doctorStatus(product, stage, root) {
-  const rec = readJson(path.join(paths(product, root).state, RECORD));
+  const rec = tryReadJson(path.join(paths(product, root).state, RECORD));
   const rerun = `node scripts/run.mjs doctor ${product}`;
   if (!rec) return { ready: false, reason: `the dependency check has not run in this session: run \`${rerun}\`` };
   const needs = STAGE_NEEDS[stage] ?? [];

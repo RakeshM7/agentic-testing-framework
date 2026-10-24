@@ -17,6 +17,17 @@ try {
   payload = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw); // Windows PowerShell 5.1 prefixes a BOM when it relays stdin
   root = adapter.rootOf(payload);
   const call = adapter.normalize(payload, { env: process.env, host: args.host, agent: args.agent });
+  // an agent spawn of the active run, with what the host reports about it (D-079); a failure here is logged like any
+  // other and never stops the decision memo below
+  if (call.kind === "spawn") {
+    try {
+      const { recordSpawn } = await import("../lib/telemetry.mjs");
+      recordSpawn(root, call, payload.tool_response ?? payload.toolResponse ?? payload.toolResult);
+    } catch (e) {
+      const { logHookError } = await import("../lib/hook-log.mjs");
+      logHookError(root, { hook: "posttooluse", args, error: e, payload, raw, outcome: "ignored: spawn not recorded" });
+    }
+  }
   if (call.sessionId) {
     const { loadDecisions, rememberConfirmed, touchedDecisions } = await import("../lib/decisions.mjs");
     const { decisions = [] } = loadDecisions(root);

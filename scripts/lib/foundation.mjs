@@ -24,7 +24,8 @@ import path from "node:path";
 import { citationProblem } from "./citations.mjs";
 import { csvPath, readRows } from "./clarifications.mjs";
 import { repoRoot } from "./contract.mjs";
-import { writeAtomic } from "./csv.mjs";
+import { tryReadJson, writeAtomic } from "./files.mjs";
+import { firstPartyHosts } from "./probe.mjs";
 import { parseSnapshot } from "./explore.mjs";
 import { sha256 } from "./verified.mjs";
 
@@ -94,13 +95,6 @@ const SCHEME_PIECE = [/(['"`])(?:https?:?|https?:\/{1,2}|:\/\/|\/\/)\1\s*\+/i, /
 const SCHEME_ARRAY = /\[[^\]]*?(['"`])(?:https?|wss?)(?::\/{0,2})?\1[^\]]*\]\s*\.\s*join\s*\(/i;
 const SCHEME_ELEMENT = /[[,]\s*(['"`])(?:https?|wss?)(?::\/{0,2})?\1\s*[,\]]/i;
 
-const readJson = (file, fallback = null) => {
-  try {
-    return JSON.parse(readFileSync(file, "utf8"));
-  } catch {
-    return fallback;
-  }
-};
 const rel = (from, f) => path.relative(from, f).replaceAll("\\", "/");
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 const lit = (v) => JSON.stringify(v);
@@ -198,7 +192,7 @@ const targetOf = (t) =>
   t
     .replace(/\.(tpl|seed)$/, "")
     .split("/")
-    .map((s) => (s === "_gitignore" ? ".gitignore" : s === "_env.example" ? ".env.example" : s))
+    .map((s) => (s === "_gitignore" ? ".gitignore" : s === "_env.example" ? ".env.example" : s === "_github" ? ".github" : s))
     .join("/");
 
 // -> {managed: [{template, target}], seeds: [{template, target}], parts: {name: text}}
@@ -258,7 +252,7 @@ function citeCtx(ctx, module) {
   if (!cache.has(module)) {
     const moduleDir = path.join(ctx.productDir, "modules", module ?? "_none");
     const rows = module && existsSync(csvPath(ctx.productDir, module)) ? readRows(csvPath(ctx.productDir, module)) : [];
-    const cov = module ? readJson(path.join(moduleDir, "testcases", "coverage.json"), {}) : {};
+    const cov = module ? tryReadJson(path.join(moduleDir, "testcases", "coverage.json"), {}) : {};
     cache.set(module, { rows, cases: new Set((cov?.cases ?? []).map((c) => c.id)), productDir: ctx.productDir, moduleDir });
   }
   return cache.get(module);
@@ -320,7 +314,7 @@ export function loginForm(ctx, login) {
   const problems = citeProblems(ctx, where, login);
   if (problems.length) return { problems };
   const moduleDir = path.join(ctx.productDir, "modules", login.module);
-  const model = readJson(path.join(moduleDir, "explore", "model.json"));
+  const model = tryReadJson(path.join(moduleDir, "explore", "model.json"));
   const state = model?.states?.find((s) => s.id === login.state);
   if (!state) return { problems: [`${where}: ${login.state} is not a state of ${login.module}'s exploration model (explore/model.json): a credential login needs a recorded login form`] };
   const cite = `observation:explore/${state.snapshot}`;
@@ -377,7 +371,7 @@ function authProblems(ctx, where, auth, { k6 = false } = {}) {
   if (auth.scheme === "api-key" && !(auth.header ?? ctx.cfg.api?.auth_header?.name)) out.push(`${where}: an api-key scheme needs its header name`);
   // A citation of the endpoint catalogue must match it: some endpoint there uses this scheme.
   if (auth.module && auth.cite?.includes("spec:discovered-endpoints.json")) {
-    const cat = readJson(path.join(ctx.productDir, "modules", auth.module, "api", "discovered-endpoints.json"), []);
+    const cat = tryReadJson(path.join(ctx.productDir, "modules", auth.module, "api", "discovered-endpoints.json"), []);
     if (Array.isArray(cat) && !cat.some((e) => e.auth === auth.scheme)) out.push(`${where}: no endpoint of ${auth.module}'s discovered-endpoints.json uses auth '${auth.scheme}'`);
   }
   return out;
@@ -455,7 +449,7 @@ export function overlayProblems(ctx, side, overlay) {
       const bad = pathProblem(where, b.path);
       if (bad) out.push(bad);
       else if (b.module && b.cite?.includes("spec:discovered-endpoints.json")) {
-        const cat = readJson(path.join(ctx.productDir, "modules", b.module, "api", "discovered-endpoints.json"), []);
+        const cat = tryReadJson(path.join(ctx.productDir, "modules", b.module, "api", "discovered-endpoints.json"), []);
         const norm = (p) => String(p ?? "").replace(/\/+$/, "");
         if (Array.isArray(cat) && !cat.some((e) => norm(e.basePath) === norm(b.path))) out.push(`${where}: no endpoint of ${b.module}'s discovered-endpoints.json has basePath ${b.path}`);
       }
@@ -534,6 +528,7 @@ function valuesFor(ctx, side, overlay) {
     const login = o.login ? loginForm(ctx, o.login) : null;
     const loginValue = login && !login.problems.length ? lit({ path: login.path, username: o.login.username, password: o.login.password, submit: o.login.submit }) : "null";
     values.entries = [
+      `  // the run-config's target.url and target.api_urls hosts (D-073): a subdomain of one is the product's too\n  productHosts: ${lit(firstPartyHosts(cfg))},\n`,
       `${citeComment(s.actionTimeoutMs)}  actionTimeoutMs: ${s.actionTimeoutMs?.value ?? DEFAULTS.ui.actionTimeoutMs},\n`,
       `${citeComment(s.navigationTimeoutMs)}  navigationTimeoutMs: ${s.navigationTimeoutMs?.value ?? DEFAULTS.ui.navigationTimeoutMs},\n`,
       `${citeComment(s.viewport)}  viewport: ${lit(s.viewport?.value ?? DEFAULTS.ui.viewport)},\n`,
@@ -650,7 +645,7 @@ function configInputs(ctx, side) {
   const cfg = ctx.cfg;
   const pick = {
     repo: { product: ctx.product, authEnv: cfg.api?.auth_header?.env ?? null },
-    ui: { product: ctx.product, target: hostOf(cfg.target?.url) },
+    ui: { product: ctx.product, target: hostOf(cfg.target?.url), hosts: firstPartyHosts(cfg) },
     api: { product: ctx.product, authHeader: cfg.api?.auth_header ?? null, identities: cfg.authorizations?.identities ?? [] },
     k6: { product: ctx.product, authHeader: cfg.api?.auth_header ?? null },
   }[side];
@@ -671,7 +666,7 @@ export function currentStamp(ctx, side) {
 
 // null when the side's verified stamp matches what is on disk, else why not (for the domain flows and the stage).
 export function foundationUnverified(ctx, side) {
-  const m = readJson(ctx.fp.manifest(side));
+  const m = tryReadJson(ctx.fp.manifest(side));
   const cmd = `node scripts/foundation.mjs render ${ctx.product} --side ${side}, then check`;
   if (!m) return `the ${side} foundation was never rendered (${cmd})`;
   if (!m.verified) return `the ${side} foundation never passed foundation.mjs check (${cmd})`;
@@ -706,7 +701,7 @@ export function writeSide(ctx, side, rendered) {
     writeAtomic(file, content);
     seeded.push(target);
   }
-  const old = readJson(ctx.fp.manifest(side), {});
+  const old = tryReadJson(ctx.fp.manifest(side), {});
   const manifest = {
     side,
     project: rel(ctx.root, project),
@@ -870,6 +865,7 @@ export function ruleProblems(ctx, side, overlay) {
       if (side === "ui") {
         if (!/mutationGuard\s*:\s*\[/.test(base) || !/\{\s*auto:\s*true\s*\}/.test(base)) out.push("fixtures/ui/base.ts: mutationGuard must be an auto fixture ({ auto: true }), so every UI test gets it");
         if (!/process\.env\.ATF_MODE !== 'full-run'/.test(base) || !/route\.abort\(/.test(base)) out.push("fixtures/ui/base.ts: the guard must abort non-safe requests whenever ATF_MODE is not full-run");
+        if (!/destructiveRefusal\(method, request\.url\(\)\)/.test(base)) out.push("fixtures/ui/base.ts: in a full-run the guard must refuse a destructive request on an entity this run did not create (destructiveRefusal, D-074)");
       } else {
         if (!/export function guarded\(/.test(base) || !/Mutation blocked: readonly run/.test(base) || !/process\.env\.ATF_MODE === 'full-run'/.test(base)) out.push("fixtures/api/base.ts: guarded() must throw 'Mutation blocked: readonly run' whenever ATF_MODE is not full-run");
         for (const f of ["api", "noAuth", "malformedAuth", "identity"]) {
@@ -993,7 +989,7 @@ export async function check(ctx, side, validate, { compile = true, exec } = {}) 
   if (!out.length && compile) out.push(...compileProblems(ctx, side, exec));
   // A full pass stamps the manifest; any failure clears the stamp, so the flows and the stage refuse the side.
   const stamped = !out.length && compile;
-  const m = readJson(ctx.fp.manifest(side));
+  const m = tryReadJson(ctx.fp.manifest(side));
   if (m && (stamped || (out.length && m.verified))) {
     m.verified = stamped ? currentStamp(ctx, side) : null;
     writeAtomic(ctx.fp.manifest(side), JSON.stringify(m, null, 2) + "\n");

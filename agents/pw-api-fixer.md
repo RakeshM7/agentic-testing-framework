@@ -24,3 +24,5 @@ Only what the guard lets you write: a slot of `helpers/api/<m>.payloads.ts` or `
 
 ### Verification
 After a change run `node scripts/api-code.mjs build <p> <m>`, then `node scripts/api-code.mjs check <p> <m>`; it runs `tsc` and `playwright --list`.
+
+<!-- include: _shared/framework-issues.md -->

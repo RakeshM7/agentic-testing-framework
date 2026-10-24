@@ -62,3 +62,5 @@ From the last `build` and `check` output, report:
 - the slots filled, and any needed slot still empty, with why;
 - the missing lib exports, each recorded with `node scripts/requests.mjs add <p> k6 <m> --from k6-script-writer --kind lib-export --target 'k6-lib-writer' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
 - the check result, including whether `k6 inspect` ran.
+
+<!-- include: _shared/framework-issues.md -->

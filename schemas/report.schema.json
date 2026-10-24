@@ -79,6 +79,8 @@
     "runId": { "type": "string" },
     "mode": { "enum": ["readonly", "full-run"] },
     "target": { "type": "string" },
+    "environment": { "type": "string", "description": "the environment the run worked in (D-081); default when none was named" },
+    "provenance": { "type": ["object", "null"], "description": "run.json provenance (D-077): the framework commit, browser server, models, templates digest and Node.js the run was made with; null for runs that predate it" },
     "generatedAt": { "type": "string" },
     "totals": {
       "type": "object",
@@ -98,7 +100,8 @@
         "coverage": { "$ref": "#/$defs/counts" },
         "assumptions": { "type": "object", "required": ["k6Thresholds", "assumptionCases", "weakRuleFacts", "k6Leftovers", "k6UntrackedCreates"], "additionalProperties": false, "properties": { "k6Thresholds": { "$ref": "#/$defs/int" }, "assumptionCases": { "$ref": "#/$defs/int" }, "weakRuleFacts": { "$ref": "#/$defs/int" }, "k6Leftovers": { "$ref": "#/$defs/int" }, "k6UntrackedCreates": { "$ref": "#/$defs/int" } } },
         "stages": { "type": "object", "required": ["failed", "blocked", "awaitingApproval"], "additionalProperties": false, "properties": { "failed": { "$ref": "#/$defs/int" }, "blocked": { "$ref": "#/$defs/int" }, "awaitingApproval": { "$ref": "#/$defs/int" }, "notChosen": { "$ref": "#/$defs/int", "description": "stages not chosen for this run (never failed or blocked)" } } },
-        "missing": { "$ref": "#/$defs/int", "description": "the number of entries of the top-level `missing`" }
+        "missing": { "$ref": "#/$defs/int", "description": "the number of entries of the top-level `missing`" },
+        "effort": { "type": "object", "required": ["stageMs", "stepMs", "spawns", "tokens"], "additionalProperties": false, "properties": { "stageMs": { "$ref": "#/$defs/int" }, "stepMs": { "$ref": "#/$defs/int" }, "spawns": { "$ref": "#/$defs/int" }, "tokens": { "$ref": "#/$defs/int" } } }
       }
     },
     "bugs": { "type": "array", "description": "product-bug clusters, most severe first", "items": { "$ref": "#/$defs/bug" } },
@@ -170,6 +173,7 @@
     "incompleteStages": { "type": "array", "items": { "type": "object", "required": ["key", "stage", "status", "problems"] } },
     "steps": { "type": "array", "description": "each step of the menu and whether this run chose it; the deck shows the rest as not chosen for this run", "items": { "type": "object", "required": ["step", "chosen"], "additionalProperties": false, "properties": { "step": { "enum": ["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"] }, "chosen": { "type": "boolean" } } } },
     "notChosenStages": { "type": "array", "description": "stages outside this run's chosen set: never failed, blocked or incomplete", "items": { "type": "object", "required": ["key", "stage", "module"], "properties": { "key": { "type": "string" }, "stage": { "type": "string" }, "module": { "type": ["string", "null"] }, "satisfiedBy": { "enum": ["earlier-run", "import"], "description": "what stood in for it for the stages that need it" } } } },
+    "effort": { "type": "object", "description": "time and effort (D-079, scripts/lib/telemetry.mjs): stage durations and attempts, domain step durations, agent spawns with what the host reported", "required": ["stages", "steps", "agents", "totals", "spawnsRecorded"], "additionalProperties": false, "properties": { "stages": { "type": "array", "items": { "type": "object", "required": ["key", "status", "attempts", "durationMs"], "properties": { "key": { "type": "string" }, "status": { "type": "string" }, "attempts": { "$ref": "#/$defs/int" }, "durationMs": { "type": ["integer", "null"], "minimum": 0 } } } }, "steps": { "type": "array" }, "agents": { "type": "array" }, "spawnsRecorded": { "type": "boolean" }, "totals": { "type": "object", "required": ["stageMs", "stepMs", "spawns", "tokens"], "additionalProperties": false, "properties": { "stageMs": { "$ref": "#/$defs/int" }, "stepMs": { "$ref": "#/$defs/int" }, "spawns": { "$ref": "#/$defs/int" }, "tokens": { "$ref": "#/$defs/int" } } } } },
     "missing": { "type": "array", "description": "every data source that was absent or unreadable", "items": { "type": "object", "required": ["section", "module", "reason"], "additionalProperties": false, "properties": { "section": { "type": "string" }, "module": { "type": ["string", "null"] }, "reason": { "type": "string" } } } },
     "modules": {
       "type": "array",

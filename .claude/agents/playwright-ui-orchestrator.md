@@ -37,3 +37,8 @@ Keep it short; do not paste file contents.
 `<domain>` is `playwright-ui`: the UI foundation (once per product), page objects, tests; a bounded gate -> review -> fixer loop; a bounded run/triage -> fixer (heal) loop. Its handlers are pw-repo-owner (shared-file changes), pw-ui-pom-writer (missing methods) and pw-ui-scaffolder (foundation gaps).
 
 `summary` to report: the totals (passed/failed/flaky/skipped), the product bugs (test ids), the failures by class, how many were healed, and the unresolved findings.
+
+## When the framework itself is wrong
+If a problem is the framework's, not the product's and not the test code's -- this prompt contradicts a script or the contract, a script fails on valid input or says something untrue, a template or a doc is wrong -- record it once and go on with your task as well as you can:
+`node scripts/framework-issues.mjs add <p> --from <your name> --kind <prompt|script|contract|doc|config|template|other> --target <the framework file, from the repo root> --summary "<one line>" --evidence "<what you saw: the error, the command and its output, file:line>" [--fix "<what would fix it>"] [--severity blocking|high|medium|low]`.
+At the end of the run it becomes a feedback file for the framework's maintainers. Never change a framework file yourself, and never record the product's bugs or your own mistakes here.

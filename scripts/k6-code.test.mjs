@@ -13,7 +13,7 @@ import path from "node:path";
 import { main } from "./k6-code.mjs";
 import { main as workload } from "./workload.mjs";
 import { planPaths } from "./lib/api-plan.mjs";
-import { writeJson } from "./lib/endpoints.mjs";
+import { writeJson } from "./lib/files.mjs";
 import { computeModel, k6CodeContext, k6CodeUnverified, parseOptions, scriptRules, slotFindings, urlPathOf } from "./lib/k6-code.mjs";
 import { stampVerified } from "./lib/verified.mjs";
 import { markApproved, put, startRun } from "./test-helpers.mjs";

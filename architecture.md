@@ -37,7 +37,7 @@ flowchart LR
 | Agent sources | `agents/*.md` | the 34 roles in `docs/agent-architecture.md`, written once, platform-neutral |
 | Platform build | `scripts/build-agents.mjs`, `scripts/lib/agents/`, `scripts/lib/mcp.mjs`, `config/platforms.yaml`, `config/mcp.yaml` | renders `.claude/agents/`, `.github/agents/`, `.mcp.json`, `.vscode/mcp.json`; `--check` gates drift |
 | Domain scripts | `scripts/{knowledge,orchestration,results,report-data,report,gate,ui-code,api-code}.mjs`, `scripts/lib/report.mjs`, `templates/report/`, `scripts/lib/testcases.mjs`, `scripts/lib/ui-code.mjs`, `scripts/lib/api-code.mjs`, `scripts/lib/ts-scan.mjs`, `scripts/lib/agent-scope.mjs`, `scripts/lib/gate/`, `scripts/lib/domain-flows.mjs` | knowledge registry, each domain's flow and its next step (`orchestration.mjs next`), loop bounds, normalized results, report numbers, test case checks, the UI code scaffold and its locator checks, the generated API code and its checks, the pre-review gate |
-| Contract + state | `scripts/lib/contract.mjs`, `scripts/run.mjs`, `schemas/` | layout, stage table, output verification, lock, history |
+| Contract + state | `scripts/lib/contract.mjs`, `scripts/run.mjs`, `scripts/lib/files.mjs`, `schemas/` | layout, stage table, output verification, lock, history; atomic, locked state writes (D-072) and resume after a crash (D-071) |
 | Clarifications | `scripts/lib/clarifications.mjs`, `scripts/clarifications.mjs` | the product-level CSV: ids, de-dup, human-answer preservation; the module summary rendered from it |
 | Safety | `scripts/lib/{guard,permissions,ledger,hosts,tool-call,browser-tools,guard-check}.mjs`, `scripts/ledger.mjs`, `scripts/hooks/` | mode cap, per-agent permissions, ledger-scoped deletes, host identity, liveness check |
 | Governance | `docs/decisions.md`, `scripts/lib/decisions.mjs`, `scripts/roster.test.mjs` | decision log; confirmation before changing governed files; docs kept in step with the agent roster |
@@ -50,7 +50,8 @@ flowchart LR
 - **Done:** knowledge domain — `knowledge-generator`, `scripts/knowledge.mjs`.
 - **Done:** all other agents bottom-up to `orchestrator-agent`; `scripts/build-agents.mjs` (frontmatter from permissions + models), `orchestration.mjs`, `results.mjs`, `report-data.mjs`; stage attempts and blocked-dependency handling in `run.mjs`.
 - **Done:** GitHub Copilot support from the same sources (VS Code Copilot Chat, Copilot CLI, cloud coding agent), one hook entry for every host, the decision log and its confirmation hook, CI running `npm run check`.
-- **Next:** verify the Copilot runtime facts listed in `docs/platforms.md` on live sessions, a first end-to-end run against a real product, per-role models in `config/models.yaml`.
+- **Done:** end-to-end harnesses (D-084): `scripts/pipeline.test.mjs` drives `run.mjs next` from init to a verified report with stand-in agents on every `npm test`; `make e2e` runs the rendered foundation against a local demo app in a real browser, readonly and full-run, then the human's ledger sweep.
+- **Next:** verify the Copilot runtime facts listed in `docs/platforms.md` on live sessions, a first agent-driven run against a real product, per-role models in `config/models.yaml`.
 
 ## Control flow (D-060)
 

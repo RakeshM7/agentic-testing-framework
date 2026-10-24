@@ -14,7 +14,8 @@ export default defineConfig({
   fullyParallel: {{fullyParallel}},
   workers: {{workers}},
   retries: {{retries}},
-  reporter: 'list',
+  // The framework's runner passes its own --reporter; anywhere else (CI, D-080) a JSON and a JUnit report are written too.
+  reporter: [['list'], ['json', { outputFile: 'test-results/report.json' }], ['junit', { outputFile: 'test-results/junit.xml' }]],
   // A test that creates, changes or deletes data carries @mutates in its title and runs only in full-run.
   grepInvert: fullRun ? undefined : /@mutates/,
   use: {

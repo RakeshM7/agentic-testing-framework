@@ -10,3 +10,5 @@ color: green
 `<domain>` is `playwright-api`: the test plan (from the catalogue the `api-discovery` stage built before this domain starts, with every approved `@api` case as a top-priority scenario), the API foundation (once per product), clients and tests (skips, including "no API surface found", are the script's); a bounded gate -> review -> fixer loop; a bounded run/triage -> fixer (heal) loop. Its handlers are pw-repo-owner (shared-file changes), pw-api-client-writer (missing composite helpers) and pw-api-scaffolder (foundation gaps).
 
 `summary` to report: the totals, the product bugs (scenario ids), the failures by class, how many were healed, and the unresolved findings.
+
+<!-- include: _shared/framework-issues.md -->

@@ -129,7 +129,7 @@ Severity: **blocker** = a safety rule broken or a wrong expected behavior; **maj
 
 Problems with the framework — an agent prompt, a script, a doc — are recorded as **feedback files** and fixed by `feedback-implementor-agent`. Per-product issues in generated test code are not feedback: each domain's own reviewer and fixer handle those during the run.
 
-Agents have no write access to `feedback/`; they report problems in their return message, and a human (or a later human-driven review of the run) files them.
+Agents have no write access to `feedback/`. During a run, an agent that meets a problem with the framework itself records it with `node scripts/framework-issues.mjs add` (every restricted shell may run it, `common_shell_allow` in `config/permissions.yaml`); `run.mjs end` writes the run's issues as feedback files, one per reporting agent, to `feedback/run-<run-id>/<date>-<agent>.md` in the schema below (D-083). A human may also file feedback by hand.
 
 ### Where feedback lives
 

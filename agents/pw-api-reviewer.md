@@ -36,3 +36,5 @@ The gate (`node scripts/gate.mjs`, findings in `results/<run-id>/<m>/playwright-
 
 ## Return
 From the last `check` output: the derived verdict, the counts by severity, and the tests with blocker or major findings.
+
+<!-- include: _shared/framework-issues.md -->

@@ -40,11 +40,11 @@
 // iteration, recorded with trackLeftover at once, and deleted by the flow's last step (k6 VUs share no iteration state);
 // a 2xx delete calls trackDeleted, so lib/summary.js leaves it out of <script>.created.json.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { freeIdentifierFindings, parseAgentCode, propertyFindings, walk as astWalk } from "./agent-scope.mjs";
 import { builtinPatchFindings } from "./api-code.mjs";
-import { readJson, writeJson } from "./endpoints.mjs";
+import { readJson, writeIfChanged, writeJson } from "./files.mjs";
 import { looksLikeSecret, URL_RE } from "./foundation.mjs";
 import { walk } from "./gate/common.mjs";
 import { scanTs } from "./ts-scan.mjs";
@@ -579,12 +579,6 @@ function ownedScripts(ctx) {
   });
 }
 const readText = (f) => (existsSync(f) ? nl(readFileSync(f, "utf8")) : null);
-function writeIfChanged(file, text) {
-  if (readText(file) === text) return false;
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, text);
-  return true;
-}
 
 const workloadGate = (ctx) => {
   const why = workloadUnverified(ctx.wp, ctx.runId);
@@ -629,7 +623,7 @@ export async function build(ctx, validate, { adopt = false } = {}) {
     if (pb.length) return { code: 1, out: { problems: pb.map((e) => `parked.json (internal): ${e}`) } };
     writeJson(ctx.parked, parked);
   }
-  if (writeIfChanged(ctx.slotsFile, renderSlots(ctx, model, regions))) written.push(ctx.slotsRel);
+  if (writeIfChanged(ctx.slotsFile, renderSlots(ctx, model, regions), { eol: "any" })) written.push(ctx.slotsRel);
   // the scripts: one per scenario; a generated script of this module no scenario names any more is removed
   const files = new Set(model.scripts.map((s) => s.file));
   for (const f of ownedScripts(ctx)) {
@@ -644,7 +638,7 @@ export async function build(ctx, validate, { adopt = false } = {}) {
       adopted.push(f);
     }
   }
-  for (const x of model.scripts) if (writeIfChanged(path.join(ctx.k6Project, x.file), renderScript(ctx, model, x))) written.push(x.file);
+  for (const x of model.scripts) if (writeIfChanged(path.join(ctx.k6Project, x.file), renderScript(ctx, model, x), { eol: "any" })) written.push(x.file);
   const plan = planOf(ctx, model, regions);
   const pp = await validate("k6-code-plan", plan);
   if (pp.length) return { code: 1, out: { problems: pp.map((e) => `code-plan.json (internal): ${e}`) } };

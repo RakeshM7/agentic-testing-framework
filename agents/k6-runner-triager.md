@@ -58,3 +58,5 @@ You don't redo or override any of this, except where a rule says an override wit
 
 ## Return
 Per script: passed/failed thresholds, p95, error rate (from the last `build` output); the count per class; the healable count; the product bugs (cluster id, K6 ids, one line each); the leftovers registered, and the untracked ones; whether `check` passed.
+
+<!-- include: _shared/framework-issues.md -->

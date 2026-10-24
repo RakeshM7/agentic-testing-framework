@@ -22,11 +22,25 @@ export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 export const schemaDir = path.join(repoRoot, "schemas");
 export const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-export function paths(product, root = repoRoot) {
+// The environment a session works in (D-081): ATF_ENV, set where the session starts (make run PRODUCT=<p> ENV=<e>) and
+// inherited by every shell, script and hook of it; unset is `default`. A product's runs, lock, ledger and history are
+// per environment; its knowledge, modules, foundation, test code and results are shared.
+export const DEFAULT_ENV = "default";
+export function envName(env = process.env) {
+  const e = env.ATF_ENV || DEFAULT_ENV;
+  if (!SLUG_RE.test(e)) throw new Error(`ATF_ENV '${e}' must be a lowercase kebab-case environment name`);
+  return e;
+}
+// The state folder of an environment: the product's own state/ for `default` (the layout before D-081), else
+// envs/<env>/state/.
+export const stateDirOf = (productDir, environment) => (environment === DEFAULT_ENV ? path.join(productDir, "state") : path.join(productDir, "envs", environment, "state"));
+
+export function paths(product, root = repoRoot, environment = envName()) {
   const productDir = path.join(root, "artifacts", product);
-  const state = path.join(productDir, "state");
+  const state = stateDirOf(productDir, environment);
   return {
     root,
+    environment,
     productDir,
     knowledge: path.join(productDir, "knowledge"),
     module: (m) => path.join(productDir, "modules", m),
