@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "testcases-imported.schema.json",
+  "title": "testcases/imported.json: the cases `testcases.mjs import` parsed from a human's test case file in a framework format (gherkin, csv, testrail, markdown-table). Script-owned; `build` merges them with the writer's cases (source: imported), giving each a stable TC id by its key.",
+  "type": "object",
+  "required": ["module", "file", "format", "productLevel", "sha256", "runId", "importedAt", "cases", "rejected", "skipped"],
+  "additionalProperties": false,
+  "$defs": {
+    "line": { "type": "string", "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$" },
+    "case": {
+      "type": "object",
+      "required": ["key", "title", "type", "priority", "preconditions", "action", "steps", "expected", "data", "from"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "type": "string", "pattern": "^imported-[a-z0-9]+(-[a-z0-9]+)*$", "description": "imported- + the slug of the file's own id (else its title): the same case gets the same TC id on every import." },
+        "title": { "$ref": "#/$defs/line" },
+        "type": { "enum": ["functional", "negative", "boundary", "security", "visual", "api", "performance"] },
+        "priority": { "enum": ["p1", "p2", "p3"] },
+        "mutates": { "type": "boolean" },
+        "visual": { "type": "boolean" },
+        "api": { "type": "boolean" },
+        "performance": { "type": "boolean" },
+        "assumption": { "type": "boolean" },
+        "assumes": { "type": "string" },
+        "preconditions": { "type": "array", "items": { "type": "string" } },
+        "action": { "type": "string" },
+        "steps": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "expected": { "$ref": "#/$defs/line" },
+        "data": { "type": "object", "additionalProperties": { "type": ["string", "number", "boolean"] } },
+        "endpoint": { "type": "string", "pattern": "^EP-" },
+        "flow": { "type": "string", "minLength": 1 },
+        "load": { "$ref": "testcases-overlay.schema.json#/$defs/load" },
+        "from": { "type": "object", "required": ["line"], "additionalProperties": false, "properties": { "line": { "type": "integer", "minimum": 1 }, "id": { "type": "string" } }, "description": "Where the case is in the human's file." }
+      }
+    }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "file": { "type": "string", "description": "The imported file, relative to the repo." },
+    "format": { "enum": ["gherkin", "csv", "testrail", "markdown-table"] },
+    "productLevel": { "type": "boolean", "description": "The run-config's testcases.import: its cases name their module." },
+    "sha256": { "type": ["string", "null"] },
+    "runId": { "type": ["string", "null"] },
+    "importedAt": { "type": "string" },
+    "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } },
+    "rejected": { "type": "array", "items": { "type": "object", "required": ["line", "problem"], "additionalProperties": false, "properties": { "line": { "type": "integer", "minimum": 1 }, "problem": { "type": "string" } } }, "description": "Malformed cases, with their line in the file." },
+    "skipped": { "type": "integer", "minimum": 0, "description": "Cases of a product-level file that name another module." }
+  }
+}

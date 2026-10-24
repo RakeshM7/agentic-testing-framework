@@ -17,6 +17,16 @@
     "module": { "type": "string" },
     "stage": { "type": "string" },
     "agent": { "type": "string" },
-    "note": { "type": "string" }
+    "note": { "type": "string" },
+    "cleanup": {
+      "type": "object",
+      "required": ["endpoint", "param"],
+      "additionalProperties": false,
+      "description": "A created entity's cleanup recipe (D-075): the module catalogue's delete endpoint and the path parameter that takes `ref`. `ledger.mjs sweep` (human-only, between runs) uses it to delete what an ended run left.",
+      "properties": {
+        "endpoint": { "type": "string", "pattern": "^EP-[a-z0-9]+(-[a-z0-9]+)*-\\d+$" },
+        "param": { "type": "string", "minLength": 1 }
+      }
+    }
   }
 }

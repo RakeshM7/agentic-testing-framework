@@ -43,6 +43,13 @@ export function loadDecisions(root) {
 
 export const governing = (decisions, rel) => decisions.filter((d) => d.accepted && d.affects.some((g) => globToRegExp(g).test(rel)));
 
+// The full text of one entry, from its heading to the next (D-082: `decisions.mjs show` and `for --full`).
+export function entryText(text, id) {
+  const heads = [...text.matchAll(/^### (D-\d{3}) · .+$/gm)];
+  const i = heads.findIndex((h) => h[1] === id);
+  return i < 0 ? null : text.slice(heads[i].index, heads[i + 1]?.index ?? text.length).trimEnd();
+}
+
 // ---- which files a shell command writes (heuristic; `node -e`-style writes are a documented known limit) -------
 const SEGMENT = /\s*(?:&&|\|\||;|\|)\s*/;
 const WRITERS = { rm: "all", mv: "all", tee: "all", truncate: "all", touch: "all", cp: "last", install: "last" };

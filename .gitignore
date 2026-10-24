@@ -23,5 +23,8 @@ artifacts/*
 /test-results/
 /playwright-report/
 
+# The orchestrator's run-config interview answers (D-063); the drafted config/<product>.yaml is what to keep
+config/interview-answers.json
+
 # Saved browser session (credentials); never commit
 auth.json

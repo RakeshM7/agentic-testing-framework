@@ -24,6 +24,10 @@ const KINDS = {
   // Copilot CLI / cloud agent native names
   view: "read", glob: "read", grep: "read", create: "write", edit: "write", bash: "shell", powershell: "shell",
   web_fetch: "web_fetch", task: "spawn", ask_user: "ask", rg: "read", read_bash: "read",
+  // Loads deferred tools' definitions (e.g. the Playwright MCP tools) and runs nothing; each loaded tool is judged on use.
+  tool_search_tool: "other",
+  // Autopilot's end-of-turn signal (args: { summary }); runs nothing and touches no run state (seen 2026-10-19).
+  task_complete: "other",
   // VS Code Copilot Chat (Local harness)
   read_file: "read", view_image: "read", list_dir: "read", file_search: "read", grep_search: "read", semantic_search: "read",
   get_errors: "read", get_changed_files: "read", test_failure: "read", get_terminal_output: "read",
@@ -36,15 +40,23 @@ const KINDS = {
 };
 const BROWSER = /playwright.*?browser_(\w+)$/i;
 
+
+// Copilot CLI's apply_patch arrives as `Edit` whose arguments are the bare patch text, not an object: read it as a patch.
+const PATCH = /^\s*\*\*\* Begin Patch\b/;
+
 function argsOf(payload) {
-  const raw = payload.tool_input ?? payload.toolArgs ?? {};
-  if (typeof raw !== "string") return raw ?? {};
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { command: raw };
+  let raw = payload.tool_input ?? payload.toolArgs ?? {};
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      // not JSON: a bare command or patch
+    }
   }
+  if (typeof raw === "string") return PATCH.test(raw) ? { input: raw } : { command: raw };
+  return raw ?? {};
 }
+
 
 // Every file a write call touches, across the hosts' argument shapes (incl. multi-file edits and apply_patch text).
 function pathsOf(a) {

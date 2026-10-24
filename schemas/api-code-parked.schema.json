@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-code-parked.schema.json",
+  "title": "api-code/parked.json: the bodies of payload or glue slots no longer generated (their scenario left the plan, or its request changed), kept by scripts/api-code.mjs build and restored when the slot comes back (D-056).",
+  "type": "object",
+  "required": ["module", "regions"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "regions": {
+      "type": "object",
+      "description": "Keyed <file>#<slot key>.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["lines", "run"],
+        "additionalProperties": false,
+        "properties": { "lines": { "type": "array", "items": { "type": "string" } }, "run": { "type": ["string", "null"] } }
+      }
+    }
+  }
+}

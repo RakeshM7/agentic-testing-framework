@@ -1,0 +1,41 @@
+### Page state
+- Page URL: https://app.acme.test/contacts/102
+- Page Title: Raj Patel - Acme CRM
+- Page Snapshot:
+```yaml
+- generic [ref=k2]:
+  - banner [ref=k3]:
+    - link "Acme CRM" [ref=k4] [cursor=pointer]:
+      - /url: /contacts
+    - navigation "Main" [ref=k5]:
+      - list [ref=k6]:
+        - listitem [ref=k7]:
+          - link "Contacts" [ref=k8] [cursor=pointer]:
+            - /url: /contacts
+        - listitem [ref=k9]:
+          - link "Deals" [ref=k10] [cursor=pointer]:
+            - /url: /deals
+        - listitem [ref=k11]:
+          - link "Help" [ref=k12] [cursor=pointer]:
+            - /url: https://help.vendor.test/contacts
+    - button "Sign out" [ref=k13] [cursor=pointer]
+  - main [ref=k14]:
+    - navigation "Breadcrumb" [ref=k68]:
+      - list [ref=k69]:
+        - listitem [ref=k75]:
+          - link "Contacts" [ref=k76] [cursor=pointer]:
+            - /url: /contacts
+        - listitem [ref=k77]:
+          - link "Raj Patel" [ref=k78] [cursor=pointer]:
+            - /url: /contacts/102
+    - link "Back to contacts" [ref=k70] [cursor=pointer]:
+      - /url: /contacts
+    - heading "Raj Patel" [level=1] [ref=k71]
+    - button "Assign to Raj Patel" [ref=k79] [cursor=pointer]
+    - 'heading "Owner: Me" [level=2] [ref=k72]'
+    - button "Edit" [ref=k73] [cursor=pointer]
+    - button "Delete" [ref=k74] [cursor=pointer]
+  - contentinfo [ref=k46]:
+    - link "Privacy" [ref=k47] [cursor=pointer]:
+      - /url: /privacy
+```

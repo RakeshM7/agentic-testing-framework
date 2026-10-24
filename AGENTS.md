@@ -15,7 +15,7 @@ Never edit a generated file. Hosts and setup are covered in `docs/platforms.md`.
 
 ## Read first
 
-1. **`docs/decisions.md`: before you change ANY file**, except run output and generated test code (`artifacts/`, `playwright-tests/`, `k6-tests/`, `feedback/`). Follow the rules at its top. If your change would revert, weaken, bypass or contradict a recorded decision, stop and get the user's explicit confirmation first. As a subagent, or without a human to ask, report the conflict instead of making the change. The hook will also ask the user before any edit to a file a decision governs.
+1. **`docs/decisions.md`: before you change ANY file**, except run output and generated test code (`artifacts/`, `playwright-tests/`, `k6-tests/`, `feedback/`). Follow the rules at its top. Don't read the whole log: run `node scripts/decisions.mjs for <files you will change> --full` for the entries that govern them, and `node scripts/decisions.mjs index` to scan the rest by title (D-082). If your change would revert, weaken, bypass or contradict a recorded decision, stop and get the user's explicit confirmation first. As a subagent, or without a human to ask, report the conflict instead of making the change. The hook will also ask the user before any edit to a file a decision governs.
 2. `docs/artifact-contract.md`: layout v2 (product-level), state, stages, clarifications CSV, ledger, safety, scripts.
 3. `docs/agent-architecture.md`: the 34-agent design.
 4. `config/permissions.yaml`: what each agent may do.

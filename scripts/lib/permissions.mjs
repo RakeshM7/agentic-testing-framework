@@ -10,6 +10,7 @@ const ENUMS = {
   web_research: ["none", "allowed"],
   ask_user: ["none", "allowed"],
   shell: ["none", "restricted", "project"],
+  browser_session: ["shared", "fresh"],
 };
 const RANK = { none: 0, read: 1, mutate: 2, run: 1 };
 
@@ -17,6 +18,9 @@ export function resolvePermissions(doc) {
   const errors = [];
   if (!doc || typeof doc !== "object" || typeof doc.agents !== "object") return { errors: ["permissions: needs an 'agents' mapping"] };
   const profiles = doc.profiles ?? {};
+  // commands every agent with a restricted shell may run, whatever its own list (D-083: recording a framework issue)
+  const common = doc.common_shell_allow ?? [];
+  if (!Array.isArray(common) || common.some((c) => typeof c !== "string" || !c.startsWith("node scripts/"))) errors.push("common_shell_allow: must be a list of `node scripts/...` commands");
   const agents = {};
   for (const [name, raw] of Object.entries(doc.agents)) {
     if (raw.profile && !profiles[raw.profile]) errors.push(`${name}: unknown profile '${raw.profile}'`);
@@ -29,21 +33,26 @@ export function resolvePermissions(doc) {
       live_target: { browser: lt.browser ?? "none", http: lt.http ?? "none", load: lt.load ?? "none" },
       web_research: a.web_research ?? "none",
       shell: a.shell ?? "none",
-      shell_allow: a.shell_allow ?? [],
+      shell_allow: [...(a.shell_allow ?? []), ...(a.shell === "restricted" && Array.isArray(common) ? common : [])],
       filesystem: { read: a.filesystem?.read ?? [], write: a.filesystem?.write ?? [] },
       ask_user: a.ask_user ?? "none",
+      browser_session: a.browser_session ?? "shared", // fresh: may close its own browser session (D-047)
     };
     if (![0, 1, 2].includes(row.layer)) errors.push(`${name}: layer must be 0, 1 or 2`);
     for (const k of ["browser", "http", "load"]) if (!ENUMS[k].includes(row.live_target[k])) errors.push(`${name}: live_target.${k} '${row.live_target[k]}' not in [${ENUMS[k]}]`);
     if (a.extra_tools) errors.push(`${name}: extra_tools is not supported; grant capabilities (e.g. ask_user: allowed), never platform tool names`);
-    for (const k of ["web_research", "shell", "ask_user"]) if (!ENUMS[k].includes(row[k])) errors.push(`${name}: ${k} '${row[k]}' not in [${ENUMS[k]}]`);
-    if (row.shell === "restricted" && !row.shell_allow.length) errors.push(`${name}: shell: restricted needs shell_allow`);
+    if (row.browser_session === "fresh" && row.live_target.browser === "none") errors.push(`${name}: browser_session: fresh needs browser access`);
+    for (const k of ["web_research", "shell", "ask_user", "browser_session"]) if (!ENUMS[k].includes(row[k])) errors.push(`${name}: ${k} '${row[k]}' not in [${ENUMS[k]}]`);
+    if (row.shell === "restricted" && !(a.shell_allow ?? []).length) errors.push(`${name}: shell: restricted needs shell_allow`);
     if (row.layer === 2 && row.spawns.length) errors.push(`${name}: layer-2 workers cannot spawn agents`);
     agents[name] = row;
   }
   for (const [name, a] of Object.entries(agents))
     for (const s of a.spawns) if (!agents[s]) errors.push(`${name}: spawns unknown agent '${s}'`);
-  return { errors, resolved: { variables: doc.variables ?? {}, agents } };
+  const managed = doc.managed_files ?? [];
+  if (!Array.isArray(managed) || managed.some((g) => typeof g !== "string")) errors.push("managed_files: must be a list of globs");
+  // managed_files (D-054): rendered by scripts/foundation.mjs from templates/; no agent writes one directly.
+  return { errors, resolved: { variables: doc.variables ?? {}, agents, ...(managed.length ? { managed_files: managed } : {}) } };
 }
 
 // readonly runs cap every agent at read (browser/http) and none (load), whatever the file says.
@@ -120,12 +129,99 @@ export function globToRegExp(glob) {
   return new RegExp(`^${re}$`);
 }
 
+// A file scripts/foundation.mjs renders from the framework's templates (D-054): no agent writes it directly, whatever
+// its write list says; the owning agent changes its overlay and re-renders.
+// A deny-list must not fail open on a spelling the file system treats as the same file, so the path is normalised the
+// way Windows (and macOS's default volumes) resolve it: case-insensitively, `.` and `..` resolved, trailing dots and
+// spaces of a segment dropped, an NTFS stream suffix (`base.ts::$DATA`, `base.ts:x`) cut off. An 8.3 short name
+// (`AUTH~1.TS`) matches every managed file in that folder whose name starts with its prefix.
+export function normalizeWritePath(relPath) {
+  const segs = [];
+  for (let seg of String(relPath).replaceAll("\\", "/").split("/")) {
+    seg = seg.replace(/:.*$/s, "").replace(/[. ]+$/, (m) => (seg === "." || seg === ".." ? m : ""));
+    if (!seg || seg === ".") continue;
+    if (seg === "..") segs.pop();
+    else segs.push(seg.toLowerCase());
+  }
+  return segs.join("/");
+}
+
+// Segment by segment: `**` spans any number of segments, `*` stays within one. A path segment that is an 8.3 short name
+// (`playwr~1`, `authse~1.ts`) matches every glob segment whose long name starts with its prefix (dots and spaces
+// dropped, as 8.3 names drop them) or that has a wildcard: in any segment, a directory's as much as a file's.
+function segmentOk(seg, glob) {
+  const short = /^([^~]*)~\d+/.exec(seg);
+  if (short) {
+    const prefix = short[1].replace(/[. ]/g, "");
+    return glob.includes("*") || (prefix.length > 0 && glob.replace(/[. ]/g, "").startsWith(prefix));
+  }
+  return new RegExp(`^${glob.split("*").map((p) => p.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join("[^/]*")}$`).test(seg);
+}
+function segmentsMatch(rel, glob, i = 0, j = 0) {
+  if (j === glob.length) return i === rel.length;
+  if (glob[j] === "**") {
+    for (let k = i; k <= rel.length; k++) if (segmentsMatch(rel, glob, k, j + 1)) return true;
+    return false;
+  }
+  return i < rel.length && segmentOk(rel[i], glob[j]) && segmentsMatch(rel, glob, i + 1, j + 1);
+}
+
+export function isManaged(resolved, relPath, values) {
+  const rel = normalizeWritePath(relPath).split("/").filter(Boolean);
+  return (resolved?.managed_files ?? []).some((g) => segmentsMatch(rel, normalizeWritePath(expandGlob(g, resolved.variables ?? {}, values)).split("/").filter(Boolean)));
+}
+
 export function canWrite(row, relPath, variables, values) {
   return row.filesystem.write.some((g) => !g.startsWith("<") && globToRegExp(expandGlob(g, variables, values)).test(relPath));
 }
 
+// A command line split into its simple commands, for a restricted allow-list. Unquoted `&&`, `||`, `;`, `|`, `&` and
+// line breaks separate commands; the text inside quotes is masked, so no pattern can read it as an operator. -> the
+// commands, or null when the line has something an allow-list can't vouch for: a redirect (< >), a group or subshell
+// (( )), command substitution or a variable ($, a backtick) outside single quotes, cmd.exe's ^ escape or %VAR% outside
+// quotes, a backslash outside quotes (an
+// escape such as \" or \' would otherwise hide where a quote starts), a backslash before a double quote inside double
+// quotes (bash reads it as an escaped quote, PowerShell and cmd as the closing one), or an unterminated quote. Any
+// other backslash inside quotes, and everything inside single quotes, is literal. Arguments belong in single quotes.
+export function shellSegments(cmd) {
+  const segs = [];
+  let cur = "";
+  let q = null;
+  const s = String(cmd ?? "");
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) {
+      if (q === '"' && c === "\\" && s[i + 1] === '"') return null;
+      if (c === q) {
+        q = null;
+        cur += c;
+      } else if (q === '"' && (c === "$" || c === "`")) return null;
+      else cur += "_";
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      q = c;
+      cur += c;
+    } else if ("<>()$`\\^%".includes(c)) return null; // ^ and % for cmd.exe: ^" hides a quote, %VAR% expands
+    else if (c === ";" || c === "\n" || c === "\r" || c === "&" || c === "|") {
+      segs.push(cur);
+      cur = "";
+      if ((c === "&" || c === "|") && s[i + 1] === c) i++;
+    } else cur += c;
+  }
+  if (q) return null;
+  segs.push(cur);
+  if (segs.some((x) => !x.trim())) return null; // an empty command around an operator (`a ;`, `a ;; b`) is not vouched for either
+  return segs.map((x) => x.trim()).filter(Boolean);
+}
+
+// restricted: every simple command of the line must match an allow-list pattern on its own; a `*` in a pattern never
+// matches an operator, a redirect, a substitution or a line break.
 export function shellAllowed(row, cmd) {
   if (row.shell === "none") return false;
   if (row.shell === "project") return true;
-  return row.shell_allow.some((p) => new RegExp(`^${p.replace(/[.+?^$()|[\]\\{}]/g, "\\$&").replace(/\*/g, ".*")}$`).test(cmd.trim()));
+  const segs = shellSegments(cmd);
+  if (!segs?.length) return false;
+  const res = row.shell_allow.map((p) => new RegExp(`^${p.replace(/[.+?^$()|[\]\\{}]/g, "\\$&").replace(/\*/g, "[^;&|<>`$()\\n\\r]*")}$`));
+  return segs.every((seg) => res.some((re) => re.test(seg)));
 }

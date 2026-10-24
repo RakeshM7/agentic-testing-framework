@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scenarios.schema.json",
+  "title": "artifacts/<product>/modules/<m>/scenarios.json: the scenarios a human described for scenario mode (selectable steps), written only by `run.mjs scenarios` from state/scenario-answers.json. The module-explorer explores only their flows (explore.mjs scope `scenarios`); test cases are enumerated only within them.",
+  "type": "object",
+  "required": ["module", "runId", "scenarios"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": ["string", "null"] },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "key", "title", "goal", "start", "steps"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^SC-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$", "description": "Stable: assigned once per key, never reused." },
+          "key": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "The title's slug." },
+          "title": { "type": "string", "minLength": 1 },
+          "goal": { "type": "string", "minLength": 1 },
+          "start": { "type": "string", "minLength": 1, "description": "Where the scenario starts (a page, a URL or a state the human named)." },
+          "steps": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    }
+  }
+}

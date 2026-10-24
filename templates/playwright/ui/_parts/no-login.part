@@ -1,0 +1,3 @@
+  // The exploration recorded no plain login form, so there is no credential login here. Without STORAGE_STATE the UI
+  // tests run without a session; a product behind a login (or CAPTCHA or MFA) needs STORAGE_STATE.
+  await page.context().storageState({ path: STATE });
