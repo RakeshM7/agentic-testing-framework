@@ -38,11 +38,13 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
   known-issues.json                   # HUMAN-edited (schema known-issues): signatures of defects already tracked; no agent writes it
   foundation/                         # foundation.mjs (D-054): <side>-manifest.json (rendered files, verified stamp);
                                       # <side>-overlay.json for side repo|ui|api|k6 is that side's agent's
-  state/
+  state/                              # the `default` environment's; another environment's is envs/<env>/state/ (D-081)
     run.json                          # the current (or last) run: id, mode, modules, steps, caseTypes, stage status
     scenario-answers.json             # the orchestrator's scenario interview (D-066), turned into modules/<m>/scenarios.json
     lock.json                         # present only while a run is active -- one active run per product
     ledger.jsonl                      # entities created in the target, every entry tagged with runId
+    telemetry.jsonl                   # one line per agent spawn, by the PostToolUse hook (D-079): caller, agent, and the duration,
+                                      # tokens and tool uses the host reported
     config.resolved.json              # the validated run-config the current run started from (hand-written, or drafted from
                                       # the orchestrator's interview by `run-config.mjs draft`, D-063; `about.visibility` included)
     permissions.resolved.json         # frozen copy of config/permissions.yaml for the current run
@@ -50,12 +52,15 @@ artifacts/<product>/                  # git-ignored; accumulates across runs
     guard-check/                      # guard liveness records for the current session (run.mjs guard-check)
     doctor.json                       # the current session's dependency check (run.mjs doctor, D-064)
     history/<run-id>.json             # summary of every ended run
-  results/<run-id>/                   # per-run archive: <module>/{testcases,playwright-ui,playwright-api,k6}/..., report/
+  results/<run-id>/                   # per-run archive: <module>/{testcases,playwright-ui,playwright-api,k6}/..., report/,
+                                      # manifest.json (sha256 and size of every working and test code file at end, D-078)
 playwright-tests/<product>/           # ONE Playwright repo: tests/ui + tests/api
 k6-tests/<product>/                   # lib/ (rendered), scripts/<m>-*.js (k6-code.mjs), scripts/slots/<m>.js, results/
 ```
 
-There is no `artifacts/<run-id>/` directory. Run ids are `<product>-<YYYYMMDD>-<HHmm>` (suffixed `-2`, `-3`… if reused).
+There is no `artifacts/<run-id>/` directory. Run ids are `<product>-<YYYYMMDD>-<HHmm>` (`<product>-<env>-<YYYYMMDD>-<HHmm>` in another environment; suffixed `-2`, `-3`… if reused).
+
+**Environments (D-081).** A run-config may name the product's `environment` (default `default`); the session works in the one its `ATF_ENV` names (`make … ENV=<env>`), and `run.mjs init` refuses a config for another. Each environment has its own `state/` — lock, run state, ledger, orchestration, history, guard and doctor records, telemetry — at `artifacts/<product>/envs/<env>/state/` (`default` keeps `artifacts/<product>/state/`), so one run per product and environment can be active, side by side with another environment's. Knowledge, modules, clarifications, test cases, the foundation, the product's test code and `results/` are shared; a module's exploration and endpoint catalogue hold the hosts of the environment that last built them. The guard scans every environment's lock and expands `${state}` with the calling run's own folder.
 
 ## Runs
 
@@ -69,7 +74,8 @@ node scripts/run.mjs scenarios <product> [--file <answers>]  # state/scenario-an
 node scripts/run.mjs next <product>                          # {actions: [{stage, module, agent, prompt, attempt, retry}], concurrency, end?}
 node scripts/run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]
 node scripts/run.mjs status <product>                        # every stage with output verification
-node scripts/run.mjs end <product> [--abandon]               # history/<run-id>.json, release the lock
+node scripts/run.mjs end <product> [--abandon]               # history/<run-id>.json, results/<run>/manifest.json, release the lock
+node scripts/run.mjs diff <product> [<run-a> <run-b>]        # what changed between two ended runs (default: the last two), D-078
 node scripts/run.mjs validate <product>                      # schema-check state, ledger, sitemaps, CSVs
 ```
 
@@ -347,6 +353,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 - **Files.** `report.json` (report-data), `narrative.json` (the report-generator, its only output; schema `report-narrative`: `executiveSummary`, `risks` with a severity, `recommendations`, each statement `{text, cites[]}` with at least one cite), `index.html` and `report-check.json` (scripts). `report.json`, `index.html` and the stamp are managed files: no agent writes them.
 - **Render.** One self-contained, deterministic file (no network, no CDN; light and dark; inline SVG charts) from `templates/report/{deck.html,deck.css,deck.js}`: every number, table and chart comes from `report.json`.
 - **Check.** `narrative.json` is schema-valid, every cited path exists in `report.json`, every number in a statement equals a number at a cited path (or an array length), and `index.html` equals what `render` makes of the two. A pass stamps `report-check.json` over all three; a failure removes the stamp. The `report` stage's `done` refuses a missing or stale stamp (`reportUnverified`), so a failed or stale report is retried like any stage (D-011).
+- **Bugs (D-080).** `report-data.mjs` also writes the product bugs as issue-ready files: `results/<run>/bugs/<BUG id>.md` for every product-bug cluster with a triager's draft (title, severity, product and run, steps, expected with its source, actual, evidence, affected tests) and `bugs.json` listing every cluster (`draft: false` without a draft). A re-export removes the files of drafts that are gone. Script-owned (`managed_files`); nothing is filed in any tracker.
 - **Counting.** A module's k6 scripts are the `<module>-<scenario>.js` files of the scenarios in its `workload.json` (a module `deals` never counts `deals-pipeline-*`); a module is explored only with a non-empty sitemap.
 
 ## Safety: mode × permissions, enforced in code
@@ -360,7 +367,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
   - shell — `shell: none | restricted (shell_allow) | project`, then HTTP/k6 rules by effective `http`/`load`, and any DELETE must reference a live entity of the current run;
   - write (every file the call touches) — only inside `filesystem.write` (`${product}`, `${run_id}` expanded; `${module}` = one path segment); nothing outside the repo; never a `managed_files` path (a foundation file rendered from templates, D-054);
   - web fetch / web search — the product's own hosts (`target.url` and `target.api_urls`) need `http: read`; anything else needs `web_research: allowed`;
-  - Playwright MCP — `browser: none` blocks all; effective `read` (i.e. in readonly runs) blocks typing, form filling, selects, uploads, drag/drop, key presses, dialogs and script evaluation (clicks stay allowed for navigation); in full-run runs any browser access is full.
+  - Playwright MCP — `browser: none` blocks all; effective `read` (i.e. in readonly runs) blocks uploads, drag/drop, dialogs and script evaluation, and allows navigation, clicks, typing, form filling, selects and key presses only while `config/mcp.yaml` starts the browser server with the framework's init page (`networkGuarded`, D-076): its network guard aborts every request other than GET, HEAD and OPTIONS to a readonly run's product hosts (and to any host with no active run), which also stops a destructive click. Without the init page, typing, form filling, selects and key presses are blocked as before. In full-run runs any browser access is full. The same init page loads the active run's saved session into every new browser, so the browser server is product-neutral.
 - **Active runs** are found from `artifacts/*/state/lock.json`. No active run ⇒ readonly shell rules only. Agents not in the permissions file (e.g. a human's own session) get the mode rules only. During a run, a tool an adapter cannot classify is denied for a managed agent. If the guard itself errors (or cannot read the hook input) while a run is active, the hook fails closed.
 - **Design decisions** — separately from safety, the same hook asks the user before an edit to a file that an Accepted decision in [`decisions.md`](decisions.md) governs (`scripts/lib/decisions.mjs`); deny beats ask beats allow.
 - **Known limits** — a `shell: project` agent could still write files or call the network through a script the guard can't parse; Playwright `mutationGuard` fixtures and k6 host allow-lists (built in their domains) are the second layer.

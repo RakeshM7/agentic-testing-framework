@@ -64,7 +64,10 @@ export function step(product, domain, module, name, action, note, { root = repoR
   const c = context(product, domain, module, root);
   return withFileLock(c.file, () => {
     const s = load(c.file, c.run, domain, module);
-    s.steps[name] = { status: { start: "running", done: "done", fail: "failed", skip: "skipped" }[action], at: new Date().toISOString(), ...(note ? { note } : {}) };
+    const at = new Date().toISOString();
+    // startedAt survives the step's end, so its duration can be reported (D-079)
+    const startedAt = action === "start" ? at : s.steps[name]?.startedAt;
+    s.steps[name] = { status: { start: "running", done: "done", fail: "failed", skip: "skipped" }[action], at, ...(startedAt ? { startedAt } : {}), ...(note ? { note } : {}) };
     if (note) s.notes.push(`${name}: ${note}`);
     writeAtomic(c.file, JSON.stringify(s, null, 2) + "\n");
     // the pw-repo-owner lock (product-level) is held for the length of one request step

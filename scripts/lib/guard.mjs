@@ -21,19 +21,30 @@
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { hostname } from "node:os";
 import path from "node:path";
-import { isMutatingBrowserTool } from "./browser-tools.mjs";
+import { isInputBrowserTool, isMutatingBrowserTool, networkGuarded } from "./browser-tools.mjs";
 import { canIdentify, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
 import { atLeast, canWrite, effectiveLiveTarget, isManaged, runCeiling, shellAllowed, shellSegments } from "./permissions.mjs";
 
 const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 
-export function findActiveRuns(root, env = process.env) {
+// Every state folder that can hold a run: a product's own state/ (the `default` environment) and each
+// envs/<env>/state/ (D-081). -> [{product, environment, state}]
+export function stateDirs(root) {
   const artifacts = path.join(root, "artifacts");
   if (!existsSync(artifacts)) return [];
-  const runs = [];
+  const out = [];
   for (const product of readdirSync(artifacts)) {
-    const state = path.join(artifacts, product, "state");
+    out.push({ product, environment: "default", state: path.join(artifacts, product, "state") });
+    const envs = path.join(artifacts, product, "envs");
+    if (existsSync(envs)) for (const environment of readdirSync(envs)) out.push({ product, environment, state: path.join(envs, environment, "state") });
+  }
+  return out;
+}
+
+export function findActiveRuns(root, env = process.env) {
+  const runs = [];
+  for (const { product, environment, state } of stateDirs(root)) {
     if (!existsSync(path.join(state, "lock.json"))) continue;
     try {
       const run = readJson(path.join(state, "run.json"));
@@ -41,6 +52,8 @@ export function findActiveRuns(root, env = process.env) {
       runs.push({
         root,
         product,
+        environment,
+        stateDir: state,
         runId: run.runId,
         mode: env.AUTHORIZATIONS_MODE === "readonly" ? "readonly" : run.mode === "full-run" ? "full-run" : "readonly",
         // The product's hosts: the target URL and its API hosts (D-045). A fetch to any of them touches the product.
@@ -50,7 +63,7 @@ export function findActiveRuns(root, env = process.env) {
       });
     } catch {
       // A held lock with an unreadable run.json is treated as an active readonly run with no permissions.
-      runs.push({ root, product, runId: null, mode: "readonly", targetHosts: [], ledgerFile: null, permissions: null, broken: true });
+      runs.push({ root, product, environment, stateDir: state, runId: null, mode: "readonly", targetHosts: [], ledgerFile: null, permissions: null, broken: true });
     }
   }
   return runs;
@@ -275,8 +288,11 @@ function realOf(abs) {
     return null;
   }
 }
+// The run values a glob expands with: the product, the run id and, since state lives per environment (D-081), the
+// run's own state folder (the permissions file's `${state}` variable defaults to the `default` environment's).
+const runValues = (run) => ({ product: run.product, run_id: run.runId, ...(run.stateDir ? { state: path.relative(run.root, run.stateDir).replaceAll("\\", "/") } : {}) });
 function managedPath(file, run) {
-  const values = { product: run.product, run_id: run.runId };
+  const values = runValues(run);
   const roots = [...new Set([run.root, realOf(run.root)].filter(Boolean))];
   const abs = path.resolve(run.root, devicePath(file));
   // a UNC path to another host is never inside the repo; don't touch the network to resolve it
@@ -294,7 +310,7 @@ function checkWrite(file, run, row) {
   const abs = path.resolve(run.root, file);
   const rel = path.relative(run.root, abs).replaceAll("\\", "/");
   if (rel.startsWith("..") || path.isAbsolute(rel)) return deny("fs-write", `writes outside the repo are not allowed (${abs})`);
-  return canWrite(row, rel, run.permissions.variables ?? {}, { product: run.product, run_id: run.runId })
+  return canWrite(row, rel, run.permissions.variables ?? {}, runValues(run))
     ? ALLOW
     : deny("fs-write", `${rel} is outside this agent's filesystem.write allow-list`);
 }
@@ -326,8 +342,10 @@ function evaluateKind(call, run, row) {
     case "browser": {
       const level = row ? effectiveLiveTarget(row, run.mode).browser : run.mode === "full-run" ? "mutate" : "read";
       if (level === "none") return deny("browser-none", "this agent has no browser access");
-      if (level === "read" && isMutatingBrowserTool(call.browserAction))
-        return deny("browser-read", `browser_${call.browserAction} can change data; this agent is read-only here (mode ${run.mode})`);
+      // readonly input (D-076): typing, selecting and key presses change nothing while the browser server's init page
+      // aborts every write to the product; without it they are mutating like the rest
+      if (level === "read" && isMutatingBrowserTool(call.browserAction) && !(isInputBrowserTool(call.browserAction) && networkGuarded(run.root)))
+        return deny("browser-read", `browser_${call.browserAction} can change data; this agent is read-only here (mode ${run.mode})${isInputBrowserTool(call.browserAction) ? ", and the browser server does not run the framework's network guard (--init-page scripts/browser/init-page.cjs in config/mcp.yaml)" : ""}`);
       return ALLOW;
     }
     case "unknown":

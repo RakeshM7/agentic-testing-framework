@@ -23,6 +23,8 @@
 #   make approve PRODUCT=acme-crm MODULE=contacts     you sign off a module's test cases (your own terminal)
 #   make automate PRODUCT=acme-crm                    Playwright UI + API tests (needs approved cases)
 #   make resume PRODUCT=acme-crm STAGE=k6 MODULE=deals   any stage, optionally one module
+#   make run PRODUCT=acme-crm ENV=staging             any target, in another environment of the product
+#                                                     (config/acme-crm-staging.yaml with `environment: staging`)
 #   make sweep PRODUCT=acme-crm [RUN=<run id>] [DRY=yes]  between runs, delete what ended runs left in the target
 #                                                     (full-run config; your own terminal, you type the product slug)
 
@@ -49,6 +51,7 @@ FILE    ?=
 WAIT    ?= 60
 APPROVED ?= no
 RUN     ?=
+RUNS    ?=
 DRY     ?= no
 
 # The command that opens an orchestrator-agent session with a first prompt. Claude Code by default; for Copilot CLI
@@ -56,12 +59,19 @@ DRY     ?= no
 AGENT   ?= claude --agent orchestrator-agent
 STAGES   = knowledge module-knowledge playwright-repo explore clarifications api-discovery testcases playwright-ui playwright-api k6 report
 
-CONFIG  = config/$(PRODUCT).yaml
+# ENV=<name> (D-081): work in that environment of the product -- its own runs, lock, ledger and history, with knowledge,
+# exploration and test cases shared -- from config/<product>-<env>.yaml (whose `environment:` names it). Every command,
+# and the agent session it starts, inherits ATF_ENV.
+ENV     ?=
+ifneq ($(ENV),)
+export ATF_ENV := $(ENV)
+endif
+CONFIG  = config/$(PRODUCT)$(if $(ENV),-$(ENV)).yaml
 # The dependency check (scripts/doctor.mjs, D-064). FIX=yes runs the installs it names (npm install, npx playwright
 # install chromium, k6 through winget or Homebrew); a config, session or credential problem is reported for you to fix.
 DOCTOR  = node scripts/doctor.mjs $(CONFIG)$(if $(filter yes,$(FIX)), --fix)
 
-.PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve steps import sweep
+.PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve steps import sweep diff
 
 help:
 	@echo "make setup | config | interview | login | validate | doctor | build-agents | check | test"
@@ -125,6 +135,10 @@ status: require-product
 
 next: require-product
 	node scripts/run.mjs next $(PRODUCT)
+
+# What changed between two ended runs (D-078): RUNS="<run-a> <run-b>", or the last two.
+diff: require-product
+	node scripts/run.mjs diff $(PRODUCT) $(RUNS)
 
 run: require-product
 	@test -f "$(CONFIG)" || { echo "No $(CONFIG). Run make config PRODUCT=$(PRODUCT) URL=<target url>, or make interview to be asked instead"; exit 1; }

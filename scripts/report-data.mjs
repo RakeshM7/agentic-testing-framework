@@ -33,6 +33,8 @@ import { status as runStatus } from "./run.mjs";
 import { approvalSummary, testcasePaths } from "./lib/testcases.mjs";
 import { triagePaths, triageUnverified } from "./lib/triage.mjs";
 import { workloadPaths } from "./lib/workload.mjs";
+import { effort } from "./lib/telemetry.mjs";
+import { exportBugs } from "./lib/bug-export.mjs";
 
 export const REPORT_VERSION = 1;
 const TRIAGE_DOMAIN = { "playwright-ui": "ui", "playwright-api": "api", k6: "k6" };
@@ -320,6 +322,9 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
   const steps = STEPS.map((step) => ({ step, chosen: (run.steps ?? STEPS).includes(step) }));
   const incompleteStages = rows.filter((r) => !r.complete && !r.notChosen && r.status !== "failed" && !r.blocked && !r.awaitingApproval).map((r) => ({ key: keyOf(r), stage: r.stage, module: r.module ?? null, status: r.status, problems: r.problems ?? [] }));
 
+  // time and effort (D-079): stage and step durations, and the agent spawns the PostToolUse hook recorded
+  const timeAndEffort = effort({ run, stateDir: p.state });
+  if (!timeAndEffort.spawnsRecorded) miss("effort", null, "agent spawns were not recorded: the PostToolUse hook is off (config/hooks.yaml), or no agent was started");
   const cov = ledgers.reduce((a, l) => (l.available ? { total: a.total + l.counts.total, mapped: a.mapped + l.counts.mapped, excluded: a.excluded + l.counts.excluded, deferred: a.deferred + l.counts.deferred, pending: a.pending + l.counts.pending } : a), { total: 0, mapped: 0, excluded: 0, deferred: 0, pending: 0 });
   return {
     schemaVersion: REPORT_VERSION,
@@ -327,6 +332,8 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
     runId: run.runId,
     mode: run.mode,
     target: run.target.url,
+    environment: run.environment ?? "default",
+    provenance: run.provenance ?? null,
     generatedAt: now.toISOString(),
     totals: {
       modules: run.modules.length,
@@ -343,6 +350,7 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
       assumptions: { k6Thresholds: assumptions.k6Thresholds.length, assumptionCases: assumptions.assumptionCases.length, weakRuleFacts: assumptions.ruleFacts.length, k6Leftovers: assumptions.k6Leftovers.length, k6UntrackedCreates: assumptions.k6Untracked.reduce((n, x) => n + x.creates, 0) },
       stages: { failed: failedStages.length, blocked: blockedStages.length, awaitingApproval: awaitingApprovalStages.length, notChosen: notChosenStages.length },
       missing: missing.length,
+      effort: timeAndEffort.totals,
     },
     bugs: bugClusters,
     queues,
@@ -354,6 +362,7 @@ export async function collect(product, { root = repoRoot, now = new Date() } = {
     incompleteStages,
     steps,
     notChosenStages,
+    effort: timeAndEffort,
     missing,
     modules: perModule,
   };
@@ -366,7 +375,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const data = await collect(product);
     const file = path.join(paths(product).results(data.runId), "report", "report.json");
     writeJson(file, data);
-    console.log(JSON.stringify({ written: path.relative(repoRoot, file).replaceAll("\\", "/"), totals: data.totals }, null, 2));
+    // the product bugs as issue-ready files beside the report (D-080)
+    const bugs = exportBugs(product, { root: repoRoot });
+    console.log(JSON.stringify({ written: path.relative(repoRoot, file).replaceAll("\\", "/"), bugs: { dir: bugs.dir, files: bugs.bugs.filter((b) => b.file).length, withoutDraft: bugs.bugs.filter((b) => !b.draft).length }, totals: data.totals }, null, 2));
   } catch (e) {
     console.log(JSON.stringify({ errors: [e.message] }));
     process.exit(1);

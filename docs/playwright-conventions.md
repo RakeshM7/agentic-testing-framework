@@ -222,7 +222,7 @@ A change to a file you don't own, or to a managed file, is a request in your rep
 
 ## Projects (`playwright.config.ts`)
 
-`setup-ui` (testMatch `fixtures/ui/*.setup.ts`) → `ui` (testDir `tests/ui`, depends on `setup-ui`, storage state `.auth/ui.json`), `setup-api` (`fixtures/api/*.setup.ts`) → `api` (testDir `tests/api`). TypeScript, `fullyParallel: false` by default, retries `2`, trace `on-first-retry` (D-058: a failed test is retried twice, and passing on a retry is `flaky` by rule), reporter `list` (the runner adds `json`), output in `test-results/<side>/`. The only setup file of a side is the rendered `auth.setup.ts`; Playwright lists its setup test with the side, and the gate does not count it as a test.
+`setup-ui` (testMatch `fixtures/ui/*.setup.ts`) → `ui` (testDir `tests/ui`, depends on `setup-ui`, storage state `.auth/ui.json`), `setup-api` (`fixtures/api/*.setup.ts`) → `api` (testDir `tests/api`). TypeScript, `fullyParallel: false` by default, retries `2`, trace `on-first-retry` (D-058: a failed test is retried twice, and passing on a retry is `flaky` by rule), reporters `list`, `json` (`test-results/report.json`) and `junit` (`test-results/junit.xml`) for runs outside the framework (the runner passes its own `--reporter`), a rendered CI workflow `.github/workflows/playwright.yml` that runs the suite readonly once the folder is its own repository (D-080), output in `test-results/<side>/`. The only setup file of a side is the rendered `auth.setup.ts`; Playwright lists its setup test with the side, and the gate does not count it as a test.
 
 ## Environment (`utils/shared/env.ts`; values from `.env`, never hard-coded)
 

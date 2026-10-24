@@ -155,6 +155,18 @@ function statements(list, withSeverity) {
   return `<ul>${list.map((s) => `<li>${withSeverity ? `${badge(s.severity, `sev-${s.severity}`)} ` : ""}${esc(s.text)}<span class="cites">Source: ${s.cites.map(code).join(", ")}</span></li>`).join("")}</ul>`;
 }
 
+// What the run was made with (D-077), so two runs' results can be compared with their tools in view.
+function provenanceLine(p) {
+  if (!p) return "";
+  const parts = [
+    p.framework ? `framework ${code(p.framework.commit.slice(0, 10))}${p.framework.dirty ? " (with uncommitted changes)" : ""}` : "framework commit unknown",
+    p.browserServer ? `browser server ${code(p.browserServer)}` : null,
+    Object.keys(p.models?.default ?? {}).length ? `models ${Object.entries(p.models.default).map(([k, v]) => `${esc(k)} ${code(v)}`).join(", ")}${Object.keys(p.models.agents ?? {}).length ? " (some agents differ)" : ""}` : null,
+    p.node ? `Node.js ${esc(p.node)}` : null,
+  ].filter(Boolean);
+  return `<p class="muted">Made with ${parts.join(" &middot; ")}</p>`;
+}
+
 export function renderDeck(report, narrative = null) {
   const t = report.totals;
   const slides = [];
@@ -162,8 +174,8 @@ export function renderDeck(report, narrative = null) {
   const gapNote = (section) => (gaps(section).length ? `<div class="callout gap" role="note"><strong>Data not available (${gaps(section).length}):</strong> ${gaps(section).slice(0, 6).map((m) => `${m.module ? `${esc(m.module)}: ` : ""}${esc(m.reason)}`).join("; ")}${gaps(section).length > 6 ? "; more under Data gaps" : ""}</div>` : "");
 
   slides.push(`<section class="slide" id="s-title" aria-labelledby="s-title-h"><h1 id="s-title-h">${esc(report.product)}: test run report</h1>
-<p>Target: ${code(report.target)}</p><p>Run: ${code(report.runId)} &middot; ${esc(report.generatedAt.slice(0, 10))}</p>
-<p>Mode: <strong>${esc(report.mode)}</strong>${report.mode === "readonly" ? " &mdash; nothing that changes data was run; mutating tests and k6 load were not executed." : " &mdash; mutating tests ran; deletes were limited to entities this run created."}</p>${stepsLine(report)}</section>`);
+<p>Target: ${code(report.target)}${report.environment && report.environment !== "default" ? ` &middot; environment <strong>${esc(report.environment)}</strong>` : ""}</p><p>Run: ${code(report.runId)} &middot; ${esc(report.generatedAt.slice(0, 10))}</p>
+${provenanceLine(report.provenance)}<p>Mode: <strong>${esc(report.mode)}</strong>${report.mode === "readonly" ? " &mdash; nothing that changes data was run; mutating tests and k6 load were not executed." : " &mdash; mutating tests ran; deletes were limited to entities this run created."}</p>${stepsLine(report)}</section>`);
 
   const tile = (n, l) => `<div class="tile"><div class="n">${esc(num(n))}</div><div class="l">${esc(l)}</div></div>`;
   slides.push(slide("s-glance", "At a glance", `<div class="tiles">${[
@@ -244,6 +256,17 @@ export function renderDeck(report, narrative = null) {
       table("Blocked by a failed stage", ["Stage"], report.blockedStages.map((s) => [code(s.key)])) +
       table("Awaiting human approval", ["Stage"], report.awaitingApprovalStages.map((s) => [code(s.key)])) +
       table("Incomplete", ["Stage", "Status", "Problems"], report.incompleteStages.map((s) => [code(s.key), esc(s.status), esc(s.problems.join("; "))]))));
+
+  // time and effort (D-079); a report that predates it has none
+  const e = report.effort;
+  if (e) {
+    const dur = (ms) => (ms === null || ms === undefined ? "&mdash;" : ms >= 3_600_000 ? `${Math.floor(ms / 3_600_000)}h ${String(Math.floor((ms % 3_600_000) / 60_000)).padStart(2, "0")}m` : ms >= 60_000 ? `${Math.floor(ms / 60_000)}m ${String(Math.floor((ms % 60_000) / 1000)).padStart(2, "0")}s` : `${Math.round(ms / 1000)}s`);
+    slides.push(slide("s-effort", "Time and effort",
+      `<p>Stages took ${dur(e.totals.stageMs)} in all; ${esc(num(e.totals.spawns))} agent spawns were recorded${e.totals.tokens ? `, using ${esc(num(e.totals.tokens))} tokens where the host reported them` : ""}.</p>` +
+      table("Stages", ["Stage", "Status", "Attempts", "Duration"], e.stages.map((s) => [code(s.key), esc(s.status), String(s.attempts), dur(s.durationMs)]), { numeric: [2, 3] }) +
+      table("Domain steps", ["Domain", "Module", "Steps", "Duration", "Longest step"], e.steps.map((s) => [esc(s.domain), esc(s.module ?? "product"), String(s.steps), dur(s.durationMs), s.longest ? code(s.longest) : "&mdash;"]), { numeric: [2, 3] }) +
+      (e.spawnsRecorded ? table("Agent spawns", ["Agent", "Spawns", "Duration", "Tokens"], e.agents.map((a) => [code(a.agent), String(a.spawns), dur(a.durationMs || null), a.tokens ? esc(num(a.tokens)) : "&mdash;"]), { numeric: [1, 2, 3] }) : `<p class="muted">Agent spawns were not recorded (see Data gaps).</p>`)));
+  }
 
   if (narrative) slides.push(slide("s-risks", "Risks and recommendations", `<h3>Risks</h3>${statements(narrative.risks, true)}<h3>Recommendations</h3>${statements(narrative.recommendations, false)}`));
 

@@ -245,3 +245,39 @@ test("paths lists the report's files; the stage reads the stamp", async () => {
   assert.equal((await s.cli("check")).code, 0);
   assert.deepEqual(await verifyOutputs(ctx, "report", null), []);
 });
+
+test("time and effort: stage and step durations, agent spawns per agent, a slide; unrecorded spawns are a data gap (D-079)", async () => {
+  const { effort, recordSpawn, spawnMetrics } = await import("./lib/telemetry.mjs");
+  const { step } = await import("./orchestration.mjs");
+  const { root, run } = startRun();
+  assert.deepEqual(spawnMetrics({ totalDurationMs: 5, totalTokens: 9, totalToolUseCount: 2, content: "x" }), { durationMs: 5, tokens: 9, toolUses: 2 });
+  assert.deepEqual(spawnMetrics("text"), {});
+  const p = paths("acme", root);
+  const r = loadJson(p.runFile);
+  r.stages["_product/knowledge"] = { status: "done", attempts: 1, startedAt: "2026-10-24T10:00:00.000Z", finishedAt: "2026-10-24T10:02:05.000Z" };
+  r.stages["contacts/explore"] = { status: "running", attempts: 1, startedAt: "2026-10-24T10:03:00.000Z" };
+  writeFileSync(p.runFile, JSON.stringify(r));
+  step("acme", "testcases", "contacts", "write", "start", undefined, { root });
+  const s = step("acme", "testcases", "contacts", "write", "done", undefined, { root });
+  assert.ok(s.steps.write.startedAt && s.steps.write.at >= s.steps.write.startedAt, "a step keeps when it started");
+  const noSpawns = effort({ run: loadJson(p.runFile), stateDir: p.state });
+  assert.deepEqual([noSpawns.spawnsRecorded, noSpawns.stages.find((x) => x.key === "_product/knowledge").durationMs, noSpawns.stages.find((x) => x.key === "contacts/explore").durationMs], [false, 125000, null]);
+  assert.deepEqual(noSpawns.steps.map((x) => [x.domain, x.module, x.steps, x.longest]), [["testcases", "contacts", 1, "write"]]);
+  const before = await collect("acme", { root });
+  assert.ok(before.missing.some((m) => m.section === "effort"), "spawns not recorded is said, never shown as zero");
+
+  const spawn = (agent, metrics) => recordSpawn(root, { kind: "spawn", host: "claude-code", agent: "orchestrator-agent", subagent: agent }, metrics);
+  spawn("module-explorer", { totalDurationMs: 60000, totalTokens: 1000 });
+  spawn("module-explorer", { totalDurationMs: 30000, totalTokens: 500 });
+  spawn("report-generator", {});
+  assert.equal(recordSpawn(root, { kind: "shell", host: "claude-code" }), null);
+  const report = await collect("acme", { root });
+  assert.deepEqual(report.effort.agents.map((a) => [a.agent, a.spawns, a.durationMs, a.tokens]), [["module-explorer", 2, 90000, 1500], ["report-generator", 1, 0, 0]]);
+  assert.deepEqual(report.totals.effort, { stageMs: 125000, stepMs: report.effort.totals.stepMs, spawns: 3, tokens: 1500 });
+  assert.ok(!report.missing.some((m) => m.section === "effort"));
+  assert.deepEqual(await validateData("report", report), []);
+  const html = renderDeck(report);
+  assert.match(html, /<h2[^>]*>Time and effort<\/h2>/);
+  assert.match(html, /Stages took 2m 05s in all; 3 agent spawns were recorded, using 1500 tokens/);
+  assert.match(html, /<code>module-explorer<\/code><\/td><td[^>]*>2<\/td><td[^>]*>1m 30s<\/td>/);
+});

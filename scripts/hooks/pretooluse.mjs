@@ -15,9 +15,17 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
+// Any lock in a product's state/ or an environment's envs/<env>/state/ (D-081). Kept here, not imported, so it works
+// even when no module loads.
 function runActive(root) {
   const artifacts = path.join(root, "artifacts");
-  return existsSync(artifacts) && readdirSync(artifacts).some((p) => existsSync(path.join(artifacts, p, "state", "lock.json")));
+  if (!existsSync(artifacts)) return false;
+  for (const p of readdirSync(artifacts)) {
+    if (existsSync(path.join(artifacts, p, "state", "lock.json"))) return true;
+    const envs = path.join(artifacts, p, "envs");
+    if (existsSync(envs) && readdirSync(envs).some((e) => existsSync(path.join(envs, e, "state", "lock.json")))) return true;
+  }
+  return false;
 }
 
 // VS Code blocks only on a deny decision with exit 0 (D-040, hosts/vscode.mjs). Read from the raw arguments, since

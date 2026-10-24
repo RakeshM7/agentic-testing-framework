@@ -50,7 +50,7 @@ const verdict = (root, v, round = 1) => {
 // spec when `changed`, else all not-fixed. The orchestration verifies it with fix.mjs check once the fixer's step is done.
 const answer = (root, round, source = "review", changed = false) => {
   const p = paths("acme", root);
-  const { ids } = requiredEntries({ module: "contacts", productDir: p.productDir, runId: "acme-run-1" }, "playwright-ui", round, source);
+  const { ids } = requiredEntries({ module: "contacts", productDir: p.productDir, stateDir: p.state, runId: "acme-run-1" }, "playwright-ui", round, source);
   const entries = ids.map((id) => (changed ? { id, status: "fixed", files: ["tests/ui/contacts/cases.spec.ts"] } : { id, status: "not-fixed", reason: "needs-human", text: "left for a human" }));
   put(root, `${RESULTS}/playwright-ui/fix-report.json`, JSON.stringify({ module: "contacts", round, source, entries }));
 };

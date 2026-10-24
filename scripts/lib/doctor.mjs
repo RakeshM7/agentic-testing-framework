@@ -7,7 +7,7 @@
 //   base     Node.js and the framework's own node_modules
 //   login    the browser the login opens (lib/login.mjs, D-069): Microsoft Edge, else Google Chrome, else the
 //            Chromium build of the framework's Playwright
-//   browser  the Playwright MCP server's browser, and its --storage-state matching the run's session
+//   browser  the Playwright MCP server's browser, and its init page (which loads the run's session, D-076)
 //   session  the saved session (present, not empty, not expired) and the credentials files the run-config names
 //   repo     the product Playwright repo's node_modules and its Chromium builds
 //   k6       the k6 binary
@@ -21,6 +21,7 @@ import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
+import { INIT_PAGE } from "./browser-tools.mjs";
 import { STAGES, paths } from "./contract.mjs";
 import { tryReadJson, writeJson } from "./files.mjs";
 
@@ -176,16 +177,16 @@ function browser({ root, cfg, sys, exists }) {
     else out.push({ id: "mcp-browser", ok: true, detail: `@playwright/mcp@${pkgVersion}: ${channel} is installed` });
   }
 
-  const storage = argValue(args, "--storage-state");
+  // D-076: the framework's init page loads the run's session and guards readonly writes; a --storage-state would load
+  // one product's session for every product
   const auth = cfg.authorizations ?? {};
-  const fixMcp = "change --storage-state in config/mcp.yaml, run npm run build-agents, then restart the agent session";
-  if (auth.authenticated_crawl) {
-    if (slash(storage) !== slash(auth.session_state_file))
-      out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server starts from ${storage ? `--storage-state ${slash(storage)}` : "no --storage-state"}, but this run's session is ${slash(auth.session_state_file)}`, fix: `set --storage-state ${slash(auth.session_state_file)}: ${fixMcp}` });
-    else out.push({ id: "mcp-session", ok: true, detail: `the browser server starts from ${slash(storage)}` });
-  } else if (storage && !exists(path.resolve(root, storage)))
-    out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server's --storage-state ${slash(storage)} does not exist, so the server cannot start`, fix: `remove --storage-state or point it at an existing session: ${fixMcp}` });
-  else if (storage) out.push({ id: "mcp-session", ok: true, level: "warn", detail: `authenticated_crawl is off, but the browser server starts from ${slash(storage)} (another session)`, fix: `remove --storage-state if this product needs no login: ${fixMcp}` });
+  const fixMcp = "in config/mcp.yaml, then run npm run build-agents and restart the agent session";
+  const initPage = argValue(args, "--init-page") ?? args.find((a) => a.startsWith("--init-page="))?.slice("--init-page=".length);
+  if (slash(initPage) !== INIT_PAGE)
+    out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server does not run the framework's init page (--init-page ${INIT_PAGE}), which loads the run's session and aborts every write in a readonly run`, fix: `add "--init-page", "${INIT_PAGE}" to the browser server's args ${fixMcp}` });
+  else if (argValue(args, "--storage-state"))
+    out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server also starts from --storage-state ${slash(argValue(args, "--storage-state"))}, one product's session for every product`, fix: `remove --storage-state (the init page loads this run's session) ${fixMcp}` });
+  else if (auth.authenticated_crawl) out.push({ id: "mcp-session", ok: true, detail: `the init page loads ${slash(auth.session_state_file)} into every new browser` });
   else out.push({ id: "mcp-session", ok: true, detail: "no login: the browser server starts logged out" });
   return out;
 }

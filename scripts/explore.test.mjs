@@ -182,6 +182,19 @@ test("state: a known state is not duplicated, its transition is; ids are stable 
   assert.equal((await s.item(ids.list, "tab", "Mine")).id, m.frontier.find((i) => i.state === ids.list && i.name === "Mine").id);
 });
 
+test("readonly behind the browser's network guard (D-076): inputs are explored, commits still never are", async () => {
+  const s = setup();
+  writeFileSync(path.join(s.root, "config", "mcp.yaml"), `servers:\n  playwright:\n    args:\n      - "--isolated"\n      - "--init-page"\n      - "scripts/browser/init-page.cjs"\n`);
+  const list = await s.state("contacts-list.md");
+  const added = Object.fromEntries(list.frontierAdded.map((i) => [`${i.role} ${i.name}`, i]));
+  assert.equal(added["searchbox Search contacts"].status, "pending", "typing is explorable: the network guard aborts any write it could cause");
+  assert.equal(added["combobox Sort by"].status, "pending");
+  const dialog = await s.state("contacts-list-dialog.md", list.state, 'button "New contact"');
+  const d = Object.fromEntries(dialog.frontierAdded.map((i) => [`${i.role} ${i.name}`, i]));
+  assert.equal(d["textbox Name *"].status, "pending");
+  assert.equal(d["button Save"].reason, "not-allowed-in-mode", "readonly: still never submit");
+});
+
 test("frontier: every candidate control; row links collapse; script-derived exclusions; navigation comes first", async () => {
   const s = setup();
   const list = await s.state("contacts-list.md");

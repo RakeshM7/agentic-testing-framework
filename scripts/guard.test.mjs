@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
 import { toolCall } from "./lib/tool-call.mjs";
@@ -895,7 +896,7 @@ test("feedback-implementor-agent writes the G0-G11 framework files and never a s
 test("every framework script is writable by feedback-implementor-agent or deliberately carved out, so a new file forces a decision (D-062)", () => {
   const carved = new Set([
     "scripts/feedback.mjs", "scripts/ledger.mjs", "scripts/feedback.test.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs", "scripts/ledger.test.mjs",
-    ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "hook-log", "agent-scope", "feedback", "sweep"].map((n) => `scripts/lib/${n}.mjs`),
+    ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "hook-log", "agent-scope", "feedback", "sweep", "telemetry"].map((n) => `scripts/lib/${n}.mjs`),
   ]);
   const files = [];
   // node_modules is git-ignored and never the framework's own code, wherever an install put it
@@ -922,4 +923,44 @@ test("the ledger sweep is human-only: denied to every agent and every unidentifi
   // the rest of the ledger stays as it was, and prose about sweeping is not a sweep
   assert.equal(allowed(FULL.root, sh("pw-ui-test-runner-triager", "node scripts/ledger.mjs list acme --live")), true);
   assert.equal(allowed(tempRoot(), sh(undefined, "echo make sure the floor gets a sweep")), true);
+});
+
+test("readonly input (D-076): typing, selecting and key presses pass only while the browser server runs the framework's network guard", () => {
+  const ro = startRun({ mode: "readonly" });
+  const b = (agent, tool) => allowed(ro.root, call(agent, `mcp__playwright__browser_${tool}`, {}));
+  assert.equal(b("module-explorer", "type"), false, "no init page in config/mcp.yaml: input is mutating, as before");
+  assert.match(checkTool(call("module-explorer", "mcp__playwright__browser_type", {}), ro.root).reason, /does not run the framework's network guard/);
+  writeFileSync(path.join(ro.root, "config", "mcp.yaml"), `browser_server: playwright\nservers:\n  playwright:\n    command: npx\n    args:\n      - "--isolated"\n      - "--init-page"\n      - "scripts/browser/init-page.cjs"\n`);
+  for (const t of ["type", "fill_form", "select_option", "press_key", "click", "hover"]) assert.equal(b("module-explorer", t), true, `readonly ${t}`);
+  for (const t of ["file_upload", "drag", "drop", "handle_dialog", "evaluate", "run_code_unsafe"]) assert.equal(b("module-explorer", t), false, `readonly ${t} stays blocked`);
+  assert.equal(b("api-discoverer", "type"), false, "browser: none stays none");
+  writeFileSync(path.join(ro.root, "config", "mcp.yaml"), `servers:\n  playwright:\n    args:\n      # - "--init-page"\n      # - "scripts/browser/init-page.cjs"\n`);
+  assert.equal(b("module-explorer", "type"), false, "a commented-out init page is no init page");
+});
+
+test("the browser init page: readonly runs' product hosts take no write, no run means no write anywhere, full-run hosts and others pass; the run's session is loaded once (D-076)", async () => {
+  const { refusal, loadSession, default: initPage } = createRequire(import.meta.url)("./browser/init-page.cjs");
+  const run = (mode, extra = {}) => ({ product: "acme", mode, targetHosts: ["app.acme.test", "api.acme.test"], ...extra });
+  assert.equal(refusal("GET", "https://app.acme.test/x", []), null);
+  assert.match(refusal("POST", "https://elsewhere.test/x", []), /no product run is active/);
+  assert.match(refusal("DELETE", "https://eu.api.acme.test/contacts/1", [run("readonly")]), /belongs to acme, whose run is readonly/, "a subdomain is the product's");
+  assert.equal(refusal("POST", "https://analytics.example/collect", [run("readonly")]), null, "a third-party host is outside the guard");
+  assert.equal(refusal("POST", "https://app.acme.test/contacts", [run("full-run")]), null);
+  assert.match(refusal("PATCH", "https://app.acme.test/x", [run("full-run"), { product: "x", broken: true, targetHosts: [] }]), /cannot be read/, "a broken run state fails closed");
+  assert.equal(refusal("POST", "data:text/plain,x", [run("readonly")]), null);
+
+  // the session of the active run, from the config it started with
+  const { root } = startRun({ mode: "readonly" });
+  const state = path.join(paths("acme", root).state, "config.resolved.json");
+  const cfg = JSON.parse(readFileSync(state, "utf8"));
+  writeFileSync(state, JSON.stringify({ ...cfg, authorizations: { ...cfg.authorizations, authenticated_crawl: true, session_state_file: "playwright-tests/acme/.auth/state.json" } }));
+  mkdirSync(path.join(root, "playwright-tests", "acme", ".auth"), { recursive: true });
+  writeFileSync(path.join(root, "playwright-tests", "acme", ".auth", "state.json"), JSON.stringify({ cookies: [{ name: "sid", value: "v", domain: "app.acme.test", path: "/" }], origins: [{ origin: "https://app.acme.test", localStorage: [{ name: "t", value: "1" }] }] }));
+  const seen = { cookies: [], scripts: [], routes: 0 };
+  const context = { addCookies: async (c) => seen.cookies.push(...c), addInitScript: async (_fn, arg) => seen.scripts.push(arg), route: async () => seen.routes++ };
+  const page = { context: () => context };
+  await initPage({ page }, root);
+  await initPage({ page }, root);
+  assert.deepEqual([seen.cookies.map((c) => c.name), seen.scripts, seen.routes], [["sid"], [{ origin: "https://app.acme.test", items: [{ name: "t", value: "1" }] }], 1], "once per context");
+  assert.equal(await loadSession(context, { product: "acme" }, tempRoot()), false, "no run config, no session");
 });

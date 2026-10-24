@@ -72,24 +72,27 @@ test("base and login: Node version, pinned framework dependencies, and the login
   assert.deepEqual(await runChecks(cfg(), ["login"], only("/opt/microsoft/msedge/msedge")), [{ group: "login", id: "login-browser", ok: true, level: undefined, detail: "the login opens Microsoft Edge" }]);
 });
 
-test("browser: the MCP server's channel must be installed, and its --storage-state must be the run's session", async () => {
+test("browser: the MCP server's channel must be installed, and it must run the framework's init page instead of a --storage-state (D-076)", async () => {
   const m = machine();
   const auth = { authenticated_crawl: true, session_state_file: "playwright-tests/acme/.auth/state.json" };
   put(m.root, "config/mcp.yaml", mcpYaml(["--isolated", "--storage-state", "playwright-tests/ami/.auth/state.json"]));
   let checks = await runChecks(cfg(auth), ["browser"], { ...m.opts, exists: () => false });
   assert.deepEqual(ids(checks), { "mcp-browser": "fail", "mcp-session": "fail" });
   assert.match(checks[0].detail, /launches chrome, which is not installed/);
-  assert.match(checks[1].fix, /--storage-state playwright-tests\/acme\/\.auth\/state\.json: change --storage-state in config\/mcp\.yaml, run npm run build-agents/);
+  assert.match(checks[1].detail, /does not run the framework's init page \(--init-page scripts\/browser\/init-page\.cjs\)/);
+  assert.match(checks[1].fix, /add "--init-page", "scripts\/browser\/init-page\.cjs" to the browser server's args in config\/mcp\.yaml, then run npm run build-agents/);
 
-  put(m.root, "config/mcp.yaml", mcpYaml(["--storage-state", "playwright-tests\\acme\\.auth\\state.json"]));
+  put(m.root, "config/mcp.yaml", mcpYaml(["--isolated", "--init-page", "scripts/browser/init-page.cjs", "--storage-state", "playwright-tests/ami/.auth/state.json"]));
+  checks = await runChecks(cfg(auth), ["browser"], m.opts);
+  assert.equal(ids(checks)["mcp-session"], "fail", "a --storage-state would load one product's session for every product");
+  assert.match(checks[1].fix, /remove --storage-state/);
+
+  put(m.root, "config/mcp.yaml", mcpYaml(["--isolated", "--init-page", "scripts/browser/init-page.cjs"]));
   checks = await runChecks(cfg(auth), ["browser"], m.opts);
   assert.deepEqual(ids(checks), { "mcp-browser": "ok", "mcp-session": "ok" });
-
-  // No login configured: a --storage-state that does not exist stops the server from starting; one that exists is a warning.
-  checks = await runChecks(cfg(), ["browser"], { ...m.opts, exists: (p) => !p.endsWith("state.json") });
-  assert.equal(ids(checks)["mcp-session"], "fail");
+  assert.match(checks[1].detail, /the init page loads playwright-tests\/acme\/\.auth\/state\.json into every new browser/);
   checks = await runChecks(cfg(), ["browser"], m.opts);
-  assert.equal(ids(checks)["mcp-session"], "warn");
+  assert.match(checks.find((c) => c.id === "mcp-session").detail, /no login: the browser server starts logged out/);
 });
 
 test("browser: a bundled-chromium MCP server is checked against the build its cached Playwright needs", async () => {
@@ -206,7 +209,7 @@ test("run: stage start needs this session's dependency record; run.mjs doctor re
   const { root, product } = startRun({ doctored: false });
   const start = await setStage(product, "knowledge", null, "start", undefined, { root });
   assert.match(start.errors[0], /dependencies not ready: .*run\.mjs doctor acme/);
-  put(root, "config/mcp.yaml", mcpYaml([]));
+  put(root, "config/mcp.yaml", mcpYaml(["--init-page", "scripts/browser/init-page.cjs"]));
 
   const r = await doctor(product, { root, env: { PLAYWRIGHT_BROWSERS_PATH: path.join(root, "b") }, platform: "linux", home: root, which: () => false, exists: () => true, fetchImpl: async () => ({ status: 200 }) });
   assert.ok(r.checks.length);
@@ -255,7 +258,7 @@ test("doctor.mjs: scope, --fix runs each distinct install once then checks again
 test("a stage not chosen for the run is never reported as blocked: run.mjs doctor and doctor.mjs check only the chosen stages", async () => {
   assert.deepEqual(STAGE_NEEDS["api-discovery"], ["base", "session", "target"], "the catalogue's guarded GET probes");
   const { root, product } = startRun({ doctored: false, extra: ["steps: [explore, testcases]"] });
-  put(root, "config/mcp.yaml", mcpYaml([]));
+  put(root, "config/mcp.yaml", mcpYaml(["--init-page", "scripts/browser/init-page.cjs"]));
   const r = await doctor(product, { root, env: { PLAYWRIGHT_BROWSERS_PATH: path.join(root, "b") }, platform: "linux", home: root, which: () => false, exists: () => true, fetchImpl: async () => ({ status: 200 }) });
   assert.ok(r.checks.some((c) => c.group === "k6" && !c.ok), "k6 is missing on this machine");
   assert.deepEqual(r.blockedStages, [], "but k6 is not chosen, so nothing is blocked");

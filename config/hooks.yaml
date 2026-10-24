@@ -4,7 +4,8 @@
 #
 # The PreToolUse safety guard is always registered and always blocking; it is not configurable here.
 #
-# post_tool_use: the PostToolUse hook, which remembers per session which design decisions the user has confirmed.
+# post_tool_use: the PostToolUse hook, which remembers per session which design decisions the user has confirmed, and
+#   records each agent spawn of the active run for the report's time and effort (D-079; off = no spawns recorded).
 #   async  Claude Code runs it in the background, so tool calls don't wait for it; Copilot and VS Code have no
 #          background hooks, so there it runs synchronously
 #   sync   every host waits for it

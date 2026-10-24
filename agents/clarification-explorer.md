@@ -27,7 +27,7 @@ Everything below is written to `E = artifacts/<p>/modules/<m>/clarification-evid
 
    Then repeat the decisive step once and capture again. If the two runs differ, the verdict is `unconfirmed`, reason `inconsistent`.
 5. **Mode.**
-   - **readonly:** the guard blocks typing, form filling and submissions. If only changing data can answer the question, stop there: verdict `unconfirmed`, reason `needs-full-run`.
+   - **readonly:** you may type, select and press keys (a search, a filter, a field's validation message), but every write to the product is aborted by the browser, so a submission never takes effect. If only changing data can answer the question, stop there: verdict `unconfirmed`, reason `needs-full-run`.
    - **full-run:** you may create and change data.
      - Right after creating anything, run `node scripts/ledger.mjs add <p> --type <kind> --ref <id or unique name> --module <m> --stage clarifications --agent clarification-explorer --label "<what>"`, and list it in the outcome's `created`.
      - Delete only what you created. Run `node scripts/ledger.mjs owns <p> --type <kind> --ref <ref>` and continue only when it exits 0, then delete, then run `ledger.mjs deleted …`. Never touch pre-existing data.

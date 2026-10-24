@@ -228,6 +228,25 @@ const ROW1 = { key: "ui:TC-contacts-1", class: "product-bug", reason: "save retu
 const ROW2 = { key: "ui:TC-contacts-2", class: "test-bug", reason: "wrong wait", healable: true, fixHint: "wait for the dialog" };
 const BUG = (over = {}) => ({ cluster: "BUG-contacts-1", title: "Save fails with 500", steps: ["open Contacts", "save"], expected: { text: "the contact is saved", source: "testcase:TC-contacts-1" }, actual: { quote: "Received: 500" }, evidence: ["playwright-tests/acme/test-results/ui/t/trace.zip"], affected: ["TC-contacts-1"], severity: "major", ...over });
 
+test("bug export: each drafted product-bug cluster becomes an issue-ready file and a bugs.json entry; a re-export drops gone drafts (D-080)", async () => {
+  const { exportBugs } = await import("./lib/bug-export.mjs");
+  const s = failing();
+  s.overlay({ rows: [ROW1, ROW2], bugs: [BUG()] });
+  await s.cli("build");
+  const r = exportBugs("acme", { root: s.root });
+  assert.equal(r.dir, `${A}/results/acme-run-1/bugs`);
+  assert.deepEqual(r.bugs, [{ id: "BUG-contacts-1", module: "contacts", framework: "playwright-ui", title: "Save fails with 500", severity: "major", draft: true, file: `${A}/results/acme-run-1/bugs/BUG-contacts-1.md` }]);
+  const md = readFileSync(path.join(s.root, r.bugs[0].file), "utf8");
+  for (const part of ["# BUG-contacts-1: Save fails with 500", "- **Severity:** major", "1. open Contacts\n2. save", "the contact is saved (source: `testcase:TC-contacts-1`)", "```\nReceived: 500\n```", "- `playwright-tests/acme/test-results/ui/t/trace.zip`", "- TC-contacts-1"]) assert.ok(md.includes(part), part);
+  const list = s.json(`${A}/results/acme-run-1/bugs/bugs.json`);
+  assert.deepEqual([list.runId, list.bugs[0].steps, list.bugs[0].cluster], ["acme-run-1", ["open Contacts", "save"], undefined]);
+  // no draft any more (the triager has not written one yet): listed, no file, and the old file is gone
+  s.overlay({ rows: [ROW1, ROW2] });
+  const again = exportBugs("acme", { root: s.root });
+  assert.deepEqual(again.bugs.map((b) => [b.id, b.draft, b.file]), [["BUG-contacts-1", false, null]]);
+  assert.ok(!existsSync(path.join(s.root, `${A}/results/acme-run-1/bugs/BUG-contacts-1.md`)));
+});
+
 test("check: unclassified rows, then a verified stamp once classified; stale after a results change", async () => {
   const s = failing();
   await s.cli("build");

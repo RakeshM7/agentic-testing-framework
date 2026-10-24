@@ -10,7 +10,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
+        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|Agent|Task",
         "hooks": [
           { "type": "command", "async": true, "command": "node \"${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}scripts/hooks/posttooluse.mjs\" --host claude-code" }
         ]

@@ -14,13 +14,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual, parseArgs } from "node:util";
 import yaml from "js-yaml";
-import { CASE_TYPES, SLUG_RE, STEPS, repoRoot } from "./lib/contract.mjs";
+import { CASE_TYPES, DEFAULT_ENV, SLUG_RE, STEPS, repoRoot } from "./lib/contract.mjs";
 import { UNRESOLVED_POLICIES } from "./lib/clarifications.mjs";
 import { VISIBILITIES, applyChanges, buildDraft, rewriteKeys } from "./lib/run-config-draft.mjs";
 
 const MODES = ["readonly", "full-run"];
 const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
-const KNOWN = ["product", "about", "steps", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
+const KNOWN = ["product", "environment", "about", "steps", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
 const posInt = (v) => Number.isInteger(v) && v > 0;
 export const MAX_MODULE_CONCURRENCY = 1;
 const strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
@@ -119,6 +119,8 @@ export function validateRunConfig(cfg, { root = repoRoot } = {}) {
   }
 
   if (typeof cfg.product !== "string" || !SLUG_RE.test(cfg.product)) errors.push("product: required, lowercase kebab-case (folder name under artifacts/, playwright-tests/, k6-tests/)");
+  if (cfg.environment !== undefined && (typeof cfg.environment !== "string" || !SLUG_RE.test(cfg.environment)))
+    errors.push("environment: lowercase kebab-case (D-081: e.g. staging; the session runs it with ATF_ENV set to the same name)");
   if (cfg.about !== undefined) {
     if (!isMap(cfg.about)) errors.push("about: must be a mapping {name?, visibility?, description?}");
     else {
@@ -242,6 +244,7 @@ export function validateRunConfig(cfg, { root = repoRoot } = {}) {
     normalized: {
       ...cfg,
       steps: cfg.steps ?? [...STEPS],
+      environment: cfg.environment ?? DEFAULT_ENV,
       about: { name: cfg.product, visibility: "public", description: "", ...cfg.about },
       target: { api_urls: [], ...cfg.target },
       api: { ...API_DEFAULTS, ...cfg.api },

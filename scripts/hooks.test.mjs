@@ -318,3 +318,16 @@ test("hook entries read a payload that starts with a BOM (Windows PowerShell 5.1
   assert.equal(post.status, 0);
   assert.ok(!existsSync(path.join(root, "artifacts", "hook-errors.jsonl")), post.stderr);
 });
+
+test("the PostToolUse hook records an agent spawn of the active run with what the host reports, and nothing else (D-079)", () => {
+  const { root, run } = startRun({ mode: "readonly" });
+  const post = (payload) => spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "claude-code"], { input: JSON.stringify({ cwd: root, session_id: "s1", ...payload }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH, CLAUDE_PROJECT_DIR: root } });
+  assert.equal(post({ agent_type: "orchestrator-agent", tool_name: "Agent", tool_input: { subagent_type: "module-explorer", prompt: "product=acme module=contacts" }, tool_response: { totalDurationMs: 1200, totalTokens: 3400, totalToolUseCount: 7, content: [] } }).status, 0);
+  assert.equal(post({ agent_type: "orchestrator-agent", tool_name: "Task", tool_input: { subagent_type: "report-generator" }, tool_response: "done" }).status, 0);
+  assert.equal(post({ tool_name: "Bash", tool_input: { command: "ls" } }).status, 0);
+  const lines = readFileSync(path.join(root, "artifacts", "acme", "state", "telemetry.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepEqual(lines.map(({ at, ...x }) => x), [
+    { runId: run.runId, host: "claude-code", caller: "orchestrator-agent", agent: "module-explorer", durationMs: 1200, tokens: 3400, toolUses: 7 },
+    { runId: run.runId, host: "claude-code", caller: "orchestrator-agent", agent: "report-generator" },
+  ], "only spawns, with the numbers the host gave and no others; never the prompt or the response");
+});

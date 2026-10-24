@@ -192,7 +192,7 @@ const targetOf = (t) =>
   t
     .replace(/\.(tpl|seed)$/, "")
     .split("/")
-    .map((s) => (s === "_gitignore" ? ".gitignore" : s === "_env.example" ? ".env.example" : s))
+    .map((s) => (s === "_gitignore" ? ".gitignore" : s === "_env.example" ? ".env.example" : s === "_github" ? ".github" : s))
     .join("/");
 
 // -> {managed: [{template, target}], seeds: [{template, target}], parts: {name: text}}

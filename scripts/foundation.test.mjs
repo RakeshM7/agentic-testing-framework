@@ -66,7 +66,7 @@ test("render is deterministic: the same inputs give the same bytes, a re-render 
   assert.deepEqual(Object.keys(pkg.scripts), ["test:ui", "test:api", "typecheck", "list"]);
   // the fixed files the conventions require
   const config = read(pw(a.root, "playwright.config.ts"));
-  for (const p of ["setup-ui", "'ui'", "setup-api", "'api'", "grepInvert: fullRun ? undefined : /@mutates/", "fullyParallel: false", "retries: 2", "on-first-retry", "reporter: 'list'"]) assert.ok(config.includes(p), p);
+  for (const p of ["setup-ui", "'ui'", "setup-api", "'api'", "grepInvert: fullRun ? undefined : /@mutates/", "fullyParallel: false", "retries: 2", "on-first-retry", "['junit', { outputFile: 'test-results/junit.xml' }]"]) assert.ok(config.includes(p), p);
   for (const n of ["BASE_URL=", "API_BASE_URL=", "STORAGE_STATE=", "ATF_MODE=", "ATF_PRODUCT=", "ATF_RUN_ID=", "ATF_REPO_ROOT="]) assert.match(read(pw(a.root, ".env.example")), new RegExp(`^${n}$`, "m"));
   for (const x of ["recordCreated", "owns", "recordDeleted", "ownsAny", "destructiveRefusal"]) assert.match(read(pw(a.root, "utils/shared/ledger.ts")), new RegExp(`export function ${x}\\(`));
   assert.match(read(pw(a.root, "config/ui/settings.ts")), /productHosts: \["app\.acme\.test"\],/, "the target's host, rendered for the UI guard (D-073)");

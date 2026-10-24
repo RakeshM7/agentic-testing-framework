@@ -30,7 +30,7 @@ function setup(domain, { findings = { "TC-contacts-1": { intent: blocker } }, ro
   const ids = domain === "k6" ? ["K6-contacts-1"] : ["TC-contacts-1", "TC-contacts-2"];
   const tests = Object.fromEntries(ids.map((id) => [id, { ...ok, ...(findings[id] ?? {}) }]));
   put(root, `${RESULTS}/${domain}/review.json`, JSON.stringify({ module: "contacts", round, tests }));
-  const ctx = { root, product: "acme", module: "contacts", runId: "acme-run-1", productDir: p.productDir, pwProject: p.pwProject, k6Project: p.k6Project, permissions: JSON.parse(readFileSync(p.permissionsFile, "utf8")) };
+  const ctx = { root, product: "acme", module: "contacts", runId: "acme-run-1", productDir: p.productDir, stateDir: p.state, pwProject: p.pwProject, k6Project: p.k6Project, permissions: JSON.parse(readFileSync(p.permissionsFile, "utf8")) };
   const report = (entries, extra = {}) => put(root, `${RESULTS}/${domain}/fix-report.json`, JSON.stringify({ module: "contacts", round, source: "review", entries, ...extra }));
   const edit = (f = d.code) => writeFileSync(path.join(root, f), `// v2 ${Math.random()}\n`);
   const run = (cmd, ...more) => main([cmd, "acme", "contacts", domain, "--round", String(round), ...more], { root });

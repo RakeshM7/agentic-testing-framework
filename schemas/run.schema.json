@@ -24,6 +24,19 @@
     "steps": { "type": "array", "uniqueItems": true, "minItems": 1, "items": { "enum": ["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"] }, "description": "The steps chosen for this run (run-config `steps`, frozen at init; the gap menu may change them through run.mjs steps). Absent in older runs = all six. Every stage outside the chosen set (lib/contract.mjs chosenStages) is not-chosen." },
     "caseTypes": { "type": "array", "uniqueItems": true, "items": { "enum": ["ui", "api", "performance"] }, "description": "The test case types this run derives from its steps and testcases.types: ui always, api with playwright-api, performance with k6." },
     "testcasesMode": { "type": "object", "propertyNames": { "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" }, "additionalProperties": { "enum": ["import", "generate"] }, "description": "The testcases stage's mode per module (D-066, lib/contract.mjs testcasesModes): generate for every module when the testcases step is chosen; import for a module whose imported cases need converting or linking although testcases is not chosen (run.mjs steps --import-mode): the writer only converts and links, and the generated coverage items are deferred (reason import). A module not listed has no testcases stage this run. Absent in older runs: generate when testcases is chosen, else none." },
+    "environment": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "The environment the run works in (D-081, run-config environment, the session's ATF_ENV); absent in older runs = default." },
+    "provenance": {
+      "type": "object",
+      "description": "What the run was made with (D-077, scripts/lib/provenance.mjs): absent in older runs.",
+      "additionalProperties": false,
+      "properties": {
+        "framework": { "type": ["object", "null"], "additionalProperties": false, "required": ["commit", "dirty"], "properties": { "commit": { "type": "string" }, "dirty": { "type": "boolean" } } },
+        "browserServer": { "type": ["string", "null"] },
+        "models": { "type": "object" },
+        "templates": { "type": "string" },
+        "node": { "type": "string" }
+      }
+    },
     "startedOnHost": { "type": "string", "description": "Host the run was started on, as guessed by run.mjs init (keys of scripts/lib/hosts.mjs HOSTS)." },
     "modules": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" } },
     "stages": {

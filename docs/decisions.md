@@ -57,12 +57,12 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 |---|---|---|---|
 | D-001 | Three layers of agents, connected by files | Superseded by D-043 | 2026-10-07 |
 | D-002 | Deterministic work lives in scripts with tests | Accepted | 2026-10-07 |
-| D-003 | Product-level artifacts, one active run per product | Accepted | 2026-10-07 |
+| D-003 | Product-level artifacts, one active run per product | Superseded by D-081 | 2026-10-07 |
 | D-004 | `authorizations.mode` caps every agent; readonly by default | Accepted | 2026-10-07 |
 | D-005 | Destructive actions only on entities the current run created | Superseded by D-075 | 2026-10-07 |
 | D-006 | Permissions are data, frozen per run, enforced per calling agent | Accepted | 2026-10-07 |
 | D-007 | The guard fails closed | Accepted | 2026-10-07 |
-| D-008 | In full-run, browser agents get the full browser | Accepted | 2026-10-07 |
+| D-008 | In full-run, browser agents get the full browser | Superseded by D-076 | 2026-10-07 |
 | D-009 | The clarifications CSV is written only through its script | Accepted | 2026-10-07 |
 | D-010 | One Playwright repo per product, one owner of its shared files | Accepted | 2026-10-07 |
 | D-011 | Every loop is bounded | Accepted | 2026-10-07 |
@@ -130,6 +130,12 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-073 | The readonly UI guard covers every product host: the target's, every API host's and their subdomains | Accepted | 2026-10-24 |
 | D-074 | In a full-run, the UI guard refuses a destructive request on an entity this run did not create; the API sender already does | Accepted | 2026-10-24 |
 | D-075 | Leftovers of ended runs are deleted only by a human's sweep, through cleanup recipes recorded at creation | Accepted | 2026-10-24 |
+| D-076 | The browser server is product-neutral: a framework init page loads the run's session and guards readonly writes, so readonly agents may type | Accepted | 2026-10-24 |
+| D-077 | Each run records what it was made with, and the report shows it | Accepted | 2026-10-24 |
+| D-078 | Each ended run keeps a hash manifest of its working files and test code; run.mjs diff compares two runs | Accepted | 2026-10-24 |
+| D-079 | The report shows time and effort: stage and step durations, and the agent spawns the PostToolUse hook records | Accepted | 2026-10-24 |
+| D-080 | The product's Playwright repo runs in CI on its own, and the product bugs are exported as issue-ready files | Accepted | 2026-10-24 |
+| D-081 | A product has environments: each its own runs, lock, ledger and history, sharing knowledge, modules, test code and results | Accepted | 2026-10-24 |
 
 ## Decisions
 
@@ -160,7 +166,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Affects:** `scripts/run.mjs`, `scripts/orchestration.mjs`, `scripts/results.mjs`, `scripts/report-data.mjs`, `scripts/lib/contract.mjs`
 
 ### D-003 · Product-level artifacts, one active run per product
-- **Status:** Accepted · **Date:** 2026-10-07 · **Source:** `7637b42`, `9a05a02`; `docs/artifact-contract.md`
+- **Status:** Superseded by D-081 (2026-10-24) · **Date:** 2026-10-07 · **Source:** `7637b42`, `9a05a02`; `docs/artifact-contract.md`
 - **Decision:**
   - Layout v2 puts everything under `artifacts/<product>/`. Latest-state working files go under `modules/`, the per-run archive under `results/<run-id>/`, and there is no `artifacts/<run-id>/`.
   - `state/lock.json` allows one active run per product.
@@ -211,7 +217,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Affects:** `scripts/hooks/pretooluse.mjs`
 
 ### D-008 · In full-run, browser agents get the full browser
-- **Status:** Accepted · **Date:** 2026-10-07 · **Source:** `12b1eb7`; header of `config/permissions.yaml`
+- **Status:** Superseded by D-076 (2026-10-24) · **Date:** 2026-10-07 · **Source:** `12b1eb7`; header of `config/permissions.yaml`
 - **Decision:**
   - In full-run, any agent with browser access (`read` or `mutate`) gets the full browser.
   - Readonly runs cap every agent at read, and `none` stays none.
@@ -1484,3 +1490,71 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Why:** Leftovers otherwise pile up in the target across runs. Only a human can authorize deleting what an earlier run made, so the sweep is theirs, between runs, through recipes recorded when the entity was made rather than guessed later.
 - **Affects:** `scripts/lib/sweep.mjs`, `scripts/ledger.mjs`, `scripts/lib/ledger.mjs`, `schemas/ledger-entry.schema.json`, `scripts/lib/guard.mjs`, `scripts/lib/api-code.mjs`, `templates/playwright/repo/utils/shared/ledger.ts.tpl`, `Makefile`
 - **Supersedes:** D-005 (only "a delete must reference a live entity of the current run", for this human command alone; the rest is restated as in force) · **Confirmed by the user on:** 2026-10-24 (a human-run sweep script over cleanup recipes; the guard change under D-013). This extends D-004 (a full-run config is required) and D-012 (credentials stay file paths and never reach the output) without weakening them.
+
+### D-076 · The browser server is product-neutral: a framework init page loads the run's session and guards readonly writes, so readonly agents may type
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (design-gap review, gaps 6 and 8). `config/mcp.yaml` named one product's session (`--storage-state playwright-tests/ami/.auth/state.json`), so a second product needed a human config edit, a rebuild and a new session. In readonly, the guard blocked typing, selects and key presses, so search, filters and field validation could not be explored, while a click on a destructive button was stopped by nothing in code.
+- **Decision:**
+  - The browser server runs `--init-page scripts/browser/init-page.cjs` (Playwright MCP `--init-page`, run for every new tab) and no `--storage-state`. Once per browser context the init page loads the active run's session (its `state/config.resolved.json`: `session_state_file`, when `authenticated_crawl` is on; cookies and each origin's localStorage), and routes every request: a method other than GET, HEAD or OPTIONS is aborted to a host of an active readonly run (target and API hosts, subdomains included), and to any host while no run is active or a run's state is unreadable. Runs come from the guard's own `findActiveRuns`, read again for each such request. A new login reaches the next new browser without a new session.
+  - In a readonly run the guard allows `BROWSER_INPUT` (type, fill_form, select_option, press_key) to an agent whose browser is capped at read, but only while `config/mcp.yaml` passes that init page (`networkGuarded` in `scripts/lib/browser-tools.mjs`, read as text, fails closed). Uploads, drag and drop, dialogs and script evaluation stay blocked in readonly. `explore.mjs` follows the same predicate: inputs are explored in readonly; commit controls stay `not-allowed-in-mode`.
+  - The doctor's `mcp-session` check fails without the init page, and with any `--storage-state`.
+  - D-008's other rule stands: in full-run any agent with browser access gets the full browser.
+  - The init page is safety code: it is not in `feedback-implementor-agent`'s write list.
+- **Why:** A guard at the network blocks what a write would do, whatever tool or click caused it, which the tool list never could; that makes readonly typing safe and closes the destructive-click gap. Loading the session from the active run makes one browser configuration serve every product.
+- **Affects:** `config/mcp.yaml`, `scripts/browser/init-page.cjs`, `scripts/lib/browser-tools.mjs`, `scripts/lib/guard.mjs`, `scripts/lib/explore.mjs`, `scripts/lib/doctor.mjs`, `agents/module-explorer.md`, `agents/clarification-explorer.md`, `agents/orchestrator-agent.md`
+- **Supersedes:** D-008 (its readonly cap now allows input behind the network guard; its full-run rule is restated as in force) · **Confirmed by the user on:** 2026-10-24 (the init page loads the session; a network guard with readonly input). This extends D-004 (readonly is enforced at the network, not weakened), D-047 (a fresh session per clarification row still starts clean and now loads the session through the init page), D-069 (an agent that meets the sign-in page after a login gets its retry before a new session is asked for) and D-070 (`--browser chromium` unchanged).
+
+### D-077 · Each run records what it was made with, and the report shows it
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (design-gap review, gap 10). `run.json` recorded the host a run started on, but not the framework version, the browser server, the models (Copilot runs another model than Claude Code, D-034) or the templates, so two runs' results could not be told apart by their tools.
+- **Decision:**
+  - `run.mjs init` writes `provenance` into `run.json` (`scripts/lib/provenance.mjs`): the framework's git commit and whether tracked files had changes (null outside a git checkout, never guessed), the browser server package from `config/mcp.yaml`, the configured models from `config/models.yaml` (default and per-agent overrides), a digest of `templates/` (line endings normalized) and the Node.js version.
+  - `report-data.mjs` carries it into `report.json` (`provenance`, null for older runs) and the deck's title slide shows it.
+  - The models are the configured ones; the host's actual model is not visible to the scripts.
+  - `scripts/lib/provenance.mjs` is in `feedback-implementor-agent`'s write list (D-062).
+- **Why:** A result is only comparable with the tools that produced it in view; recording them costs nothing at init.
+- **Affects:** `scripts/lib/provenance.mjs`, `scripts/run.mjs`, `schemas/run.schema.json`, `scripts/report-data.mjs`, `schemas/report.schema.json`, `scripts/lib/report.mjs`
+- **Confirmed by the user on:** 2026-10-24 (as part of the medium design gaps; the write-list entry under D-013). A new optional key, so older runs resume unchanged (D-066's layout rule). This extends D-061 without weakening it.
+
+### D-078 · Each ended run keeps a hash manifest of its working files and test code; run.mjs diff compares two runs
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (design-gap review, gap 9). The working files under `artifacts/<product>/modules/` and the product's test code are overwritten by later runs (D-003), so what a past run's tests were generated from could not be traced or compared.
+- **Decision:**
+  - `run.mjs end` (also `--abandon`) writes `results/<run>/manifest.json` (`scripts/lib/history.mjs`): the sha256 and size of every file under `artifacts/<product>/{knowledge,modules,foundation}/`, `playwright-tests/<product>/` and `k6-tests/<product>/`, never reading `.auth/`, a `.env` file, `node_modules`, test results or reports. The history summary names it.
+  - `run.mjs diff <product> [<run-a> <run-b>]` (`make diff`) lists, per area, the files added, removed and changed between two ended runs' manifests; without ids, the last two ended runs.
+  - It shows drift; it does not restore a file. The user chose it over a full snapshot copy or a git history of `artifacts/`.
+  - `scripts/lib/history.mjs` is in `feedback-implementor-agent`'s write list (D-062).
+- **Why:** Knowing which inputs changed between two runs explains most differences in their results, at the cost of one hash per file.
+- **Affects:** `scripts/lib/history.mjs`, `scripts/run.mjs`, `Makefile`
+- **Confirmed by the user on:** 2026-10-24 (a hash manifest and a diff command; the write-list entry under D-013). This extends D-003 (the per-run archive gains a file) without weakening it.
+
+### D-079 · The report shows time and effort: stage and step durations, and the agent spawns the PostToolUse hook records
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (design-gap review, gap 11). Nothing recorded how long stages and steps took or how many agents a run started, so a run's cost could not be seen or compared.
+- **Decision:**
+  - The PostToolUse hook appends one line per agent spawn of the single active run to its `state/telemetry.jsonl` (`scripts/lib/telemetry.mjs`): the time, host, caller and agent started, and only the numbers the host's response reports (duration, tokens, tool uses; Claude Code's agent tool reports them), never the prompt or the response. Several active runs, or a broken one: nothing is recorded. Claude Code's PostToolUse matcher now includes `Agent|Task` (`scripts/lib/hook-registrations.mjs`). With `post_tool_use: off` no spawn is recorded.
+  - A domain step keeps `startedAt` beside `at` (`orchestration.mjs step`).
+  - `report-data.mjs` writes `effort` into `report.json` (stage durations and attempts, step durations per domain and module with the longest step, spawns per agent, totals; `totals.effort`), and an "effort" data gap when spawns were not recorded. The deck adds a "Time and effort" slide.
+  - Token cost beyond what a host reports to the hook comes from the host's own telemetry (for example Claude Code's OpenTelemetry export). No budget is enforced: the user chose to measure, not to stop a stage.
+  - `scripts/lib/telemetry.mjs` runs inside a hook, so it is carved out of `feedback-implementor-agent`'s write list like `hook-log.mjs` (D-062).
+- **Why:** A run's cost has to be visible before it can be tuned (per-role models, D-017); every number comes from something the run already records or the host already reports.
+- **Affects:** `scripts/lib/telemetry.mjs`, `scripts/hooks/posttooluse.mjs`, `scripts/lib/hook-registrations.mjs`, `scripts/orchestration.mjs`, `scripts/report-data.mjs`, `schemas/report.schema.json`, `scripts/lib/report.mjs`, `config/hooks.yaml`
+- **Confirmed by the user on:** 2026-10-24 (durations and spawns in the report, no spawn budgets). This extends D-042 (the PostToolUse hook gains a second, best-effort job) and D-061 (a new report section) without weakening them.
+
+### D-080 · The product's Playwright repo runs in CI on its own, and the product bugs are exported as issue-ready files
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (design-gap review, gap 12). The generated Playwright repo reported only to the console and shipped no CI workflow, so it could not run as a regression suite outside the framework; the bug drafts lived only in the HTML report.
+- **Decision:**
+  - `playwright.config.ts` adds the `json` (`test-results/report.json`) and `junit` (`test-results/junit.xml`) reporters beside `list`; the framework's runner still passes its own `--reporter`.
+  - The repo side renders `.github/workflows/playwright.yml` (template `_github/workflows/playwright.yml.tpl`; `_github` maps to `.github`), a managed file: on a schedule and by hand, readonly only (`ATF_MODE: readonly`, since a full-run needs the framework's run state and ledger), with `BASE_URL`/`API_BASE_URL` from repository variables, the credentials `.env.example` names from secrets, an optional saved session from the `STORAGE_STATE_JSON` secret, and the reports and traces uploaded. It runs once the folder is a repository of its own.
+  - `report-data.mjs` writes `results/<run>/bugs/<BUG id>.md` for every product-bug cluster with a triager's draft and `bugs.json` for all of them (`scripts/lib/bug-export.mjs`), managed files; the orchestrator names the folder at the end. Nothing is filed in a tracker: the user chose files over a filing helper.
+  - `scripts/lib/bug-export.mjs` is in `feedback-implementor-agent`'s write list (D-062).
+- **Why:** Generated tests are worth most as a regression suite that runs without the agents, and a bug is acted on in a tracker, not a slide.
+- **Affects:** `templates/playwright/repo/playwright.config.ts.tpl`, `templates/playwright/repo/_github/workflows/playwright.yml.tpl`, `scripts/lib/foundation.mjs`, `scripts/lib/bug-export.mjs`, `scripts/report-data.mjs`, `config/permissions.yaml`, `agents/orchestrator-agent.md`
+- **Confirmed by the user on:** 2026-10-24 (a CI-ready repo and bug export files; the managed-file and write-list entries under D-013). This extends D-010, D-054 and D-061 without weakening them.
+
+### D-081 · A product has environments: each its own runs, lock, ledger and history, sharing knowledge, modules, test code and results
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (design-gap review, gap 7). Everything was keyed by product, so staging and UAT of one product shared one lock, one ledger and one run state, or had to be separate products that shared no knowledge.
+- **Decision:**
+  - A run-config may name `environment` (kebab-case, default `default`). A session works in the environment its `ATF_ENV` names (unset is `default`), which every shell, script and hook of the session inherits; `make <target> ENV=<env>` exports it and reads `config/<product>-<env>.yaml`. `run.mjs init` refuses a config whose environment is not the session's.
+  - `paths()` (`scripts/lib/contract.mjs` `envName`, `stateDirOf`) puts an environment's state at `artifacts/<product>/envs/<env>/state/`: lock, run, ledger, orchestration, history, guard-check, doctor, telemetry, resolved config and permissions. `default` keeps `artifacts/<product>/state/`, so existing products and runs are untouched and `LAYOUT_VERSION` stays.
+  - Shared by every environment: knowledge, modules (exploration, clarifications, test cases, catalogue, plans), the foundation, the product's Playwright and k6 code, and `results/`. Run ids carry the environment (`<product>-<env>-<stamp>`), so results never collide. A module's exploration and catalogue hold the hosts of the environment that last built them.
+  - The guard (`stateDirs`, `findActiveRuns`) and the hook entry find every environment's lock; a run carries its `environment`, and the guard expands the permissions' `${state}` with the run's own state folder. The browser init page loads the session of the run in the session's environment when several are active. The report shows the environment.
+- **Why:** The same product is tested in several environments; their data and runs must not mix, while what was learned about the product should be learned once.
+- **Affects:** `scripts/lib/contract.mjs`, `scripts/run.mjs`, `scripts/run-config.mjs`, `schemas/run.schema.json`, `scripts/lib/guard.mjs`, `scripts/hooks/pretooluse.mjs`, `scripts/lib/fix.mjs`, `scripts/browser/init-page.cjs`, `Makefile`, `config/run-config.example.yaml`, `docs/artifact-contract.md`
+- **Supersedes:** D-003 (one active run per product becomes one per product and environment; the product-level layout is restated as in force) · **Confirmed by the user on:** 2026-10-24 (environment-scoped state with shared knowledge). This extends D-005 (the ledger, and so every delete's scope, is per environment) and D-007 (the hook still fails closed with any environment's run active) without weakening them.
