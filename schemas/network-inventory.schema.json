@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "network-inventory.schema.json",
+  "title": "explore/network-inventory.json: the module's traffic shapes, written only by scripts/explore.mjs ingest-network and build (D-052). Key names only: never values, cookies, tokens or headers. scripts/lib/endpoints.mjs cites an entry as explore/network-inventory.json#NI-<m>-<n>.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "method", "pathTemplate", "statusCodes", "requestKeys", "responseKeys", "pages"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "pattern": "^NI-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$", "description": "Stable id per method + host + path template (explore/registry/network.json), never reused." },
+      "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] },
+      "pathTemplate": { "type": "string", "pattern": "^/" },
+      "host": { "type": "string", "description": "Present when the request went to a host other than the target's." },
+      "statusCodes": { "type": "array", "items": { "type": "integer" } },
+      "requestKeys": { "type": "array", "items": { "type": "string" }, "description": "Body key names (JSON keys or form field names)." },
+      "queryKeys": { "type": "array", "items": { "type": "string" }, "description": "Query parameter names." },
+      "responseKeys": { "type": "array", "items": { "type": "string" }, "description": "Top-level JSON key names of the response (of its items for an array)." },
+      "pages": { "type": "array", "items": { "type": "string" }, "description": "Slugs of the pages the requests were captured on." },
+      "states": { "type": "array", "items": { "type": "string" } },
+      "graphql": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["operationType", "fields"],
+          "additionalProperties": false,
+          "properties": {
+            "operationType": { "enum": ["query", "mutation", "subscription", "unknown"], "description": "unknown: a persisted query without its document; treated as mutating." },
+            "operationName": { "type": "string" },
+            "fields": { "type": "array", "items": { "type": "string" }, "description": "Root field names." }
+          }
+        }
+      }
+    }
+  }
+}

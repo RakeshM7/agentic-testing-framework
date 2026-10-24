@@ -2,7 +2,7 @@
 // config/permissions.yaml only, platform syntax only from config/platforms.yaml.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
@@ -44,6 +44,14 @@ test("Claude tools follow permissions: workers cannot spawn, read-only browser g
   assert.ok(tools("clarification-explorer", "claude").includes("mcp__playwright__browser_fill_form"));
   assert.ok(tools("orchestrator-agent", "claude").includes("AskUserQuestion"));
   assert.ok(!probeTools("claude").includes("Write"));
+});
+
+test("browser_session: fresh grants only closing the agent's own session, and only to the clarification-explorer (D-047)", () => {
+  assert.ok(tools("clarification-explorer", "claude").includes("mcp__playwright__browser_close"));
+  assert.ok(tools("clarification-explorer", "copilot").includes("playwright/browser_close"));
+  for (const agent of ["module-explorer", "knowledge-generator", "pw-ui-test-runner-triager"]) assert.ok(!tools(agent, "claude").includes("mcp__playwright__browser_close"), agent);
+  const bad = resolvePermissions({ agents: { x: { layer: 2, browser_session: "fresh" }, y: { layer: 2, browser_session: "sometimes", live_target: { browser: "read" } } } });
+  assert.deepEqual(bad.errors, ["x: browser_session: fresh needs browser access", "y: browser_session 'sometimes' not in [shared,fresh]"]);
 });
 
 test("Copilot tools are the same capabilities in Copilot's names", () => {
@@ -157,4 +165,97 @@ test("hook registrations: a bad mode, or --post-hook with --check, writes nothin
   assert.equal(readFileSync(config, "utf8"), before);
   writeFileSync(config, "post_tool_use: maybe\n");
   assert.ok(build({ check: true, root }).errors.some((e) => /post_tool_use 'maybe'/.test(e)));
+});
+
+// agents/_shared/<file>.md fragments, included with `<!-- include: _shared/<file>.md -->` (G9)
+function withInclude(root, fragment = "Shared fixer rule: report, do not guess.") {
+  mkdirSync(path.join(root, "agents", "_shared"), { recursive: true });
+  writeFileSync(path.join(root, "agents", "_shared", "probe.md"), fragment + "\n");
+  const file = path.join(root, "agents", "pw-ui-fixer.md");
+  writeFileSync(file, readFileSync(file, "utf8").replace(/\r?\n$/, "") + "\n\n<!-- include: _shared/probe.md -->\n");
+}
+
+test("an include expands into every platform's generated file, and a changed fragment is drift", () => {
+  const root = scratch();
+  withInclude(root);
+  const first = build({ root });
+  assert.deepEqual(first.errors, []);
+  for (const rel of [".claude/agents/pw-ui-fixer.md", ".github/agents/pw-ui-fixer.agent.md"]) {
+    const text = readFileSync(path.join(root, rel), "utf8");
+    assert.match(text, /Shared fixer rule: report, do not guess\./);
+    assert.ok(!text.includes("<!-- include"), "the marker is replaced by the fragment");
+  }
+  assert.deepEqual(build({ check: true, root }).changed, []);
+  writeFileSync(path.join(root, "agents", "_shared", "probe.md"), "Changed rule.\n");
+  assert.deepEqual(build({ check: true, root }).changed.sort(), [".claude/agents/pw-ui-fixer.md", ".github/agents/pw-ui-fixer.agent.md"]);
+});
+
+test("a missing, malformed or nested include is a build error; the expanded body gets the platform-neutral lint", () => {
+  const root = scratch();
+  withInclude(root);
+  const file = path.join(root, "agents", "pw-ui-fixer.md");
+  const original = readFileSync(file, "utf8");
+  writeFileSync(file, original.replace("_shared/probe.md", "_shared/nope.md"));
+  assert.ok(build({ check: true, root }).errors.some((e) => /pw-ui-fixer\.md: include '_shared\/nope\.md' names no file/.test(e)));
+  writeFileSync(file, original.replace("_shared/probe.md", "../config/mcp.yaml"));
+  assert.ok(build({ check: true, root }).errors.some((e) => /must be _shared\/<file>\.md/.test(e)));
+  writeFileSync(file, original);
+  writeFileSync(path.join(root, "agents", "_shared", "probe.md"), "<!-- include: _shared/probe.md -->\n");
+  assert.ok(build({ check: true, root }).errors.some((e) => /cannot include another fragment/.test(e)));
+  writeFileSync(path.join(root, "agents", "_shared", "probe.md"), "Use AskUserQuestion when unsure.\n");
+  assert.ok(build({ check: true, root }).errors.some((e) => /pw-ui-fixer\.md: body names platform-specific 'AskUserQuestion'/.test(e)));
+});
+
+test("the fragment directory is not an agent: no stray-source error, no generated file", () => {
+  const root = scratch();
+  withInclude(root);
+  writeFileSync(path.join(root, "agents", "_shared", "other.md"), "No frontmatter here.\n");
+  const { errors } = build({ root });
+  assert.deepEqual(errors, []);
+  for (const rel of [".claude/agents", ".github/agents"]) assert.ok(!readdirSync(path.join(root, rel)).some((f) => /probe|other|_shared/.test(f)));
+});
+
+// ---- G10 (D-060): orchestrators are pure loops over script decisions; workers record requests through the script ----
+const body = (rel) => splitFrontmatter(readFileSync(path.join(repoRoot, rel), "utf8"), rel).body;
+const DOMAIN_ORCHESTRATORS = { "playwright-ui-orchestrator": "playwright-ui", "playwright-api-orchestrator": "playwright-api", "k6-orchestrator": "k6", "testcase-orchestrator": "testcases", "clarification-orchestrator": "clarifications" };
+
+test("the five domain orchestrators are the shared loop body plus a short domain section, in every platform's file", () => {
+  const shared = readFileSync(path.join(repoRoot, "agents", "_shared", "domain-loop.md"), "utf8").replace(/\r\n/g, "\n").replace(/\n+$/, "");
+  for (const [name, domain] of Object.entries(DOMAIN_ORCHESTRATORS)) {
+    const src = readFileSync(path.join(repoRoot, "agents", `${name}.md`), "utf8");
+    assert.match(src, /<!-- include: _shared\/domain-loop.md -->/, `${name} includes the shared body`);
+    assert.ok(src.split("\n").length < 24, `${name}: a short domain section`);
+    assert.ok(src.includes(`\`<domain>\` is \`${domain}\``), `${name} names its domain`);
+    for (const rel of [`.claude/agents/${name}.md`, `.github/agents/${name}.agent.md`]) {
+      const text = body(rel).replace(/\r\n/g, "\n");
+      assert.ok(text.includes(shared), `${rel} holds the expanded shared body`);
+      assert.ok(!text.includes("<!-- include"), `${rel}: no include marker left`);
+    }
+  }
+  // the loop is the script's: next, step start/done/fail, waiting, done; nothing a script decides is decided in the prompt
+  for (const needle of ["orchestration.mjs next <p> <domain> <m>", "step <p> <domain> <m> <step> start", "`waiting`", "`done`", "exactly as given", "`req-<n>`", "`redo-<step>`", "`reviewFailure`"]) assert.ok(shared.includes(needle), `shared body mentions ${needle}`);
+  assert.ok(!/relay/i.test(shared.replace(/you never relay one by hand/, "")), "the orchestrator relays nothing by hand");
+});
+
+test("orchestrator-agent is a loop over run.mjs next: exact prompts, one retry on a refused done, report-and-end when awaiting approval", () => {
+  const text = readFileSync(path.join(repoRoot, "agents", "orchestrator-agent.md"), "utf8");
+  for (const needle of ["run.mjs next <p>", "{actions, concurrency, end?}", "retry: {agent, prompt}", "`failed: true`", "`end.outcome`", "`awaiting-approval`", "`end.sheets`", "`incomplete`", "carriedFrom", "reviewFailed", "exactly as given"])
+    assert.ok(text.includes(needle), `orchestrator-agent mentions ${needle}`);
+  assert.ok(!/knowledge\.mjs plan/.test(text), "knowledge reuse is decided in code");
+  assert.ok(!/\| `playwright-ui` \|/.test(text), "the stage -> agent -> prompt table moved into run.mjs");
+});
+
+test("every worker that can ask records its request through requests.mjs add, and the agents that handle it read requests=<path> ids=<ids>", () => {
+  const ASKERS = { "pw-ui-tests-writer": "playwright-ui", "pw-ui-pom-writer": "playwright-ui", "pw-ui-scaffolder": "playwright-ui", "pw-api-tests-writer": "playwright-api", "pw-api-client-writer": "playwright-api", "pw-api-scaffolder": "playwright-api", "k6-script-writer": "k6" };
+  for (const [name, domain] of Object.entries(ASKERS)) {
+    assert.ok(perms.agents[name].shell_allow.includes("node scripts/requests.mjs add *"), `${name}: may run requests.mjs add`);
+    const text = readFileSync(path.join(repoRoot, "agents", `${name}.md`), "utf8");
+    assert.ok(text.includes(`requests.mjs add <p> ${domain} <m> --from ${name}`), `${name} records with the right domain and --from`);
+  }
+  for (const [name, a] of Object.entries(perms.agents)) if (!(name in ASKERS)) assert.ok(!a.shell_allow?.includes("node scripts/requests.mjs add *"), `${name} may not add requests`);
+  for (const name of ["pw-repo-owner", "pw-ui-pom-writer", "pw-api-client-writer", "pw-ui-scaffolder", "pw-api-scaffolder", "k6-lib-writer"]) {
+    const text = readFileSync(path.join(repoRoot, "agents", `${name}.md`), "utf8");
+    assert.match(text, /requests=<path> ids=<ids>/, `${name} takes requests=<path> ids=<ids>`);
+    assert.ok(!/missing="|gap="|request="/.test(text), `${name}: the old free-text parameters are gone`);
+  }
 });

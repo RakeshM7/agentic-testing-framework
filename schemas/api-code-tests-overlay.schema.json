@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-code-tests-overlay.schema.json",
+  "title": "api-code/tests-overlay.json: pw-api-tests-writer's judgments on the generated tests (D-056), applied by scripts/api-code.mjs build. park: a runnable scenario it can't automate yet becomes a test.fixme with the reason (not covered; the gate lists it). glue: a planner's cited business scenario (rule overlay) gets a glue slot in helpers/api/<m>.glue.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "park": {
+      "type": "array",
+      "items": { "type": "object", "required": ["scenario", "reason"], "additionalProperties": false, "properties": { "scenario": { "type": "string", "pattern": "^API-" }, "reason": { "type": "string", "minLength": 10 } } }
+    },
+    "glue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scenario", "reason", "cite"],
+        "additionalProperties": false,
+        "properties": {
+          "scenario": { "type": "string", "pattern": "^API-" },
+          "reason": { "type": "string", "minLength": 10 },
+          "cite": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^(clarification|knowledge|spec|observation):.+$" } }
+        }
+      }
+    }
+  }
+}

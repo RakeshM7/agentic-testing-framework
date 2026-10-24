@@ -3,3 +3,6 @@
 .github/agents/** linguist-generated=true
 .mcp.json linguist-generated=true
 .vscode/mcp.json linguist-generated=true
+
+# Foundation templates render the same bytes on every OS: always LF (D-054).
+templates/** text eol=lf

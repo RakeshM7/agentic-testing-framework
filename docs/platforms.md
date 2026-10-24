@@ -17,7 +17,11 @@ config/mcp.yaml             MCP servers
 .mcp.json, .vscode/mcp.json        MCP servers for Claude Code / VS Code
 ```
 
-To change an agent, edit `agents/<name>.md` (body, `description`, `color`, `user_invocable`) and rebuild. To change what it may do, edit `config/permissions.yaml`, a human decision (D-013). Start a new session afterwards, since every host loads agents at session start.
+A body can share a fragment: a line `<!-- include: _shared/<file>.md -->` is replaced at build time by `agents/_shared/<file>.md` (the three fixers share `_shared/fixer.md`, D-059), so the generated files hold the expanded text. To change an agent, edit `agents/<name>.md` (body, `description`, `color`, `user_invocable`) and rebuild. To change what it may do, edit `config/permissions.yaml`, a human decision (D-013). Start a new session afterwards, since every host loads agents at session start.
+
+## Starting a session
+
+Start the **orchestrator-agent** session with a run-config path, or with none: it then interviews you (a few questions in one message, including which steps to run) and drafts `config/<product>.yaml` as `readonly` (D-063). With a path, it shows the step menu pre-selected from the config's `steps` and, before the first stage, asks you once per missing prerequisite (explore, clarify, generate test cases, describe scenarios, use your own test case file, or skip the step), D-066. `make interview` and `make run` open that session on Claude Code. On other hosts, start it yourself and say you have no run-config yet. The interview needs a host where the agent can ask you questions. On one that can't, write the file by hand.
 
 ## Host matrix
 
@@ -91,6 +95,15 @@ npm run build-agents -- --post-hook off     # not registered: faster, but every 
   - The host that blocked the check is in `artifacts/<product>/state/guard-check/`. In VS Code, a `vscode-agent-host--…` or `copilot-cli--…` record means the chat ran on the Copilot CLI engine, where the combined ceiling applies.
 - **"unmapped tool …"** (during a run): the host has a tool the adapter doesn't know. Add it to `scripts/hooks/hosts/<adapter>.mjs` with a test, then retry.
 
+## When the dependency check fails
+
+`run.mjs stage … start` refuses a stage whose needs are missing on this machine (D-064), with each failing check and its fix. Run `make doctor PRODUCT=<product>` in your terminal: it applies the safe installs (`npm install`, the Playwright browser builds) and lists the rest. Then the orchestrator runs `run.mjs doctor <product>` again.
+- **The browser server's init page** (`--init-page scripts/browser/init-page.cjs` in `config/mcp.yaml`, D-076) must be there, with no `--storage-state`: it loads the active run's `session_state_file` into every new browser and aborts every write to the product in a readonly run. After a change to `config/mcp.yaml`, run `npm run build-agents` and start a new session: the MCP server reads its arguments at start-up.
+- **A Playwright browser build is not downloaded**: a Playwright update without its browser. `make doctor` installs it.
+- **The saved session is missing, empty or expired**: `make login PRODUCT=<product>`, or let the orchestrator open the login window (it asks first). Microsoft Edge opens on the target with its own profile; sign in within 60 seconds and it closes by itself (D-069). A session with no cookie on the target's host (usual after a single sign-on login) is only a warning.
+- **A stage meets a sign-in page right after a successful login**: the browser server still has a browser open with the old session. Start a new agent session and resume the run.
+- **k6 is not installed**: `make doctor` installs it with winget (Windows) or Homebrew (macOS); on Linux, follow the link it prints. Then open a new terminal, since an install updates PATH for new terminals only.
+
 ## Verified facts (2026-10-11)
 
 From GitHub's and VS Code's documentation:
@@ -98,6 +111,8 @@ From GitHub's and VS Code's documentation:
 - **VS Code nesting.** Nested subagents need `chat.subagents.allowInvocationsFromSubagents` (max depth 5). Local subagents have no ask-question tool.
 - **Copilot tool aliases.** GitHub custom agents accept the aliases `read`, `edit`, `search`, `execute`, `web`, `agent` and `server/tool` MCP names, and ignore unknown tools. The prompt limit is 30,000 characters.
 - **Copilot hook files.** Copilot CLI reads `.github/hooks/*.json` and also `.claude/settings.json`; the cloud agent reads only `.github/hooks/*.json`.
+  - VS Code's Copilot CLI engine does the same: it labels `.claude/settings.json` "repo settings" and ignores `chat.useClaudeHooks`. On Windows it runs those commands through PowerShell. The generated Claude command therefore avoids bash-only syntax: `${CLAUDE_PROJECT_DIR:-.}` crashed there, and every matched call was "Denied by preToolUse hook from "repo settings" (hook errored)".
+  - Windows PowerShell 5.1 prefixes a BOM when it relays a hook's stdin; the hook entries strip it.
 - **Copilot hook payloads.** PascalCase `PreToolUse` sends snake_case fields with Claude tool names. There is no calling-agent field.
 - **Copilot CLI and cloud agent hook outcomes.** Exit 2, or any non-zero exit from a pre-tool hook, denies the call. A timeout fails open. On the cloud agent, `ask` counts as deny.
 - **VS Code hook outcomes.** These differ from the CLI's:

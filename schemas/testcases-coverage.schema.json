@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "testcases-coverage.schema.json",
+  "title": "testcases/coverage.json: the module's test case coverage ledger and resolved cases, written only by scripts/testcases.mjs (build; check adds the verified stamp). Every coverage item is mapped (covered by cases), excluded (a cited reason), pending or deferred (reason budget: over testcases.max_cases; reason import: import mode, D-066).",
+  "type": "object",
+  "required": ["module", "runId", "format", "maxCases", "degraded", "summary", "byTechnique", "items", "cases", "problems", "built"],
+  "additionalProperties": false,
+  "$defs": {
+    "counts": {
+      "type": "object",
+      "required": ["total", "mapped", "excluded", "pending", "deferred"],
+      "additionalProperties": false,
+      "properties": { "total": { "type": "integer" }, "mapped": { "type": "integer" }, "excluded": { "type": "integer" }, "pending": { "type": "integer" }, "deferred": { "type": "integer" } }
+    },
+    "tc": { "type": "string", "pattern": "^TC-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+    "ci": { "type": "string", "pattern": "^CI-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": ["string", "null"] },
+    "format": { "enum": ["gherkin", "csv", "testrail", "markdown-table"] },
+    "maxCases": { "type": "integer", "minimum": 1 },
+    "degraded": { "type": "array", "items": { "type": "string" }, "description": "Inputs that were missing, so their items could not be enumerated." },
+    "mode": { "enum": ["generate", "import"], "description": "generate: the run chose the testcases step; import (D-066): it did not, so the stage only converts and links the human's imported cases and every item no case covers is deferred with reason import." },
+    "caseTypes": { "type": "array", "items": { "enum": ["ui", "api", "performance"] }, "description": "The run's case types the items were enumerated for (run.json, decision 11)." },
+    "scope": {
+      "type": "object",
+      "required": ["kind", "scenarios", "flows"],
+      "additionalProperties": false,
+      "description": "A scenario-scoped exploration: the items are those within these scenarios' flows.",
+      "properties": { "kind": { "const": "scenarios" }, "scenarios": { "type": "array", "items": { "type": "string", "pattern": "^SC-" } }, "flows": { "type": "array", "items": { "type": "string" } } }
+    },
+    "summary": { "$ref": "#/$defs/counts" },
+    "byTechnique": { "type": "object", "additionalProperties": { "$ref": "#/$defs/counts" } },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "key", "technique", "source", "subject", "label", "priority", "status"],
+        "properties": {
+          "id": { "$ref": "#/$defs/ci" },
+          "key": { "type": "string", "description": "source + technique + target; the CI id is assigned once per key." },
+          "technique": { "enum": ["clarification", "flow", "decision-table", "rule", "state-transition", "required", "ep", "bva", "boolean", "enum", "api-endpoint", "load-endpoint", "load-flow"] },
+          "source": { "enum": ["interactions", "model", "flows", "rule-facts", "clarifications", "catalogue"] },
+          "subject": { "type": "string" },
+          "label": { "type": "string" },
+          "priority": { "enum": ["p1", "p2", "p3"] },
+          "status": { "enum": ["mapped", "excluded", "pending", "deferred"] },
+          "refs": { "type": "array", "items": { "$ref": "#/$defs/tc" } },
+          "reason": { "type": "string" },
+          "detail": { "type": "string" },
+          "citation": { "type": "string" },
+          "of": { "$ref": "#/$defs/ci" },
+          "field": { "type": "object" },
+          "transition": { "type": "object" },
+          "fact": { "type": "object" },
+          "row": { "type": "object" },
+          "clarification": { "type": "object" },
+          "endpoint": { "type": "object", "description": "api-endpoint / load-endpoint: the catalogue endpoint (id, key, mutates)." }
+        },
+        "allOf": [
+          { "if": { "properties": { "status": { "const": "mapped" } } }, "then": { "required": ["refs"] } },
+          { "if": { "properties": { "status": { "enum": ["excluded", "deferred"] } } }, "then": { "required": ["reason", "detail"] } }
+        ]
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "key", "title", "type", "priority", "mutates", "visual", "api", "assumption", "assumptions", "preconditions", "action", "steps", "expected", "data", "covers", "evidence", "clarifications", "hash"],
+        "properties": {
+          "id": { "$ref": "#/$defs/tc" },
+          "key": { "type": "string" },
+          "assumption": { "type": "boolean" },
+          "assumptions": { "type": "array", "items": { "type": "string" } },
+          "covers": { "type": "array", "items": { "$ref": "#/$defs/ci" } },
+          "evidence": { "type": "array", "items": { "type": "string" } },
+          "clarifications": { "type": "array", "items": { "type": "string" } },
+          "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "What a human approves: the content, covers, evidence and derived @assumption. approvals.json pins each decision to it and is the only source of approval status." },
+          "version": { "type": "string", "pattern": "^v[0-9a-f]{12}$", "description": "v + the first 12 hex of hash: the version a review verdict (review.json) and a human approval (approval.csv) name." },
+          "performance": { "type": "boolean", "description": "A @performance case: k6 loads it." },
+          "endpoint": { "type": "string", "pattern": "^EP-" },
+          "flow": { "type": "string" },
+          "load": { "$ref": "testcases-overlay.schema.json#/$defs/load" },
+          "source": { "enum": ["imported"], "description": "From the human's own file (testcases.mjs import) or document (testcase-writer import mode)." },
+          "imported": { "type": "object" },
+          "from": { "type": "object" },
+          "states": { "type": "array", "items": { "type": "string", "pattern": "^ST-" }, "description": "An imported case's exploration states (cases.json links)." }
+        }
+      }
+    },
+    "problems": { "type": "array", "items": { "type": "string" }, "description": "Overlay problems the build found; check fails while any remain." },
+    "built": {
+      "type": "object",
+      "required": ["inputs", "outputs"],
+      "properties": { "inputs": { "type": "object" }, "outputs": { "type": "object" } }
+    },
+    "verified": { "type": "object", "description": "The stamp of a passing check (lib/verified.mjs): sha256 per input and rendered file." }
+  }
+}

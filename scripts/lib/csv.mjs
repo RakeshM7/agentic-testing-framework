@@ -1,8 +1,7 @@
 // Minimal RFC-4180 CSV I/O that round-trips what Excel writes (BOM, CRLF, quoted multi-line cells).
-import { closeSync, existsSync, mkdirSync, openSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
 
-export function parseCsv(text) {
+// delimiter: "," (default) or ";" (Excel in locales whose decimal mark is a comma); detectDelimiter() tells which.
+export function parseCsv(text, { delimiter = "," } = {}) {
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // Excel BOM
   const rows = [];
   let row = [];
@@ -18,7 +17,7 @@ export function parseCsv(text) {
         } else inQuotes = false;
       } else field += c;
     } else if (c === '"') inQuotes = true;
-    else if (c === ",") {
+    else if (c === delimiter) {
       row.push(field);
       field = "";
     } else if (c === "\n" || c === "\r") {
@@ -37,56 +36,24 @@ export function parseCsv(text) {
   return rows.filter((r) => !r.every((c) => c === "")); // drop blank lines
 }
 
-export function serializeCsv(rows) {
+export function serializeCsv(rows, { delimiter = "," } = {}) {
   const cell = (v) => {
     const s = String(v ?? "");
-    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    return /[",\r\n]/.test(s) || s.includes(delimiter) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  return rows.map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
+  return rows.map((r) => r.map(cell).join(delimiter)).join("\r\n") + "\r\n";
 }
 
-export function writeAtomic(file, text) {
-  mkdirSync(dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
-  writeFileSync(tmp, text, "utf8");
-  try {
-    renameSync(tmp, file);
-  } catch (e) {
-    if (e.code === "EPERM" || e.code === "EBUSY") {
-      unlinkSync(tmp);
-      throw new Error(`${file} is locked by another program (is it open in Excel?). Close it and retry.`);
-    }
-    throw e;
+// The delimiter of a CSV file's header line: ";" when it has more unquoted semicolons than commas, else ",".
+export function detectDelimiter(text) {
+  let comma = 0;
+  let semi = 0;
+  let q = false;
+  for (const c of String(text).replace(/^﻿/, "")) {
+    if (c === '"') q = !q;
+    else if (!q && (c === "\n" || c === "\r")) break;
+    else if (!q && c === ",") comma++;
+    else if (!q && c === ";") semi++;
   }
-}
-
-const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-
-// Cross-process mutual exclusion for a read-modify-write of `file`. A lock older than staleMs is broken.
-export function withFileLock(file, fn, { retries = 100, waitMs = 50, staleMs = 60_000 } = {}) {
-  const lock = `${file}.lock`;
-  mkdirSync(dirname(lock), { recursive: true });
-  for (let i = 0; ; i++) {
-    try {
-      closeSync(openSync(lock, "wx"));
-      break;
-    } catch (e) {
-      if (e.code !== "EEXIST") throw e;
-      if (existsSync(lock) && Date.now() - statSync(lock).mtimeMs > staleMs) {
-        try {
-          unlinkSync(lock);
-        } catch {}
-        continue;
-      }
-      if (i >= retries) throw new Error(`timed out waiting for ${lock}`);
-      sleep(waitMs);
-    }
-  }
-  try {
-    return fn();
-  } finally {
-    try {
-      unlinkSync(lock);
-    } catch {}
-  }
+  return semi > comma ? ";" : ",";
 }

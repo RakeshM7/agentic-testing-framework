@@ -56,6 +56,7 @@
             "type": { "type": "string" },
             "format": { "type": "string" },
             "enum": { "type": "array" },
+            "constraints": { "type": "object", "description": "The spec's value constraints (minimum, maximum, exclusive*, multipleOf, minLength, maxLength, pattern, minItems, maxItems, uniqueItems, default, example), for the API test plan (D-046)." },
             "source": { "enum": ["openapi", "network", "docs"] }
           }
         }

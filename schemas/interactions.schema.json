@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "interactions.schema.json",
+  "title": "explore/interactions.json: every candidate control of every recorded state, with the field constraints its snapshot shows (best effort). Written only by scripts/explore.mjs build (D-052); the older fields keep their meaning.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "state", "page", "element", "role", "name", "kind", "mutates", "tried", "status"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "pattern": "^FR-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$", "description": "The control's frontier item id." },
+      "state": { "type": "string" },
+      "page": { "type": ["string", "null"], "description": "The page slug." },
+      "element": { "type": "string", "description": "role \"name\", as in the snapshot." },
+      "role": { "type": "string" },
+      "name": { "type": "string" },
+      "kind": { "enum": ["button", "link", "input", "select", "checkbox", "radio", "textarea", "other"] },
+      "required": { "type": "boolean", "description": "The label ends with * or says (required)." },
+      "options": { "type": "array", "items": { "type": "string" } },
+      "placeholder": { "type": "string" },
+      "inputType": { "type": "string" },
+      "maxlength": { "type": "integer" },
+      "pattern": { "type": "string" },
+      "validation": { "type": "array", "items": { "type": "string" } },
+      "url": { "type": "string" },
+      "mutates": { "type": "boolean" },
+      "tried": { "type": "boolean", "description": "An explored transition fired it." },
+      "status": { "enum": ["mapped", "excluded", "pending", "deferred"] },
+      "reason": { "type": "string" },
+      "observed": { "type": "string" }
+    }
+  }
+}

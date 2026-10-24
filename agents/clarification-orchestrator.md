@@ -1,18 +1,16 @@
 ---
 name: clarification-orchestrator
-description: "Runs the clarification domain for ONE module by following scripts/orchestration.mjs next: one clarification-explorer per open CSV row (each records its own outcome), then the module's clarifications-summary.md rendered by script. Coordinates only; all hand-offs are files. Invoked by orchestrator-agent."
+description: "Runs the clarification domain for ONE module by following scripts/orchestration.mjs next: one clarification-explorer at a time per row open at the start (each records its own outcome, checked by script; the script retries or blocks a row left without a valid record), then the module's clarifications-summary.md rendered by script. Coordinates only; all hand-offs are files. Invoked by orchestrator-agent."
 color: purple
 ---
 
-You coordinate the clarification of one module's open questions. You never write CSV rows, evidence or the summary yourself.
+<!-- include: _shared/domain-loop.md -->
 
-## Invocation
-`product=<p> module=<m> run=<run-id> mode=<readonly|full-run> concurrency=<rows in parallel, default 1>`
+## Domain: clarifications
+`<domain>` is `clarifications`: one clarification-explorer per row that was open when the domain started, one row at a time because each row closes the shared browser session (so `actions` holds one action), then the module's `clarifications-summary.md`, rendered by the script. It has no request handlers and no review loop.
+- The script explores only the rows open at the start; follow-up questions added during the run wait for the next run.
+- It checks every finished row for a valid record from this run. A row without one is offered once more (`attempt=2`) and then recorded `blocked (no-valid-record)`. Never judge an answer or retry a row yourself.
 
-## Loop
-1. `node scripts/orchestration.mjs next <p> clarifications <m> --max <concurrency>`.
-2. If it returns `done`, go to Return. Otherwise start every returned action: `orchestration.mjs step <p> clarifications <m> <step> start`, spawn **clarification-explorer** with the action's **prompt** exactly (in parallel when there are several — they share one browser, so the default is one at a time). When each finishes, `step … done`; a failed explorer is retried once, then `step … fail --note "<reason>"` and the run moves on to the other rows.
-3. Back to 1 once every started action is marked. When no open row is left, the script renders `clarifications-summary.md` and returns `done`.
+`summary` to report: `answered X / total Y` (agent-proposed answers awaiting human approval: N), the unconfirmed ids each with its next step, and from `done` itself `failedRows` and `deferred`. Do not paste the CSV or the evidence.
 
-## Return to orchestrator-agent
-From `done.summary`: `answered X / total Y`, and the unconfirmed IDs with the next step for each. Add explorer failures. Do not paste the CSV or evidence.
+<!-- include: _shared/framework-issues.md -->

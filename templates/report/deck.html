@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{{title}}</title>
+<style>
+{{css}}
+</style>
+</head>
+<body>
+<a class="skip" href="#deck">Skip to the slides</a>
+<main id="deck" aria-label="{{title}}">
+{{slides}}
+</main>
+<nav class="controls" aria-label="Slide navigation">
+<button type="button" id="prev" aria-label="Previous slide">&larr;</button>
+<span id="counter" aria-live="polite"></span>
+<button type="button" id="next" aria-label="Next slide">&rarr;</button>
+</nav>
+<script>
+{{js}}
+</script>
+</body>
+</html>

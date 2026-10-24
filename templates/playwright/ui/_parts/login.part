@@ -1,0 +1,20 @@
+  // Credential login, rendered only because the exploration recorded a plain login form: {{loginCite}}
+  // (state {{loginState}}). The selectors are that snapshot's own roles and names.
+  const form = uiSettings.login;
+  if (!form) throw new Error(`no login form in config/ui/settings.ts: ${NEEDS_STATE}`);
+  const username = process.env.LOGIN_USERNAME;
+  const password = process.env.LOGIN_PASSWORD;
+  if (!username || !password) throw new Error(`set STORAGE_STATE, or LOGIN_USERNAME and LOGIN_PASSWORD, in .env: ${NEEDS_STATE}`);
+  // Signs that the login cannot be automated. It is never bypassed.
+  const blockers = /captcha|i'?m not a robot|verification code|one-time (pass)?code|authenticator app|two-factor|2-step|multi-factor/i;
+  await page.goto(form.path);
+  await page.getByRole(form.username.role, { name: form.username.name, exact: true }).fill(username);
+  await page.getByRole(form.password.role, { name: form.password.name, exact: true }).fill(password);
+  await page.getByRole(form.submit.role, { name: form.submit.name, exact: true }).click();
+  await page.waitForURL((url) => url.pathname !== form.path, { timeout: uiSettings.navigationTimeoutMs }).catch(() => undefined);
+  const text = await page.locator('body').innerText().catch(() => '');
+  if (blockers.test(text) || page.frames().some((frame) => blockers.test(frame.url())))
+    throw new Error(`the login shows CAPTCHA or MFA, which is never bypassed: ${NEEDS_STATE}`);
+  if (new URL(page.url()).pathname === form.path)
+    throw new Error(`the login did not complete (still on ${form.path}): check LOGIN_USERNAME and LOGIN_PASSWORD, or ${NEEDS_STATE}`);
+  await page.context().storageState({ path: STATE });

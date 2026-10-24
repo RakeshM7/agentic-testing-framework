@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "known-issues.schema.json",
+  "title": "Known issues (artifacts/<product>/known-issues.json) -- human-edited, never written by an agent. A failure whose signature equals an entry's is classed known-issue by rule.",
+  "type": "object",
+  "required": ["issues"],
+  "additionalProperties": false,
+  "properties": {
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "signature", "title", "reference"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "signature": { "type": "string", "minLength": 1, "description": "exactly the signature triage.json shows for the failure (lib/triage.mjs signatureOf)" },
+          "title": { "type": "string", "minLength": 1 },
+          "reference": { "type": "string", "minLength": 1, "description": "the ticket or URL where the issue is tracked" },
+          "module": { "type": "string", "description": "limits the entry to one module; omitted = every module" },
+          "addedBy": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}

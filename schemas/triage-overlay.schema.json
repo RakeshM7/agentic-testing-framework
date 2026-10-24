@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "triage-overlay.schema.json",
+  "title": "The triager's judgments (results/<run>/<m>/<framework>/triage-overlay.json), applied by scripts/triage.mjs build",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "class", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "key": { "type": "string", "description": "a row key of triage.json" },
+          "class": { "enum": ["product-bug", "test-bug", "locator-drift", "flaky", "environment", "blocked-by-mode", "awaiting-approval", "known-issue"] },
+          "reason": { "type": "string", "minLength": 1 },
+          "cite": { "type": "string", "description": "required when the row's class was decided by a rule and differs: a citation (clarification:, testcase:, knowledge:, spec:, observation:) backing the reason" },
+          "healable": { "type": "boolean", "description": "test-bug and locator-drift only" },
+          "fixHint": { "type": "string" },
+          "evidence": { "type": "array", "items": { "type": "string" }, "description": "files that exist (repo-relative): a trace, screenshot or response capture" },
+          "expectation": { "type": "string", "description": "product-bug: scenario:<API or K6 id>, testcase:<id>, clarification:<id> or knowledge:<path>" }
+        }
+      }
+    },
+    "bugs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cluster", "title", "steps", "expected", "actual", "evidence", "affected", "severity"],
+        "additionalProperties": false,
+        "properties": {
+          "cluster": { "type": "string", "pattern": "^BUG-.+-[0-9]+$" },
+          "title": { "type": "string", "minLength": 1 },
+          "steps": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "expected": { "type": "object", "required": ["text", "source"], "additionalProperties": false, "properties": { "text": { "type": "string", "minLength": 1 }, "source": { "type": "string", "minLength": 1 } } },
+          "actual": { "type": "object", "required": ["quote"], "additionalProperties": false, "properties": { "quote": { "type": "string", "minLength": 1 } } },
+          "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "affected": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "severity": { "enum": ["critical", "major", "minor", "trivial"] }
+        }
+      }
+    }
+  }
+}

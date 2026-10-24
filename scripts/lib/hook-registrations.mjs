@@ -14,8 +14,14 @@ export const POST_MODES = ["async", "sync", "off"];
 export const CLAUDE_SETTINGS = ".claude/settings.json";
 
 const CLAUDE_PRE_MATCHER = "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|WebSearch|Agent|Task|mcp__.*playwright.*";
-const CLAUDE_POST_MATCHER = "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit";
-const claudeCommand = (entry) => `node "\${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/${entry}.mjs" --host claude-code`;
+// Agent and Task: the spawns the PostToolUse hook records for the report's time and effort (D-079)
+const CLAUDE_POST_MATCHER = "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|Agent|Task";
+// .claude/settings.json is also read by Copilot CLI and VS Code's Copilot CLI engine ("repo settings"), which on Windows
+// run the command through PowerShell. `${CLAUDE_PROJECT_DIR:-.}` is bash-only: PowerShell reads it as one unset
+// variable, the path became /scripts/hooks/... and node crashed before the guard ran, so the host denied every matched
+// call as "hook errored". `${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}` means the same in bash (Claude Code, which sets
+// the variable) and is empty in PowerShell, leaving the cwd-relative path those hosts run from the repo root.
+const claudeCommand = (entry) => `node "\${CLAUDE_PROJECT_DIR:+\$CLAUDE_PROJECT_DIR/}scripts/hooks/${entry}.mjs" --host claude-code`;
 const command = (entry, host) => `node scripts/hooks/${entry}.mjs --host ${host}`;
 
 // config/hooks.yaml (parsed) -> { mode } | { error }

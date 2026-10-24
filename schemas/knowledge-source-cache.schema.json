@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge-source-cache.schema.json",
+  "title": "Index of the cached source texts (artifacts/<product>/knowledge/sources/index.json, beside sources/S<n>.txt), written only by knowledge.mjs snapshot (D-051). Quotes in the knowledge files are checked against these texts.",
+  "type": "object",
+  "propertyNames": { "pattern": "^S[1-9][0-9]*$" },
+  "additionalProperties": {
+    "type": "object",
+    "required": ["location", "status"],
+    "additionalProperties": false,
+    "properties": {
+      "location": { "type": "string" },
+      "status": { "enum": ["fresh", "stale", "failed"], "description": "fresh: cached by this entry's run; stale: a later fetch failed, the older text is kept; failed: the script's fetch failed and there is no text." },
+      "captured_by": { "enum": ["script", "agent"], "description": "script: fetched with a plain GET or read from the repo; agent: the agent's capture (--from-file), only for a live-product source or after the script's own fetch failed in that run." },
+      "capturedAt": { "type": "string" },
+      "runId": { "type": "string", "description": "The run that cached the text. A later run fetches the source again." },
+      "sha256": { "type": "string" },
+      "chars": { "type": "integer", "minimum": 1 },
+      "from": { "type": "string", "description": "The capture file, for captured_by: agent." },
+      "fetchError": {
+        "type": "object",
+        "required": ["at", "message"],
+        "additionalProperties": false,
+        "properties": { "runId": { "type": "string" }, "at": { "type": "string" }, "message": { "type": "string" } },
+        "description": "The script's last failed fetch of this source."
+      }
+    },
+    "if": { "properties": { "status": { "const": "failed" } } },
+    "then": { "required": ["fetchError"] },
+    "else": { "required": ["captured_by", "capturedAt", "sha256", "chars"] }
+  }
+}

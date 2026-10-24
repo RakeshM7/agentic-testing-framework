@@ -6,7 +6,8 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib/contract.mjs";
-import { DECISIONS_FILE, checkDecisions, confirmedIn, parseDecisions, rememberConfirmed, shellWriteTargets } from "./lib/decisions.mjs";
+import { DECISIONS_FILE, checkDecisions, confirmedIn, entryText, parseDecisions, rememberConfirmed, shellWriteTargets } from "./lib/decisions.mjs";
+import { main as decisionsCli } from "./decisions.mjs";
 import { globToRegExp } from "./lib/permissions.mjs";
 import { toolCall } from "./lib/tool-call.mjs";
 import { tempRoot } from "./test-helpers.mjs";
@@ -106,4 +107,24 @@ test("the hook entry asks Claude Code to confirm a governed edit, and remembers 
   assert.equal(JSON.parse(run("pretooluse.mjs", payload)).hookSpecificOutput.permissionDecision, "ask");
   run("posttooluse.mjs", payload);
   assert.equal(run("pretooluse.mjs", payload), "", "confirmed for this session: allowed silently");
+});
+
+test("the decision lookup (D-082): the decisions governing a file, the index, and full entries, from the log itself", () => {
+  const text = readFileSync(path.join(repoRoot, DECISIONS_FILE), "utf8");
+  const all = parseDecisions(text);
+  const forRun = decisionsCli(["for", "scripts/run.mjs", "docs/nothing-here.md"]);
+  assert.equal(forRun.code, 0);
+  const ids = forRun.out.files[0].decisions.map((d) => d.id);
+  assert.ok(ids.includes("D-071") && ids.includes("D-072"), "the hook's own matching on Affects");
+  assert.ok(ids.every((id) => all.find((d) => d.id === id).accepted), "only Accepted decisions");
+  assert.deepEqual(forRun.out.files[1], { path: "docs/nothing-here.md", decisions: [] });
+  const full = decisionsCli(["for", "scripts/lib/files.mjs", "--full"]).out;
+  assert.match(full, /^<!-- scripts\/lib\/files\.mjs: D-072 -->\n\n### D-072 · /);
+  assert.equal(full.trimEnd(), `<!-- scripts/lib/files.mjs: D-072 -->\n\n${entryText(text, "D-072")}`);
+  const index = decisionsCli(["index"]).out.accepted;
+  assert.deepEqual(index.map((d) => d.id), all.filter((d) => d.accepted).map((d) => d.id));
+  assert.ok(!index.some((d) => d.id === "D-047"), "a superseded decision is not in the index");
+  assert.match(decisionsCli(["show", "D-047"]).out, /^### D-047 · .+\n- \*\*Status:\*\* Superseded by D-072/);
+  assert.match(decisionsCli(["show", "D-999"]).out.errors[0], /D-999 is not in docs\/decisions\.md/);
+  assert.equal(decisionsCli([]).code, 2);
 });

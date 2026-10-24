@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "k6-code-parked.schema.json",
+  "title": "k6/parked.json: the bodies of slots of k6-tests/<p>/scripts/slots/<m>.js that are no longer generated (their endpoint left the workload), kept by scripts/k6-code.mjs build and restored when the slot comes back (G7).",
+  "type": "object",
+  "required": ["module", "regions"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "regions": {
+      "type": "object",
+      "description": "Keyed by slot key (data, path:<EP>, query:<EP>, body:<EP>, checks:<EP>).",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["lines", "run"],
+        "additionalProperties": false,
+        "properties": { "lines": { "type": "array", "items": { "type": "string" } }, "run": { "type": ["string", "null"] } }
+      }
+    }
+  }
+}

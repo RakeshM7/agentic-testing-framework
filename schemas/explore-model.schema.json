@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "explore-model.schema.json",
+  "title": "explore/model.json: the module's state machine (pages, states, transitions, frontier), written only by scripts/explore.mjs build (D-052).",
+  "type": "object",
+  "required": ["module", "runId", "mode", "budgets", "prefixes", "pages", "states", "transitions", "frontier"],
+  "additionalProperties": false,
+  "$defs": {
+    "st": { "type": "string", "pattern": "^ST-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+    "status": { "enum": ["mapped", "excluded", "pending", "deferred"] },
+    "budgets": {
+      "type": "object",
+      "required": ["max_states", "max_pages", "states", "pages", "reached"],
+      "additionalProperties": false,
+      "properties": {
+        "max_states": { "type": "integer", "minimum": 1 },
+        "max_pages": { "type": "integer", "minimum": 1 },
+        "states": { "type": "integer", "minimum": 0 },
+        "pages": { "type": "integer", "minimum": 0 },
+        "reached": { "type": "object", "required": ["states", "pages"], "properties": { "states": { "type": "boolean" }, "pages": { "type": "boolean" } } }
+      }
+    }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": "string" },
+    "mode": { "enum": ["readonly", "full-run"] },
+    "budgets": { "$ref": "#/$defs/budgets" },
+    "prefixes": { "type": "array", "items": { "type": "string" } },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "slug", "template", "url", "states"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^PG-" },
+          "slug": { "type": "string" },
+          "template": { "type": "string" },
+          "url": { "type": "string" },
+          "title": { "type": ["string", "null"] },
+          "states": { "type": "array", "items": { "$ref": "#/$defs/st" } }
+        }
+      }
+    },
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "fingerprint", "page", "url", "snapshot", "reach", "frontier"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/st" },
+          "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+          "shape": { "type": "string", "pattern": "^[0-9a-f]{16}$", "description": "The state's identity on its page: the fingerprint with every name outside a dialog as a data slot." },
+          "dataSlots": { "type": "array", "items": { "type": "integer" }, "description": "Name positions (in shape order) that differed between the snapshots recorded as this state: data, not structure." },
+          "page": { "type": "string", "pattern": "^PG-" },
+          "url": { "type": "string" },
+          "title": { "type": ["string", "null"] },
+          "snapshot": { "type": "string", "description": "pages/<slug>/states/<ST>.md, relative to explore/." },
+          "reach": {
+            "type": ["object", "null"],
+            "description": "How to reach the state: open url (the state `from`, entered by URL), then the steps in order.",
+            "required": ["from", "url", "steps"],
+            "properties": { "from": { "$ref": "#/$defs/st" }, "url": { "type": "string" }, "steps": { "type": "array", "items": { "type": "string" } } }
+          },
+          "frontier": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "actions", "items", "to"],
+        "additionalProperties": false,
+        "properties": {
+          "from": { "$ref": "#/$defs/st" },
+          "actions": { "type": "array", "items": { "type": "string" } },
+          "items": { "type": "array", "items": { "type": "string" } },
+          "to": { "$ref": "#/$defs/st" }
+        }
+      }
+    },
+    "frontier": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "state", "role", "name", "kind", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^FR-" },
+          "state": { "type": ["string", "null"] },
+          "page": { "type": ["string", "null"] },
+          "role": { "type": "string" },
+          "name": { "type": "string" },
+          "kind": { "enum": ["navigation", "control", "input"] },
+          "status": { "$ref": "#/$defs/status" },
+          "reason": { "type": "string" },
+          "detail": { "type": "string" },
+          "refs": { "type": "array", "items": { "type": "string" } },
+          "by": { "enum": ["agent", "script"] }
+        }
+      }
+    }
+  }
+}

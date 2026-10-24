@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-plan.schema.json",
+  "title": "A module's API test plan (artifacts/<product>/modules/<m>/api/plan.json), written only by scripts/api-plan.mjs build (D-046)",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "key", "endpoint", "rule", "type", "title", "request", "expect", "mutates", "requires", "testcases", "priority"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "pattern": "^API-[a-z0-9]+(-[a-z0-9]+)*-[0-9]+$", "description": "Stable: assigned once per key in plan-registry.json, never reused." },
+      "key": { "type": "string", "description": "<endpoint key>|<rule>|<target>, or overlay|<name>." },
+      "endpoint": { "type": "string", "pattern": "^EP-" },
+      "rule": { "type": "string", "description": "The rule-catalogue entry that generated it (happy-path, param, field, unknown-id, auth, bola, bfla, mass-assignment, http, flow, page, dependency, gql, gql-arg, contract), or overlay." },
+      "type": { "enum": ["functional", "negative", "boundary", "auth", "authorization", "lifecycle", "http", "graphql", "contract", "business"] },
+      "title": { "type": "string", "minLength": 1 },
+      "request": { "$ref": "#/$defs/request" },
+      "steps": {
+        "type": "array",
+        "description": "Lifecycle flows: requests in order; a later step's path parameter is bound to a pointer in an earlier step's response.",
+        "items": {
+          "type": "object",
+          "required": ["endpoint", "expect"],
+          "additionalProperties": false,
+          "properties": {
+            "endpoint": { "type": "string", "pattern": "^EP-" },
+            "bind": { "type": "object", "required": ["param", "from", "pointer"], "additionalProperties": false, "properties": { "param": { "type": "string" }, "from": { "type": "integer", "minimum": 0 }, "pointer": { "type": "string" } } },
+            "request": { "$ref": "#/$defs/request" },
+            "expect": { "$ref": "#/$defs/expect" }
+          }
+        }
+      },
+      "expect": { "$ref": "#/$defs/expect" },
+      "mutates": { "type": "boolean" },
+      "requires": { "type": "array", "items": { "type": "string", "pattern": "^(full-run|identity:[a-z0-9]+(-[a-z0-9]+)*)$" }, "description": "Empty = runs in readonly." },
+      "cleanup": { "type": ["object", "null"], "required": ["endpoint"], "properties": { "endpoint": { "type": "string", "pattern": "^EP-" } }, "description": "The delete operation that removes what the scenario creates; null = none exists (leavesData)." },
+      "leavesData": { "const": true },
+      "documentedOnly": { "const": true, "description": "The endpoint is in the spec but was never seen in the UI or a probe." },
+      "blocked": { "type": "string", "minLength": 1, "description": "Why the scenario cannot run yet; the tests-writer writes test.fixme with this reason." },
+      "testcases": { "type": "array", "items": { "type": "string", "pattern": "^TC-" } },
+      "priority": { "enum": ["p1", "p2", "p3"] },
+      "priorityReason": { "type": "string" },
+      "citations": { "type": "array", "items": { "$ref": "#/$defs/citation" } }
+    }
+  },
+  "$defs": {
+    "citation": { "type": "string", "pattern": "^(clarification|testcase|knowledge|spec|observation):.+$" },
+    "source": { "type": "string", "pattern": "^(spec|observed|rfc9110|graphql-over-http|class-only|(clarification|testcase|knowledge|spec|observation):.+)$" },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base": { "enum": ["valid", "changed", "none"], "description": "valid = the payload builder's valid request; changed = a valid request with different values (updates)." },
+        "auth": { "type": "string", "pattern": "^(default|none|malformed:.+|identity:[a-z0-9]+(-[a-z0-9]+)*)$" },
+        "mutation": {
+          "type": "object",
+          "required": ["in", "op"],
+          "additionalProperties": false,
+          "description": "Exactly one change to the valid request (single fault).",
+          "properties": {
+            "in": { "enum": ["body", "query", "path", "header", "cookie", "graphql"] },
+            "pointer": { "type": "string", "description": "JSON Pointer into the body (in: body)." },
+            "name": { "type": "string", "description": "Parameter or GraphQL argument name." },
+            "op": { "enum": ["remove", "set", "type", "length", "items", "each", "duplicate", "unknown-id"] },
+            "value": {},
+            "values": { "type": "array" }
+          }
+        },
+        "method": { "type": "string", "pattern": "^[A-Z]+$", "description": "Send this method instead of the endpoint's." },
+        "target": { "enum": ["unknown-id"], "description": "Path ids are syntactically valid ids that do not exist." },
+        "setup": { "type": "array", "items": { "type": "object", "required": ["endpoint", "pointer", "param"], "additionalProperties": false, "properties": { "endpoint": { "type": "string", "pattern": "^EP-" }, "pointer": { "type": "string" }, "param": { "type": "string" } } } },
+        "headers": { "type": "object", "additionalProperties": { "type": "string" } },
+        "values": { "type": "object", "description": "Realistic values by JSON Pointer, from plan-overlay.json values." },
+        "repeat": { "oneOf": [{ "type": "integer", "minimum": 2 }, { "const": "past-rate-limit" }] },
+        "select": { "type": "string", "description": "GraphQL: a field to add to the selection set." },
+        "dependency": { "type": "object", "required": ["kind", "params", "satisfy"], "properties": { "kind": { "type": "string" }, "params": { "type": "array" }, "satisfy": { "type": "boolean" } } }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "oneOf": [{ "required": ["status"] }, { "required": ["statusIn"] }, { "required": ["statusClass"] }],
+      "properties": {
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "statusIn": { "type": "array", "minItems": 2, "items": { "type": "integer" } },
+        "statusClass": { "enum": ["2xx", "4xx", "non-5xx"] },
+        "source": { "$ref": "#/$defs/source" },
+        "schema": { "type": "string", "pattern": "^(response|error:[0-9]{3})$", "description": "Validate the body against the endpoint's responseSchema or errorSchemas[<status>]." },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["assert", "source"],
+            "additionalProperties": false,
+            "properties": {
+              "assert": { "enum": ["keys-present", "present", "absent", "equals", "not-equals", "contains", "errors-present", "errors-absent", "header-present", "ignored-if-accepted", "reflects-update"] },
+              "pointer": { "type": "string" },
+              "name": { "type": "string" },
+              "value": {},
+              "when": { "type": "integer", "description": "Only when the response has this status." },
+              "source": { "$ref": "#/$defs/source" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

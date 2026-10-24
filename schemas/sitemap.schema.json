@@ -1,15 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "sitemap.schema.json",
-  "title": "explore/sitemap.json",
+  "title": "explore/sitemap.json: every page the module's exploration recorded. Written by scripts/explore.mjs build (D-052); url, slug, title and links keep their older meaning, the ids and state lists are additions.",
   "type": "array",
   "items": {
     "type": "object",
     "required": ["url", "slug", "title"],
     "properties": {
-      "url": { "type": "string" },
+      "id": { "type": "string", "pattern": "^PG-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$", "description": "Stable page id, one per page template (explore/registry/pages.json)." },
+      "url": { "type": "string", "description": "The first URL seen for the page, without its query string." },
       "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
       "title": { "type": "string" },
+      "template": { "type": "string", "description": "The page's path with ids erased ({id}); host-prefixed (//host/...) when not the target's." },
+      "states": { "type": "array", "items": { "type": "string", "pattern": "^ST-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" } },
+      "statesDir": { "type": "string" },
       "screenshotPath": { "type": "string" },
       "domSnapshotPath": { "type": "string" },
       "networkRequestsPath": { "type": "string" },
