@@ -1,0 +1,11 @@
+{"base":"https://rakesh-freshsales-ind-sep21.myfreshworks.com/crm/sales","auth":"session cookie; mutations also X-CSRF-Token","endpoints":[
+{"method":"GET","path":"/deals","query":["segment_id (required, else 403)","per_page","page","sort","sort_type"],"response":"{deals:[...],meta:{total,total_pages}}"},
+{"method":"GET","path":"/deals/:id","query":["include=deal_stage"],"response":"{deal,deal_stages?}"},
+{"method":"POST","path":"/deals","request":"{deal:{name*,amount,expected_close,deal_stage_id,...}}","response":"{users,deal}"},
+{"method":"PUT","path":"/deals/:id","request":"{deal:{...}}","response":"{users,deal}"},
+{"method":"DELETE","path":"/deals/:id","response":"true (soft delete)"},
+{"method":"GET","path":"/deals/filters","response":"{filters:[...]}"},
+{"method":"GET","path":"/settings/deal_pipelines","query":["include=deal_stages"],"response":"{deal_pipelines:[...]}"},
+{"method":"GET","path":"/settings/deals/fields","response":"{fields:[...]}"},
+{"method":"GET","path":"/deals/:id/notes","response":"{notes,meta}"},
+{"method":"GET","path":"/deals/:id/tasks","response":"{tasks,meta}"}]}

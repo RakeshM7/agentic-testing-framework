@@ -1,0 +1,106 @@
+[
+  {
+    "id": 402012483997,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal probe2",
+    "createdAt": "2026-10-06T11:40:25Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484006,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal full",
+    "createdAt": "2026-10-06T11:41:00Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484007,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal neg",
+    "createdAt": "2026-10-06T11:41:00Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484008,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal xxx(long)",
+    "createdAt": "2026-10-06T11:41:00Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484009,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal baddate",
+    "createdAt": "2026-10-06T11:41:00Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484010,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal unwrapped",
+    "createdAt": "2026-10-06T11:41:00Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484011,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal xss",
+    "createdAt": "2026-10-06T11:41:00Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484021,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal 86918726548",
+    "createdAt": "2026-10-06T11:41:59.578Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484023,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal 86925608873",
+    "createdAt": "2026-10-06T11:42:05.841Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484024,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "createdAt": "2026-10-06T11:42:06.093Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484025,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal 8692609615",
+    "createdAt": "2026-10-06T11:42:06.375Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484026,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal <script>alert(1)</script>",
+    "createdAt": "2026-10-06T11:42:06.657Z",
+    "deleted": true
+  },
+  {
+    "id": 402012484027,
+    "resource": "deals",
+    "endpoint": "POST /crm/sales/deals",
+    "name": "ZZ API Deal 86926661878",
+    "createdAt": "2026-10-06T11:42:06.894Z",
+    "deleted": true
+  }
+]

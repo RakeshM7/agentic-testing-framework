@@ -1,0 +1,12 @@
+{
+ "note": "Analytics UI (reports, custom attributes/metrics, schedules, data exports) runs in a third-party freshreports.com iframe (out of scope). Per-page network-requests.json are empty placeholders, so endpoints were live-probed. The tenant host exposes only a tiny read-only surface for Analytics.",
+ "host": "https://rakesh-freshsales-ind-sep21.myfreshworks.com",
+ "endpoints": [
+  {"method":"GET","path":"/crm/sales/analytic_reports","auth":"session cookie","query":["curated (ignored; same 8 rows)"],"response":"{analytic_reports:[{id,name,curated}]} (8 curated on this tenant)","verified_live":true},
+  {"method":"GET","path":"/crm/sales/analytic_reports/:id","auth":"session cookie","response":"404 empty body for ids 1 and 999999999 (no show route)","verified_live":true},
+  {"method":"GET","path":"/crm/sales/analytics_dashboard","auth":"session cookie","note":"also covered by dashboards track; iframe_url contains a JWT, never logged","verified_live":true}
+ ],
+ "probed_not_found_404": ["/crm/sales/api/export_jobs","/crm/sales/api/data_exports","/crm/sales/api/custom_attributes","/crm/sales/api/scheduled_reports","/crm/sales/analytic_reports/schedules"],
+ "mutations": "none exist on the tenant host for analytics; report create/trash/schedule/favorite/custom-attribute calls go to freshreports.com (out of scope)",
+ "excluded_third_party": ["freshworkscrm-ind.freshreports.com/api/v1/*"]
+}
