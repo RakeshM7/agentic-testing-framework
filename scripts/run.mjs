@@ -83,6 +83,7 @@ import { login as openLogin } from "./lib/login.mjs";
 import { detectShellHost } from "./lib/hosts.mjs";
 import { collectProvenance } from "./lib/provenance.mjs";
 import { diffManifests, readManifest, writeManifest } from "./lib/history.mjs";
+import { issuesPath, readIssues, writeFeedback } from "./lib/framework-issues.mjs";
 import { approvalSummary, caseTypeOf, importStatus, testcasePaths } from "./lib/testcases.mjs";
 import { SCENARIO_ANSWERS, writeScenarios } from "./lib/explore.mjs";
 
@@ -93,7 +94,7 @@ export const makeRunId = (product, date = new Date(), environment = DEFAULT_ENV)
   `${product}${environment === DEFAULT_ENV ? "" : `-${environment}`}-${date.toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-")}`; // eventhub-20261007-1230, eventhub-staging-20261007-1230
 
 export function initRun(configFile, { resume = false, runId, root = repoRoot, env = process.env } = {}) {
-  const { errors, normalized: cfg } = validateRunConfig(yaml.load(readFileSync(configFile, "utf8")), { root });
+  const { errors, warnings = [], normalized: cfg } = validateRunConfig(yaml.load(readFileSync(configFile, "utf8")), { root });
   if (errors?.length) return { errors };
   // the session's environment (D-081) must be the config's: every script and hook of the session works in it
   let environment;
@@ -160,7 +161,7 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
     mkdirSync(p.module(m), { recursive: true });
     ensureCsv(csvPath(p.productDir, m)); // header-only file, so a module with no open questions still has its CSV
   }
-  return { product: cfg.product, run };
+  return { product: cfg.product, run, ...(warnings.length ? { warnings } : {}) };
 }
 
 // Every read-modify-write of run.json holds its lock (D-072), so two run.mjs processes never lose each other's update. A
@@ -666,6 +667,9 @@ export async function endRun(product, { abandon = false, root = repoRoot } = {})
   };
   // what this run left behind, so a later run can be diffed against it (D-078)
   summary.manifest = writeManifest(root, product, ctx.p.results(ctx.runId), ctx.runId);
+  // the framework problems agents recorded, as feedback files for feedback-implementor-agent (D-083)
+  const { issues } = readIssues(issuesPath(ctx.p.results(ctx.runId)));
+  if (issues.length) summary.feedback = writeFeedback(root, { issues, runId: ctx.runId, product });
   writeJson(path.join(ctx.p.historyDir, `${ctx.runId}.json`), summary);
   unlinkSync(ctx.p.lockFile);
   return summary;
@@ -777,7 +781,7 @@ async function main() {
     if (cmd === "init") {
       const r = initRun(a, { resume: v.resume, runId: v["run-id"] });
       const carried = r.errors || r.resumed ? null : await carryForward(r.product);
-      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, steps: r.run.steps ?? STEPS, caseTypes: r.run.caseTypes, resumed: !!r.resumed, ...(r.interrupted ? { interrupted: r.interrupted } : {}), ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: [`node scripts/run.mjs guard-check ${r.product}`, `node scripts/run.mjs doctor ${r.product}`, `node scripts/run.mjs prereqs ${r.product}`] }, r.errors ? 1 : 0);
+      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, steps: r.run.steps ?? STEPS, caseTypes: r.run.caseTypes, resumed: !!r.resumed, ...(r.warnings ? { warnings: r.warnings } : {}), ...(r.interrupted ? { interrupted: r.interrupted } : {}), ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: [`node scripts/run.mjs guard-check ${r.product}`, `node scripts/run.mjs doctor ${r.product}`, `node scripts/run.mjs prereqs ${r.product}`] }, r.errors ? 1 : 0);
     } else if (cmd === "guard-check") {
       // Reaching this line means no hook blocked the command: the guard is not active in this session.
       if (!SLUG_RE.test(a) || !existsSync(paths(a).state)) out({ errors: [`no run state for product '${a}'`] }, 1);

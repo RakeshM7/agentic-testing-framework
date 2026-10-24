@@ -533,7 +533,7 @@ test("the code reviewers run only review.mjs check and write only their review.j
         }
   const perms = JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents;
   for (const [rev, fix] of domains) {
-    assert.deepEqual(perms[rev].shell_allow, ["node scripts/review.mjs check *"], `${rev}: the check only`);
+    assert.deepEqual(perms[rev].shell_allow, ["node scripts/review.mjs check *", "node scripts/framework-issues.mjs add *"], `${rev}: the check only, and recording a framework issue (D-083)`);
     assert.equal(perms[rev].shell, "restricted");
     assert.ok(perms[fix].shell_allow.includes("node scripts/fix.mjs check *") && !perms[fix].shell_allow.some((c) => c.includes("fix.mjs snapshot")), `${fix}: check, never snapshot`);
     assert.ok(perms[fix].filesystem.read.some((g) => g.endsWith("/review.json")), `${fix} reads review.json`);
@@ -895,7 +895,7 @@ test("feedback-implementor-agent writes the G0-G11 framework files and never a s
 
 test("every framework script is writable by feedback-implementor-agent or deliberately carved out, so a new file forces a decision (D-062)", () => {
   const carved = new Set([
-    "scripts/feedback.mjs", "scripts/ledger.mjs", "scripts/feedback.test.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs", "scripts/ledger.test.mjs",
+    "scripts/feedback.mjs", "scripts/ledger.mjs", "scripts/feedback.test.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs", "scripts/ledger.test.mjs", "scripts/decisions.mjs",
     ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "hook-log", "agent-scope", "feedback", "sweep", "telemetry"].map((n) => `scripts/lib/${n}.mjs`),
   ]);
   const files = [];
@@ -963,4 +963,15 @@ test("the browser init page: readonly runs' product hosts take no write, no run 
   await initPage({ page }, root);
   assert.deepEqual([seen.cookies.map((c) => c.name), seen.scripts, seen.routes], [["sid"], [{ origin: "https://app.acme.test", items: [{ name: "t", value: "1" }] }], 1], "once per context");
   assert.equal(await loadSession(context, { product: "acme" }, tempRoot()), false, "no run config, no session");
+});
+
+test("every restricted agent may record a framework issue, and only that is added to its list (D-083)", () => {
+  const perms = JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8"));
+  const restricted = Object.entries(perms.agents).filter(([, a]) => a.shell === "restricted").map(([n]) => n);
+  assert.ok(restricted.length >= 5);
+  for (const { root } of [RO, FULL])
+    for (const agent of restricted) {
+      assert.equal(allowed(root, sh(agent, "node scripts/framework-issues.mjs add acme --from x --kind doc --target docs/a.md --summary s --evidence e")), true, `${agent}: add`);
+      if (agent !== "orchestrator-agent") assert.equal(allowed(root, sh(agent, "node scripts/framework-issues.mjs list acme")), false, `${agent}: only add is shared`);
+    }
 });

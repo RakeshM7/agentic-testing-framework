@@ -40,3 +40,5 @@ You judge what a script can't about the module's test cases: whether each expect
 
 ## Return
 From the last `review-check` output: the derived verdict, the counts by severity, and the cases with blocker or major findings.
+
+<!-- include: _shared/framework-issues.md -->

@@ -87,3 +87,5 @@ A short report only; don't paste file contents. From the last `check` output:
 - mutations performed (ledger refs) or `none`, and live entities left;
 - in scenario mode, each scenario with its flow or its reason;
 - anything not explored and why, and the final `check` result.
+
+<!-- include: _shared/framework-issues.md -->

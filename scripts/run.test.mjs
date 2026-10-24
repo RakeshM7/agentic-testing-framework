@@ -688,3 +688,26 @@ test("environments (D-081): each has its own lock, run state, ledger and history
     else process.env.ATF_ENV = saved;
   }
 });
+
+test("framework issues (D-083): agents record them during the run, deduped; end writes one feedback file per reporting agent in the feedback format", async () => {
+  const { main: issues } = await import("./framework-issues.mjs");
+  const { parseFrontmatter } = await import("./lib/feedback.mjs");
+  const { root } = startRun();
+  const add = (from, extra = {}) => issues(["add", "acme", "--from", from, "--kind", "prompt", "--target", "agents/module-explorer.md", "--summary", "Step 3 names a flag explore.mjs refuses", "--evidence", "explore.mjs state: unknown option --via-item", ...Object.entries(extra).flatMap(([k, v]) => [`--${k}`, v])], { root });
+  const first = add("module-explorer", { fix: "use --item", severity: "high" });
+  assert.deepEqual([first.code, first.out.added, /^FI-[0-9a-f]{8}$/.test(first.out.id)], [0, true, true]);
+  assert.deepEqual(add("clarification-explorer").out, { id: first.out.id, duplicate: true }, "the same issue from another agent is one issue");
+  assert.match(issues(["add", "acme", "--from", "module-explorer", "--kind", "bug", "--target", "/etc/passwd", "--summary", "x"], { root }).out.errors.join("\n"), /kind must be one of[\s\S]*target is required[\s\S]*evidence is required/);
+  issues(["add", "acme", "--from", "pw-ui-pom-writer", "--kind", "script", "--target", "scripts/lib/ui-code.mjs", "--summary", "check rejects a valid getByLabel", "--evidence", "ui-code.mjs check: locator not grounded for 'Email *'"], { root });
+  const listed = issues(["list", "acme"], { root }).out.issues;
+  assert.deepEqual(listed.map((i) => [i.from, i.reporters]), [["module-explorer", ["module-explorer", "clarification-explorer"]], ["pw-ui-pom-writer", ["pw-ui-pom-writer"]]]);
+
+  const end = await endRun("acme", { root });
+  assert.deepEqual(end.feedback.map((f) => f.replace(/\d{4}-\d{2}-\d{2}/, "D")), ["feedback/run-acme-run-1/D-module-explorer.md", "feedback/run-acme-run-1/D-pw-ui-pom-writer.md"]);
+  const text = readFileSync(path.join(root, end.feedback[0]), "utf8");
+  const doc = parseFrontmatter(text);
+  assert.deepEqual(doc.problems, [], "a valid feedback file, ready for feedback-implementor-agent");
+  assert.deepEqual([doc.front.source_agent, doc.front.target, doc.front.related_files, doc.front.severity], ["module-explorer", "framework", ["agents/module-explorer.md"], "high"]);
+  assert.match(text, /## Finding 1: Step 3 names a flag explore\.mjs refuses\n\*\*Summary:\*\* .*also reported by clarification-explorer\)\n\*\*Evidence:\*\* explore\.mjs state: unknown option --via-item\n\*\*Suggested fix:\*\* use --item/);
+  assert.equal((await endRun("acme", { root })).errors?.length, 1, "nothing to write twice: the run has ended");
+});

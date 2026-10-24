@@ -75,3 +75,5 @@ From the last `build` and `check` output, report:
 - the page-object methods you are missing, each recorded with `node scripts/requests.mjs add <p> playwright-ui <m> --from pw-ui-tests-writer --kind missing-method --target 'pw-ui-pom-writer' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
 - any foundation gap, recorded the same way with `--kind foundation-gap --target 'pw-ui-scaffolder'`, and a shared-file change with `--kind repo-change --target 'pw-repo-owner'`;
 - the check result.
+
+<!-- include: _shared/framework-issues.md -->

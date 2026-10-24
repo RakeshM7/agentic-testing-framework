@@ -106,6 +106,7 @@ function fileError(v, where, root) {
 // root: what relative file paths (test case files) resolve against.
 export function validateRunConfig(cfg, { root = repoRoot } = {}) {
   const errors = [];
+  const warnings = [];
   if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return { errors: ["config is not a YAML mapping"] };
   for (const k of Object.keys(cfg)) if (!KNOWN.includes(k)) errors.push(`${k}: unknown top-level key`);
   // The steps this run executes (absent = all of them); the stages a chosen step needs run automatically.
@@ -239,8 +240,13 @@ export function validateRunConfig(cfg, { root = repoRoot } = {}) {
   if (cfg.k6 !== undefined) errors.push(...k6Errors(cfg.k6, Array.isArray(cfg.modules) ? cfg.modules.map((m) => m?.slug) : []));
 
   if (errors.length) return { errors };
+  // accepted for older configs, but nothing reads them (D-083)
+  if (cfg.feedback_loop?.auto_invoke_implementor !== undefined)
+    warnings.push("feedback_loop.auto_invoke_implementor has no effect (D-083): run.mjs end writes the framework issues agents recorded to feedback/run-<run-id>/; start feedback-implementor-agent on them yourself");
+  if (cfg.git?.auto_commit !== undefined) warnings.push("git.auto_commit has no effect: the framework never commits; a human does");
   return {
     errors,
+    warnings,
     normalized: {
       ...cfg,
       steps: cfg.steps ?? [...STEPS],
@@ -257,8 +263,6 @@ export function validateRunConfig(cfg, { root = repoRoot } = {}) {
       clarifications: { unresolved_policy: "stop", ...cfg.clarifications },
       limits: { review_rounds: 3, heal_rounds: 3, ...cfg.limits },
       concurrency: { modules: 1, clarification_rows: 1, ...cfg.concurrency },
-      feedback_loop: { auto_invoke_implementor: false, ...cfg.feedback_loop },
-      git: { auto_commit: false, ...cfg.git },
       k6: { ...K6_DEFAULTS, ...cfg.k6, caps: { ...K6_DEFAULTS.caps, ...cfg.k6?.caps } },
     },
   };
@@ -369,10 +373,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error("usage: run-config.mjs validate <config.yaml> | draft <answers.json> | set <config.yaml> [--steps ...] (see header comment)");
     process.exit(2);
   }
-  const { errors, normalized } = validateRunConfig(yaml.load(readFileSync(file, "utf8")));
+  const { errors, warnings = [], normalized } = validateRunConfig(yaml.load(readFileSync(file, "utf8")));
   if (errors.length) {
     console.error(errors.map((e) => `- ${e}`).join("\n"));
     process.exit(1);
   }
+  if (warnings.length) console.error(warnings.map((w) => `warning: ${w}`).join("\n"));
   console.log(JSON.stringify(normalized, null, 2));
 }

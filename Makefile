@@ -10,6 +10,9 @@
 #   make doctor PRODUCT=acme-crm                      check (and install what it safely can) what every stage needs on this
 #                                                     machine; login, run, resume and automate run it first (FIX=no: report only)
 #   make check                                        drift check + tests (what CI runs)
+#   make e2e                                          the live end-to-end check: the rendered foundation against a local
+#                                                     demo app in a real browser, readonly and full-run, then the sweep
+#                                                     (needs the network once and a machine that can start Chromium)
 #
 # Running and resuming (start the run in a session of the orchestrator-agent; a finished stage stays done):
 #   make run PRODUCT=acme-crm                         start the run, or continue the active one
@@ -71,7 +74,7 @@ CONFIG  = config/$(PRODUCT)$(if $(ENV),-$(ENV)).yaml
 # install chromium, k6 through winget or Homebrew); a config, session or credential problem is reported for you to fix.
 DOCTOR  = node scripts/doctor.mjs $(CONFIG)$(if $(filter yes,$(FIX)), --fix)
 
-.PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve steps import sweep diff
+.PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve steps import sweep diff e2e
 
 help:
 	@echo "make setup | config | interview | login | validate | doctor | build-agents | check | test"
@@ -124,6 +127,10 @@ check:
 
 test:
 	npm test
+
+# The live end-to-end check (D-084, scripts/e2e.mjs): KEEP=yes leaves its scratch folder.
+e2e:
+	node scripts/e2e.mjs$(if $(filter yes,$(KEEP)), --keep)
 
 # ---- run and resume ----------------------------------------------------------------------------------------------
 # The run's state lives in artifacts/<product>/state/, so a stage finished yesterday is still done today as long as

@@ -99,7 +99,7 @@ The command runs for the whole window: allow it at least the window plus one min
 
 `end.notChosen` lists the stages this run did not choose: they are "not chosen", never failed or blocked, and the report says so.
 
-Then run `node scripts/ledger.mjs list <p> --live`. Tell the human: the report path (`artifacts/<p>/results/<run-id>/report/index.html`), the product bugs as issue-ready files for their tracker (`artifacts/<p>/results/<run-id>/bugs/`, one Markdown file per drafted bug, and `bugs.json`; nothing is filed for them), the steps run and not chosen, stages failed or blocked and why, unconfirmed clarifications, agent-proposed answers awaiting human approval (`clarifications-summary.md` → `## Awaiting approval`), the approval sheets above, and entities the run created that are still live (they need cleanup: once the run has ended, a human can delete those with a recorded cleanup recipe by running `make sweep PRODUCT=<p>` in their own terminal, and the rest by hand; never run it yourself). The totals come from the domain orchestrators' reports and the report; do not recompute them.
+Then run `node scripts/ledger.mjs list <p> --live`. Tell the human: the report path (`artifacts/<p>/results/<run-id>/report/index.html`), the product bugs as issue-ready files for their tracker (`artifacts/<p>/results/<run-id>/bugs/`, one Markdown file per drafted bug, and `bugs.json`; nothing is filed for them), the framework feedback files `run.mjs end` wrote from the issues agents recorded (its `feedback` list, under `feedback/run-<run-id>/`; a maintainer starts feedback-implementor-agent on them), the steps run and not chosen, stages failed or blocked and why, unconfirmed clarifications, agent-proposed answers awaiting human approval (`clarifications-summary.md` → `## Awaiting approval`), the approval sheets above, and entities the run created that are still live (they need cleanup: once the run has ended, a human can delete those with a recorded cleanup recipe by running `make sweep PRODUCT=<p>` in their own terminal, and the rest by hand; never run it yourself). The totals come from the domain orchestrators' reports and the report; do not recompute them.
 
 ## Rules
 - Pass paths and the script's prompts, never file contents, to other agents. Keep their reports short in your own notes (`artifacts/<p>/state/notes.md`).
@@ -107,3 +107,5 @@ Then run `node scripts/ledger.mjs list <p> --live`. Tell the human: the report p
 - Never record a test case approval, never run an approval command, and never add `--approved` to a command: a human signs off in their own terminal.
 - If the guard blocks something, report it; never try to work around it.
 - If you have no tool to ask the human (some hosts, e.g. the GitHub cloud coding agent, have none), never guess an answer: stop at that point and report the question.
+
+<!-- include: _shared/framework-issues.md -->

@@ -66,3 +66,5 @@ From the last `build` and `check` output, report:
 - the composite helpers you are missing, each recorded with `node scripts/requests.mjs add <p> playwright-api <m> --from pw-api-tests-writer --kind missing-method --target 'pw-api-client-writer' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
 - any foundation gap, recorded the same way with `--kind foundation-gap --target 'pw-api-scaffolder'`, and a shared-file change with `--kind repo-change --target 'pw-repo-owner'`;
 - the check result.
+
+<!-- include: _shared/framework-issues.md -->

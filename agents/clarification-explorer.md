@@ -86,3 +86,5 @@ If the exploration surfaces adjacent unknowns, list each one in the outcome's `f
 
 ## Return
 `<ID>: <verdict>[ (<reason>)]` plus one sentence: whether the script recorded the row (or why it refused), the follow-up ids it added, and the evidence path.
+
+<!-- include: _shared/framework-issues.md -->

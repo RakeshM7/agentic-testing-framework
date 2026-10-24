@@ -50,7 +50,8 @@ flowchart LR
 - **Done:** knowledge domain — `knowledge-generator`, `scripts/knowledge.mjs`.
 - **Done:** all other agents bottom-up to `orchestrator-agent`; `scripts/build-agents.mjs` (frontmatter from permissions + models), `orchestration.mjs`, `results.mjs`, `report-data.mjs`; stage attempts and blocked-dependency handling in `run.mjs`.
 - **Done:** GitHub Copilot support from the same sources (VS Code Copilot Chat, Copilot CLI, cloud coding agent), one hook entry for every host, the decision log and its confirmation hook, CI running `npm run check`.
-- **Next:** verify the Copilot runtime facts listed in `docs/platforms.md` on live sessions, a first end-to-end run against a real product, per-role models in `config/models.yaml`.
+- **Done:** end-to-end harnesses (D-084): `scripts/pipeline.test.mjs` drives `run.mjs next` from init to a verified report with stand-in agents on every `npm test`; `make e2e` runs the rendered foundation against a local demo app in a real browser, readonly and full-run, then the human's ledger sweep.
+- **Next:** verify the Copilot runtime facts listed in `docs/platforms.md` on live sessions, a first agent-driven run against a real product, per-role models in `config/models.yaml`.
 
 ## Control flow (D-060)
 

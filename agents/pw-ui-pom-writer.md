@@ -60,3 +60,5 @@ From the last `build` and `check` output, report:
 - any locator you could not ground in a snapshot, and why;
 - any foundation gap, recorded with `node scripts/requests.mjs add <p> playwright-ui <m> --from pw-ui-pom-writer --kind foundation-gap --target 'pw-ui-scaffolder' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
 - the check result.
+
+<!-- include: _shared/framework-issues.md -->

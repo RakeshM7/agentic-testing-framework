@@ -45,3 +45,5 @@ You give every k6 script the same building blocks, the code-level safety include
 
 ## Return
 The overlay entries added, the exports available (rendered and in `lib/ext/`), and the check result.
+
+<!-- include: _shared/framework-issues.md -->

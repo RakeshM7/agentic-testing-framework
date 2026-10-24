@@ -6,6 +6,7 @@ Why this framework is built the way it is: what was chosen, why, and where it li
 
 **Read this file before you change any file in this repository.** The only exceptions are run output and generated test code: `artifacts/`, `playwright-tests/`, `k6-tests/` and `feedback/` belong to the pipeline and its own reviewers. The safety decisions below also apply while you run the pipeline.
 
+**How to read it (D-082).** Read these rules, then run `node scripts/decisions.mjs for <every file you will change> --full`: it prints the Accepted entries whose **Affects** match them. Read those, and scan `node scripts/decisions.mjs index` (every Accepted title) for any other decision your change could contradict by meaning. `node scripts/decisions.mjs show <D-NNN>` prints any entry.
 
 1. **Check whether your change touches a decision.** It does if it reverts, removes, weakens, bypasses, narrows or contradicts an `Accepted` decision. That includes re-introducing something a decision replaced, and changing a default a decision records. Judge by meaning. The **Affects** paths show where a decision lives, but a decision is not limited to them.
 2. **If it does, stop and get the user's explicit confirmation before editing.** Tell the user:
@@ -136,6 +137,9 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-079 | The report shows time and effort: stage and step durations, and the agent spawns the PostToolUse hook records | Accepted | 2026-10-24 |
 | D-080 | The product's Playwright repo runs in CI on its own, and the product bugs are exported as issue-ready files | Accepted | 2026-10-24 |
 | D-081 | A product has environments: each its own runs, lock, ledger and history, sharing knowledge, modules, test code and results | Accepted | 2026-10-24 |
+| D-082 | The decision log is looked up, not read whole: decisions.mjs for, index and show | Accepted | 2026-10-24 |
+| D-083 | Agents record framework issues as they meet them; run.mjs end writes them to feedback/ for the implementor | Accepted | 2026-10-24 |
+| D-084 | Two end-to-end harnesses: an offline pipeline test in npm test, and make e2e against a local demo app in a real browser | Accepted | 2026-10-24 |
 
 ## Decisions
 
@@ -1558,3 +1562,36 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Why:** The same product is tested in several environments; their data and runs must not mix, while what was learned about the product should be learned once.
 - **Affects:** `scripts/lib/contract.mjs`, `scripts/run.mjs`, `scripts/run-config.mjs`, `schemas/run.schema.json`, `scripts/lib/guard.mjs`, `scripts/hooks/pretooluse.mjs`, `scripts/lib/fix.mjs`, `scripts/browser/init-page.cjs`, `Makefile`, `config/run-config.example.yaml`, `docs/artifact-contract.md`
 - **Supersedes:** D-003 (one active run per product becomes one per product and environment; the product-level layout is restated as in force) · **Confirmed by the user on:** 2026-10-24 (environment-scoped state with shared knowledge). This extends D-005 (the ledger, and so every delete's scope, is per environment) and D-007 (the hook still fails closed with any environment's run active) without weakening them.
+
+### D-082 · The decision log is looked up, not read whole: decisions.mjs for, index and show
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (design-gap review, gap 15). Every agent was told to read this log, by then about 1,600 lines and growing with every decision, before changing any file.
+- **Decision:**
+  - `node scripts/decisions.mjs for <path...> [--full]` prints, per path, the Accepted decisions whose **Affects** match it, with the hook's own matching (`governing` in `scripts/lib/decisions.mjs`); `--full` adds those entries' text. `index` lists every Accepted decision's id and title; `show <D-NNN...>` prints entries.
+  - `AGENTS.md` and the rules at the top of this file say to look up the governing entries and scan the index, instead of reading the whole log. Judging by meaning (rule 1) still applies: the index is how an agent finds a decision whose **Affects** don't name the file.
+  - The log stays one append-only file; nothing about its format, the hook or the consistency test changes.
+  - `scripts/decisions.mjs` is governance code: it is carved out of `feedback-implementor-agent`'s write list like `scripts/lib/decisions.mjs` (D-062).
+- **Why:** The rules must stay affordable to follow as the log grows; the lookup reads what the hook would hold anyway, so an agent reads the decisions that matter and only titles for the rest.
+- **Affects:** `scripts/decisions.mjs`, `scripts/lib/decisions.mjs`, `AGENTS.md`
+- **Confirmed by the user on:** 2026-10-24 (a lookup command over one file). This extends D-027 and D-031 without weakening them.
+
+### D-083 · Agents record framework issues as they meet them; run.mjs end writes them to feedback/ for the implementor
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (design-gap review, gap 13). A problem an agent met with the framework itself reached only its return message, was summarized away by the orchestrators, and never became feedback; `feedback_loop.auto_invoke_implementor` and `git.auto_commit` were accepted by the run-config check and read by nothing.
+- **Decision:**
+  - `node scripts/framework-issues.mjs add <p> --from <agent> --kind <prompt|script|contract|doc|config|template|other> --target <framework file> --summary … --evidence … [--fix …] [--severity …]` records an issue in `results/<run>/framework-issues.json` (`scripts/lib/framework-issues.mjs`, a managed file): a stable `FI-` id from kind, target and summary; the same issue from another agent is added to its `reporters`. Every agent of a run includes `agents/_shared/framework-issues.md`, which says when to use it (the framework's problems only, never the product's or its own) and to go on with its task.
+  - `config/permissions.yaml` gains `common_shell_allow`, `node scripts/...` commands added to every restricted shell at resolution; it holds only this `add`. Agents with a project shell can already run it. A restricted agent must still declare its own list. This extends D-059 for the reviewers: besides `review.mjs check`, they may record a framework issue.
+  - `run.mjs end` writes the run's issues as feedback files, one per reporting agent, to `feedback/run-<run-id>/<date>-<agent>.md` in the feedback schema (`target: framework`, the targets as `related_files`, the highest severity), and lists them in its result; the orchestrator names them. The user chose this over a draft a human moves by hand. Agents still never write `feedback/`; `feedback-implementor-agent` is still started by a maintainer.
+  - The two dead run-config keys are still accepted but warn (`warnings` from `validateRunConfig`, shown by `run-config.mjs validate` and `run.mjs init`); the example no longer lists them, and they get no default.
+  - `scripts/framework-issues.mjs` and its lib are in `feedback-implementor-agent`'s write list (D-062).
+- **Why:** Who meets a framework problem knows it best at that moment; a structured record that becomes feedback by script keeps it from being lost between the agent and the maintainer, without giving any agent a write to `feedback/`.
+- **Affects:** `scripts/framework-issues.mjs`, `scripts/lib/framework-issues.mjs`, `agents/_shared/framework-issues.md`, `scripts/run.mjs`, `scripts/lib/permissions.mjs`, `config/permissions.yaml`, `scripts/run-config.mjs`, `config/run-config.example.yaml`, `docs/conventions.md`, `agents/orchestrator-agent.md`
+- **Confirmed by the user on:** 2026-10-24 (structured capture written straight into `feedback/`; the permissions changes under D-013). This extends D-059 (above) and D-062 (feedback still arrives in the checked format) without weakening them.
+
+### D-084 · Two end-to-end harnesses: an offline pipeline test in npm test, and make e2e against a local demo app in a real browser
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (design-gap review, gap 14). The pipeline had never run end to end; every test covered one script, so the wiring between stages, prompts, verification and the generated code at run time was untested.
+- **Decision:**
+  - **Offline, in `npm test`:** `scripts/pipeline.test.mjs` drives a run from `init` through `run.mjs next` to an ended run, starting a stand-in for each agent `next` names. A stand-in reads only its prompt and does its agent's job through the same scripts (knowledge, the fixture exploration through `explore.mjs`, `report-data.mjs`, a cited narrative, `report.mjs render` and `check`). Every stage's `done` must pass its verification, and the run must end `completed` with a verified report and its manifest. The fixture exploration's helpers moved from `explore.test.mjs` to `scripts/test-helpers.mjs` (`exploreSession`, `exploreFixture`, `finishExploration`).
+  - **Live, `make e2e`:** `scripts/e2e.mjs` copies the framework into a scratch folder (so the repo's own `artifacts/` are never touched), starts the dependency-free demo app (`scripts/fixtures/demo-app/server.mjs`: a contacts page and REST API, one pre-existing contact) on a local port, renders the demo product's foundation from the templates, installs it and checks it with `tsc` and `playwright test --list`, then runs the fixture specs (`scripts/fixtures/e2e/`) headless in readonly and in full-run and checks the results, the ledger and the app itself; it ends the full-run and runs the human's ledger sweep with a stand-in terminal. 19 checks; exit 1 if any fails. It needs the network once and a machine that can start Chromium, so it is not part of `npm test` or CI.
+  - `scripts/e2e.mjs` and `scripts/pipeline.test.mjs` are in `feedback-implementor-agent`'s write list (D-062); the fixtures already were.
+- **Why:** A run's failures are mostly at the joins between parts. The offline test keeps the stage graph honest on every change; the live check proves that what the templates generate actually guards, records and cleans up against a running product.
+- **Affects:** `scripts/pipeline.test.mjs`, `scripts/e2e.mjs`, `scripts/fixtures/demo-app/server.mjs`, `scripts/fixtures/e2e/ui.spec.ts`, `scripts/fixtures/e2e/api.spec.ts`, `scripts/test-helpers.mjs`, `Makefile`
+- **Confirmed by the user on:** 2026-10-24 (the offline pipeline test and the live demo app). This extends D-002 (deterministic work tested) without weakening it.

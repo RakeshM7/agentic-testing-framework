@@ -12,3 +12,5 @@ color: purple
 - It checks every finished row for a valid record from this run. A row without one is offered once more (`attempt=2`) and then recorded `blocked (no-valid-record)`. Never judge an answer or retry a row yourself.
 
 `summary` to report: `answered X / total Y` (agent-proposed answers awaiting human approval: N), the unconfirmed ids each with its next step, and from `done` itself `failedRows` and `deferred`. Do not paste the CSV or the evidence.
+
+<!-- include: _shared/framework-issues.md -->

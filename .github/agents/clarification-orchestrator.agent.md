@@ -45,3 +45,8 @@ Keep it short; do not paste file contents.
 - It checks every finished row for a valid record from this run. A row without one is offered once more (`attempt=2`) and then recorded `blocked (no-valid-record)`. Never judge an answer or retry a row yourself.
 
 `summary` to report: `answered X / total Y` (agent-proposed answers awaiting human approval: N), the unconfirmed ids each with its next step, and from `done` itself `failedRows` and `deferred`. Do not paste the CSV or the evidence.
+
+## When the framework itself is wrong
+If a problem is the framework's, not the product's and not the test code's -- this prompt contradicts a script or the contract, a script fails on valid input or says something untrue, a template or a doc is wrong -- record it once and go on with your task as well as you can:
+`node scripts/framework-issues.mjs add <p> --from <your name> --kind <prompt|script|contract|doc|config|template|other> --target <the framework file, from the repo root> --summary "<one line>" --evidence "<what you saw: the error, the command and its output, file:line>" [--fix "<what would fix it>"] [--severity blocking|high|medium|low]`.
+At the end of the run it becomes a feedback file for the framework's maintainers. Never change a framework file yourself, and never record the product's bugs or your own mistakes here.

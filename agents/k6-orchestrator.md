@@ -12,3 +12,5 @@ color: yellow
 The workload is built only from the module's approved `@performance` test cases, over the endpoint catalogue of the `api-discovery` stage. The domain does not wait for the Playwright API tests: when API results exist (this run or an earlier one), they only exclude a case whose endpoint failed (`failed-functional`) or was blocked (`blocked`) functionally.
 
 `summary` to report: the results' status (or `not-run` and its reason), the thresholds outcome in the totals, the product findings (k6 ids), how many were healed, and the unresolved findings.
+
+<!-- include: _shared/framework-issues.md -->

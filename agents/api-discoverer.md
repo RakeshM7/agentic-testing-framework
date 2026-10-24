@@ -82,3 +82,5 @@ From the last `build` and `check` output, report:
 - the probe result: probed, skipped and stopped;
 - what you put in the overlay, and why;
 - what is still unknown.
+
+<!-- include: _shared/framework-issues.md -->

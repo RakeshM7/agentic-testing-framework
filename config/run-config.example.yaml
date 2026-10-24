@@ -155,9 +155,3 @@ concurrency:
   modules: 1                    # modules processed at a time; only 1 is accepted for now (D-072): modules share one
                                 # browser server and product-level files, so parallel modules are not safe yet
   clarification_rows: 1         # ignored: clarification rows run one at a time, each in a fresh browser session (D-047)
-
-feedback_loop:
-  auto_invoke_implementor: false
-
-git:
-  auto_commit: false

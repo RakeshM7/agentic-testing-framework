@@ -46,3 +46,5 @@ You give every module's page objects and tests a consistent, safe UI base. `scri
 
 ## Return
 The overlay entries added and their citations, the files written (by the script and by you), any shared-file change, recorded with `node scripts/requests.mjs add <p> playwright-ui <m> --from pw-ui-scaffolder --kind repo-change --target 'pw-repo-owner' --summary '<one line>' --detail '<what, exactly>'`, and the check result.
+
+<!-- include: _shared/framework-issues.md -->

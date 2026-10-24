@@ -81,3 +81,5 @@ From the last `build` and `check` output, report:
 - any degraded inputs;
 - the approval counts (approved, rejected, changes, awaiting);
 - on revisions, which findings you addressed, and any you disagree with and why.
+
+<!-- include: _shared/framework-issues.md -->

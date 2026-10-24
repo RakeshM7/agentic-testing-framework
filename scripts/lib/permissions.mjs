@@ -18,6 +18,9 @@ export function resolvePermissions(doc) {
   const errors = [];
   if (!doc || typeof doc !== "object" || typeof doc.agents !== "object") return { errors: ["permissions: needs an 'agents' mapping"] };
   const profiles = doc.profiles ?? {};
+  // commands every agent with a restricted shell may run, whatever its own list (D-083: recording a framework issue)
+  const common = doc.common_shell_allow ?? [];
+  if (!Array.isArray(common) || common.some((c) => typeof c !== "string" || !c.startsWith("node scripts/"))) errors.push("common_shell_allow: must be a list of `node scripts/...` commands");
   const agents = {};
   for (const [name, raw] of Object.entries(doc.agents)) {
     if (raw.profile && !profiles[raw.profile]) errors.push(`${name}: unknown profile '${raw.profile}'`);
@@ -30,7 +33,7 @@ export function resolvePermissions(doc) {
       live_target: { browser: lt.browser ?? "none", http: lt.http ?? "none", load: lt.load ?? "none" },
       web_research: a.web_research ?? "none",
       shell: a.shell ?? "none",
-      shell_allow: a.shell_allow ?? [],
+      shell_allow: [...(a.shell_allow ?? []), ...(a.shell === "restricted" && Array.isArray(common) ? common : [])],
       filesystem: { read: a.filesystem?.read ?? [], write: a.filesystem?.write ?? [] },
       ask_user: a.ask_user ?? "none",
       browser_session: a.browser_session ?? "shared", // fresh: may close its own browser session (D-047)
@@ -40,7 +43,7 @@ export function resolvePermissions(doc) {
     if (a.extra_tools) errors.push(`${name}: extra_tools is not supported; grant capabilities (e.g. ask_user: allowed), never platform tool names`);
     if (row.browser_session === "fresh" && row.live_target.browser === "none") errors.push(`${name}: browser_session: fresh needs browser access`);
     for (const k of ["web_research", "shell", "ask_user", "browser_session"]) if (!ENUMS[k].includes(row[k])) errors.push(`${name}: ${k} '${row[k]}' not in [${ENUMS[k]}]`);
-    if (row.shell === "restricted" && !row.shell_allow.length) errors.push(`${name}: shell: restricted needs shell_allow`);
+    if (row.shell === "restricted" && !(a.shell_allow ?? []).length) errors.push(`${name}: shell: restricted needs shell_allow`);
     if (row.layer === 2 && row.spawns.length) errors.push(`${name}: layer-2 workers cannot spawn agents`);
     agents[name] = row;
   }

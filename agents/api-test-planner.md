@@ -91,3 +91,5 @@ From the last `build` and `check` output, report:
 - the questions raised and answered;
 - what you put in the overlay, and why;
 - the test cases left uncovered, with their reasons.
+
+<!-- include: _shared/framework-issues.md -->

@@ -53,3 +53,5 @@ You don't redo or override any of this, except where a rule says an override wit
 
 ## Return
 From the last `build` and `check` output: the totals; the count per class (and how many rows you classified); the healable count; the product bugs (cluster id, case ids, one line each); the locator smoke's outcome; whether `check` passed.
+
+<!-- include: _shared/framework-issues.md -->
