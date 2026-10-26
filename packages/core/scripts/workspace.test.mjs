@@ -72,7 +72,10 @@ test("a split workspace: run state, the ledger and artifacts land in the workspa
   assert.equal(path.resolve(ws, r.run.permissionsPath), configPath("permissions.yaml"), "the framework's own permissions, by default");
   // the frozen commands are the ones the agents run from the workspace
   const rel = frameworkRel(ws, frameworkRoot);
-  assert.ok(rel.startsWith("..") && !rel.includes("\\"), rel);
+  // relative, with `/`, on the same drive; an absolute path across Windows drives (a temp workspace on C:, the checkout
+  // on D:), where no relative one exists
+  const sameDrive = path.parse(ws).root.toLowerCase() === path.parse(frameworkRoot).root.toLowerCase();
+  assert.ok((sameDrive ? rel.startsWith("..") : path.isAbsolute(rel)) && !rel.includes("\\") && sameDir(path.resolve(ws, rel), frameworkRoot), rel);
   const perms = JSON.parse(readFileSync(p.permissionsFile, "utf8"));
   assert.ok(perms.agents["orchestrator-agent"].shell_allow.includes(`node ${rel}/scripts/run.mjs *`));
   assert.ok(perms.agents["testcase-reviewer"].shell_allow.includes(`node ${rel}/scripts/framework-issues.mjs add *`), "common_shell_allow too");
