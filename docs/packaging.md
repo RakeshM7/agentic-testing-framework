@@ -33,7 +33,7 @@ A local package can't hide its agent prompts. Claude Code and Copilot load agent
 - **Friction:**
   - Each script entry point is bundled with esbuild into one file. It is not minified, so hook-error stack traces in `artifacts/hook-errors.jsonl` stay readable.
   - The package holds only what runs. The tests, the decision log, `feedback/`, the git history and the maintainer docs stay in the monorepo.
-- **Not in the client's git:** the host files are git-ignored (D-087), so the prompts never land in the client's history.
+- **Not in the client's git:** the host files are git-ignored (P-3), so the prompts never land in the client's history.
 
 If stronger protection is ever needed, the step up is to host the deterministic layer (scripts, templates, generators) as a service. That is out of scope here. There is no licence-key check either (Q4).
 
@@ -204,6 +204,15 @@ package.json            npm workspaces (packages/*); packages/core is linked at 
 - **Read-only only when installed.** The guard's `framework-readonly` rule (D-085) applies only when the framework root's real path, after symlinks, lies inside a `node_modules` directory. A source checkout such as `packages/core`, reached through the workspace link, stays editable under the normal per-agent permissions and the decision-log hook.
 - **Decision-log paths.** The move renames the **Affects** paths in `docs/decisions.md` in place, with a `packages/core/` prefix and nothing else changed. A new entry records why, and a test checks that only **Affects** lines changed.
 
+**Decided for phase 2, second round (user, 2026-10-26), after a first attempt broke the live guard by leaving `guard.mjs` half-edited while a run was active:**
+- **End the active run first.** With no active run, a broken intermediate guard fails open and can be recovered. Anything the hook loads is edited only as a whole-file write.
+- **Draft numbering.** Drafts take the next free ID when they land (the table in §6).
+- **The Makefile's Affects.** Deleting it renames `Makefile` in the **Affects** of D-066, D-069, D-075, D-081 and D-084 to `packages/core/bin/atf.mjs`, under the same mechanical-rename rule.
+- **How the move runs.** A subagent prepares and tests a move script without running it. The user runs it from their own terminal, since it also rewrites `.claude/settings.json`, then starts a new session, because Claude Code fixes the hook path at session start.
+- **Two parts.** Phase 2 is split into 2a (the move) and 2b (the CLI).
+- **Printed hints and headers** go through `{fw}` in 2a.
+- **Playwright** is a peer dependency of `@testagentic/atf`, and `atf doctor` checks it.
+
 - `npm run check` in the monorepo builds the root's host files and fails on drift. In the monorepo, the generated files stay committed, so D-018's reasons still hold for our own cloud-agent maintenance.
 - The release workflow does four things:
   - runs `npm test`, including the migration fixtures and the offline pipeline test (D-084);
@@ -236,7 +245,8 @@ package.json            npm workspaces (packages/*); packages/core is linked at 
 |---|---|---|
 | 0 | Review this doc; confirm or change the draft decisions | — |
 | 1 | **Root split in place:** `frameworkRoot` and `workspaceRoot`, `config.mjs` (no overlays yet), the `{fw}` token in sources and the guard. All tests run with the workspace in a temp dir, apart from the framework | the largest change: 38 files, plus the guard's path matching |
-| 2 | **Monorepo and CLI:** move the framework to `packages/core` (the root stays the workspace), npm workspaces, read-only only when installed, decision-log paths renamed, `bin/atf.mjs`, the Makefile replaced, CI on macOS, Windows and Linux | path assumptions on Windows |
+| 2a | **The move:** a tested move script the user runs from their own terminal, then a new session. It moves the framework to `packages/core` (the root stays the workspace) and moves `platforms.md` into core. It sets up npm workspaces with Playwright as a peer dependency, applies read-only only when installed, and routes printed hints and generated-code headers through `{fw}`. Decision-log **Affects** get the `packages/core/` prefix, checked by a frozen-log test | this session's hook path; the guard must stay loadable throughout |
+| 2b | **The CLI:** `bin/atf.mjs` covers every `make` target. The guard learns the human-only `atf` forms (approval, approved import, sweep). The Makefile is removed, its **Affects** become `packages/core/bin/atf.mjs`, `make` becomes `atf` in docs and hints, and CI runs on macOS, Windows and Linux | path assumptions on Windows |
 | 3 | **Client workspace:** `init`, `sync` writing git-ignored host files, overlays, eject, fragments, the client decision log, the generated `AGENTS.md`, the cloud-agent opt-in | the cloud agent's behaviour (§3.6) |
 | 4 | **Release:** the esbuild bundle, the file allow-list, the EULA, the private registry publish, the contract version, `atf migrate` with fixture CI, the provenance additions | bundling scripts that are also imported by tests |
 | 5 | **Feedback:** the output-scoped implementor, `atf issues export` and import | routing a finding to the right overlay or slot |
@@ -246,15 +256,22 @@ package.json            npm workspaces (packages/*); packages/core is linked at 
 ## 5. Resolved questions (2026-10-24)
 
 - **Q1 · Package name:** `@testagentic/atf`; the CLI is `atf`.
-- **Q2 · Cloud agent:** supported through the opt-in commit (§3.6, D-087). A client who doesn't opt in keeps every host file git-ignored.
-- **Q3 · Hard safety rules:** fixed in code (§3.4, D-088). Overrides change who may do what, never the readonly default, ledger-scoped deletes, fail-closed behaviour or agent identity.
+- **Q2 · Cloud agent:** supported through the opt-in commit (§3.6, P-3). A client who doesn't opt in keeps every host file git-ignored.
+- **Q3 · Hard safety rules:** fixed in code (§3.4, P-4). Overrides change who may do what, never the readonly default, ledger-scoped deletes, fail-closed behaviour or agent identity.
 - **Q4 · Licence checks:** the private registry token is the only gate. There is no licence-key code; the EULA covers use.
 - **Q5 · Framework maintenance:** today's framework-fixing agent stays in the monorepo as a dev-only `framework-implementor-agent`, never shipped. It works from imported issue bundles, under D-062's checks.
-- **Q6 · Redaction defaults:** text only, redacted, previewed before writing. Screenshots and network bodies only with `--include-evidence` (D-092).
+- **Q6 · Redaction defaults:** text only, redacted, previewed before writing. Screenshots and network bodies only with `--include-evidence` (P-8).
 
 ## 6. Draft decision entries
 
-These are written as they would be appended to `docs/decisions.md`, starting from the next free ID, D-085. Superseded entries would get `Superseded by D-NNN (<date>)` in the same change.
+Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is recorded, because the log requires sequential IDs. Superseded entries get `Superseded by D-NNN (<date>)` in the same change.
+
+| Draft | Recorded as | Phase |
+|---|---|---|
+| P-1 · two roots | D-085 | 1 |
+| P-2 · private licensed package, monorepo | monorepo part: phase 2a entry; distribution part: phase 4 | 2a, 4 |
+| P-10 · `atf` CLI replaces the Makefile | phase 2b entry | 2b |
+| others | the next free ID when their phase lands | 3–7 |
 
 ### D-085 · The framework root and the workspace root are separate; the framework is installed read-only
 - **Status:** Accepted, recorded in decisions.md · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (packaging for clients)
@@ -267,7 +284,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `scripts/lib/contract.mjs`, `scripts/lib/guard.mjs`, `scripts/lib/permissions.mjs`, `scripts/hooks/pretooluse.mjs`, `scripts/lib/foundation.mjs`
 - **Confirmed by the user on:** — (extends D-002 and D-020 without weakening them)
 
-### D-086 · Clients get a private, licensed npm package built from a monorepo
+### P-2 · Clients get a private, licensed npm package built from a monorepo
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **Monorepo.** This repo holds `packages/core` (the package), `packages/claude-plugin`, later `packages/vscode`, with the repo root as the maintainers' workspace, which consumes the package through the npm workspace link like a client.
@@ -278,7 +295,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `package.json`
 - **Confirmed by the user on:** —
 
-### D-087 · In a client workspace, host files are generated by `atf sync` and git-ignored
+### P-3 · In a client workspace, host files are generated by `atf sync` and git-ignored
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **What sync writes.** `atf sync` (also run on `postinstall`) renders the agent files, MCP configs and hook registrations from the installed package, the overlays and the fragments. It writes nothing on error.
@@ -289,7 +306,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `scripts/build-agents.mjs`, `scripts/lib/hook-registrations.mjs`, `scripts/lib/mcp.mjs`
 - **Supersedes:** D-018 (for client workspaces only) · **Confirmed by the user on:** —
 
-### D-088 · Clients may override any config through overlays or eject; the hard safety rules stay in code
+### P-4 · Clients may override any config through overlays or eject; the hard safety rules stay in code
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **One loader.** Every framework config file is read through `scripts/lib/config.mjs`:
@@ -304,7 +321,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `scripts/lib/permissions.mjs`, `scripts/lib/provenance.mjs`, `config/permissions.yaml`
 - **Confirmed by the user on:** — (extends D-006, D-013 and D-077 without weakening them)
 
-### D-089 · Clients extend an agent with an add-on fragment; they never replace its body
+### P-5 · Clients extend an agent with an add-on fragment; they never replace its body
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **Appended at sync.** `atf/agents/<name>.extra.md` is appended at sync under a fixed heading.
@@ -315,7 +332,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `scripts/lib/agents/source.mjs`, `scripts/lib/agents/lint.mjs`
 - **Confirmed by the user on:** — (extends D-018 and D-019 without weakening them)
 
-### D-090 · Each client workspace has its own decision log; the framework's log stays internal
+### P-6 · Each client workspace has its own decision log; the framework's log stays internal
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **Created by init.** `atf init` creates an empty `atf/decisions.md` with the same rules and format.
@@ -326,7 +343,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `scripts/lib/decisions.mjs`, `scripts/decisions.mjs`
 - **Confirmed by the user on:** — (extends D-031 and D-082 without weakening them)
 
-### D-091 · `feedback-implementor-agent` fixes a run's outputs, not the framework
+### P-7 · `feedback-implementor-agent` fixes a run's outputs, not the framework
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 ("designed to fix the issues reported in testcase generation or playwright tests etc, the actual outputs of this framework")
 - **Decision:**
   - **New scope.** The agent takes feedback about a run's outputs (knowledge, test cases, catalogue and plans, Playwright and k6 code, report narrative) and fixes them only through each domain's overlays and slots, followed by that domain's `check`.
@@ -338,7 +355,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `agents/feedback-implementor-agent.md`, `scripts/feedback.mjs`, `scripts/lib/feedback.mjs`, `config/permissions.yaml`, `docs/conventions.md`
 - **Supersedes:** D-062 (its write scope and the test-per-change rule) · **Confirmed by the user on:** —
 
-### D-092 · Framework issues leave a client workspace only as a redacted export bundle
+### P-8 · Framework issues leave a client workspace only as a redacted export bundle
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **End of run.** `run.mjs end` keeps the issues in the run's `framework-issues.json` and no longer writes `feedback/run-*`.
@@ -348,7 +365,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `scripts/framework-issues.mjs`, `scripts/lib/framework-issues.mjs`, `scripts/run.mjs`
 - **Supersedes:** D-083 (where the issues go at run end) · **Confirmed by the user on:** —
 
-### D-093 · Semver with tested artifact migrations; a run never resumes across a major
+### P-9 · Semver with tested artifact migrations; a run never resumes across a major
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **Contract version.** `LAYOUT_VERSION` becomes the artifact-contract version, recorded in `atf/atf.json` and `run.json`. Provenance adds the package and plugin versions.
@@ -359,7 +376,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `scripts/lib/contract.mjs`, `scripts/run.mjs`, `scripts/lib/provenance.mjs`, `schemas/run.schema.json`
 - **Confirmed by the user on:** — (extends D-071, D-072 and D-077 without weakening them)
 
-### D-094 · A cross-platform `atf` CLI replaces the Makefile; macOS, Windows and Linux are supported
+### P-10 · A cross-platform `atf` CLI replaces the Makefile; macOS, Windows and Linux are supported
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **The CLI.** The `atf` bin provides `init`, `sync`, `check`, `doctor`, `eject`, `migrate`, `issues` and every former `make` target, with `--env` for `ENV=`.
@@ -369,7 +386,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `Makefile`, `scripts/e2e.mjs`, `scripts/run.mjs`
 - **Supersedes:** the `make` parts of D-069, D-081 and D-084 · **Confirmed by the user on:** —
 
-### D-095 · Claude Code also gets a private plugin, version-locked to the npm package
+### P-11 · Claude Code also gets a private plugin, version-locked to the npm package
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **What it carries.** A private plugin marketplace carries the Claude Code agents, the hook registration and the MCP servers.
@@ -381,7 +398,7 @@ These are written as they would be appended to `docs/decisions.md`, starting fro
 - **Affects:** `scripts/hooks/hosts/claude.mjs`, `scripts/lib/doctor.mjs`
 - **Confirmed by the user on:** — (extends D-020 and D-021 without weakening them)
 
-### D-096 · The VS Code extension, when built, is a UI over the CLI with no safety role
+### P-12 · The VS Code extension, when built, is a UI over the CLI with no safety role
 - **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **What it does.** The extension shows run status, the clarifications and approval sheets, and the report, and runs CLI commands.
