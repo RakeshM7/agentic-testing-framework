@@ -23,7 +23,7 @@
 
   // Auto-approve only repo-local, non-mutating commands. Everything else asks; the guard is the hard gate either way.
   "chat.tools.terminal.autoApprove": {
-    "/^node scripts\\/[a-z-]+\\.mjs /": true,
+    "/^node packages\\/core\\/scripts\\/[a-z-]+\\.mjs /": true,
     "/^npm (test|run check|run build-agents)$/": true,
     "/^npx tsc --noEmit( |$)/": true,
     "/^npx playwright test .*--list( |$)/": true,

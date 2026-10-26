@@ -1,6 +1,6 @@
 # Platforms and hosts
 
-The pipeline, contracts, scripts and guard are platform-neutral. This doc is the only place for what differs per host. The reasons behind each choice are in [`decisions.md`](decisions.md) (D-018 – D-040).
+The pipeline, contracts, scripts and guard are platform-neutral. This doc is the only place for what differs per host. The reasons behind each choice are in [`decisions.md`](../../../docs/decisions.md) (D-018 – D-040).
 
 ## How one agent becomes every platform's file
 

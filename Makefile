@@ -70,9 +70,9 @@ ifneq ($(ENV),)
 export ATF_ENV := $(ENV)
 endif
 CONFIG  = config/$(PRODUCT)$(if $(ENV),-$(ENV)).yaml
-# The dependency check (scripts/doctor.mjs, D-064). FIX=yes runs the installs it names (npm install, npx playwright
+# The dependency check (packages/core/scripts/doctor.mjs, D-064). FIX=yes runs the installs it names (npm install, npx playwright
 # install chromium, k6 through winget or Homebrew); a config, session or credential problem is reported for you to fix.
-DOCTOR  = node scripts/doctor.mjs $(CONFIG)$(if $(filter yes,$(FIX)), --fix)
+DOCTOR  = node packages/core/scripts/doctor.mjs $(CONFIG)$(if $(filter yes,$(FIX)), --fix)
 
 .PHONY: help setup config interview login validate doctor build-agents check test run resume status next explore clarifications testcases automate k6 report approve steps import sweep diff e2e
 
@@ -92,15 +92,15 @@ require-product:
 config: require-product
 	@test -n "$(URL)" || { echo "Set URL=<target url>, e.g. make config PRODUCT=$(PRODUCT) URL=https://crm.example.com"; exit 1; }
 	@test ! -e "$(CONFIG)" || { echo "$(CONFIG) already exists; edit it instead"; exit 1; }
-	sed -e 's|^product:.*|product: $(PRODUCT)|' -e 's|^  url:.*|  url: $(URL)|' -e 's|^  name: Acme CRM|  name: $(PRODUCT)|' config/run-config.example.yaml > $(CONFIG)
+	sed -e 's|^product:.*|product: $(PRODUCT)|' -e 's|^  url:.*|  url: $(URL)|' -e 's|^  name: Acme CRM|  name: $(PRODUCT)|' packages/core/config/run-config.example.yaml > $(CONFIG)
 	@echo "Created $(CONFIG). Still to fill in by hand: modules, knowledge.references, testcases.output_format."
 	@echo "authorizations.mode stays readonly; set full-run yourself only for a target you are authorized to test."
 	@if [ "$(LOGIN)" != no ]; then "$(MAKE)" login PRODUCT=$(PRODUCT); fi
 
 # Opens an orchestrator-agent session that interviews you (a few questions, one message) and drafts config/<product>.yaml
-# (readonly) through scripts/run-config.mjs draft, then offers to start the run. Needs no PRODUCT.
+# (readonly) through packages/core/scripts/run-config.mjs draft, then offers to start the run. Needs no PRODUCT.
 interview:
-	$(AGENT) "I have no run-config yet. Interview me for it (short, one message of questions), draft it with node scripts/run-config.mjs draft, show me the summary, then start the run if I say so."
+	$(AGENT) "I have no run-config yet. Interview me for it (short, one message of questions), draft it with node packages/core/scripts/run-config.mjs draft, show me the summary, then start the run if I say so."
 
 # Opens Microsoft Edge (else Chrome) on the target with its own profile (D-069): sign in yourself (single sign-on,
 # CAPTCHA and MFA included) within WAIT seconds. The window closes by itself, saves the session to the config's
@@ -108,10 +108,10 @@ interview:
 login: require-product
 	@test -f "$(CONFIG)" || { echo "Run make config PRODUCT=$(PRODUCT) URL=<target url> first"; exit 1; }
 	$(DOCTOR) --for login
-	node scripts/run.mjs login $(CONFIG) --seconds $(WAIT)
+	node packages/core/scripts/run.mjs login $(CONFIG) --seconds $(WAIT)
 
 validate: require-product
-	node scripts/run-config.mjs validate $(CONFIG)
+	node packages/core/scripts/run-config.mjs validate $(CONFIG)
 
 # Every stage's needs; exit 1 if any is missing. Inside a run the orchestrator runs run.mjs doctor, and a stage whose
 # needs are missing is refused at its start, so a run never breaks halfway through a stage over a missing install.
@@ -128,9 +128,9 @@ check:
 test:
 	npm test
 
-# The live end-to-end check (D-084, scripts/e2e.mjs): KEEP=yes leaves its scratch folder.
+# The live end-to-end check (D-084, packages/core/scripts/e2e.mjs): KEEP=yes leaves its scratch folder.
 e2e:
-	node scripts/e2e.mjs$(if $(filter yes,$(KEEP)), --keep)
+	node packages/core/scripts/e2e.mjs$(if $(filter yes,$(KEEP)), --keep)
 
 # ---- run and resume ----------------------------------------------------------------------------------------------
 # The run's state lives in artifacts/<product>/state/, so a stage finished yesterday is still done today as long as
@@ -138,26 +138,26 @@ e2e:
 # further to that stage and what it unlocks. A stage whose prerequisites are not done is not offered.
 
 status: require-product
-	node scripts/run.mjs status $(PRODUCT)
+	node packages/core/scripts/run.mjs status $(PRODUCT)
 
 next: require-product
-	node scripts/run.mjs next $(PRODUCT)
+	node packages/core/scripts/run.mjs next $(PRODUCT)
 
 # What changed between two ended runs (D-078): RUNS="<run-a> <run-b>", or the last two.
 diff: require-product
-	node scripts/run.mjs diff $(PRODUCT) $(RUNS)
+	node packages/core/scripts/run.mjs diff $(PRODUCT) $(RUNS)
 
 run: require-product
 	@test -f "$(CONFIG)" || { echo "No $(CONFIG). Run make config PRODUCT=$(PRODUCT) URL=<target url>, or make interview to be asked instead"; exit 1; }
 	$(DOCTOR) --warn-only
-	$(AGENT) "Start or resume the run for $(CONFIG): node scripts/run.mjs init $(CONFIG) (add --resume when a run is active), then follow run.mjs next. Finished stages stay done."
+	$(AGENT) "Start or resume the run for $(CONFIG): node packages/core/scripts/run.mjs init $(CONFIG) (add --resume when a run is active), then follow run.mjs next. Finished stages stay done."
 
 resume: require-product
 	@test -f "$(CONFIG)" || { echo "No $(CONFIG)"; exit 1; }
 	@test -n "$(STAGE)" || { echo "Set STAGE=<one of: $(STAGES)>, or use make run to continue wherever the run stands"; exit 1; }
 	@echo "$(STAGES)" | tr ' ' '\n' | grep -qx "$(STAGE)" || { echo "Unknown STAGE=$(STAGE). One of: $(STAGES)"; exit 1; }
 	$(DOCTOR) --stage $(STAGE)
-	$(AGENT) "Resume the active run for $(CONFIG) (node scripts/run.mjs init $(CONFIG) --resume; if none is active, start one). Do not redo completed stages. Start only the $(STAGE) stage$(if $(MODULE), for module $(MODULE)) and the stages that depend on it, following run.mjs next; skip every other stage."
+	$(AGENT) "Resume the active run for $(CONFIG) (node packages/core/scripts/run.mjs init $(CONFIG) --resume; if none is active, start one). Do not redo completed stages. Start only the $(STAGE) stage$(if $(MODULE), for module $(MODULE)) and the stages that depend on it, following run.mjs next; skip every other stage."
 
 # Per-stage shortcuts: each sets STAGE for the resume target (no recursive make, which breaks on a path with spaces).
 explore:        STAGE = explore
@@ -171,27 +171,27 @@ explore clarifications testcases k6 report: resume
 automate: require-product
 	@test -f "$(CONFIG)" || { echo "No $(CONFIG)"; exit 1; }
 	$(DOCTOR) --stage playwright-ui,playwright-api
-	$(AGENT) "Resume the active run for $(CONFIG) (node scripts/run.mjs init $(CONFIG) --resume). Do not redo completed stages. Start only the playwright-ui and playwright-api stages$(if $(MODULE), for module $(MODULE)) and what they unlock, following run.mjs next. A module with no human-approved test case is awaiting-approval: report it, do not force it."
+	$(AGENT) "Resume the active run for $(CONFIG) (node packages/core/scripts/run.mjs init $(CONFIG) --resume). Do not redo completed stages. Start only the playwright-ui and playwright-api stages$(if $(MODULE), for module $(MODULE)) and what they unlock, following run.mjs next. A module with no human-approved test case is awaiting-approval: report it, do not force it."
 
 # Human only: the guard refuses this for agents. Fill testcases/approval.csv first, then type the module slug to confirm.
 approve: require-product
 	@test -n "$(MODULE)" || { echo "Set MODULE=<module slug>"; exit 1; }
-	node scripts/testcases.mjs approve $(PRODUCT) $(MODULE)
+	node packages/core/scripts/testcases.mjs approve $(PRODUCT) $(MODULE)
 
 # Human-only, between runs (D-075): deletes the live entities ended runs left, through the cleanup recipe recorded with
 # each; the rest is listed for you to clean up by hand. DRY=yes shows what it would do and sends nothing.
 sweep: require-product
-	node scripts/ledger.mjs sweep $(PRODUCT)$(if $(RUN), --run $(RUN))$(if $(filter yes,$(DRY)), --dry-run)
+	node packages/core/scripts/ledger.mjs sweep $(PRODUCT)$(if $(RUN), --run $(RUN))$(if $(filter yes,$(DRY)), --dry-run)
 
 # The run's steps (D-066), for every module: the script validates them and rewrites only the config's `steps:` line.
 # The orchestrator also asks at the start of each run, pre-selected from this.
 steps: require-product
 	@test -n "$(STEPS)" || { echo "Set STEPS=<comma-separated: explore,clarifications,testcases,playwright-ui,playwright-api,k6>"; exit 1; }
-	node scripts/run-config.mjs set $(CONFIG) --steps $(STEPS)
+	node packages/core/scripts/run-config.mjs set $(CONFIG) --steps $(STEPS)
 
 # Your own test case file for a module (D-066), once the product has a run. FILE defaults to the config's
 # modules[].testcases_file, else testcases.import. APPROVED=yes records the cases as already signed off: human only,
 # like approve (the guard refuses it for agents; you type the module slug to confirm).
 import: require-product
 	@test -n "$(MODULE)" || { echo "Set MODULE=<module slug>"; exit 1; }
-	node scripts/testcases.mjs import $(PRODUCT) $(MODULE)$(if $(FILE), --file $(FILE))$(if $(filter yes,$(APPROVED)), --approved)
+	node packages/core/scripts/testcases.mjs import $(PRODUCT) $(MODULE)$(if $(FILE), --file $(FILE))$(if $(filter yes,$(APPROVED)), --approved)
