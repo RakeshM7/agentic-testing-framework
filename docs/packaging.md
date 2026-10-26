@@ -1,6 +1,6 @@
 # Packaging the framework for clients
 
-**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1, 2a and 2b are in force (D-085 as amended by D-086, and D-087); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
+**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1, 2a, 2b and 3a are in force (D-085 as amended by D-086, D-087 and D-088); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
 
 ## 1. What was decided in the interview
 
@@ -278,6 +278,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 |---|---|---|
 | P-1 · two roots | D-085 | 1 |
 | P-2 · private licensed package, monorepo | monorepo part: D-086; distribution part: phase 4 | 2a, 4 |
+| P-4 · config overlays and eject | D-088 | 3a |
 | P-10 · `atf` CLI replaces the Makefile | D-087 (the `make` targets; the other commands land with phases 3 to 5) | 2b |
 | others | the next free ID when their phase lands | 3–7 |
 
@@ -315,7 +316,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 - **Supersedes:** D-018 (for client workspaces only) · **Confirmed by the user on:** —
 
 ### P-4 · Clients may override any config through overlays or eject; the hard safety rules stay in code
-- **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
+- **Status:** Accepted, recorded in decisions.md as D-088 (2026-10-26, phase 3a). The `atf/` rule refuses framework agents, and calls a host can't attribute during a run; a human's own session may write there (user, 2026-10-26) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **One loader.** Every framework config file is read through `scripts/lib/config.mjs`:
     - an ejected `atf/config/<file>` replaces the package's;

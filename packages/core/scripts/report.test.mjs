@@ -232,6 +232,25 @@ test("render is deterministic, self-contained and escapes data; every table row 
   assert.equal(written, renderDeck(loadJson(s.rp.report), narrativeOk()));
 });
 
+test("older runs stay readable: a run.json without provenance.config, or without provenance, gives a report with no config notice", async () => {
+  for (const strip of [(run) => delete run.provenance.config, (run) => delete run.provenance]) {
+    const { root } = startRun();
+    const runFile = paths("acme", root).runFile;
+    const run = loadJson(runFile);
+    strip(run);
+    writeFileSync(runFile, JSON.stringify(run, null, 2));
+    assert.deepEqual(await validateData("run", run), []);
+    const report = await collect("acme", { root, now: NOW });
+    assert.equal(report.customConfig, null, "nothing is guessed for a run that did not record its config");
+    assert.deepEqual(await validateData("report", report), []);
+    assert.doesNotMatch(renderDeck(report), /Custom safety config|customized config/);
+    // a report.json written before customConfig existed still validates and renders
+    delete report.customConfig;
+    assert.deepEqual(await validateData("report", report), []);
+    assert.match(renderDeck(report), /test run report/);
+  }
+});
+
 test("paths lists the report's files; the stage reads the stamp", async () => {
   const s = await setupReport();
   const p = await s.cli("paths");

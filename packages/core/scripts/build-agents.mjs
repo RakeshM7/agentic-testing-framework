@@ -8,19 +8,22 @@
 //   config/hooks.yaml         whether/how the PostToolUse hook is registered
 // into, per platform, one agent file per agent (renderers/<renderer>.mjs) and its MCP config file (scripts/lib/mcp.mjs),
 // and every host's hook registrations (scripts/lib/hook-registrations.mjs).
-// The sources and config are the framework's (read through scripts/lib/config.mjs); the generated files are the
+// The sources are the framework's; the config is the framework's as the workspace has it (read through
+// scripts/lib/config.mjs: an ejected atf/config/<file>, else the framework's copy with an atf/<file> overlay merged over
+// it, docs/packaging.md §3.4) and checked here as the framework's own copy always was. The generated files are the
 // workspace's, and every `{fw}` in them becomes the framework's path from the workspace (D-085: nothing, in this repo).
 // Nothing generated is ever edited by hand: change a source or config, then rebuild.
 //
 //   node scripts/build-agents.mjs           write every generated file that differs
 //   node scripts/build-agents.mjs --check   write nothing; exit 1 on drift, a missing/stray source, or a stray output
-//   node scripts/build-agents.mjs --post-hook <async|sync|off>   save that mode in config/hooks.yaml, then build
+//   node scripts/build-agents.mjs --post-hook <async|sync|off>   save that mode in the framework's config/hooks.yaml,
+//                                                                then build (refused while atf/ overrides hooks.yaml)
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import yaml from "js-yaml";
-import { configPath, configRel, loadConfig } from "./lib/config.mjs";
+import { checkHooks, configLocation, configPath, configRel, loadConfig } from "./lib/config.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
 import { expandFw, frameworkRoot, frameworkRel, workspaceRoot } from "./lib/roots.mjs";
 import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
@@ -49,23 +52,37 @@ function outputPattern(template) {
 export function build({ check = false, postHook, root, framework } = {}) {
   const ws = root ?? workspaceRoot;
   const fwRoot = framework ?? root ?? frameworkRoot;
-  const opts = { framework: fwRoot };
+  const opts = { framework: fwRoot, workspace: ws };
   const fw = frameworkRel(ws, fwRoot);
   if (check && postHook) return { errors: ["--post-hook changes config/hooks.yaml; it cannot be combined with --check"], changed: [] };
-  const perms = resolvePermissions(loadConfig("permissions.yaml", opts), { fw });
+  let config;
+  try {
+    config = { permissions: loadConfig("permissions.yaml", opts), models: loadConfig("models.yaml", opts), platforms: loadConfig("platforms.yaml", opts), mcp: loadConfig("mcp.yaml", opts) };
+  } catch (e) {
+    return { errors: [e.message], changed: [] };
+  }
+  const perms = resolvePermissions(config.permissions, { fw });
   if (perms.errors.length) return { errors: perms.errors.map((e) => `${configRel("permissions.yaml")}: ${e}`), changed: [] };
-  let hooksText = readFileSync(configPath("hooks.yaml", opts), "utf8");
+  // --post-hook rewrites the framework's own hooks.yaml (phase 3b moves it to the workspace); while the workspace
+  // overrides that file, the override decides the mode, so the command would change nothing that is built
+  let hooksText, post;
   if (postHook) {
+    const { source, files } = configLocation("hooks.yaml", opts);
+    if (source !== "framework") return { errors: [`--post-hook writes the framework's ${configRel("hooks.yaml")}, but ${files.at(-1)} decides the PostToolUse mode here: set post_tool_use there instead`], changed: [] };
     try {
-      hooksText = setPostMode(hooksText, postHook);
+      hooksText = setPostMode(readFileSync(configPath("hooks.yaml", opts), "utf8"), postHook);
     } catch (e) {
       return { errors: [e.message], changed: [] };
     }
   }
-  const post = postModeOf(yaml.load(hooksText));
-  const models = loadConfig("models.yaml", opts);
-  const { platforms } = loadConfig("platforms.yaml", opts);
-  const mcp = loadConfig("mcp.yaml", opts);
+  try {
+    // the loader's rule (only post_tool_use) holds for the rewritten text too
+    post = postModeOf(postHook ? checkHooks(yaml.load(hooksText)) : loadConfig("hooks.yaml", opts));
+  } catch (e) {
+    post = { error: e.message };
+  }
+  const { models, mcp } = config;
+  const { platforms } = config.platforms;
   const names = Object.keys(perms.resolved.agents);
   const { sources, errors } = loadSources(fwRoot, names);
   errors.push(...validateMcp(mcp));

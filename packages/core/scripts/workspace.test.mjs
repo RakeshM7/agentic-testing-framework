@@ -66,8 +66,9 @@ test("a split workspace: run state, the ledger and artifacts land in the workspa
   for (const f of [p.runFile, p.lockFile, p.permissionsFile, p.configFile]) assert.ok(f.startsWith(ws) && existsSync(f), f);
   append(p.ledgerFile, { runId: "acme-run-1", event: "created", type: "contact", ref: "c-1", module: "contacts", stage: "explore", agent: "module-explorer" });
   assert.ok(existsSync(path.join(ws, "artifacts", "acme", "state", "ledger.jsonl")));
-  // what the run is made with is the framework's: its commit, browser server and models
-  assert.deepEqual(r.run.provenance, collectProvenance(frameworkRoot));
+  // what the run is made with is the framework's: its commit, browser server and models, as this workspace has them
+  // (config files are recorded from the workspace, D-077)
+  assert.deepEqual(r.run.provenance, collectProvenance(frameworkRoot, ws));
   assert.match(r.run.permissionsPath, /config\/permissions\.yaml$/);
   assert.equal(path.resolve(ws, r.run.permissionsPath), configPath("permissions.yaml"), "the framework's own permissions, by default");
   // the frozen commands are the ones the agents run from the workspace

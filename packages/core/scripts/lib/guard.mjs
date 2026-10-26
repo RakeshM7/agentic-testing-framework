@@ -20,6 +20,11 @@
 // framework root: in or out of a run, any caller and mode (frameworkWrite()). Only an installed framework (its real path
 // inside node_modules, roots.mjs isInstalled) is read-only: a source checkout apart from the workspace (the monorepo's
 // packages/core) stays editable under the other rules. In one directory, nothing changes.
+// The workspace's atf/ (its marker, config overlays and ejected config, decision log, agent fragments) holds the client
+// humans' own settings, which only a human changes (packaging §3.4, extending D-013): no framework agent (a name among
+// the framework's agent sources, agents/<name>.md) writes under it, in or out of a run, in any mode, nor runs the atf
+// CLI's `eject`; during a run, neither does a call its host can't attribute (D-035). A human's own session -- no agent
+// on a host that names agents, or an agent type the framework doesn't ship -- stays allowed (workspaceSettingsWrite()).
 // A printed command names the framework's scripts from the workspace (`node {fw}/scripts/...`, roots.mjs expandFw).
 //
 // Dependency-free (imported by a PreToolUse hook on every guarded tool call).
@@ -150,7 +155,18 @@ const ATF = String.raw`atf(?:\.mjs|\.cmd|\.ps1|\.exe)?(?![\w.\\/-])`;
 const atfRun = (starts) => String.raw`(?:^|[\n;&|(\x60${starts}])\s*(?:(?:npx|env|sudo|exec|command|node|nodejs|bun|bunx|pnpm|yarn|npm\s+(?:exec|x|run|run-script))\s+(?:-\S+\s+)*|\w+=\S*\s+)*\S*${ATF}`;
 const humanOnlyAtf = (starts, rest) => new RegExp(`${atfRun(starts)}${rest}\\s(?:approve|--approved)\\b`, "i");
 const HUMAN_ONLY_ATF = humanOnlyAtf("", "[^;&|\\n]*");
-const HUMAN_ONLY_ATF_RUN = humanOnlyAtf(`'"`, "[\\s\\S]*");
+// atf as a command's program anywhere before the line's last `\s<verb>`: the same match as `<program>[\s\S]*\s<verb>`
+// without its backtracking, which took seconds on a 10k-character line of `;'atf` words (and a hook that slow can time
+// out, which a host may take as no answer).
+function atfThen(starts, verb) {
+  const at = new RegExp(`\\s${verb}\\b`, "gi");
+  const program = new RegExp(atfRun(starts), "i");
+  return (cmd) => {
+    const last = [...cmd.matchAll(at)].at(-1);
+    return Boolean(last) && program.test(cmd.slice(0, last.index));
+  };
+}
+const humanOnlyAtfRun = atfThen(`'"`, "(?:approve|--approved)");
 const ATF_PROGRAM = new RegExp(atfRun(""), "i");
 // A separator inside quotes is text, not a new command (`grep -n "a\|make approve" f`, `git commit -m 'x; make approve'`),
 // so HUMAN_ONLY_MAKE reads the line with every `; & | ( ` and line break inside quotes blanked. Quotes count only where
@@ -229,18 +245,26 @@ const decodedVerbs = (s) => s.match(DECODED_VERB)?.length ?? 0;
 // product slug.
 const SWEEP_REASON = "the ledger sweep is human-only: a human runs `npx atf sweep <product>` in their own terminal, between runs";
 const SWEEP_MAKE = new RegExp(`${makeRun("")}[^;&|\\n]*\\ssweep\\b`, "i");
-const SWEEP_ATF = new RegExp(`${atfRun("")}[\\s\\S]*\\ssweep\\b`, "i");
-const SWEEP_ATF_RUN = new RegExp(`${atfRun(`'"`)}[\\s\\S]*\\ssweep\\b`, "i");
+// A line that runs the atf CLI with `verb` anywhere after it (a quoted string on a line with a word that runs one, too).
+function atfVerb(verb) {
+  const [any, run] = [atfThen("", verb), atfThen(`'"`, verb)];
+  return (cmd) => any(cmd) || (STRING_RUNNER.test(cmd) && run(cmd));
+}
+const atfSweep = atfVerb("sweep");
+// Each spelling a human-only match reads: concatenations joined, then also with the word splitters dropped (stricter).
+const spellings = (command) => {
+  const joined = String(command ?? "").replace(JOIN_CONCAT, "");
+  return [joined, joined.replace(WORD_SPLITTERS, "")];
+};
 function humanOnlySweep(call) {
   if (call.kind !== "shell") return false;
-  const joined = String(call.command ?? "").replace(JOIN_CONCAT, "");
-  return [joined, joined.replace(WORD_SPLITTERS, "")].some((cmd) => (/\bsweep\b/i.test(cmd) && /ledger/i.test(cmd)) || SWEEP_MAKE.test(cmd) || SWEEP_ATF.test(cmd) || (STRING_RUNNER.test(cmd) && SWEEP_ATF_RUN.test(cmd)));
+  return spellings(call.command).some((cmd) => (/\bsweep\b/i.test(cmd) && /ledger/i.test(cmd)) || SWEEP_MAKE.test(cmd) || atfSweep(cmd));
 }
 function humanOnly(call) {
   if (call.kind === "shell") {
     const joined = String(call.command ?? "").replace(JOIN_CONCAT, "");
     const hit = (cmd) => humanOnlyCmd(cmd) || HUMAN_ONLY_FILES.test(cmd) || expandedHumanOnly(cmd);
-    const makeHit = (cmd) => HUMAN_ONLY_MAKE.test(cmd) || HUMAN_ONLY_ATF.test(cmd) || (STRING_RUNNER.test(cmd) && (HUMAN_ONLY_MAKE_RUN.test(cmd) || HUMAN_ONLY_ATF_RUN.test(cmd)));
+    const makeHit = (cmd) => HUMAN_ONLY_MAKE.test(cmd) || HUMAN_ONLY_ATF.test(cmd) || (STRING_RUNNER.test(cmd) && (HUMAN_ONLY_MAKE_RUN.test(cmd) || humanOnlyAtfRun(cmd)));
     // a decoded form also counts the bare `approved`, but only one the decoding produced (a payload, not the prose)
     const scan = (line, test, verbs) => [line, line.replace(WORD_SPLITTERS, "")].some((cmd) => test(cmd) ||
       decodedForms(cmd).some((d) => test(d) || (verbs && decodedVerbs(d) > decodedVerbs(cmd) && namesScript(d, /\bprintf\b/i.test(d)))));
@@ -346,23 +370,61 @@ const UNKNOWN_TARGET = Symbol("unknown write target");
 const CD_DIRS = /(?:^|[;&|(]\s*)(?:cd|pushd|Set-Location)(?:\s+\/d|\s+-(?:Literal)?Path)?\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|'"()]+))/gi;
 function frameworkWrite(call, root, framework) {
   if (!framework || sameDir(root, framework) || !isInstalled(framework)) return null;
+  return writeUnder(call, root, framework);
+}
+// The workspace-relative spelling of the first file the call writes under `dir`, else null; UNKNOWN_TARGET for a write
+// tool whose target can't be told. Compared as frameworkWrite() describes.
+function writeUnder(call, root, dir) {
   if (call.kind === "write" && !(call.paths ?? []).length) return UNKNOWN_TARGET;
   const command = String(call.command ?? "");
   const files = call.kind === "write" ? call.paths : call.kind === "shell" ? shellWriteTargets(command) : [];
   const bases = [root, ...(call.kind === "shell" ? [...command.matchAll(CD_DIRS)].map((m) => path.resolve(root, devicePath(m[1] ?? m[2] ?? m[3]))) : [])];
-  const fwRoots = [...new Set([path.resolve(framework), realOf(path.resolve(framework))].filter(Boolean).map(normalizeWritePath))];
+  const dirs = [...new Set([path.resolve(dir), realOf(path.resolve(dir))].filter(Boolean).map(normalizeWritePath))];
   for (const f of files)
     for (const base of bases) {
       const abs = path.resolve(base, devicePath(f));
-      // a UNC path to another host is never the framework; don't touch the network to resolve it
+      // a UNC path to another host is never inside `dir`; don't touch the network to resolve it
       const real = /^[\\/]{2}/.test(abs) ? null : realOf(abs);
       for (const target of [abs, real].filter(Boolean)) {
         const t = normalizeWritePath(target);
-        if (fwRoots.some((d) => t === d || t.startsWith(`${d}/`))) return path.relative(root, abs).replaceAll("\\", "/") || String(f);
+        if (dirs.some((d) => t === d || t.startsWith(`${d}/`))) return path.relative(root, abs).replaceAll("\\", "/") || String(f);
       }
     }
   return null;
 }
+
+// The workspace's own settings (packaging §3.4, the user's decision 2026-10-26, extending D-013 from the framework's
+// config/ to the client's overrides): atf/ holds the marker atf.json, the config overlays atf/<file>.yaml, the ejected
+// config atf/config/<file>.yaml, the client's decision log and agent fragments, and only a human changes them.
+// -> what the call would write there: its workspace-relative path, ATF_EJECT for a line that runs the atf CLI's eject
+// (it writes atf/config/ in process, where no write target shows; matched like `atf sweep`), UNKNOWN_TARGET for a write
+// tool whose target can't be told, else null. Paths compare as in frameworkWrite() (case, separators, `..`, device and
+// UNC prefixes, symlinks into atf/), so a look-alike folder (config/atf/, artifacts/<product>/atf/) is not atf/.
+const atfEject = atfVerb("eject");
+const ATF_EJECT = Symbol("atf eject");
+function workspaceSettingsWrite(call, root) {
+  if (call.kind === "shell" && spellings(call.command).some(atfEject)) return ATF_EJECT;
+  return writeUnder(call, root, path.join(root, "atf"));
+}
+// The framework's agents: the names of its agent sources, agents/<name>.md (the fragments in agents/_shared/ are no
+// agent). null when they can't be read, and then every named caller counts as one (fails closed).
+function frameworkAgents(framework) {
+  try {
+    return new Set(readdirSync(path.join(framework, "agents"), { withFileTypes: true }).filter((d) => !d.isDirectory() && d.name.endsWith(".md")).map((d) => d.name.slice(0, -3)));
+  } catch {
+    return null;
+  }
+}
+// Whom the settings rule binds: a framework agent, in or out of a run, in any mode; during a run (any mode), also a
+// call whose host can't name its caller, since every call there comes from one of the run's agents (D-035). A human's
+// own session -- no agent on a host that names agents, or an agent type the framework doesn't ship (a host's built-in
+// helper) -- is not bound; the decision hook still asks before it edits a governed file.
+function bindsSettings(call, framework, inRun) {
+  if (!call.agent) return inRun && !canIdentify(call.host);
+  const roster = frameworkAgents(framework);
+  return !roster || roster.has(call.agent);
+}
+const SETTINGS_REASON = "atf/ holds this workspace's own settings (its marker, config overlays and ejected config, decision log and agent fragments), which only a human changes (D-013, packaging §3.4): report the change it needs instead";
 
 function checkWrite(file, run, row) {
   const abs = path.resolve(run.root, file);
@@ -401,9 +463,10 @@ function evaluateKind(call, run, row) {
       const level = row ? effectiveLiveTarget(row, run.mode).browser : run.mode === "full-run" ? "mutate" : "read";
       if (level === "none") return deny("browser-none", "this agent has no browser access");
       // readonly input (D-076): typing, selecting and key presses change nothing while the browser server's init page
-      // aborts every write to the product; without it they are mutating like the rest
-      if (level === "read" && isMutatingBrowserTool(call.browserAction) && !(isInputBrowserTool(call.browserAction) && networkGuarded(run.framework)))
-        return deny("browser-read", `browser_${call.browserAction} can change data; this agent is read-only here (mode ${run.mode})${isInputBrowserTool(call.browserAction) ? ", and the browser server does not run the framework's network guard (--init-page scripts/browser/init-page.cjs in config/mcp.yaml)" : ""}`);
+      // aborts every write to the product; without it they are mutating like the rest. The effective mcp.yaml says so:
+      // the framework's, or the run's workspace's override of it (atf/, scripts/lib/config.mjs)
+      if (level === "read" && isMutatingBrowserTool(call.browserAction) && !(isInputBrowserTool(call.browserAction) && networkGuarded(run.framework, run.root)))
+        return deny("browser-read", `browser_${call.browserAction} can change data; this agent is read-only here (mode ${run.mode})${isInputBrowserTool(call.browserAction) ? ", and the browser server does not run the framework's network guard (--init-page scripts/browser/init-page.cjs in the effective mcp.yaml: config/mcp.yaml, or the workspace's atf/mcp.yaml overlay or ejected atf/config/mcp.yaml)" : ""}`);
       return ALLOW;
     }
     case "unknown":
@@ -439,7 +502,12 @@ export function checkTool(call, root, env = process.env, { framework = framework
   if (fwFile)
     return deny("framework-readonly", `${fwFile} is part of the installed framework (${framework}), which no agent changes (D-085): change the workspace's own files instead, or report it (${fw("node {fw}/scripts/framework-issues.mjs add")})`);
   const runs = findActiveRuns(root, env, framework);
-  if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHosts: [] }, null) : ALLOW;
+  const settings = bindsSettings(call, framework, runs.length > 0) ? workspaceSettingsWrite(call, root) : null;
+  if (settings && settings !== UNKNOWN_TARGET) return deny("workspace-settings", `${settings === ATF_EJECT ? "`atf eject` writes atf/config/" : `${settings} is under atf/`}; ${SETTINGS_REASON}`);
+  // a write tool whose target can't be told fails closed: refused by the run's own rules first (fs-write), else here
+  const settingsUnknown = (verdict) =>
+    settings === UNKNOWN_TARGET && verdict.allowed ? deny("workspace-settings", `could not tell which file ${call.tool} writes; refusing, since no agent writes under atf/: ${SETTINGS_REASON}`) : verdict;
+  if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHosts: [] }, null) : settingsUnknown(ALLOW);
   // Managed foundation files (D-054) are rendered by scripts/foundation.mjs through node, never by a hooked write: no
   // caller writes one directly, named or not, in any mode, whichever active run's product it belongs to.
   if (call.kind === "write")
@@ -460,6 +528,6 @@ export function checkTool(call, root, env = process.env, { framework = framework
         );
     }
   const verdicts = runs.map((r) => evaluate(call, r));
-  if (call.kind === "write") return verdicts.find((v) => v.allowed) ?? verdicts[0];
+  if (call.kind === "write") return settingsUnknown(verdicts.find((v) => v.allowed) ?? verdicts[0]);
   return firstDenied(verdicts);
 }

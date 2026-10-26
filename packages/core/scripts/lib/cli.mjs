@@ -9,9 +9,10 @@
 // The guard matches `atf approve`, `atf import … --approved` and `atf sweep` literally, so the parser accepts no
 // command alias or abbreviation and no `--approved=<value>` (node:util parseArgs, strict).
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { CONFIG_FILES, configPath } from "./config.mjs";
 import { SLUG_RE, STAGES } from "./contract.mjs";
 import { expandFw, frameworkRel, frameworkRoot, isInstalled, sameDir, workspaceRoot } from "./roots.mjs";
 
@@ -26,6 +27,10 @@ One-time setup:
   atf doctor <product> [--no-fix]                   check (and install what it safely can) what every stage needs;
                                                     login, run, resume and automate run it first
   atf e2e [--keep]                                  the live end-to-end check (framework source checkout only)
+
+Config:
+  atf eject config [<file>]                         copy the package's config/<file> (or all five) to atf/config/,
+                                                    where it replaces the package's copy entirely; never overwrites
 
 Running and resuming (a finished stage stays done):
   atf run <product>                                 start the run, or continue the active one
@@ -65,6 +70,7 @@ const COMMANDS = {
   validate: { args: ["product"] },
   doctor: { args: ["product"], options: { "no-fix": { type: "boolean" } } },
   e2e: { args: [], options: { keep: { type: "boolean" } } },
+  eject: { args: ["subcommand", "file..."] },
   status: { args: ["product"] },
   next: { args: ["product"] },
   diff: { args: ["product", "runs..."] },
@@ -80,7 +86,7 @@ const COMMANDS = {
 
 const fail = (error) => ({ error });
 
-// argv -> { steps: [{ cmd, args, env?, agent? }], notes? } | { print } | { error }. `ctx` carries what the plan reads
+// argv -> { steps: [{ cmd, args, env?, agent? } | { write } | { eject }], notes? } | { print } | { error }. `ctx` carries what the plan reads
 // from outside: env, workspace, framework, exists(file).
 export function plan(argv, ctx = {}) {
   const { env = process.env, workspace = workspaceRoot, framework = frameworkRoot, exists = existsSync } = ctx;
@@ -156,6 +162,28 @@ export function plan(argv, ctx = {}) {
     case "e2e":
       if (isInstalled(framework)) return fail("atf e2e runs only in the framework's source checkout, not from an installed package");
       return steps(node("e2e.mjs", ...(v.keep ? ["--keep"] : [])));
+    case "eject": {
+      // An ejected atf/config/<file> is the whole file from then on (packaging §3.4): the package's copy and any overlay
+      // atf/<file> are no longer read, so an upgrade can't change it. Every target is checked before anything is
+      // written, and an existing one is never overwritten: a human's edits to an ejected file are theirs to keep.
+      if (named.subcommand !== "config") return fail(`atf eject takes config, not '${named.subcommand}', e.g. ${example(name)}`);
+      if (extra.length > 1) return fail(`atf eject config: unexpected '${extra[1]}'`);
+      // In one directory atf/config would sit inside the framework itself, next to the config/ it replaces.
+      if (sameDir(workspace, framework)) return fail("atf eject config needs a workspace apart from the framework: here they are the same directory, so the framework's config/ is already the only copy");
+      const wanted = extra[0] === undefined ? CONFIG_FILES : [extra[0].endsWith(".yaml") ? extra[0] : `${extra[0]}.yaml`];
+      if (!CONFIG_FILES.includes(wanted[0])) return fail(`atf eject config: '${extra[0]}' is not a framework config file (one of: ${CONFIG_FILES.join(", ")})`);
+      const files = wanted.map((f) => ({ name: f, file: `atf/config/${f}`, from: configPath(f, { framework }) }));
+      const missing = files.filter((f) => !exists(f.from));
+      if (missing.length) return fail(`the framework has no ${missing.map((f) => f.from).join(", ")}; reinstall the package`);
+      const ejected = files.filter((f) => exists(path.join(workspace, f.file)));
+      if (ejected.length) return fail(alreadyEjected(ejected));
+      const overlay = files.length === 1 ? `atf/${files[0].name}` : "atf/<file>";
+      const notes = [
+        `${files.length === 1 ? `${files[0].file} now replaces the package's config/${files[0].name}` : "Each ejected file now replaces the package's copy"} entirely: later package upgrades won't change it, and an overlay ${overlay} for it is ignored.`,
+        ...(files.some((f) => f.name === "permissions.yaml") ? ["atf/config/permissions.yaml is the agents' safety ceiling, frozen into each run when it starts: have a human review every change to it."] : []),
+      ];
+      return { steps: [{ eject: files.map(({ file, from }) => ({ file, from })) }], notes };
+    }
     case "status":
     case "next":
       return steps(node("run.mjs", name, product));
@@ -198,8 +226,11 @@ export function plan(argv, ctx = {}) {
   return fail(`atf ${name}: not implemented`);
 }
 
+const alreadyEjected = (files) =>
+  `${files.map((f) => f.file).join(", ")} ${files.length === 1 ? "is" : "are"} already ejected; edit ${files.length === 1 ? "it" : "them"} instead. Nothing was written.`;
+
 const example = (name) => {
-  const ex = { config: "atf config acme-crm --url https://crm.example.com", import: "atf import acme-crm contacts", approve: "atf approve acme-crm contacts", steps: "atf steps acme-crm explore,testcases" };
+  const ex = { config: "atf config acme-crm --url https://crm.example.com", eject: "atf eject config permissions.yaml", import: "atf import acme-crm contacts", approve: "atf approve acme-crm contacts", steps: "atf steps acme-crm explore,testcases" };
   return ex[name] ?? `atf ${name} acme-crm`;
 };
 
@@ -243,6 +274,22 @@ export function run(p, { workspace = workspaceRoot, platform = process.platform,
         return 1;
       }
       writeFileSync(target, configFromExample(readFileSync(step.write.from, "utf8"), step.write));
+      for (const n of p.notes ?? []) out.log(n);
+      continue;
+    }
+    if (step.eject) {
+      // plan() checked the targets; checked again here, all before the first copy, so a file ejected meanwhile still
+      // leaves nothing written. COPYFILE_EXCL keeps the never-overwrite promise even then, and copies byte for byte.
+      const taken = step.eject.filter((e) => existsSync(path.join(workspace, e.file)));
+      if (taken.length) {
+        out.error(alreadyEjected(taken));
+        return 1;
+      }
+      mkdirSync(path.join(workspace, "atf", "config"), { recursive: true });
+      for (const e of step.eject) {
+        copyFileSync(e.from, path.join(workspace, e.file), constants.COPYFILE_EXCL);
+        out.log(`Ejected ${e.file}`);
+      }
       for (const n of p.notes ?? []) out.log(n);
       continue;
     }

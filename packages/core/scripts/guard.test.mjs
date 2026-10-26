@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
@@ -955,6 +955,8 @@ test("every framework script is writable by feedback-implementor-agent or delibe
     // D-085: roots and config decide where the guard looks and which permissions a run freezes; workspace.test covers
     // the read-only framework
     "scripts/workspace.test.mjs",
+    // packaging §3.4: the loader of the safety config, overlays and ejected files included
+    "scripts/config.test.mjs",
     // D-087: the atf CLI is the human's command surface; the guard's human-only match relies on its strict parsing
     "scripts/lib/cli.mjs", "scripts/cli.test.mjs",
   ]);
@@ -1001,6 +1003,24 @@ test("readonly input (D-076): typing, selecting and key presses pass only while 
   assert.equal(b("module-explorer", "type"), false, "a commented-out init page is no init page");
 });
 
+test("readonly input reads the effective mcp.yaml: a workspace's atf/ override of it decides, never the framework's copy alone (packaging §3.4, D-076)", () => {
+  // a workspace apart from its framework, whose own config/mcp.yaml runs the network guard
+  const ro = startRun({ mode: "readonly" });
+  const fw = tempRoot();
+  copyFileSync(path.join(frameworkRoot, "config", "mcp.yaml"), path.join(fw, "config", "mcp.yaml"));
+  const type = () => checkTool(call("module-explorer", "mcp__playwright__browser_type", {}), ro.root, {}, { framework: fw });
+  assert.equal(type().allowed, true, "the framework's mcp.yaml names its init page");
+  mkdirSync(path.join(ro.root, "atf", "config"), { recursive: true });
+  writeFileSync(path.join(ro.root, "atf", "mcp.yaml"), "servers:\n  playwright:\n    command: npx\n");
+  assert.equal(type().allowed, true, "an overlay that keeps the args keeps the init page");
+  writeFileSync(path.join(ro.root, "atf", "mcp.yaml"), "servers:\n  playwright:\n    args: ['-y', '@playwright/mcp@0.0.83']\n");
+  assert.match(type().reason, /does not run the framework's network guard.*atf\/mcp\.yaml/, "an overlay that drops it turns readonly input off");
+  writeFileSync(path.join(ro.root, "atf", "mcp.yaml"), "- broken\n");
+  assert.equal(type().allowed, false, "a broken overlay fails closed");
+  copyFileSync(path.join(frameworkRoot, "config", "mcp.yaml"), path.join(ro.root, "atf", "config", "mcp.yaml"));
+  assert.equal(type().allowed, true, "an ejected copy that keeps it wins over the overlay");
+});
+
 test("the browser init page: readonly runs' product hosts take no write, no run means no write anywhere, full-run hosts and others pass; the run's session is loaded once (D-076)", async () => {
   const { refusal, loadSession, default: initPage } = createRequire(import.meta.url)("./browser/init-page.cjs");
   const run = (mode, extra = {}) => ({ product: "acme", mode, targetHosts: ["app.acme.test", "api.acme.test"], ...extra });
@@ -1037,4 +1057,78 @@ test("every restricted agent may record a framework issue, and only that is adde
       assert.equal(allowed(root, sh(agent, "node scripts/framework-issues.mjs add acme --from x --kind doc --target docs/a.md --summary s --evidence e")), true, `${agent}: add`);
       if (agent !== "orchestrator-agent") assert.equal(allowed(root, sh(agent, "node scripts/framework-issues.mjs list acme")), false, `${agent}: only add is shared`);
     }
+});
+
+test("the workspace's atf/ is human-only: no framework agent writes there or ejects config, in or out of a run, in any mode (packaging §3.4, D-013)", () => {
+  // the roster is the framework's agent sources, resolved from the framework root the guard is given
+  const check = (root, c, framework = frameworkRoot) => checkTool(c, root, {}, { framework });
+  const roster = readdirSync(path.join(frameworkRoot, "agents")).filter((f) => f.endsWith(".md")).map((f) => f.slice(0, -3));
+  assert.ok(roster.length >= 30 && roster.includes("feedback-implementor-agent") && roster.includes("orchestrator-agent"));
+  const outside = tempRoot();
+  const roots = [outside, RO.root, FULL.root];
+  for (const root of roots) mkdirSync(path.join(root, "atf", "config"), { recursive: true });
+  // a symlink into atf/ from an ordinary folder is atf/ too
+  symlinkSync(path.join(outside, "atf"), path.join(outside, "link"), "junction");
+  const writes = (root) => [
+    call(undefined, "Write", { file_path: path.join(root, "atf", "permissions.yaml") }),
+    call(undefined, "Edit", { file_path: path.join(root, "atf", "config", "models.yaml") }),
+    call(undefined, "Write", { file_path: path.join(root, "atf", "atf.json") }),
+    call(undefined, "Edit", { file_path: "atf/decisions.md" }),
+    call(undefined, "MultiEdit", { file_path: path.join(root, "ATF", "Hooks.yaml") }),
+    call(undefined, "Write", { file_path: path.join(root, "config", "..", "atf", "agents", "pw-ui-fixer.extra.md") }),
+  ];
+  const cmds = ["echo x > atf/mcp.yaml", "cp a atf/config/permissions.yaml", "sed -i 's/a/b/' atf/hooks.yaml", "cd atf && echo x >> permissions.yaml", "rm -r atf",
+    // the CLI's eject writes atf/config/ in process, however it is started
+    "npx atf eject config", "node packages/core/bin/atf.mjs eject config permissions.yaml", "atf ej''ect config", "bash -c \"npx atf eject config models.yaml\""];
+  const as = (agent, c) => ({ ...c, agent });
+  for (const root of roots)
+    for (const agent of roster) {
+      for (const w of writes(root)) assert.equal(check(root, as(agent, w)).rule, "workspace-settings", `${agent}: ${w.tool} ${w.paths[0]} (${root === outside ? "no run" : root === RO.root ? "readonly" : "full-run"})`);
+      for (const c of cmds) assert.equal(check(root, sh(agent, c)).rule, "workspace-settings", `${agent}: ${c}`);
+    }
+  assert.equal(check(outside, call("module-explorer", "Write", { file_path: path.join(outside, "link", "permissions.yaml") })).rule, "workspace-settings", "through a symlink");
+  assert.match(check(outside, call("pw-ui-fixer", "Write", { file_path: path.join(outside, "atf", "permissions.yaml") })).reason, /^atf\/permissions\.yaml is under atf\/; atf\/ holds this workspace's own settings.*only a human changes.*report the change it needs instead$/);
+  assert.match(check(outside, sh("pw-ui-fixer", "npx atf eject config")).reason, /^`atf eject` writes atf\/config\/; /);
+
+  // a call its host can't attribute comes from one of the run's agents (D-035): refused during a run, in either mode
+  const unnamed = (host, kind, x) => toolCall({ host, kind, tool: kind === "shell" ? "bash" : "edit", ...x });
+  for (const { root } of [FULL, RO])
+    for (const host of ["copilot-cli", "vscode-agent-host", "copilot-cloud", "unknown"]) {
+      assert.equal(check(root, unnamed(host, "write", { paths: [path.join(root, "atf", "permissions.yaml")] })).rule, "workspace-settings", `${host}: write`);
+      for (const c of ["echo x > atf/mcp.yaml", "npx atf eject config"]) assert.equal(check(root, unnamed(host, "shell", { command: c })).rule, "workspace-settings", `${host}: ${c}`);
+    }
+
+  // a human's own session stays allowed: no agent on a host that names agents (and on any host outside a run), or an
+  // agent type the framework doesn't ship; the decision hook still asks before a governed edit
+  for (const root of roots) {
+    for (const w of writes(root)) assert.notEqual(check(root, w).rule, "workspace-settings", `human: ${w.tool} ${w.paths[0]}`);
+    for (const c of cmds) assert.notEqual(check(root, sh(undefined, c)).rule, "workspace-settings", `human: ${c}`);
+    for (const agent of ["general-purpose", "Explore"]) assert.notEqual(check(root, sh(agent, "npx atf eject config")).rule, "workspace-settings", agent);
+    assert.notEqual(check(root, unnamed("vscode", "write", { paths: [path.join(root, "atf", "permissions.yaml")] })).rule, "workspace-settings", "VS Code's local agent outside a custom agent");
+  }
+  assert.equal(check(outside, call(undefined, "Write", { file_path: path.join(outside, "atf", "permissions.yaml") })).allowed, true);
+  assert.equal(check(outside, call("general-purpose", "Write", { file_path: path.join(outside, "atf", "config", "permissions.yaml") })).allowed, true);
+  for (const host of ["copilot-cli", "vscode-agent-host", "copilot-cloud"])
+    assert.equal(check(outside, unnamed(host, "write", { paths: [path.join(outside, "atf", "permissions.yaml")] })).allowed, true, `${host}, no run: the human's own session`);
+
+  // reading atf/ is fine, and look-alike folders are not atf/
+  for (const agent of ["feedback-implementor-agent", "pw-ui-fixer", "orchestrator-agent"]) {
+    for (const f of ["atf/atf.json", "atf/permissions.yaml", "atf/config/models.yaml"]) assert.equal(check(outside, call(agent, "Read", { file_path: path.join(outside, f) })).allowed, true, `${agent} reads ${f}`);
+    for (const c of ["cat atf/atf.json", "ls atf/config", "grep -rn models atf/", "cp atf/permissions.yaml /dev/null"]) assert.equal(check(outside, sh(agent, c)).allowed, true, `${agent}: ${c}`);
+    for (const f of ["config/atf/x.yaml", "matf/x", "atfx/permissions.yaml", "artifacts/acme/atf/x"]) {
+      assert.equal(check(outside, call(agent, "Write", { file_path: path.join(outside, f) })).allowed, true, `${agent} writes ${f}`);
+      assert.equal(check(outside, sh(agent, `echo x > ${f}`)).allowed, true, `${agent}: echo x > ${f}`);
+      assert.notEqual(check(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, f) })).rule, "workspace-settings", `${agent} writes ${f} in a run`);
+    }
+  }
+  assert.equal(check(FULL.root, call("pw-ui-reviewer", "Read", { file_path: path.join(FULL.root, "atf", "permissions.yaml") })).allowed, true, "reads in a run");
+
+  // a write tool whose target can't be told fails closed: the run's own rules refuse it first, else this rule does
+  const noPath = (agent) => toolCall({ host: "claude-code", agent, kind: "write", tool: "Write", paths: [] });
+  assert.equal(check(outside, noPath("feedback-implementor-agent")).rule, "workspace-settings", "no run");
+  assert.equal(check(FULL.root, noPath("pw-ui-fixer")).rule, "fs-write", "in a run");
+  assert.equal(check(outside, noPath(undefined)).allowed, true, "a human's own session");
+
+  // the roster fails closed: a framework whose agent sources can't be read counts every named caller as one of them
+  assert.equal(check(outside, call("general-purpose", "Write", { file_path: path.join(outside, "atf", "permissions.yaml") }), tempRoot()).rule, "workspace-settings");
 });

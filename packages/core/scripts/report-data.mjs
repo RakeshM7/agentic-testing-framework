@@ -19,6 +19,8 @@
 // assumptions          assumed k6 thresholds, @assumption cases, agent-captured or stale rule facts, known limits (D-052)
 // k6                   leftover entities of this run in the ledger, and the untracked creates of each script
 // failedStages, blockedStages, awaitingApprovalStages   what the run did not finish, with open review findings
+// customConfig         the framework config the run did not take from the framework's own copy: permissions.yaml (the
+//                      safety ceiling: overlaid, ejected, or a run-config permissions_file) apart from the rest
 // steps, notChosenStages  each step chosen or not for this run, and the stages it did not choose (never failed or blocked;
 //                      `satisfiedBy` when an earlier run's outputs or an imported file stood in for one)
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -55,6 +57,23 @@ function walk(dir, pred) {
   });
 }
 
+
+// The run's customized framework config (docs/packaging.md §3.4), from run.json alone, or null for a run that predates
+// provenance.config (nothing is guessed). permissions.yaml is the ceiling on every agent, so it is set apart: the
+// recorded entry is the workspace's default (overlaid or ejected, or the framework's), and a run-config's own
+// permissions_file replaced it when run.json permissionsPath is not that entry's files[0] (the framework's copy, or the
+// ejected file, which is where init reads the default from). A run-config naming the framework's copy by path while an
+// overlay exists reads as the overlay: a notice too many, never one too few.
+export function customConfig(run, root = workspaceRoot) {
+  const config = run.provenance?.config;
+  if (!Array.isArray(config)) return null;
+  const at = (f) => path.resolve(root, f);
+  const perms = config.find((c) => c.name === "permissions.yaml");
+  const ownFile = !perms || at(run.permissionsPath) !== at(perms.files[0]);
+  const permissions = ownFile ? { source: "run-config", files: [slash(run.permissionsPath)] } : perms.source === "framework" ? null : { source: perms.source, files: perms.files };
+  const other = config.filter((c) => c.name !== "permissions.yaml" && c.source !== "framework").map(({ name, source, files }) => ({ name, source, files }));
+  return { permissions, other };
+}
 
 export function testcaseTotal(summaryFile) {
   if (!existsSync(summaryFile)) return null;
@@ -334,6 +353,7 @@ export async function collect(product, { root = workspaceRoot, now = new Date() 
     target: run.target.url,
     environment: run.environment ?? "default",
     provenance: run.provenance ?? null,
+    customConfig: customConfig(run, root),
     generatedAt: now.toISOString(),
     totals: {
       modules: run.modules.length,

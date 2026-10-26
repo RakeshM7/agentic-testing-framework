@@ -155,14 +155,31 @@ function statements(list, withSeverity) {
   return `<ul>${list.map((s) => `<li>${withSeverity ? `${badge(s.severity, `sev-${s.severity}`)} ` : ""}${esc(s.text)}<span class="cites">Source: ${s.cites.map(code).join(", ")}</span></li>`).join("")}</ul>`;
 }
 
-// What the run was made with (D-077), so two runs' results can be compared with their tools in view.
-function provenanceLine(p) {
+// How a customized config file was made, from report.json customConfig (docs/packaging.md §3.4)
+function configHow(c) {
+  const files = c.files.map(code);
+  if (c.source === "overlay") return `the framework's ${files[0]} overlaid by ${files.slice(1).join(", ")}`;
+  if (c.source === "ejected") return `replaced by the workspace's ${files.join(", ")}`;
+  return `the run-config's permissions_file ${files.join(", ")}`;
+}
+
+// The title slide's notice when the agents' permissions were not the framework's own copy: that file is the ceiling on
+// what every agent may do, so a reader must see it before trusting what the run did or did not change.
+function safetyNotice(cc) {
+  if (!cc?.permissions) return "";
+  return `<div class="callout safety" role="note"><strong>Custom safety config:</strong> this run's permissions.yaml, the ceiling on what every agent may do, is not the framework's own copy: ${configHow(cc.permissions)}.</div>`;
+}
+
+// What the run was made with (D-077), so two runs' results can be compared with their tools in view, and the other
+// config files the workspace customized, listed quietly (permissions has its own notice).
+function provenanceLine(p, cc) {
   if (!p) return "";
   const parts = [
     p.framework ? `framework ${code(p.framework.commit.slice(0, 10))}${p.framework.dirty ? " (with uncommitted changes)" : ""}` : "framework commit unknown",
     p.browserServer ? `browser server ${code(p.browserServer)}` : null,
     Object.keys(p.models?.default ?? {}).length ? `models ${Object.entries(p.models.default).map(([k, v]) => `${esc(k)} ${code(v)}`).join(", ")}${Object.keys(p.models.agents ?? {}).length ? " (some agents differ)" : ""}` : null,
     p.node ? `Node.js ${esc(p.node)}` : null,
+    cc?.other?.length ? `customized config: ${cc.other.map((c) => `${esc(c.name)} (${configHow(c)})`).join(", ")}` : null,
   ].filter(Boolean);
   return `<p class="muted">Made with ${parts.join(" &middot; ")}</p>`;
 }
@@ -175,7 +192,7 @@ export function renderDeck(report, narrative = null) {
 
   slides.push(`<section class="slide" id="s-title" aria-labelledby="s-title-h"><h1 id="s-title-h">${esc(report.product)}: test run report</h1>
 <p>Target: ${code(report.target)}${report.environment && report.environment !== "default" ? ` &middot; environment <strong>${esc(report.environment)}</strong>` : ""}</p><p>Run: ${code(report.runId)} &middot; ${esc(report.generatedAt.slice(0, 10))}</p>
-${provenanceLine(report.provenance)}<p>Mode: <strong>${esc(report.mode)}</strong>${report.mode === "readonly" ? " &mdash; nothing that changes data was run; mutating tests and k6 load were not executed." : " &mdash; mutating tests ran; deletes were limited to entities this run created."}</p>${stepsLine(report)}</section>`);
+${safetyNotice(report.customConfig)}${provenanceLine(report.provenance, report.customConfig)}<p>Mode: <strong>${esc(report.mode)}</strong>${report.mode === "readonly" ? " &mdash; nothing that changes data was run; mutating tests and k6 load were not executed." : " &mdash; mutating tests ran; deletes were limited to entities this run created."}</p>${stepsLine(report)}</section>`);
 
   const tile = (n, l) => `<div class="tile"><div class="n">${esc(num(n))}</div><div class="l">${esc(l)}</div></div>`;
   slides.push(slide("s-glance", "At a glance", `<div class="tiles">${[

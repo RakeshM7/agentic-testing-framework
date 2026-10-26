@@ -107,7 +107,7 @@ test("the human-only forms are spelled exactly: no alias, no abbreviation, no --
 
 test("help and usage", () => {
   for (const argv of [[], ["help"], ["--help"], ["-h"], ["run", "--help"]]) assert.equal(plan(argv, ctx(ws())).print, USAGE, argv.join(" "));
-  for (const cmd of ["setup", "config", "interview", "login", "validate", "doctor", "e2e", "run", "status", "next", "diff", "resume", "explore", "clarifications", "testcases", "k6", "report", "automate", "steps", "import", "approve", "sweep"])
+  for (const cmd of ["setup", "config", "interview", "login", "validate", "doctor", "e2e", "eject", "run", "status", "next", "diff", "resume", "explore", "clarifications", "testcases", "k6", "report", "automate", "steps", "import", "approve", "sweep"])
     assert.match(USAGE, new RegExp(`atf (?:\\S+\\|)*${cmd}\\b`), `${cmd} is in the usage`);
 });
 
@@ -130,6 +130,74 @@ test("atf config writes the run-config from the example, then logs in unless --n
   assert.match(plan(["config", "crm2"], ctx(root)).error, /needs --url/);
   assert.match(plan(["config", "crm2", "--url", "crm.example.com"], ctx(root)).error, /must be an http\(s\) URL/);
   assert.equal(configFromExample("product: acme-crm\ntarget:\n  url: https://a\n  name: Acme CRM\n", { product: "p", url: "https://b" }), "product: p\ntarget:\n  url: https://b\n  name: p\n");
+});
+
+test("atf eject config copies one framework config file, or all five, byte for byte into atf/config/, with the notes", () => {
+  const root = ws();
+  const logs = [];
+  const out = { log: (m) => logs.push(m), error: (m) => logs.push(`error: ${m}`) };
+  const p = plan(["eject", "config", "permissions.yaml"], ctx(root));
+  assert.deepEqual(p.steps, [{ eject: [{ file: "atf/config/permissions.yaml", from: path.join(frameworkRoot, "config", "permissions.yaml") }] }]);
+  assert.equal(existsSync(path.join(root, "atf/config")), false, "plan() writes nothing");
+  assert.equal(run(p, { workspace: root, out }), 0);
+  assert.ok(readFileSync(path.join(root, "atf/config/permissions.yaml")).equals(readFileSync(path.join(frameworkRoot, "config/permissions.yaml"))), "byte-identical");
+  assert.equal(logs[0], "Ejected atf/config/permissions.yaml");
+  assert.match(logs[1], /^atf\/config\/permissions\.yaml now replaces the package's config\/permissions\.yaml entirely: later package upgrades won't change it, and an overlay atf\/permissions\.yaml for it is ignored\.$/);
+  assert.match(logs[2], /permissions\.yaml is the agents' safety ceiling, frozen into each run .* have a human review every change to it/);
+
+  // the name without .yaml; no permissions note for another file
+  logs.length = 0;
+  assert.equal(run(plan(["eject", "config", "models"], ctx(root)), { workspace: root, out }), 0);
+  assert.deepEqual(logs.slice(0, 1), ["Ejected atf/config/models.yaml"]);
+  assert.equal(logs.length, 2);
+  assert.match(logs[1], /overlay atf\/models\.yaml for it is ignored/);
+
+  // all five, into a fresh workspace (atf/config created)
+  const all = ws();
+  logs.length = 0;
+  const every = plan(["eject", "config"], ctx(all));
+  assert.deepEqual(every.steps[0].eject.map((e) => e.file), ["permissions", "models", "platforms", "mcp", "hooks"].map((f) => `atf/config/${f}.yaml`));
+  assert.equal(run(every, { workspace: all, out }), 0);
+  for (const f of ["permissions", "models", "platforms", "mcp", "hooks"]) {
+    assert.ok(readFileSync(path.join(all, `atf/config/${f}.yaml`)).equals(readFileSync(path.join(frameworkRoot, `config/${f}.yaml`))), `${f}.yaml byte-identical`);
+    assert.ok(logs.includes(`Ejected atf/config/${f}.yaml`));
+  }
+  assert.ok(logs.some((l) => /^Each ejected file now replaces the package's copy entirely: .* an overlay atf\/<file> for it is ignored\.$/.test(l)));
+  assert.ok(logs.some((l) => /safety ceiling/.test(l)));
+});
+
+test("atf eject config never overwrites, refuses one directory, and parses strictly", () => {
+  const root = ws();
+  const err = (argv, extra) => plan(argv, ctx(root, extra)).error;
+  // an already-ejected target refuses the whole call: nothing else is written
+  put(root, "atf/config/mcp.yaml", "mine: true\n");
+  assert.equal(err(["eject", "config", "mcp"]), "atf/config/mcp.yaml is already ejected; edit it instead. Nothing was written.");
+  assert.match(err(["eject", "config"]), /^atf\/config\/mcp\.yaml is already ejected/);
+  assert.equal(existsSync(path.join(root, "atf/config/permissions.yaml")), false);
+  assert.equal(readFileSync(path.join(root, "atf/config/mcp.yaml"), "utf8"), "mine: true\n");
+  // run() checks again before the first copy: a file ejected after the plan still leaves nothing written
+  const fresh = ws();
+  const p = plan(["eject", "config"], ctx(fresh));
+  put(fresh, "atf/config/hooks.yaml", "mine: true\n");
+  const errors = [];
+  assert.equal(run(p, { workspace: fresh, out: { log() {}, error: (m) => errors.push(m) } }), 1);
+  assert.equal(errors[0], "atf/config/hooks.yaml is already ejected; edit it instead. Nothing was written.");
+  assert.equal(existsSync(path.join(fresh, "atf/config/permissions.yaml")), false);
+  assert.equal(readFileSync(path.join(fresh, "atf/config/hooks.yaml"), "utf8"), "mine: true\n");
+  // the workspace and the framework as one directory
+  const one = ws();
+  assert.match(err(["eject", "config", "models"], { workspace: one, framework: one }), /^atf eject config needs a workspace apart from the framework/);
+  // strict parsing: one subcommand word, the five names only
+  assert.match(err(["eject"]), /^atf eject needs <subcommand>, e\.g\. atf eject config permissions\.yaml$/);
+  assert.match(err(["eject", "configs"]), /^atf eject takes config, not 'configs'/);
+  assert.match(err(["eject", "Config"]), /^atf eject takes config, not 'Config'/);
+  assert.match(err(["eject", "permissions.yaml"]), /^atf eject takes config, not 'permissions\.yaml'/);
+  assert.match(err(["eject", "config", "permissions.yml"]), /'permissions\.yml' is not a framework config file \(one of: permissions\.yaml, models\.yaml, platforms\.yaml, mcp\.yaml, hooks\.yaml\)/);
+  assert.match(err(["eject", "config", "run-config.example.yaml"]), /is not a framework config file/);
+  assert.match(err(["eject", "config", "../config/models.yaml"]), /is not a framework config file/);
+  assert.match(err(["eject", "config", "models", "mcp"]), /^atf eject config: unexpected 'mcp'/);
+  assert.match(err(["eject", "config", "--force"]), /Unknown option '--force'/);
+  assert.match(err(["ejec", "config"]), /unknown command 'ejec'/);
 });
 
 test("run() stops at the first failing step, in the workspace, and reports a missing program", () => {
