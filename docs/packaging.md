@@ -1,6 +1,6 @@
 # Packaging the framework for clients
 
-**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1, 2a, 2b, 3a and 3b are in force (D-085 as amended by D-086, and D-087 to D-092); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
+**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1 to 3 are in force (D-085 as amended by D-086, and D-087 to D-093; the cloud-agent opt-in is experimental until verified live); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
 
 ## 1. What was decided in the interview
 
@@ -279,6 +279,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 | P-1 · two roots | D-085 | 1 |
 | P-2 · private licensed package, monorepo | monorepo part: D-086; distribution part: phase 4 | 2a, 4 |
 | P-3 · `atf sync`, git-ignored host files, `atf init` | D-089 (and D-092 for client hooks and MCP servers) | 3b |
+| P-3 · the cloud-agent opt-in | D-093 (experimental: `docs/cloud-agent-verification.md`) | 3c |
 | P-4 · config overlays and eject | D-088 | 3a |
 | P-5 · agent add-on fragments | D-090 | 3b |
 | P-6 · the client decision log | D-091 | 3b |

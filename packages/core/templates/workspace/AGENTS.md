@@ -9,7 +9,7 @@ A test workspace for the agentic testing pipeline. The framework is the installe
 - `atf/`: this workspace's settings: the marker `atf/atf.json`, config overlays and ejected config, agent add-on fragments (`atf/agents/<name>.extra.md`) and the decision log;
 - `artifacts/` (run state and output, git-ignored), the generated test code in `playwright-tests/<product>/` and `k6-tests/<product>/`, and `feedback/`.
 
-The agent files, hooks and MCP config (`.claude/agents/`, `.github/agents/`, `.mcp.json`, `.vscode/mcp.json`, the hook files and the `hooks` key of `.claude/settings.json`) are rendered from the package by `npx atf sync`, which every `npm install` also runs. They are git-ignored. Never edit them, and never edit anything under `{fw}/`: a human changes `atf/` and syncs.
+The agent files, hooks and MCP config (`.claude/agents/`, `.github/agents/`, `.mcp.json`, `.vscode/mcp.json`, the hook files and the `hooks` key of `.claude/settings.json`) are rendered from the package by `npx atf sync`, which every `npm install` also runs. They are git-ignored, except the Copilot agent and hook files when `atf/atf.json` opts in to the cloud coding agent (`"cloud_agent": true`): those are committed. Never edit them, and never edit anything under `{fw}/`: a human changes `atf/` and syncs.
 
 ## Read first
 

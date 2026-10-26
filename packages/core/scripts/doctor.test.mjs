@@ -4,7 +4,10 @@ import path from "node:path";
 import { GROUPS, STAGE_NEEDS, browserBuilds, browsersDir, doctorStatus, failures, groupsFor, recordDoctor, runChecks, uncoveredStages } from "./lib/doctor.mjs";
 import { autofixSteps, main, scope } from "./doctor.mjs";
 import { doctor, initRun, setStage } from "./run.mjs";
-import { put, startRun, tempRoot } from "./test-helpers.mjs";
+import { spawnSync } from "node:child_process";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { SETUP_WORKFLOW, sync } from "./lib/sync.mjs";
+import { INSTALLED_PACKAGE, installedWorkspace, put, startRun, tempRoot } from "./test-helpers.mjs";
 import { expandFw } from "./lib/roots.mjs";
 
 // a framework command as printed from this repo's workspace: `node scripts/...`, or `node packages/core/scripts/...`
@@ -344,4 +347,63 @@ test("a stage not chosen for the run is never reported as blocked: run.mjs docto
   const file = path.join(root, "config", "acme.yaml");
   assert.equal(await main([file], { root, log: () => {}, check: async (_cfg, g) => ((groups = g), []) }), 0);
   assert.deepEqual(groups, ["base", "browser", "session", "target"], "doctor.mjs on the run-config checks only what its steps need");
+});
+
+test("base, cloud-agent opt-in: the setup workflow must install the framework with ATF_NPM_TOKEN (fail), and git must not ignore what the agent reads (warn)", async (t) => {
+  const ws = installedWorkspace();
+  // git with no system or global config of the machine's (a global excludesFile would change the answer)
+  const env = { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: path.join(ws.root, ".no-gitconfig"), XDG_CONFIG_HOME: path.join(ws.root, ".no-xdg") };
+  const base = async (opts = {}) => Object.fromEntries((await runChecks({ product: "acme" }, ["base"], { root: ws.root, framework: ws.framework, env, ...opts })).map((c) => [c.id, c]));
+  const file = path.join(ws.root, SETUP_WORKFLOW);
+  // no opt-in: neither check
+  sync({ workspace: ws.root, framework: ws.framework });
+  let c = await base();
+  assert.equal(c["host-files"].ok, true);
+  assert.equal(c["cloud-agent-setup"], undefined);
+  assert.equal(c["cloud-agent-git"], undefined);
+  // opted in, not synced yet: the workflow is missing, with the template it comes from
+  put(ws.root, "atf/atf.json", '{ "cloud_agent": true }\n');
+  c = await base();
+  assert.deepEqual({ ok: c["cloud-agent-setup"].ok, level: c["cloud-agent-setup"].level, group: c["cloud-agent-setup"].group }, { ok: false, level: "fail", group: "base" });
+  assert.equal(c["cloud-agent-setup"].detail, `${SETUP_WORKFLOW} is missing: the Copilot cloud agent would start without the framework installed, and its guard would deny every tool call`);
+  assert.equal(c["cloud-agent-setup"].fix, `npx atf sync (in the workspace) creates it from ${INSTALLED_PACKAGE}/templates/workspace/copilot-setup-steps.yml; commit it and merge it to the default branch`);
+  assert.match(c["host-files"].detail, /^1 host file\(s\) out of date with the installed framework: \.gitignore$/, "the workflow is reported once, by its own check");
+  // synced: it passes
+  sync({ workspace: ws.root, framework: ws.framework });
+  c = await base();
+  assert.deepEqual([c["host-files"].ok, c["cloud-agent-setup"].ok, c["cloud-agent-setup"].level], [true, true, undefined]);
+  assert.equal(c["cloud-agent-setup"].detail, `${SETUP_WORKFLOW} installs the framework for the Copilot cloud agent`);
+  // a workflow that installs nothing: a failure naming what to add, and nothing rewritten
+  const broken = "jobs:\n  copilot-setup-steps:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n";
+  writeFileSync(file, broken);
+  c = await base();
+  assert.equal(c["cloud-agent-setup"].ok, false);
+  assert.match(c["cloud-agent-setup"].detail, /has no step in its copilot-setup-steps job that runs npm ci \(or npm install\): without the framework installed/);
+  assert.match(c["cloud-agent-setup"].fix, /runs npm ci with `env: \{ ATF_NPM_TOKEN: \$\{\{ secrets\.ATF_NPM_TOKEN \}\} \}`.*templates\/workspace\/copilot-setup-steps\.yml does; atf never rewrites this file$/);
+  assert.equal(failures(Object.values(c)).map((x) => x.id).join(), "cloud-agent-setup");
+  assert.equal(readFileSync(file, "utf8"), broken);
+  rmSync(file);
+  sync({ workspace: ws.root, framework: ws.framework });
+
+  // git: not a repository yet, or no git at all: skipped, never a problem
+  c = await base();
+  assert.deepEqual([c["cloud-agent-git"].ok, c["cloud-agent-git"].level], [true, undefined]);
+  assert.match(c["cloud-agent-git"].detail, /^not checked whether git ignores the files the Copilot cloud agent reads: (not a git repository|git is not available)$/);
+  assert.equal((await base({ env: { PATH: "" } }))["cloud-agent-git"].detail, "not checked whether git ignores the files the Copilot cloud agent reads: git is not available");
+  const init = spawnSync("git", ["init", "-q"], { cwd: ws.root, env, encoding: "utf8" });
+  if (init.error || init.status !== 0) return t.skip(`git is not available: ${init.error?.message ?? init.stderr}`);
+  c = await base();
+  assert.match(c["cloud-agent-git"].detail, /^git commits the \d+ files the Copilot cloud agent reads$/);
+  assert.equal(c["cloud-agent-git"].level, undefined);
+  // the client's own line hides them: a warning naming the line, never a failure
+  const own = readFileSync(path.join(ws.root, ".gitignore"), "utf8");
+  writeFileSync(path.join(ws.root, ".gitignore"), `.github/\n${own}`);
+  c = await base();
+  assert.deepEqual([c["cloud-agent-git"].ok, c["cloud-agent-git"].level], [true, "warn"]);
+  assert.match(c["cloud-agent-git"].detail, /^\d+ of the files the Copilot cloud agent reads are git-ignored \(\.gitignore:1 \(\.github\/\)\), so they never reach it: \.github\/agents\/\S+\.agent\.md, .* and \d+ more$/);
+  assert.match(c["cloud-agent-git"].fix, /remove or narrow those ignore lines/);
+  assert.equal(failures(Object.values(c)).length, 0, "a warning only");
+  // a narrower line that a later `!` line re-includes: not ignored
+  writeFileSync(path.join(ws.root, ".gitignore"), `*.yml\n!/.github/workflows/*.yml\n${own}`);
+  assert.equal((await base())["cloud-agent-git"].level, undefined);
 });

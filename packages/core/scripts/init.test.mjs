@@ -10,7 +10,7 @@ import { plan, run } from "./lib/cli.mjs";
 import { parseDecisions } from "./lib/decisions.mjs";
 import { CLIENT_GITIGNORE, DOCTOR_BASE_SCRIPT, INIT_BLOCK_END, INIT_BLOCK_START, packageName, withDeps, withInitBlock } from "./lib/init.mjs";
 import { frameworkRoot } from "./lib/roots.mjs";
-import { BLOCK_START as SYNC_BLOCK_START } from "./lib/sync.mjs";
+import { SETUP_TEMPLATE, SETUP_WORKFLOW, BLOCK_START as SYNC_BLOCK_START } from "./lib/sync.mjs";
 import { installedWorkspace, put, tempRoot } from "./test-helpers.mjs";
 
 const FW_PKG = JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8"));
@@ -61,6 +61,7 @@ test("atf init --no-install in a folder that doesn't exist yet: every file, {fw}
 
   // atf/: the marker and the empty decision log, which the hook parses with no entries
   assert.equal(readFileSync(path.join(dir, "atf/atf.json"), "utf8"), "{}\n");
+  assert.equal(existsSync(path.join(dir, SETUP_WORKFLOW)), false, "no cloud-agent opt-in, no setup workflow");
   const log = readFileSync(path.join(dir, "atf/decisions.md"), "utf8");
   assert.deepEqual(parseDecisions(log), []);
   assert.match(log, new RegExp(`node ${FW}/scripts/decisions\\.mjs for <every file you will change> --full`));
@@ -174,6 +175,7 @@ test("a file init can't read safely stops it before anything is written (exit 1)
     ["package.json", "{ not json", /package\.json is not valid JSON/],
     [".gitignore", `${INIT_BLOCK_START}\nx\n`, /the atf init block is malformed/],
     ["atf/atf.json", "{ nope", /atf\/atf\.json could not be read as JSON/],
+    ["atf/atf.json", '{ "cloud_agent": "yes" }', /atf\/atf\.json "cloud_agent" must be true or false, not "yes"; fix it, then run atf init again$/],
   ]) {
     const dir = path.join(tempRoot(), "ws");
     put(dir, file, text);
@@ -192,6 +194,41 @@ test("atf.json naming another decision log: init creates that one", () => {
   assert.equal(init(["--no-install"], { cwd: dir }).code, 0);
   assert.deepEqual(parseDecisions(readFileSync(path.join(dir, "docs/decisions.md"), "utf8")), []);
   assert.equal(existsSync(path.join(dir, "atf/decisions.md")), false);
+});
+
+test("atf.json that already opts in to the cloud agent: init writes the setup workflow from the template, once, never over the client's", () => {
+  const dir = path.join(tempRoot(), "ws");
+  put(dir, "atf/atf.json", '{ "cloud_agent": true }\n');
+  const r = init(["--no-install"], { cwd: dir });
+  assert.equal(r.code, 0, r.errors.join("\n"));
+  assert.ok(r.logs.includes(`  created  ${SETUP_WORKFLOW}: the Copilot cloud agent's setup steps, yours from now on; merge it to the default branch and add the Agents secret ATF_NPM_TOKEN`), r.logs.join("\n"));
+  const file = path.join(dir, SETUP_WORKFLOW);
+  assert.equal(readFileSync(file, "utf8"), readFileSync(path.join(frameworkRoot, ...SETUP_TEMPLATE.split("/")), "utf8"));
+  // the client's from now on: init again leaves their version as it is
+  writeFileSync(file, "# ours\n");
+  const again = init(["--no-install"], { cwd: dir });
+  assert.equal(again.code, 0);
+  assert.ok(again.logs.includes(`  present  ${SETUP_WORKFLOW}: left as it is`));
+  assert.equal(readFileSync(file, "utf8"), "# ours\n");
+  // false: no workflow
+  const off = path.join(tempRoot(), "ws");
+  put(off, "atf/atf.json", '{ "cloud_agent": false }\n');
+  assert.equal(init(["--no-install"], { cwd: off }).code, 0);
+  assert.equal(existsSync(path.join(off, SETUP_WORKFLOW)), false);
+});
+
+test("init in an opted-in workspace where the package is installed: init writes the workflow, the in-process sync commits the Copilot files, atf check passes", () => {
+  const { root, framework } = installedWorkspace();
+  put(root, "atf/atf.json", '{ "cloud_agent": true }\n');
+  const r = init([], { cwd: root, framework });
+  assert.deepEqual(kinds(r.plan), ["init", "sync", "doctor", "say"]);
+  assert.equal(r.code, 0, r.errors.join("\n"));
+  assert.ok(r.logs.some((l) => l.startsWith(`  created  ${SETUP_WORKFLOW}: `)), "written by init");
+  assert.ok(!r.logs.some((l) => l.startsWith(`atf sync: created: ${SETUP_WORKFLOW}`)), "so the sync finds it in place");
+  const ignore = readFileSync(path.join(root, ".gitignore"), "utf8");
+  assert.ok(ignore.includes("/.claude/agents/orchestrator-agent.md") && !ignore.includes("/.github/"), "the opt-in's block");
+  const quiet = { log() {}, error() {} };
+  assert.equal(run(plan(["check"], { workspace: root, framework }), { out: quiet }), 0);
 });
 
 test("init from npx's cache: npm install in the workspace (its postinstall syncs), then the doctor's base group", () => {

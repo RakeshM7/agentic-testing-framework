@@ -5,7 +5,8 @@
 //
 // Groups, and the stages that need them (STAGE_NEEDS):
 //   base     Node.js, the framework's own dependencies, and its peer dependency (playwright) in the workspace; for
-//            an installed framework, the host files in sync with it (atf check)
+//            an installed framework, the host files in sync with it (atf check), and with the cloud-agent opt-in its
+//            setup workflow and the committed files git must not ignore
 //   login    the browser the login opens (lib/login.mjs, D-069): Microsoft Edge, else Google Chrome, else the
 //            Chromium build of the framework's Playwright
 //   browser  the Playwright MCP server's browser, and its init page (which loads the run's session, D-076)
@@ -95,7 +96,7 @@ export function packageDir(name, from) {
 // The base group: Node.js and the framework's dependencies, then, for an installed framework, its host files.
 async function base(ctx) {
   const out = deps(ctx);
-  if (ctx.root && isInstalled(ctx.framework)) out.push(await hostFiles(ctx));
+  if (ctx.root && isInstalled(ctx.framework)) out.push(...(await hostFiles(ctx)));
   return out;
 }
 
@@ -146,18 +147,62 @@ function deps({ root, framework, nodeVersion }) {
 // `npm install --ignore-scripts`, nor after a hand edit or a changed overlay; stale hooks or agents are a session that
 // doesn't match the package, so it fails. Never autofixed: a human runs the sync. The build is loaded only here, so
 // what imports the doctor (run.mjs) doesn't load it in a source checkout.
-async function hostFiles({ root, framework }) {
-  const { sync } = await import("./sync.mjs");
+//
+// With the cloud-agent opt-in (atf/atf.json "cloud_agent": true, sync.mjs), two more: the setup workflow GitHub runs
+// before the agent starts must install the framework with the registry token (a failure: without it the committed
+// guard hook denies every call), and the files the client commits for the agent must not be git-ignored by their own
+// lines (a warning: what is ignored never reaches the agent).
+async function hostFiles({ root, framework, sys }) {
+  const { SETUP_WORKFLOW, setupTemplateRel, sync } = await import("./sync.mjs");
   let r;
   try {
     r = sync({ workspace: root, framework, check: true });
   } catch (e) {
     r = { errors: [e.message], changed: [] };
   }
-  if (r.errors.length) return { id: "host-files", ok: false, level: "fail", detail: `the host files can't be rendered from the installed framework: ${r.errors.join("; ")}`, fix: "fix that, then run npx atf sync (in the workspace)" };
+  if (r.errors.length) return [{ id: "host-files", ok: false, level: "fail", detail: `the host files can't be rendered from the installed framework: ${r.errors.join("; ")}`, fix: "fix that, then run npx atf sync (in the workspace)" }];
   const n = r.changed.length;
-  if (n) return { id: "host-files", ok: false, level: "fail", detail: `${n} host file(s) out of date with the installed framework: ${r.changed.slice(0, 5).join(", ")}${n > 5 ? ` and ${n - 5} more` : ""}`, fix: "npx atf sync (in the workspace)" };
-  return { id: "host-files", ok: true, detail: "host files in sync with the installed framework" };
+  const out = [n
+    ? { id: "host-files", ok: false, level: "fail", detail: `${n} host file(s) out of date with the installed framework: ${r.changed.slice(0, 5).join(", ")}${n > 5 ? ` and ${n - 5} more` : ""}`, fix: "npx atf sync (in the workspace)" }
+    : { id: "host-files", ok: true, detail: "host files in sync with the installed framework" }];
+  if (!r.cloudAgent) return out;
+  const [problem] = r.problems;
+  out.push(r.created.length
+    ? { id: "cloud-agent-setup", ok: false, level: "fail", detail: `${SETUP_WORKFLOW} is missing: the Copilot cloud agent would start without the framework installed, and its guard would deny every tool call`, fix: `npx atf sync (in the workspace) creates it from ${setupTemplateRel(root, framework)}; commit it and merge it to the default branch` }
+    : problem
+      ? { id: "cloud-agent-setup", ok: false, level: "fail", ...problem }
+      : { id: "cloud-agent-setup", ok: true, detail: `${SETUP_WORKFLOW} installs the framework for the Copilot cloud agent` });
+  out.push(committedButIgnored({ root, files: r.committed, env: sys?.env }));
+  return out;
+}
+
+// Which of `files` git would ignore in `root`, whether tracked or not (--no-index: a file a later package version adds
+// is new to git), by every ignore source git reads (the client's .gitignore files, info/exclude, a global excludesFile).
+// A negation (`!x`) that matches means not ignored. Without git, or outside a repository, nothing to say.
+function committedButIgnored({ root, files, env }) {
+  const id = "cloud-agent-git";
+  let r;
+  try {
+    r = spawnSync("git", ["check-ignore", "--no-index", "--verbose", "--", ...files], { cwd: root, env, encoding: "utf8", timeout: 15_000 });
+  } catch (e) {
+    r = { error: e };
+  }
+  if (r.error || (r.status !== 0 && r.status !== 1))
+    return { id, ok: true, detail: `not checked whether git ignores the files the Copilot cloud agent reads: ${r.error ? "git is not available" : "not a git repository"}` };
+  // `<source>:<line>:<pattern>\t<path>` per matching path
+  const hits = r.stdout.split(/\r?\n/).filter(Boolean).flatMap((l) => {
+    const [, source, line, pattern, file] = /^(.*?):(\d+):(.*)\t(.*)$/.exec(l) ?? [];
+    return file && !pattern.startsWith("!") ? [{ where: `${source}:${line} (${pattern})`, file }] : [];
+  });
+  if (!hits.length) return { id, ok: true, detail: `git commits the ${files.length} files the Copilot cloud agent reads` };
+  const where = [...new Set(hits.map((h) => h.where))];
+  return {
+    id,
+    ok: true,
+    level: "warn",
+    detail: `${hits.length} of the files the Copilot cloud agent reads are git-ignored (${where.join(", ")}), so they never reach it: ${hits.slice(0, 3).map((h) => h.file).join(", ")}${hits.length > 3 ? ` and ${hits.length - 3} more` : ""}`,
+    fix: "remove or narrow those ignore lines (or add a `!` exception after them), then commit the files",
+  };
 }
 
 // The login needs a real browser window: some single sign-on providers refuse Playwright's own Chromium, so the login

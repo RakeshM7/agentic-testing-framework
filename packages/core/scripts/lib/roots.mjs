@@ -17,13 +17,29 @@
 // A source checkout, such as the monorepo's packages/core, stays editable.
 //
 // Dependency-free (imported by the hook entries and the guard).
-import { existsSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const frameworkRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const WORKSPACE_MARKER = "atf/atf.json";
 export const FW_TOKEN = "{fw}";
+
+// The workspace marker's content, read in one place for every key it may hold (decisions.mjs "decisions", sync.mjs
+// "cloud_agent"; each reader validates its own key). -> { cfg: the object, or null when `root` has no marker } | { error }
+export function readMarker(root) {
+  const marker = path.join(root, WORKSPACE_MARKER);
+  if (!existsSync(marker)) return { cfg: null };
+  let cfg;
+  try {
+    const raw = readFileSync(marker, "utf8");
+    cfg = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw); // an editor's BOM is not a broken file
+  } catch (e) {
+    return { error: `${WORKSPACE_MARKER} could not be read as JSON (${e.message})` };
+  }
+  if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return { error: `${WORKSPACE_MARKER} must hold a JSON object` };
+  return { cfg };
+}
 
 // The nearest directory from `start` up that holds atf/atf.json, else null.
 export function findWorkspace(start) {

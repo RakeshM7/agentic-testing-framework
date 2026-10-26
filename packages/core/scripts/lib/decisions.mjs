@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { globToRegExp } from "./permissions.mjs";
-import { WORKSPACE_MARKER } from "./roots.mjs";
+import { WORKSPACE_MARKER, readMarker } from "./roots.mjs";
 
 // The log when atf/atf.json names none. Kept exported under its old name; the workspace's own is decisionsFile(root).
 export const DECISIONS_FILE = "atf/decisions.md";
@@ -32,20 +32,11 @@ const UNGOVERNED = [/^artifacts\//, /^playwright-tests\//, /^k6-tests\//, /^feed
 // or names its root. Without atf.json the default applies (a hook outside any workspace judges its host root).
 export function decisionsFile(root) {
   let named = DECISIONS_FILE;
-  const marker = path.join(root, WORKSPACE_MARKER);
-  if (existsSync(marker)) {
-    let cfg;
-    try {
-      const raw = readFileSync(marker, "utf8");
-      cfg = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw); // an editor's BOM is not a broken file
-    } catch (e) {
-      return { error: `${WORKSPACE_MARKER} could not be read as JSON (${e.message})` };
-    }
-    if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return { error: `${WORKSPACE_MARKER} must hold a JSON object` };
-    if (cfg.decisions !== undefined) {
-      if (typeof cfg.decisions !== "string" || !cfg.decisions.trim()) return { error: `${WORKSPACE_MARKER} "decisions" must be a workspace-relative path` };
-      named = cfg.decisions.trim();
-    }
+  const { cfg, error } = readMarker(root);
+  if (error) return { error };
+  if (cfg?.decisions !== undefined) {
+    if (typeof cfg.decisions !== "string" || !cfg.decisions.trim()) return { error: `${WORKSPACE_MARKER} "decisions" must be a workspace-relative path` };
+    named = cfg.decisions.trim();
   }
   const p = named.replaceAll("\\", "/");
   const outside = { error: `${WORKSPACE_MARKER} "decisions" (${named}) must name a file inside the workspace, relative to it` };
