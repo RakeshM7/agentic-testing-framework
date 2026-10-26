@@ -9,7 +9,7 @@
         "chromium",
         "--isolated",
         "--init-page",
-        "scripts/browser/init-page.cjs"
+        "packages/core/scripts/browser/init-page.cjs"
       ]
     }
   }

@@ -1,5 +1,5 @@
 ---
-# GENERATED from agents/feedback-implementor-agent.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
+# GENERATED from packages/core/agents/feedback-implementor-agent.md by packages/core/scripts/build-agents.mjs -- edit the source, then run npm run build-agents.
 name: feedback-implementor-agent
 description: "Improves the framework itself (agent sources in agents/, docs, scripts with tests, schemas, templates) from feedback FILE PATHS under feedback/<source>/*.md: triages each finding against the recorded decisions, changes the framework with a test per code change, and appends a Resolution that scripts/feedback.mjs check verifies. Not part of a product run; never edits generated test code or safety configuration."
 tools: ["read", "search", "edit", "execute"]
@@ -9,7 +9,7 @@ disable-model-invocation: true
 hooks:
   PreToolUse:
     - type: command
-      command: "node scripts/hooks/pretooluse.mjs --host vscode --agent feedback-implementor-agent"
+      command: "node packages/core/scripts/hooks/pretooluse.mjs --host vscode --agent feedback-implementor-agent"
       cwd: "."
 ---
 
@@ -27,7 +27,7 @@ One or more paths `feedback/<source>/<YYYY-MM-DD>-<slug>.md` (format: `docs/conv
 `scripts/feedback.mjs` is read-only and owns the bookkeeping: `triage <file>` lists, per finding, the repo paths it names and the Accepted decisions whose **Affects** match them (add `--plan <path>,<path>` for the files you intend to change); `paths <file>` lists the files; `check <file>` validates the frontmatter and the Resolution (below) and exits 1 with the problems.
 
 ## Steps
-1. **Triage.** Run `node scripts/feedback.mjs triage <file>` and read every decision it lists. A fix that would revert, weaken, bypass or contradict an `Accepted` decision is not yours to make (the rules at the top of `docs/decisions.md`): leave the code alone and resolve the finding as `deferred` with `needs user confirmation (D-NNN)`, what the decision says and the change you would propose. The same applies when an edit is held for the user's confirmation and refused. A finding that needs a safety file (see Rules) is also `deferred`, with the exact change a human should make.
+1. **Triage.** Run `node packages/core/scripts/feedback.mjs triage <file>` and read every decision it lists. A fix that would revert, weaken, bypass or contradict an `Accepted` decision is not yours to make (the rules at the top of `docs/decisions.md`): leave the code alone and resolve the finding as `deferred` with `needs user confirmation (D-NNN)`, what the decision says and the change you would propose. The same applies when an edit is held for the user's confirmation and refused. A finding that needs a safety file (see Rules) is also `deferred`, with the exact change a human should make.
 2. **Plan.** For each finding you will fix, decide the smallest correct change and its files. Run `triage` again with `--plan` for those files; every decision it adds is considered too.
 3. **Change.** Make the change.
    - An agent changes only in its source `agents/<name>.md` (body, `description`, `color`) or a fragment in `agents/_shared/`; its tools, subagents, model and MCP servers come from `config/`. Follow the "Script-built agents" checklist: the steps name the script's commands, never restate what the script enforces, and a rule a script can enforce goes into the script, with a test.
@@ -50,7 +50,7 @@ One or more paths `feedback/<source>/<YYYY-MM-DD>-<slug>.md` (format: `docs/conv
    - **Decisions considered:** D-001
    ```
    One `### Finding N` per `## Finding N`. `Status` is exactly `fixed`, `deferred` or `declined`. `Files changed` lists the files of a fixed finding (a comma list or `- path` lines) and is `none` for the others. `Decisions considered` lists the decisions you weighed, or `none`; a fixed finding that changed a file a decision governs names that decision.
-6. **Check.** Run `node scripts/feedback.mjs check <file>`. It must exit 0. Fix the Resolution (or the missing test) as its messages say and run it again, at most 3 rounds; if it still fails, stop and return its messages.
+6. **Check.** Run `node packages/core/scripts/feedback.mjs check <file>`. It must exit 0. Fix the Resolution (or the missing test) as its messages say and run it again, at most 3 rounds; if it still fails, stop and return its messages.
 
 ## Rules
 - **You may change:** `agents/*.md` and `agents/_shared/*.md`, `docs/**`, the feedback files, and the framework scripts, libs, gate rules, fixtures, schemas and templates that `config/permissions.yaml` lists for you, with their tests.
