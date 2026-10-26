@@ -4,7 +4,8 @@
 // (`run.mjs doctor <product>`, which records the result in state/doctor.json for `stage … start`).
 //
 // Groups, and the stages that need them (STAGE_NEEDS):
-//   base     Node.js, the framework's own dependencies, and its peer dependency (playwright) in the workspace
+//   base     Node.js, the framework's own dependencies, and its peer dependency (playwright) in the workspace; for
+//            an installed framework, the host files in sync with it (atf check)
 //   login    the browser the login opens (lib/login.mjs, D-069): Microsoft Edge, else Google Chrome, else the
 //            Chromium build of the framework's Playwright
 //   browser  the Playwright MCP server's browser, and its init page (which loads the run's session, D-076)
@@ -21,10 +22,10 @@ import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { INIT_PAGE } from "./browser-tools.mjs";
-import { loadConfig } from "./config.mjs";
+import { configLocation, ejectedRel, loadConfig, overlayRel } from "./config.mjs";
 import { STAGES, frameworkRoot, paths } from "./contract.mjs";
 import { tryReadJson, writeJson } from "./files.mjs";
-import { expandFw } from "./roots.mjs";
+import { expandFw, isInstalled } from "./roots.mjs";
 
 export const GROUPS = ["base", "login", "browser", "session", "repo", "k6", "target"];
 export const STAGE_NEEDS = {
@@ -91,10 +92,17 @@ export function packageDir(name, from) {
 
 // ---- the checks, one function per group --------------------------------------------------------------------------
 
+// The base group: Node.js and the framework's dependencies, then, for an installed framework, its host files.
+async function base(ctx) {
+  const out = deps(ctx);
+  if (ctx.root && isInstalled(ctx.framework)) out.push(await hostFiles(ctx));
+  return out;
+}
+
 // The framework's own dependencies: its package.json, each resolved from the framework root the way Node resolves it
 // (D-085). Its peer dependencies (playwright) are the workspace's own install, so they must resolve from the workspace
 // root, at the version the framework pins.
-function base({ root, framework, nodeVersion }) {
+function deps({ root, framework, nodeVersion }) {
   const out = [];
   const major = Number(String(nodeVersion).split(".")[0]);
   out.push(major >= MIN_NODE
@@ -131,6 +139,25 @@ function base({ root, framework, nodeVersion }) {
     }
     : { id: "framework-peers", ok: true, detail: `${peers.map(([n, spec]) => `${n} ${spec}`).join(", ")} resolve from the workspace` });
   return out;
+}
+
+// A client's host files (agents, hooks, MCP config, the .gitignore block) as `atf check` sees them: rendered from the
+// installed framework and the workspace's atf/ (packaging §3.6). The postinstall renders them, but not after
+// `npm install --ignore-scripts`, nor after a hand edit or a changed overlay; stale hooks or agents are a session that
+// doesn't match the package, so it fails. Never autofixed: a human runs the sync. The build is loaded only here, so
+// what imports the doctor (run.mjs) doesn't load it in a source checkout.
+async function hostFiles({ root, framework }) {
+  const { sync } = await import("./sync.mjs");
+  let r;
+  try {
+    r = sync({ workspace: root, framework, check: true });
+  } catch (e) {
+    r = { errors: [e.message], changed: [] };
+  }
+  if (r.errors.length) return { id: "host-files", ok: false, level: "fail", detail: `the host files can't be rendered from the installed framework: ${r.errors.join("; ")}`, fix: "fix that, then run npx atf sync (in the workspace)" };
+  const n = r.changed.length;
+  if (n) return { id: "host-files", ok: false, level: "fail", detail: `${n} host file(s) out of date with the installed framework: ${r.changed.slice(0, 5).join(", ")}${n > 5 ? ` and ${n - 5} more` : ""}`, fix: "npx atf sync (in the workspace)" };
+  return { id: "host-files", ok: true, detail: "host files in sync with the installed framework" };
 }
 
 // The login needs a real browser window: some single sign-on providers refuse Playwright's own Chromium, so the login
@@ -181,14 +208,36 @@ export function npxCore(pkgName, version, { env = process.env, platform = proces
   return null;
 }
 
+// The command that renders the host files again after a config change: a client's workspace syncs from the installed
+// package (packaging §3.3; npm run build-agents is the framework's own script, absent there), a source checkout builds.
+const rebuildCommand = (framework) => (isInstalled(framework) ? "npx atf sync (in the workspace)" : "npm run build-agents");
+
+// Where the browser server's config comes from (named, from: for the details) and where a person changes it (edit). A
+// source checkout edits its own config/mcp.yaml. Installed, that copy sits inside node_modules (read-only, replaced on
+// every install), so a client edits the workspace's (D-088, lib/config.mjs): the ejected atf/config/mcp.yaml when there
+// is one, else the overlay atf/mcp.yaml (created if need be), merged over the package's copy key by key, where a list
+// such as `args` replaces the package's whole list. The init page then goes in as `{fw}/…`, which the sync expands to
+// the package's path; the bare path would name a file in the workspace that isn't there.
+function mcpPlace(root, framework) {
+  if (!isInstalled(framework)) return { named: "config/mcp.yaml", from: "config/mcp.yaml", edit: "config/mcp.yaml", initPage: INIT_PAGE };
+  const { source, files } = configLocation("mcp.yaml", { framework, workspace: root });
+  const edit = source === "ejected"
+    ? `${ejectedRel("mcp.yaml")} (your ejected copy)`
+    : `${overlayRel("mcp.yaml")} (an overlay of the package's config/mcp.yaml: a list such as args replaces the package's whole list)`;
+  const list = files.join(" + ");
+  return { named: `the effective mcp.yaml (${list})`, from: `mcp.yaml: ${list}`, edit, initPage: `{fw}/${INIT_PAGE}` };
+}
+
 function browser({ root, framework, cfg, sys, exists }) {
   const out = [];
+  const rebuild = rebuildCommand(framework);
+  const place = mcpPlace(root, framework);
   let mcp = null;
   try {
     mcp = loadConfig("mcp.yaml", { framework, workspace: root });
   } catch {}
   const server = mcp?.servers?.[mcp?.browser_server];
-  if (!server) return [{ id: "mcp-browser", ok: false, level: "fail", detail: "config/mcp.yaml names no browser_server", fix: "define the browser server in config/mcp.yaml, then npm run build-agents" }];
+  if (!server) return [{ id: "mcp-browser", ok: false, level: "fail", detail: `${place.named} names no browser_server`, fix: `define the browser server in ${place.edit}, then ${rebuild}` }];
   const args = (server.args ?? []).map(String);
   const pkgArg = args.find((a) => /^@playwright\/mcp(@|$)/.test(a));
   const pkgVersion = pkgArg?.split("@")[2];
@@ -199,7 +248,7 @@ function browser({ root, framework, cfg, sys, exists }) {
     const found = places.find((p) => exists(p));
     out.push(found
       ? { id: "mcp-browser", ok: true, detail: `the browser server uses ${channel}: ${found}` }
-      : { id: "mcp-browser", ok: false, level: "fail", detail: `the browser server (config/mcp.yaml) launches ${channel}, which is not installed here`, fix: `install ${channel === "chrome" ? "Google Chrome" : "Microsoft Edge"}, or npx playwright install ${channel}` });
+      : { id: "mcp-browser", ok: false, level: "fail", detail: `the browser server (${place.from}) launches ${channel}, which is not installed here`, fix: `install ${channel === "chrome" ? "Google Chrome" : "Microsoft Edge"}, or npx playwright install ${channel}` });
   } else {
     const core = pkgVersion ? npxCore("@playwright/mcp", pkgVersion, sys) : null;
     const name = channel === "chromium" ? ["chromium"] : [channel];
@@ -212,11 +261,11 @@ function browser({ root, framework, cfg, sys, exists }) {
   // D-076: the framework's init page loads the run's session and guards readonly writes; a --storage-state would load
   // one product's session for every product
   const auth = cfg.authorizations ?? {};
-  const fixMcp = "in config/mcp.yaml, then run npm run build-agents and restart the agent session";
+  const fixMcp = `in ${place.edit}, then run ${rebuild} and restart the agent session`;
   // as config/mcp.yaml writes it: `{fw}/` before the framework's path (D-085), or the bare path in a same-root repo
   const initPage = argValue(args, "--init-page") ?? args.find((a) => a.startsWith("--init-page="))?.slice("--init-page=".length);
   if (slash(initPage)?.replace(/^\{fw\}\//, "") !== INIT_PAGE)
-    out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server does not run the framework's init page (--init-page ${INIT_PAGE}), which loads the run's session and aborts every write in a readonly run`, fix: `add "--init-page", "${INIT_PAGE}" to the browser server's args ${fixMcp}` });
+    out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server does not run the framework's init page (--init-page ${INIT_PAGE}), which loads the run's session and aborts every write in a readonly run`, fix: `add "--init-page", "${place.initPage}" to the browser server's args ${fixMcp}` });
   else if (argValue(args, "--storage-state"))
     out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server also starts from --storage-state ${slash(argValue(args, "--storage-state"))}, one product's session for every product`, fix: `remove --storage-state (the init page loads this run's session) ${fixMcp}` });
   else if (auth.authenticated_crawl) out.push({ id: "mcp-session", ok: true, detail: `the init page loads ${slash(auth.session_state_file)} into every new browser` });

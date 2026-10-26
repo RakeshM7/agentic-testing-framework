@@ -1,0 +1,5 @@
+# A config overlay (docs/packaging.md §3.4): merged over the package's config/models.yaml. The tests check that the
+# generated report-generator runs this model on Claude Code, and every other agent the package's default.
+agents:
+  report-generator:
+    claude: haiku

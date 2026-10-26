@@ -1,5 +1,6 @@
-# Hook registrations for every host (docs/decisions.md D-020, D-042). `npm run build-agents` renders them into
-# .claude/settings.json (its `hooks` key), .github/hooks/framework-guard.json and .vscode/hooks/framework-guard.json.
+# Hook registrations for every host (docs/decisions.md D-020, D-092). `npm run build-agents` (`npx atf sync` in a client
+# workspace) renders them into .claude/settings.json (only the framework's own entries in its `hooks` key; the
+# workspace's own hooks there are kept), .github/hooks/framework-guard.json and .vscode/hooks/framework-guard.json.
 # Never hand-edit those hook entries; `npm run check` fails on drift.
 #
 # The PreToolUse safety guard is always registered and always blocking; it is not configurable here.

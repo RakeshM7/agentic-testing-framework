@@ -959,6 +959,8 @@ test("every framework script is writable by feedback-implementor-agent or delibe
     "scripts/config.test.mjs",
     // D-087: the atf CLI is the human's command surface; the guard's human-only match relies on its strict parsing
     "scripts/lib/cli.mjs", "scripts/cli.test.mjs",
+    // D-089: sync renders the hook registrations and MCP configs into the workspace; init writes its atf/ settings
+    "scripts/lib/sync.mjs", "scripts/sync.test.mjs", "scripts/lib/init.mjs", "scripts/init.test.mjs",
   ]);
   const files = [];
   // node_modules is git-ignored and never the framework's own code, wherever an install put it; paths as the run's
@@ -1079,7 +1081,9 @@ test("the workspace's atf/ is human-only: no framework agent writes there or eje
   ];
   const cmds = ["echo x > atf/mcp.yaml", "cp a atf/config/permissions.yaml", "sed -i 's/a/b/' atf/hooks.yaml", "cd atf && echo x >> permissions.yaml", "rm -r atf",
     // the CLI's eject writes atf/config/ in process, however it is started
-    "npx atf eject config", "node packages/core/bin/atf.mjs eject config permissions.yaml", "atf ej''ect config", "bash -c \"npx atf eject config models.yaml\""];
+    "npx atf eject config", "node packages/core/bin/atf.mjs eject config permissions.yaml", "atf ej''ect config", "bash -c \"npx atf eject config models.yaml\"",
+    // the CLI's init writes a workspace's atf/ in process too, in any folder
+    "npx atf init", "npx atf init ../other-ws --no-install", "npx @testagentic/atf init", "node node_modules/@testagentic/atf/bin/atf.mjs init", "atf in''it", "bash -c \"npx atf init\""];
   const as = (agent, c) => ({ ...c, agent });
   for (const root of roots)
     for (const agent of roster) {
@@ -1089,13 +1093,17 @@ test("the workspace's atf/ is human-only: no framework agent writes there or eje
   assert.equal(check(outside, call("module-explorer", "Write", { file_path: path.join(outside, "link", "permissions.yaml") })).rule, "workspace-settings", "through a symlink");
   assert.match(check(outside, call("pw-ui-fixer", "Write", { file_path: path.join(outside, "atf", "permissions.yaml") })).reason, /^atf\/permissions\.yaml is under atf\/; atf\/ holds this workspace's own settings.*only a human changes.*report the change it needs instead$/);
   assert.match(check(outside, sh("pw-ui-fixer", "npx atf eject config")).reason, /^`atf eject` writes atf\/config\/; /);
+  assert.match(check(outside, sh("orchestrator-agent", "npx atf init")).reason, /^`atf init` writes atf\/ \(a workspace's marker and decision log\); atf\/ holds/);
+  // the run's own init (run.mjs init) is no atf CLI, from any path to the framework
+  for (const c of ["node node_modules/@testagentic/atf/scripts/run.mjs init config/acme.yaml", "node scripts/run.mjs init config/acme.yaml --resume", "node node_modules\\@testagentic\\atf\\scripts\\run.mjs init config/acme.yaml", "git init", "npm init -y"])
+    assert.notEqual(check(outside, sh("orchestrator-agent", c)).rule, "workspace-settings", c);
 
   // a call its host can't attribute comes from one of the run's agents (D-035): refused during a run, in either mode
   const unnamed = (host, kind, x) => toolCall({ host, kind, tool: kind === "shell" ? "bash" : "edit", ...x });
   for (const { root } of [FULL, RO])
     for (const host of ["copilot-cli", "vscode-agent-host", "copilot-cloud", "unknown"]) {
       assert.equal(check(root, unnamed(host, "write", { paths: [path.join(root, "atf", "permissions.yaml")] })).rule, "workspace-settings", `${host}: write`);
-      for (const c of ["echo x > atf/mcp.yaml", "npx atf eject config"]) assert.equal(check(root, unnamed(host, "shell", { command: c })).rule, "workspace-settings", `${host}: ${c}`);
+      for (const c of ["echo x > atf/mcp.yaml", "npx atf eject config", "npx atf init"]) assert.equal(check(root, unnamed(host, "shell", { command: c })).rule, "workspace-settings", `${host}: ${c}`);
     }
 
   // a human's own session stays allowed: no agent on a host that names agents (and on any host outside a run), or an
@@ -1103,7 +1111,8 @@ test("the workspace's atf/ is human-only: no framework agent writes there or eje
   for (const root of roots) {
     for (const w of writes(root)) assert.notEqual(check(root, w).rule, "workspace-settings", `human: ${w.tool} ${w.paths[0]}`);
     for (const c of cmds) assert.notEqual(check(root, sh(undefined, c)).rule, "workspace-settings", `human: ${c}`);
-    for (const agent of ["general-purpose", "Explore"]) assert.notEqual(check(root, sh(agent, "npx atf eject config")).rule, "workspace-settings", agent);
+    for (const agent of ["general-purpose", "Explore"])
+      for (const c of ["npx atf eject config", "npx atf init"]) assert.notEqual(check(root, sh(agent, c)).rule, "workspace-settings", `${agent}: ${c}`);
     assert.notEqual(check(root, unnamed("vscode", "write", { paths: [path.join(root, "atf", "permissions.yaml")] })).rule, "workspace-settings", "VS Code's local agent outside a custom agent");
   }
   assert.equal(check(outside, call(undefined, "Write", { file_path: path.join(outside, "atf", "permissions.yaml") })).allowed, true);

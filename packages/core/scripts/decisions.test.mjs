@@ -1,6 +1,8 @@
 // docs/decisions.md stays consistent (and its Affects paths real), and the governance policy asks before a governed
 // file changes. The log, and the paths its Affects name, are the workspace's: this repo's root, where a framework file
-// is named by its path from there (`packages/core/scripts/...` in the monorepo).
+// is named by its path from there (`packages/core/scripts/...` in the monorepo). Each workspace has its own log
+// (docs/packaging.md §3.7): atf/atf.json names it, else atf/decisions.md, a client's, which starts from
+// templates/workspace/decisions.md; the monorepo's atf.json names docs/decisions.md.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -9,16 +11,17 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { frameworkRoot, workspaceRoot } from "./lib/contract.mjs";
-import { DECISIONS_FILE, checkDecisions, confirmedIn, entryText, parseDecisions, rememberConfirmed, shellWriteTargets } from "./lib/decisions.mjs";
+import { DECISIONS_FILE, checkDecisions, confirmedIn, decisionsFile, entryText, loadDecisions, parseDecisions, rememberConfirmed, shellWriteTargets } from "./lib/decisions.mjs";
 import { main as cli } from "./decisions.mjs";
 import { globToRegExp } from "./lib/permissions.mjs";
 import { toolCall } from "./lib/tool-call.mjs";
 import { expandFw, frameworkRel } from "./lib/roots.mjs";
-import { tempRoot } from "./test-helpers.mjs";
+import { put, tempRoot } from "./test-helpers.mjs";
 
 const fwPath = (rel) => expandFw(`{fw}/${rel}`, frameworkRel(workspaceRoot, frameworkRoot));
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const text = readFileSync(path.join(workspaceRoot, DECISIONS_FILE), "utf8");
+const LOG_PATH = decisionsFile(workspaceRoot).path;
+const text = readFileSync(LOG_PATH, "utf8");
 const decisions = parseDecisions(text);
 const index = new Map([...text.matchAll(/^\| (D-\d{3}) \| (.+?) \| (.+?) \| (\d{4}-\d{2}-\d{2}) \|$/gm)].map(([, id, title, status]) => [id, { title, status }]));
 const repoFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: workspaceRoot, encoding: "utf8" }).split("\n").filter(Boolean);
@@ -130,20 +133,30 @@ test("an unreadable log makes every framework write ask; a missing log governs n
   assert.throws(() => parseDecisions("### D-001 · No status\n"), /needs a Status and an Affects line/);
 });
 
+// The hook entries as a host runs them: a bare environment, plus the temp dir variables so the session memo lands where
+// this suite may write.
+const TMP_ENV = Object.fromEntries(["TMPDIR", "TEMP", "TMP"].filter((k) => process.env[k]).map((k) => [k, process.env[k]]));
+const hook = (root) => (script, payload) =>
+  execFileSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", script), "--host", "claude-code"], { input: JSON.stringify(payload), env: { PATH: process.env.PATH, CLAUDE_PROJECT_DIR: root, ...TMP_ENV }, encoding: "utf8" });
+const editPayload = (root, rel) => ({ session_id: `t-${process.pid}-${Date.now()}-${Math.random()}`, tool_name: "Edit", tool_input: { file_path: path.join(root, rel) } });
+
 test("the hook entry asks Claude Code to confirm a governed edit, and remembers it after the edit", () => {
+  // the monorepo's shape: atf.json names docs/decisions.md
   const root = tempRoot();
-  mkdirSync(path.join(root, "docs"), { recursive: true });
-  writeFileSync(path.join(root, DECISIONS_FILE), LOG);
-  const run = (script, payload) =>
-    execFileSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", script), "--host", "claude-code"], { input: JSON.stringify(payload), env: { PATH: process.env.PATH, CLAUDE_PROJECT_DIR: root }, encoding: "utf8" });
-  const payload = { session_id: `t-${process.pid}-${Date.now()}`, tool_name: "Edit", tool_input: { file_path: path.join(root, "config/permissions.yaml") } };
-  assert.equal(JSON.parse(run("pretooluse.mjs", payload)).hookSpecificOutput.permissionDecision, "ask");
+  put(root, "atf/atf.json", JSON.stringify({ decisions: "docs/decisions.md" }));
+  put(root, "docs/decisions.md", LOG);
+  const run = hook(root);
+  const payload = editPayload(root, "config/permissions.yaml");
+  const asked = JSON.parse(run("pretooluse.mjs", payload)).hookSpecificOutput;
+  assert.equal(asked.permissionDecision, "ask");
+  assert.match(asked.permissionDecisionReason, /See docs\/decisions\.md\./);
   run("posttooluse.mjs", payload);
   assert.equal(run("pretooluse.mjs", payload), "", "confirmed for this session: allowed silently");
 });
 
 test("the decision lookup (D-082): the decisions governing a file, the index, and full entries, from the log itself", () => {
-  const text = readFileSync(path.join(workspaceRoot, DECISIONS_FILE), "utf8");
+  const LOG_PATH = decisionsFile(workspaceRoot).path;
+const text = readFileSync(LOG_PATH, "utf8");
   const all = parseDecisions(text);
   const decisionsCli = (argv) => cli(argv, { root: workspaceRoot, cwd: workspaceRoot });
   const forRun = decisionsCli(["for", fwPath("scripts/run.mjs"), "docs/nothing-here.md"]);
@@ -172,4 +185,148 @@ test("the decision lookup reads a relative path from a working directory inside 
   // from outside the workspace, a relative path is the workspace root's
   assert.equal(cli(["for", "docs/decisions.md"], { root: workspaceRoot, cwd: tmpdir() }).out.files[0].path, "docs/decisions.md");
   assert.equal(cli(["for", path.join(workspaceRoot, "AGENTS.md")], { root: workspaceRoot, cwd: tmpdir() }).out.files[0].path, "AGENTS.md");
+});
+
+// ---- each workspace's own log (docs/packaging.md §3.7) ---------------------------------------------------------------
+const CLIENT_LOG = `# Design decisions
+
+## Index
+
+| ID | Decision | Status | Date |
+|---|---|---|---|
+| D-001 | Locators are roles first | Accepted | 2026-10-26 |
+
+## Decisions
+
+### D-001 · Locators are roles first
+- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** team review
+- **Decision:** page objects use getByRole before any CSS.
+- **Why:** stable across restyles.
+- **Affects:** \`atf/agents/pw-ui-pom-writer.extra.md\`, \`config/acme.yaml\`
+`;
+// a client-style workspace: the marker atf.json (`{}` unless given) and, when given, the log at atf/decisions.md
+const clientRoot = ({ atf = "{}", log } = {}) => {
+  const root = tempRoot();
+  put(root, "atf/atf.json", atf);
+  if (log !== undefined) put(root, "atf/decisions.md", log);
+  return root;
+};
+
+test("the log is atf/decisions.md by default: a client's entries govern its files, and the messages name that file", () => {
+  assert.equal(DECISIONS_FILE, "atf/decisions.md");
+  const root = clientRoot({ log: CLIENT_LOG });
+  assert.deepEqual(decisionsFile(root), { file: "atf/decisions.md", path: path.join(root, "atf", "decisions.md") });
+  const loaded = loadDecisions(root);
+  assert.equal(loaded.file, "atf/decisions.md");
+  assert.deepEqual(loaded.decisions.map((d) => d.id), ["D-001"]);
+  const v = checkDecisions(write(path.join(root, "config/acme.yaml")), root, loaded);
+  assert.equal(v.decision, "ask");
+  assert.deepEqual(v.ids, ["D-001"]);
+  assert.match(v.reason, /D-001 "Locators are roles first" \(config\/acme\.yaml\)\. See atf\/decisions\.md\. .* goes into atf\/decisions\.md in the same change/);
+  // a docs/decisions.md the workspace doesn't name is no log of it
+  const other = clientRoot();
+  put(other, "docs/decisions.md", CLIENT_LOG);
+  assert.deepEqual(loadDecisions(other), { decisions: [], file: "atf/decisions.md" }, "a missing log governs nothing");
+  assert.equal(checkDecisions(write("config/acme.yaml"), other, loadDecisions(other)).decision, "allow");
+  // no marker at all (a hook outside any workspace): the default too
+  assert.equal(decisionsFile(tempRoot()).file, "atf/decisions.md");
+  // a malformed client entry fails closed, naming the client's file
+  const bad = clientRoot({ log: "### D-001 · No status\n" });
+  const broken = loadDecisions(bad);
+  assert.match(broken.error, /^atf\/decisions\.md: D-001 needs a Status and an Affects line/);
+  assert.match(checkDecisions(write("config/acme.yaml"), bad, broken).reason, /^atf\/decisions\.md could not be read/);
+});
+
+test("the monorepo's atf.json names docs/decisions.md, the maintainers' log", () => {
+  assert.deepEqual(JSON.parse(readFileSync(path.join(workspaceRoot, "atf", "atf.json"), "utf8")), { decisions: "docs/decisions.md" });
+  assert.deepEqual(decisionsFile(workspaceRoot), { file: "docs/decisions.md", path: path.join(workspaceRoot, "docs", "decisions.md") });
+  assert.equal(loadDecisions(workspaceRoot).decisions.length, decisions.length);
+  // a named path is the workspace's, whatever separator it is written with, and normalized
+  for (const [named, file] of [["docs\\decisions.md", "docs/decisions.md"], ["docs/../atf/log.md", "atf/log.md"], ["  ./x/log.md ", "x/log.md"]])
+    assert.equal(decisionsFile(clientRoot({ atf: JSON.stringify({ decisions: named }) })).file, file, named);
+});
+
+test("an invalid atf.json fails closed: every governed-area write asks, naming atf/atf.json", () => {
+  for (const atf of ["{ not json", "[]", "null", "42", JSON.stringify({ decisions: 7 }), JSON.stringify({ decisions: "" }), JSON.stringify({ decisions: null })]) {
+    const root = clientRoot({ atf, log: CLIENT_LOG });
+    const loaded = loadDecisions(root);
+    assert.match(loaded.error, /^atf\/atf\.json /, atf);
+    const v = checkDecisions(write("scripts/anything.mjs"), root, loaded);
+    assert.equal(v.decision, "ask", atf);
+    assert.match(v.reason, /^the workspace's decision log could not be read \(atf\/atf\.json /, atf);
+    assert.equal(checkDecisions(write("artifacts/acme/x.md"), root, loaded).decision, "allow", "run output stays ungoverned");
+  }
+  // an editor's byte-order mark is not a broken file
+  assert.equal(decisionsFile(clientRoot({ atf: `\uFEFF${JSON.stringify({ decisions: "docs/log.md" })}` })).file, "docs/log.md");
+});
+
+test("a log path outside the workspace fails closed", () => {
+  for (const named of ["../decisions.md", "docs/../../decisions.md", "..\\decisions.md", "/etc/decisions.md", "C:/decisions.md", "C:decisions.md", "c:\\decisions.md", "\\\\server\\share\\decisions.md", ".", "docs/.."]) {
+    const root = clientRoot({ atf: JSON.stringify({ decisions: named }) });
+    const loaded = loadDecisions(root);
+    assert.match(loaded.error ?? "", /^atf\/atf\.json "decisions" \(.+\) must name a file inside the workspace/, named);
+    assert.equal(checkDecisions(write("config/acme.yaml"), root, loaded).decision, "ask", named);
+  }
+  const cli_ = cli(["index"], { root: clientRoot({ atf: JSON.stringify({ decisions: "../x.md" }) }) });
+  assert.equal(cli_.code, 1);
+  assert.match(cli_.out.errors[0], /must name a file inside the workspace/);
+});
+
+test("a confirmation is remembered per log: once atf.json names another log, its decisions ask again", () => {
+  const root = clientRoot({ log: CLIENT_LOG });
+  rememberConfirmed(root, "s-log", ["D-001"]);
+  assert.ok(confirmedIn(root, "s-log").has("D-001"));
+  put(root, "atf/atf.json", JSON.stringify({ decisions: "docs/other.md" }));
+  assert.equal(confirmedIn(root, "s-log").size, 0);
+});
+
+test("the hook entry asks to confirm an edit a client's entry governs, naming atf/decisions.md, and remembers it", () => {
+  const root = clientRoot({ log: CLIENT_LOG });
+  const run = hook(root);
+  const payload = editPayload(root, "atf/agents/pw-ui-pom-writer.extra.md");
+  const asked = JSON.parse(run("pretooluse.mjs", payload)).hookSpecificOutput;
+  assert.equal(asked.permissionDecision, "ask");
+  assert.match(asked.permissionDecisionReason, /D-001 "Locators are roles first" \(atf\/agents\/pw-ui-pom-writer\.extra\.md\)\. See atf\/decisions\.md\./);
+  run("posttooluse.mjs", payload);
+  assert.equal(run("pretooluse.mjs", payload), "", "confirmed for this session: allowed silently");
+  assert.equal(run("pretooluse.mjs", editPayload(root, "README.md")), "", "an ungoverned file is not held");
+  // a broken atf.json: the hook asks, naming it
+  put(root, "atf/atf.json", "{ not json");
+  assert.match(JSON.parse(run("pretooluse.mjs", editPayload(root, "README.md"))).hookSpecificOutput.permissionDecisionReason, /atf\/atf\.json could not be read as JSON/);
+});
+
+test("the decision lookup reads a client's log: for, index and show", () => {
+  const root = clientRoot({ log: CLIENT_LOG });
+  const run = (argv) => cli(argv, { root, cwd: root });
+  const forRun = run(["for", "config/acme.yaml", "playwright-tests/acme/x.spec.ts"]);
+  assert.equal(forRun.code, 0);
+  assert.equal(forRun.out.log, "atf/decisions.md");
+  assert.deepEqual(forRun.out.files, [
+    { path: "config/acme.yaml", decisions: [{ id: "D-001", title: "Locators are roles first" }] },
+    { path: "playwright-tests/acme/x.spec.ts", decisions: [] },
+  ]);
+  assert.equal(forRun.out.warning, undefined);
+  assert.equal(run(["for", "config/acme.yaml", "--full"]).out.trimEnd(), `<!-- config/acme.yaml: D-001 -->\n\n${entryText(CLIENT_LOG, "D-001")}`);
+  assert.deepEqual(run(["index"]).out, { log: "atf/decisions.md", accepted: [{ id: "D-001", title: "Locators are roles first" }] });
+  assert.equal(run(["show", "D-001"]).out, `${entryText(CLIENT_LOG, "D-001")}\n`);
+  assert.deepEqual(run(["show", "D-002"]).out.errors, ["D-002 is not in atf/decisions.md"]);
+  // no log yet: nothing is governed, and the lookup says so instead of looking like a check that passed
+  const none = cli(["index"], { root: clientRoot(), cwd: tmpdir() });
+  assert.equal(none.code, 0);
+  assert.deepEqual(none.out.accepted, []);
+  assert.match(none.out.warning, /^atf\/decisions\.md does not exist/);
+});
+
+test("the client log template parses with zero entries, and its lookup commands name the framework by {fw}", () => {
+  const template = readFileSync(path.join(frameworkRoot, "templates", "workspace", "decisions.md"), "utf8");
+  assert.deepEqual(parseDecisions(template), []);
+  assert.equal([...template.matchAll(/^\| D-\d{3} \|/gm)].length, 0, "an empty index");
+  assert.match(template, /^## Index\n\n\| ID \| Decision \| Status \| Date \|\n\|---\|---\|---\|---\|\n/m);
+  for (const cmd of ["for <every file you will change> --full", "index", "show <D-NNN>"]) assert.ok(template.includes(`\`node {fw}/scripts/decisions.mjs ${cmd}\``), cmd);
+  assert.doesNotMatch(template, /packages\/core|docs\/decisions\.md|scripts\/lib\//, "no maintainer paths");
+  // installed as a client's log, the lookup and the hook read it as an empty log
+  const root = clientRoot({ log: template });
+  assert.deepEqual(loadDecisions(root), { decisions: [], file: "atf/decisions.md" });
+  assert.deepEqual(cli(["index"], { root }).out, { log: "atf/decisions.md", accepted: [] });
+  assert.equal(checkDecisions(write("config/acme.yaml"), root, loadDecisions(root)).decision, "allow");
 });

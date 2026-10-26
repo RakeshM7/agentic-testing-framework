@@ -1,0 +1,17 @@
+# A sample run-config, valid per `node {fw}/scripts/run-config.mjs validate config/acme.yaml`.
+product: acme
+steps: [explore, testcases]
+
+target:
+  url: https://crm.acme.test
+
+modules:
+  - slug: contacts
+    name: Contacts
+    entry_url: https://crm.acme.test/contacts
+
+authorizations:
+  mode: readonly
+
+testcases:
+  output_format: gherkin

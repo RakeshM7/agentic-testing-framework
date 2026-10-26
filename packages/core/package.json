@@ -9,7 +9,8 @@
     "atf": "bin/atf.mjs"
   },
   "scripts": {
-    "test": "node --test \"scripts/**/*.test.mjs\""
+    "test": "node --test \"scripts/**/*.test.mjs\"",
+    "postinstall": "node bin/atf.mjs sync --postinstall"
   },
   "dependencies": {
     "acorn": "8.19.0",

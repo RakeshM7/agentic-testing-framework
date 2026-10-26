@@ -103,11 +103,15 @@ test("the human-only forms are spelled exactly: no alias, no abbreviation, no --
   assert.match(err("approve", "acme", "Contacts"), /<module> 'Contacts' must be a lowercase kebab-case slug/);
   assert.match(err("status", "acme", "extra"), /unexpected 'extra'/);
   assert.match(err("constructor"), /unknown command 'constructor'/);
+  // an optional positional (atf init [<dir>]) takes one word at most, and the rest stays strict
+  assert.equal(plan(["init", "--no-install"], ctx(root, { cwd: root })).steps[0].init.dir, root);
+  assert.match(err("init", "a", "b"), /^atf init: unexpected 'b'$/);
+  assert.match(err("init", "--approved"), /Unknown option '--approved'/);
 });
 
 test("help and usage", () => {
   for (const argv of [[], ["help"], ["--help"], ["-h"], ["run", "--help"]]) assert.equal(plan(argv, ctx(ws())).print, USAGE, argv.join(" "));
-  for (const cmd of ["setup", "config", "interview", "login", "validate", "doctor", "e2e", "eject", "run", "status", "next", "diff", "resume", "explore", "clarifications", "testcases", "k6", "report", "automate", "steps", "import", "approve", "sweep"])
+  for (const cmd of ["init", "setup", "config", "interview", "login", "validate", "doctor", "e2e", "eject", "run", "status", "next", "diff", "resume", "explore", "clarifications", "testcases", "k6", "report", "automate", "steps", "import", "approve", "sweep"])
     assert.match(USAGE, new RegExp(`atf (?:\\S+\\|)*${cmd}\\b`), `${cmd} is in the usage`);
 });
 

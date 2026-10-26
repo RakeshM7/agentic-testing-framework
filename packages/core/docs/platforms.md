@@ -46,12 +46,24 @@ VS Code Copilot Chat can run a chat on two engines. They behave differently for 
 
 ## Setup
 
+### A client workspace (D-089)
+1. Create it: `npx @testagentic/atf init <dir>`.
+   - **What it writes:** `package.json` with the package pinned, a commented `.npmrc` registry template, the `.gitignore` entries for run output and secrets, `atf/` with an empty decision log, `AGENTS.md`, `config/` and `.vscode/settings.json`. It never overwrites a file.
+   - **Then it installs:** it runs `npm install` and the base doctor checks.
+2. **Automatic sync:** every `npm install` renders the host files (agents, MCP configs, hook registrations) through the package's postinstall `atf sync`. Those files are git-ignored. If install scripts are disabled, run `npx atf sync` yourself; `npx atf doctor <product>` reports stale files and `npx atf check` fails on them.
+3. **Customize only in `atf/`:**
+   - config overlays `atf/<file>.yaml`, or ejected copies (`npx atf eject config <file>`);
+   - agent additions `atf/agents/<name>.extra.md`;
+   - your own MCP servers under `servers:` in `atf/mcp.yaml`.
+
+   Your own Claude Code hooks in `.claude/settings.json` and your own agent files are kept by sync. Agents never write `atf/`.
+
 ### Claude Code
 1. `npm install` (the hooks themselves need only Node).
 2. Start the session with `claude --agent orchestrator-agent` and give it `config/<product>.yaml`.
 3. `.claude/settings.json` registers `scripts/hooks/pretooluse.mjs` and `posttooluse.mjs` with `--host claude-code`.
 
-**Hook registrations on every host are generated** from `config/hooks.yaml` by `npm run build-agents` (D-042); never hand-edit them. The PreToolUse guard is always registered and blocking. The PostToolUse hook, which only remembers confirmed design decisions, is set for all hosts with:
+**Hook registrations on every host are generated** from `config/hooks.yaml` by `npm run build-agents`, or `npx atf sync` in a client workspace (D-092); never hand-edit the framework's entries. In `.claude/settings.json` the build owns only the framework's own hook entries, so a workspace's own Claude Code hooks there are kept. The PreToolUse guard is always registered and blocking. The PostToolUse hook, which only remembers confirmed design decisions, is set for all hosts with:
 
 ```
 npm run build-agents -- --post-hook async   # default: Claude Code runs it in the background; Copilot and VS Code wait for it

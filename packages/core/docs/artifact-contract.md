@@ -377,7 +377,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
   - **What no override can do.** It can't register or switch off the PreToolUse guard (`hooks.yaml` holds only `post_tool_use`), or change the hard rules above, which are in code.
   - **Who may write them.** The guard refuses any write under `atf/` (rule `workspace-settings`) to every framework agent, and during a run to calls a host can't attribute.
   - **What gets recorded.** `run.json` `provenance.config` records each file's source and digest. The report shows a "Custom safety config" notice when the run's `permissions.yaml` was not the framework's own copy.
-- **Design decisions** — separately from safety, the same hook asks the user before an edit to a file that an Accepted decision in [`decisions.md`](../../../docs/decisions.md) governs (`scripts/lib/decisions.mjs`); deny beats ask beats allow.
+- **Design decisions** — separately from safety, the same hook asks the user before an edit to a file that an Accepted decision in the workspace's decision log governs (`atf/atf.json` `decisions`, default `atf/decisions.md`; `scripts/lib/decisions.mjs`, D-091); deny beats ask beats allow.
 - **Known limits** — a `shell: project` agent could still write files or call the network through a script the guard can't parse; Playwright `mutationGuard` fixtures and k6 host allow-lists (built in their domains) are the second layer.
 
 ## Schemas

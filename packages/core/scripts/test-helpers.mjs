@@ -4,7 +4,7 @@
 // commands are `node scripts/...` and the browser config is the root's own. Templates and schemas still come from the
 // real framework. scripts/workspace.test.mjs covers a workspace apart from its framework.
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -16,7 +16,7 @@ import { frameworkRoot, paths } from "./lib/contract.mjs";
 import { parseCsv, serializeCsv } from "./lib/csv.mjs";
 import { knowledgePaths, mergeGlossary, registerSource, render, runCheck, storeSnapshot } from "./lib/knowledge.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
-import { GROUPS, recordDoctor } from "./lib/doctor.mjs";
+import { GROUPS, packageDir, recordDoctor } from "./lib/doctor.mjs";
 import { initRun } from "./run.mjs";
 
 export function tempRoot() {
@@ -409,4 +409,37 @@ export function finishExploration(s, ids) {
   });
   s.write("flows/create-contact.md", `# Create a contact\nPreconditions: signed in.\n1. Open "Contacts" (${ids.list}).\n2. Click "New contact" (${ids.dialog}).\nExpected result: the "New contact" dialog opens.\n`);
   s.write("module-summary.md", "# Contacts\n## Pages\n- contacts, contacts-id\n");
+}
+
+// ---- a client's workspace with the framework installed (docs/packaging.md §3.1, §3.6) ------------------------------
+
+const CLIENT_FIXTURE = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "client-workspace");
+export const INSTALLED_PACKAGE = "node_modules/@testagentic/atf";
+
+// installedWorkspace(): a client's test repo as `npm install` leaves it, for what only an installed framework does
+// (atf sync's .gitignore block, the doctor's host-files check, the postinstall, agent fragments, atf init). Offline: no
+// npm, no network.
+//   - scripts/fixtures/client-workspace is copied into a temp directory: package.json, atf/atf.json, the overlay
+//     atf/models.yaml (report-generator on haiku for Claude Code) and the run-config config/acme.yaml.
+//   - A real copy of this framework (not a link: isInstalled() needs node_modules in its real path) goes to
+//     <root>/node_modules/@testagentic/atf, so `{fw}` there is node_modules/@testagentic/atf. Left out, as the published
+//     package leaves them out: every node_modules folder and scripts/fixtures.
+//   - Every package in this repository's node_modules but the framework's own link (js-yaml, ajv, acorn, their own
+//     dependencies, playwright) is linked into <root>/node_modules, as junctions on Windows (no admin rights needed),
+//     so the copy's scripts import them as a client's would.
+// -> { root: the workspace, framework: the installed copy }, both real paths. Pass them to in-process calls
+// (build({ root, framework }), plan(argv, { workspace: root, framework }), runChecks(…, { root, framework })), or run the
+// copy's own scripts (`node <framework>/bin/atf.mjs …`) for anything that depends on where the script lives.
+export function installedWorkspace() {
+  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), "atf-client-")));
+  cpSync(CLIENT_FIXTURE, root, { recursive: true });
+  const framework = path.join(root, ...INSTALLED_PACKAGE.split("/"));
+  const skip = new Set([path.join(frameworkRoot, "scripts", "fixtures")]);
+  cpSync(frameworkRoot, framework, { recursive: true, filter: (src) => path.basename(src) !== "node_modules" && !skip.has(src) });
+  const deps = path.dirname(packageDir("js-yaml", frameworkRoot));
+  for (const name of readdirSync(deps)) {
+    if (name.startsWith(".") || name === "@testagentic" || name === "node_modules") continue;
+    symlinkSync(path.join(deps, name), path.join(root, "node_modules", name), "junction");
+  }
+  return { root, framework };
 }

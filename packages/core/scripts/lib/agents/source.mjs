@@ -29,12 +29,13 @@ function validate(name, meta, rel) {
 // lists only agents/*.md, never the _shared directory. The build lints and limits the EXPANDED body, and the
 // generated files hold the expanded text, so a changed fragment is drift in every agent that includes it.
 export const SHARED_DIR = "_shared";
-const INCLUDE_LINE = /^[ \t]*<!--\s*include:\s*(\S+?)\s*-->[ \t]*\r?$/m;
+// (the line's own `\r`, captured, is put back after the text, or a CRLF source would get one bare LF per include)
+const INCLUDE_LINE = /^[ \t]*<!--\s*include:\s*(\S+?)\s*-->[ \t]*(\r?)$/m;
 const TARGET = new RegExp(`^${SHARED_DIR}/([A-Za-z0-9][A-Za-z0-9._-]*\\.md)$`);
 
 export function expandIncludes(root, rel, body, errors) {
   const crlf = body.includes("\r\n");
-  return body.replace(new RegExp(INCLUDE_LINE.source, "gm"), (whole, target) => {
+  return body.replace(new RegExp(INCLUDE_LINE.source, "gm"), (whole, target, cr) => {
     const m = TARGET.exec(target);
     if (!m) {
       errors.push(`${rel}: include '${target}' must be ${SHARED_DIR}/<file>.md`);
@@ -47,12 +48,61 @@ export function expandIncludes(root, rel, body, errors) {
     }
     const text = readFileSync(file, "utf8").replace(/\r\n/g, "\n").replace(/\n+$/, "");
     if (INCLUDE_LINE.test(text)) errors.push(`${SOURCE_DIR}/${target}: a fragment cannot include another fragment`);
-    return crlf ? text.replace(/\n/g, "\r\n") : text;
+    return (crlf ? text.replace(/\n/g, "\r\n") : text) + cr;
   });
 }
 
-// -> { sources: { [name]: { meta, body, eol } }, errors }. `names` = the agents in config/permissions.yaml.
-export function loadSources(root, names) {
+// Add-on fragments (docs/packaging.md §3.5): a workspace's `atf/agents/<name>.extra.md` is appended to that framework
+// agent's body under a fixed heading, so a client adds house rules to an agent without forking its source. It is body
+// text only: no frontmatter (a leading `---` block is an error), so tools, model, MCP servers and subagents still come
+// only from config (D-006, D-018), and no include line (`_shared/` is the framework's). Only `<name>.extra.md` files
+// for agents the framework has belong in the folder; anything else, a subfolder included, fails the build, named, so
+// a misspelt fragment is never silently dropped. Dot-files (a Finder `.DS_Store`) are not entries. The build lints and
+// limits the COMBINED body like any source, and the generated files hold it, so a changed fragment is drift.
+export const FRAGMENT_DIR = "atf/agents";
+export const FRAGMENT_SUFFIX = ".extra.md";
+export const fragmentRel = (name) => `${FRAGMENT_DIR}/${name}${FRAGMENT_SUFFIX}`;
+export const fragmentHeading = (name) => `## Project additions (from ${fragmentRel(name)})`;
+const LEADING_FRONTMATTER = /^---[ \t]*(\n|$)/;
+
+// -> { [name]: fragment text (LF, trimmed) }, pushing an error per stray entry or bad fragment.
+export function loadFragments(workspace, names, errors) {
+  const dir = path.join(workspace, ...FRAGMENT_DIR.split("/"));
+  const fragments = {};
+  for (const entry of existsSync(dir) ? readdirSync(dir, { withFileTypes: true }) : []) {
+    const f = entry.name;
+    if (f.startsWith(".")) continue;
+    const rel = `${FRAGMENT_DIR}/${f}`;
+    if (!entry.isFile() || !f.endsWith(FRAGMENT_SUFFIX) || f === FRAGMENT_SUFFIX) {
+      errors.push(`${rel}: only <agent>${FRAGMENT_SUFFIX} add-on fragments belong in ${FRAGMENT_DIR}/`);
+      continue;
+    }
+    const name = f.slice(0, -FRAGMENT_SUFFIX.length);
+    if (!names.includes(name)) {
+      errors.push(`${rel}: the framework has no agent '${name}' to add to`);
+      continue;
+    }
+    const text = readFileSync(path.join(dir, f), "utf8").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").trim();
+    const before = errors.length;
+    if (LEADING_FRONTMATTER.test(text)) errors.push(`${rel}: an add-on fragment has no frontmatter (a leading '---' block); its agent's identity, tools, model and MCP servers come only from the framework and config/`);
+    if (INCLUDE_LINE.test(text)) errors.push(`${rel}: an add-on fragment cannot include ${SHARED_DIR}/ files`);
+    if (!text) errors.push(`${rel}: empty; delete it or add text`);
+    if (errors.length === before) fragments[name] = text;
+  }
+  return fragments;
+}
+
+// body + fragment -> the combined body: the source's body, one blank line, the fixed heading, one blank line, the
+// fragment, a final newline, all in the source's line endings.
+export function appendFragment(name, body, fragment, eol) {
+  return [body.replace(/(\r?\n)+$/, ""), "", fragmentHeading(name), "", fragment.replace(/\n/g, eol)].join(eol) + eol;
+}
+
+// -> { sources: { [name]: { meta, body, eol, fragment? } }, errors }. `names` = the agents in config/permissions.yaml.
+// `workspace`, when given, is where `atf/agents/` add-on fragments are read from (the build's workspace root; the
+// framework's own directory when the two are one); without it no fragment is read, as before. `fragment` is the
+// fragment's workspace-relative path, for errors that measure the combined body.
+export function loadSources(root, names, { workspace } = {}) {
   const dir = path.join(root, SOURCE_DIR);
   const errors = [];
   const sources = {};
@@ -77,5 +127,12 @@ export function loadSources(root, names) {
       errors.push(e.message);
     }
   }
+  if (workspace !== undefined)
+    for (const [name, fragment] of Object.entries(loadFragments(workspace, names, errors))) {
+      const s = sources[name];
+      if (!s) continue; // its source is missing or broken: already an error
+      s.body = appendFragment(name, s.body, fragment, s.eol);
+      s.fragment = fragmentRel(name);
+    }
   return { sources, errors };
 }

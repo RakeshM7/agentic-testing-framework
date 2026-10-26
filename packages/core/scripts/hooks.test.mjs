@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
+import { frameworkHook, mergeClaudeHooks } from "./lib/hook-registrations.mjs";
 import { guardStatus, markAbsent, recordCanary } from "./lib/guard-check.mjs";
 import { logHookError } from "./lib/hook-log.mjs";
 import { frameworkRoot, workspaceRoot } from "./lib/contract.mjs";
@@ -330,4 +331,54 @@ test("the PostToolUse hook records an agent spawn of the active run with what th
     { runId: run.runId, host: "claude-code", caller: "orchestrator-agent", agent: "module-explorer", durationMs: 1200, tokens: 3400, toolUses: 7 },
     { runId: run.runId, host: "claude-code", caller: "orchestrator-agent", agent: "report-generator" },
   ], "only spawns, with the numbers the host gave and no others; never the prompt or the response");
+});
+
+test("hook registrations: the framework's Claude entries are recognised in every form a version rendered, and nothing else is", () => {
+  const cmd = (command, extra = {}) => ({ type: "command", command, ...extra });
+  // every form this repo's .claude/settings.json has carried since the single hook entry (git history), and the
+  // installed package's, from another {fw} or either separator
+  for (const [command, entry] of [
+    ['node "${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}packages/core/scripts/hooks/pretooluse.mjs" --host claude-code', "pretooluse"],
+    ['node "${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}scripts/hooks/posttooluse.mjs" --host claude-code', "posttooluse"],
+    ['node "${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/pretooluse.mjs" --host claude-code', "pretooluse"],
+    ['node "$CLAUDE_PROJECT_DIR/scripts/hooks/pretooluse.mjs" --host claude-code', "pretooluse"],
+    ['node "${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}node_modules/@testagentic/atf/scripts/hooks/pretooluse.mjs" --host claude-code', "pretooluse"],
+    ["node node_modules/@testagentic/atf/scripts/hooks/posttooluse.mjs --host claude-code", "posttooluse"],
+    ["node ..\\atf\\scripts\\hooks\\pretooluse.mjs --host claude-code", "pretooluse"],
+    ["  node scripts/hooks/pretooluse.mjs --host claude-code --verbose  ", "pretooluse"],
+  ])
+    assert.equal(frameworkHook(cmd(command)), entry, command);
+  assert.equal(frameworkHook(cmd("node scripts/hooks/posttooluse.mjs --host claude-code", { async: true })), "posttooluse");
+  // the client's own: another host, no host, another script, a look-alike path, not a command hook
+  for (const hook of [
+    cmd("node scripts/hooks/pretooluse.mjs --host copilot"),
+    cmd("node scripts/hooks/pretooluse.mjs"),
+    cmd("node scripts/hooks/pretooluse.mjs --host"),
+    cmd('node "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.mjs"'),
+    cmd("node myscripts/hooks/pretooluse.mjs --host claude-code"),
+    cmd("node scripts/hooks/pretooluse.mjs.bak --host claude-code"),
+    cmd("bash -c 'node scripts/hooks/pretooluse.mjs --host claude-code'"),
+    cmd("nodemon scripts/hooks/pretooluse.mjs --host claude-code"),
+    { type: "prompt", command: "node scripts/hooks/pretooluse.mjs --host claude-code" },
+    { type: "command" },
+    "node scripts/hooks/pretooluse.mjs --host claude-code",
+    null,
+  ])
+    assert.equal(frameworkHook(hook), null, JSON.stringify(hook));
+});
+
+test("hook registrations: a merge keeps every client entry, puts the guard first, and never yields settings without it", () => {
+  const ours = mergeClaudeHooks(undefined, "async", "fw");
+  assert.deepEqual(Object.keys(ours), ["PreToolUse", "PostToolUse"]);
+  const pre = ours.PreToolUse[0];
+  const mine = { matcher: "Bash", hooks: [{ type: "command", command: "./lint.sh" }] };
+  // a client copy of the guard's own group, under another event or twice: one guard, first, and nothing of theirs lost
+  const merged = mergeClaudeHooks({ PreToolUse: [mine, pre, pre], SessionStart: [pre, { hooks: [{ type: "command", command: "echo hi" }] }] }, "off", "fw");
+  assert.deepEqual(merged, { PreToolUse: [pre, mine], SessionStart: [{ hooks: [{ type: "command", command: "echo hi" }] }] });
+  // a key that is data, not the object's prototype
+  const proto = mergeClaudeHooks(JSON.parse('{"__proto__": [{"hooks": []}]}'), "off", "fw");
+  assert.deepEqual(Object.keys(proto), ["PreToolUse", "__proto__"]);
+  assert.equal(Object.getPrototypeOf(proto), Object.prototype);
+  // an empty event the client wrote stays as written; one the merge emptied goes
+  assert.deepEqual(Object.keys(mergeClaudeHooks({ Stop: [], PostToolUse: ours.PostToolUse }, "off", "fw")), ["PreToolUse", "Stop"]);
 });
