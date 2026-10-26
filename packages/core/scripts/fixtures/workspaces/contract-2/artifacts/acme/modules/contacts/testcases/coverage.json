@@ -1,0 +1,1561 @@
+{
+  "module": "contacts",
+  "runId": "acme-run-1",
+  "format": "gherkin",
+  "maxCases": 200,
+  "degraded": [],
+  "caseTypes": [
+    "ui"
+  ],
+  "mode": "generate",
+  "summary": {
+    "total": 27,
+    "mapped": 27,
+    "excluded": 0,
+    "pending": 0,
+    "deferred": 0
+  },
+  "byTechnique": {
+    "boolean": {
+      "total": 2,
+      "mapped": 2,
+      "excluded": 0,
+      "pending": 0,
+      "deferred": 0
+    },
+    "enum": {
+      "total": 6,
+      "mapped": 6,
+      "excluded": 0,
+      "pending": 0,
+      "deferred": 0
+    },
+    "ep": {
+      "total": 3,
+      "mapped": 3,
+      "excluded": 0,
+      "pending": 0,
+      "deferred": 0
+    },
+    "required": {
+      "total": 1,
+      "mapped": 1,
+      "excluded": 0,
+      "pending": 0,
+      "deferred": 0
+    },
+    "flow": {
+      "total": 1,
+      "mapped": 1,
+      "excluded": 0,
+      "pending": 0,
+      "deferred": 0
+    },
+    "rule": {
+      "total": 2,
+      "mapped": 2,
+      "excluded": 0,
+      "pending": 0,
+      "deferred": 0
+    },
+    "state-transition": {
+      "total": 12,
+      "mapped": 12,
+      "excluded": 0,
+      "pending": 0,
+      "deferred": 0
+    }
+  },
+  "items": [
+    {
+      "key": "field|contacts|checkbox|subscribed|checked",
+      "technique": "boolean",
+      "source": "interactions",
+      "subject": "contacts: checkbox \"Subscribed\"",
+      "label": "Subscribed: checked",
+      "priority": "p2",
+      "field": {
+        "page": "contacts",
+        "role": "checkbox",
+        "name": "Subscribed",
+        "fr": [
+          "FR-contacts-20"
+        ],
+        "states": [
+          "ST-contacts-2"
+        ],
+        "constraints": {
+          "inputType": "checkbox"
+        }
+      },
+      "id": "CI-contacts-1",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-1"
+      ]
+    },
+    {
+      "key": "field|contacts|checkbox|subscribed|unchecked",
+      "technique": "boolean",
+      "source": "interactions",
+      "subject": "contacts: checkbox \"Subscribed\"",
+      "label": "Subscribed: unchecked",
+      "priority": "p2",
+      "field": {
+        "page": "contacts",
+        "role": "checkbox",
+        "name": "Subscribed",
+        "fr": [
+          "FR-contacts-20"
+        ],
+        "states": [
+          "ST-contacts-2"
+        ],
+        "constraints": {
+          "inputType": "checkbox"
+        }
+      },
+      "id": "CI-contacts-2",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-12"
+      ]
+    },
+    {
+      "key": "field|contacts|combobox|owner|enum:me",
+      "technique": "enum",
+      "source": "interactions",
+      "subject": "contacts: combobox \"Owner\"",
+      "label": "Owner: the option \"Me\"",
+      "priority": "p3",
+      "field": {
+        "page": "contacts",
+        "role": "combobox",
+        "name": "Owner",
+        "fr": [
+          "FR-contacts-21"
+        ],
+        "states": [
+          "ST-contacts-2"
+        ],
+        "constraints": {
+          "inputType": "select",
+          "options": [
+            "Me",
+            "Unassigned"
+          ]
+        }
+      },
+      "id": "CI-contacts-3",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-21"
+      ]
+    },
+    {
+      "key": "field|contacts|combobox|owner|enum:outside",
+      "technique": "enum",
+      "source": "interactions",
+      "subject": "contacts: combobox \"Owner\"",
+      "label": "Owner: a value outside its options",
+      "priority": "p3",
+      "field": {
+        "page": "contacts",
+        "role": "combobox",
+        "name": "Owner",
+        "fr": [
+          "FR-contacts-21"
+        ],
+        "states": [
+          "ST-contacts-2"
+        ],
+        "constraints": {
+          "inputType": "select",
+          "options": [
+            "Me",
+            "Unassigned"
+          ]
+        }
+      },
+      "invalid": true,
+      "id": "CI-contacts-4",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-22"
+      ]
+    },
+    {
+      "key": "field|contacts|combobox|owner|enum:unassigned",
+      "technique": "enum",
+      "source": "interactions",
+      "subject": "contacts: combobox \"Owner\"",
+      "label": "Owner: the option \"Unassigned\"",
+      "priority": "p3",
+      "field": {
+        "page": "contacts",
+        "role": "combobox",
+        "name": "Owner",
+        "fr": [
+          "FR-contacts-21"
+        ],
+        "states": [
+          "ST-contacts-2"
+        ],
+        "constraints": {
+          "inputType": "select",
+          "options": [
+            "Me",
+            "Unassigned"
+          ]
+        }
+      },
+      "id": "CI-contacts-5",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-23"
+      ]
+    },
+    {
+      "key": "field|contacts|combobox|sort by|enum:created",
+      "technique": "enum",
+      "source": "interactions",
+      "subject": "contacts: combobox \"Sort by\"",
+      "label": "Sort by: the option \"Created\"",
+      "priority": "p3",
+      "field": {
+        "page": "contacts",
+        "role": "combobox",
+        "name": "Sort by",
+        "fr": [
+          "FR-contacts-5"
+        ],
+        "states": [
+          "ST-contacts-1"
+        ],
+        "constraints": {
+          "inputType": "select",
+          "options": [
+            "Name",
+            "Created"
+          ]
+        }
+      },
+      "id": "CI-contacts-6",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-24"
+      ]
+    },
+    {
+      "key": "field|contacts|combobox|sort by|enum:name",
+      "technique": "enum",
+      "source": "interactions",
+      "subject": "contacts: combobox \"Sort by\"",
+      "label": "Sort by: the option \"Name\"",
+      "priority": "p3",
+      "field": {
+        "page": "contacts",
+        "role": "combobox",
+        "name": "Sort by",
+        "fr": [
+          "FR-contacts-5"
+        ],
+        "states": [
+          "ST-contacts-1"
+        ],
+        "constraints": {
+          "inputType": "select",
+          "options": [
+            "Name",
+            "Created"
+          ]
+        }
+      },
+      "id": "CI-contacts-7",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-25"
+      ]
+    },
+    {
+      "key": "field|contacts|combobox|sort by|enum:outside",
+      "technique": "enum",
+      "source": "interactions",
+      "subject": "contacts: combobox \"Sort by\"",
+      "label": "Sort by: a value outside its options",
+      "priority": "p3",
+      "field": {
+        "page": "contacts",
+        "role": "combobox",
+        "name": "Sort by",
+        "fr": [
+          "FR-contacts-5"
+        ],
+        "states": [
+          "ST-contacts-1"
+        ],
+        "constraints": {
+          "inputType": "select",
+          "options": [
+            "Name",
+            "Created"
+          ]
+        }
+      },
+      "invalid": true,
+      "id": "CI-contacts-8",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-26"
+      ]
+    },
+    {
+      "key": "field|contacts|searchbox|search contacts|valid",
+      "technique": "ep",
+      "source": "interactions",
+      "subject": "contacts: searchbox \"Search contacts\"",
+      "label": "Search contacts: a valid value",
+      "priority": "p2",
+      "field": {
+        "page": "contacts",
+        "role": "searchbox",
+        "name": "Search contacts",
+        "fr": [
+          "FR-contacts-12"
+        ],
+        "states": [
+          "ST-contacts-1"
+        ],
+        "constraints": {
+          "inputType": "search"
+        }
+      },
+      "id": "CI-contacts-9",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-27"
+      ]
+    },
+    {
+      "key": "field|contacts|textbox|email|valid",
+      "technique": "ep",
+      "source": "interactions",
+      "subject": "contacts: textbox \"Email\"",
+      "label": "Email: a valid value",
+      "priority": "p2",
+      "field": {
+        "page": "contacts",
+        "role": "textbox",
+        "name": "Email",
+        "fr": [
+          "FR-contacts-32"
+        ],
+        "states": [
+          "ST-contacts-2"
+        ],
+        "constraints": {
+          "inputType": "text"
+        }
+      },
+      "id": "CI-contacts-10",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-2"
+      ]
+    },
+    {
+      "key": "field|contacts|textbox|name|missing",
+      "technique": "required",
+      "source": "interactions",
+      "subject": "contacts: textbox \"Name\"",
+      "label": "Name: left empty (required)",
+      "priority": "p2",
+      "field": {
+        "page": "contacts",
+        "role": "textbox",
+        "name": "Name",
+        "fr": [
+          "FR-contacts-33"
+        ],
+        "states": [
+          "ST-contacts-2"
+        ],
+        "constraints": {
+          "required": true,
+          "inputType": "text"
+        }
+      },
+      "invalid": true,
+      "id": "CI-contacts-11",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-3"
+      ]
+    },
+    {
+      "key": "field|contacts|textbox|name|valid",
+      "technique": "ep",
+      "source": "interactions",
+      "subject": "contacts: textbox \"Name\"",
+      "label": "Name: a valid value",
+      "priority": "p2",
+      "field": {
+        "page": "contacts",
+        "role": "textbox",
+        "name": "Name",
+        "fr": [
+          "FR-contacts-33"
+        ],
+        "states": [
+          "ST-contacts-2"
+        ],
+        "constraints": {
+          "required": true,
+          "inputType": "text"
+        }
+      },
+      "id": "CI-contacts-12",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-4"
+      ]
+    },
+    {
+      "key": "flow|create-contact",
+      "technique": "flow",
+      "source": "flows",
+      "subject": "flows/create-contact.md",
+      "label": "Create a contact",
+      "priority": "p1",
+      "id": "CI-contacts-13",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-5"
+      ]
+    },
+    {
+      "key": "rule|3a63584c25",
+      "technique": "rule",
+      "source": "rule-facts",
+      "subject": "knowledge/modules/contacts/notes.md:17",
+      "label": "Admins delete records.",
+      "priority": "p1",
+      "fact": {
+        "file": "modules/contacts/notes.md",
+        "line": 17,
+        "category": "roles",
+        "evidence": "script-fetched",
+        "text": "Admins delete records."
+      },
+      "id": "CI-contacts-14",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-6"
+      ]
+    },
+    {
+      "key": "rule|3ad13b8861",
+      "technique": "rule",
+      "source": "rule-facts",
+      "subject": "knowledge/modules/contacts/notes.md:13",
+      "label": "Record names are unique per account.",
+      "priority": "p1",
+      "fact": {
+        "file": "modules/contacts/notes.md",
+        "line": 13,
+        "category": "rules",
+        "evidence": "script-fetched",
+        "text": "Record names are unique per account."
+      },
+      "id": "CI-contacts-15",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-7"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-1|button \"New contact\"|ST-contacts-2",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-1 -> ST-contacts-2",
+      "label": "ST-contacts-1 → ST-contacts-2 by button \"New contact\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-1",
+        "to": "ST-contacts-2",
+        "actions": [
+          "button \"New contact\""
+        ]
+      },
+      "id": "CI-contacts-16",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-8"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-1|columnheader \"Name\"|ST-contacts-5",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-1 -> ST-contacts-5",
+      "label": "ST-contacts-1 → ST-contacts-5 by columnheader \"Name\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-1",
+        "to": "ST-contacts-5",
+        "actions": [
+          "columnheader \"Name\""
+        ]
+      },
+      "id": "CI-contacts-17",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-9"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-1|link \"Acme CRM\"|ST-contacts-1",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-1 -> ST-contacts-1",
+      "label": "ST-contacts-1 → ST-contacts-1 by link \"Acme CRM\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-1",
+        "to": "ST-contacts-1",
+        "actions": [
+          "link \"Acme CRM\""
+        ]
+      },
+      "id": "CI-contacts-18",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-10"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-1|link \"Contacts\"|ST-contacts-1",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-1 -> ST-contacts-1",
+      "label": "ST-contacts-1 → ST-contacts-1 by link \"Contacts\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-1",
+        "to": "ST-contacts-1",
+        "actions": [
+          "link \"Contacts\""
+        ]
+      },
+      "id": "CI-contacts-19",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-11"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-1|link \"Jane Doe\"|ST-contacts-4",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-1 -> ST-contacts-4",
+      "label": "ST-contacts-1 → ST-contacts-4 by link \"Jane Doe\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-1",
+        "to": "ST-contacts-4",
+        "actions": [
+          "link \"Jane Doe\""
+        ]
+      },
+      "id": "CI-contacts-20",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-13"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-1|tab \"All\"|ST-contacts-1",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-1 -> ST-contacts-1",
+      "label": "ST-contacts-1 → ST-contacts-1 by tab \"All\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-1",
+        "to": "ST-contacts-1",
+        "actions": [
+          "tab \"All\""
+        ]
+      },
+      "id": "CI-contacts-21",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-14"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-1|tab \"Mine\"|ST-contacts-3",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-1 -> ST-contacts-3",
+      "label": "ST-contacts-1 → ST-contacts-3 by tab \"Mine\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-1",
+        "to": "ST-contacts-3",
+        "actions": [
+          "tab \"Mine\""
+        ]
+      },
+      "id": "CI-contacts-22",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-15"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-2|button \"Cancel\"|ST-contacts-1",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-2 -> ST-contacts-1",
+      "label": "ST-contacts-2 → ST-contacts-1 by button \"Cancel\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-2",
+        "to": "ST-contacts-1",
+        "actions": [
+          "button \"Cancel\""
+        ]
+      },
+      "id": "CI-contacts-23",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-16"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-3|tab \"All\"|ST-contacts-1",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-3 -> ST-contacts-1",
+      "label": "ST-contacts-3 → ST-contacts-1 by tab \"All\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-3",
+        "to": "ST-contacts-1",
+        "actions": [
+          "tab \"All\""
+        ]
+      },
+      "id": "CI-contacts-24",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-17"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-4|link \"Back to contacts\"|ST-contacts-1",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-4 -> ST-contacts-1",
+      "label": "ST-contacts-4 → ST-contacts-1 by link \"Back to contacts\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-4",
+        "to": "ST-contacts-1",
+        "actions": [
+          "link \"Back to contacts\""
+        ]
+      },
+      "id": "CI-contacts-25",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-18"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-4|link \"Jane Doe\"|ST-contacts-4",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-4 -> ST-contacts-4",
+      "label": "ST-contacts-4 → ST-contacts-4 by link \"Jane Doe\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-4",
+        "to": "ST-contacts-4",
+        "actions": [
+          "link \"Jane Doe\""
+        ]
+      },
+      "id": "CI-contacts-26",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-19"
+      ]
+    },
+    {
+      "key": "transition|ST-contacts-5|columnheader \"Name ▲\"|ST-contacts-1",
+      "technique": "state-transition",
+      "source": "model",
+      "subject": "ST-contacts-5 -> ST-contacts-1",
+      "label": "ST-contacts-5 → ST-contacts-1 by columnheader \"Name ▲\"",
+      "priority": "p2",
+      "transition": {
+        "from": "ST-contacts-5",
+        "to": "ST-contacts-1",
+        "actions": [
+          "columnheader \"Name ▲\""
+        ]
+      },
+      "id": "CI-contacts-27",
+      "status": "mapped",
+      "refs": [
+        "TC-contacts-20"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "TC-contacts-1",
+      "key": "contacts-1",
+      "title": "Contacts boolean item 1 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-1"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "c88a6f699e9ab9a5bed9abf9c89d0c20b12d10644ab243c4ab98265c84f47101",
+      "version": "vc88a6f699e9a"
+    },
+    {
+      "id": "TC-contacts-2",
+      "key": "contacts-10",
+      "title": "Contacts ep item 10 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-10"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "fbcafb9fc4de5d6fff4a650c0e0aa99550c63112861c4ad0041332f05f0d0923",
+      "version": "vfbcafb9fc4de"
+    },
+    {
+      "id": "TC-contacts-3",
+      "key": "contacts-11",
+      "title": "Contacts required item 11 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-11"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "28880c0884be9e84321e77594c3b609229bcf05ae5956758572fc057a44f4cc2",
+      "version": "v28880c0884be"
+    },
+    {
+      "id": "TC-contacts-4",
+      "key": "contacts-12",
+      "title": "Contacts ep item 12 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-12"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "257f0373fbe37f86880245388c8c5432b78f2cbf89c038089a9c3bf16151155c",
+      "version": "v257f0373fbe3"
+    },
+    {
+      "id": "TC-contacts-5",
+      "key": "contacts-13",
+      "title": "Contacts flow item 13 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-13"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "38de99d6774bca7a76bc456f21bedc107d0d0f6dc9ec73846fd7ce6ae160f624",
+      "version": "v38de99d6774b"
+    },
+    {
+      "id": "TC-contacts-6",
+      "key": "contacts-14",
+      "title": "Contacts rule item 14 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-14"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "244f76dcb82f7671dcfb45a5af4d51df93f98b41c5061654513cf10321370a43",
+      "version": "v244f76dcb82f"
+    },
+    {
+      "id": "TC-contacts-7",
+      "key": "contacts-15",
+      "title": "Contacts rule item 15 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-15"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "63e50325fb81b14b0b2ffc9feb6ff26604de896dd5dd52c72a24c094c7e94565",
+      "version": "v63e50325fb81"
+    },
+    {
+      "id": "TC-contacts-8",
+      "key": "contacts-16",
+      "title": "Contacts state-transition item 16 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-16"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "98f094a4fef9907cfbff826950c6c7852afbe7e09a81fd9dcbd3323f3b107d21",
+      "version": "v98f094a4fef9"
+    },
+    {
+      "id": "TC-contacts-9",
+      "key": "contacts-17",
+      "title": "Contacts state-transition item 17 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-17"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "4cbf393b6d08ea3cb4d4b290b2c423b52ac80c07ad95993249845e4129892246",
+      "version": "v4cbf393b6d08"
+    },
+    {
+      "id": "TC-contacts-10",
+      "key": "contacts-18",
+      "title": "Contacts state-transition item 18 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-18"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "c0040808bd61c0ca4d075ed0a13ded85e9f2b0a47cc80f48aab99c96acd52e81",
+      "version": "vc0040808bd61"
+    },
+    {
+      "id": "TC-contacts-11",
+      "key": "contacts-19",
+      "title": "Contacts state-transition item 19 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-19"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "cd170dad212cc873bf0b21fce555bbe4fece19c75da831f41ad4242b87244815",
+      "version": "vcd170dad212c"
+    },
+    {
+      "id": "TC-contacts-12",
+      "key": "contacts-2",
+      "title": "Contacts boolean item 2 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-2"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "51489f6cf21bfcd482a1ce025fb53a84f35881d17cc7a8233c248077e0f1b78e",
+      "version": "v51489f6cf21b"
+    },
+    {
+      "id": "TC-contacts-13",
+      "key": "contacts-20",
+      "title": "Contacts state-transition item 20 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-20"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "11eb723c7edc627ffa8c80304addbfa81a97b5d3133e6c0ae36b4497ec38f569",
+      "version": "v11eb723c7edc"
+    },
+    {
+      "id": "TC-contacts-14",
+      "key": "contacts-21",
+      "title": "Contacts state-transition item 21 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-21"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "2ebdea03338cb8e845af0a3ad9760ab88c7360fd0dbdb03ff0b399c94f72e3e9",
+      "version": "v2ebdea03338c"
+    },
+    {
+      "id": "TC-contacts-15",
+      "key": "contacts-22",
+      "title": "Contacts state-transition item 22 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-22"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "fa546238a45bfed86954f2def5eb22f7f0cccad77c370655d675f6b0f348fb46",
+      "version": "vfa546238a45b"
+    },
+    {
+      "id": "TC-contacts-16",
+      "key": "contacts-23",
+      "title": "Contacts state-transition item 23 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-23"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "d3c9e5d13bf929fc810ef272fb0826716e0b87bf18e2f2dddd720acc0b6bba3f",
+      "version": "vd3c9e5d13bf9"
+    },
+    {
+      "id": "TC-contacts-17",
+      "key": "contacts-24",
+      "title": "Contacts state-transition item 24 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-24"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "e1504f1b006cad2408faef1146bb3162f261a78e1e9adfd4be8e42c72e342f25",
+      "version": "ve1504f1b006c"
+    },
+    {
+      "id": "TC-contacts-18",
+      "key": "contacts-25",
+      "title": "Contacts state-transition item 25 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-25"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "8f44c4990c6ee2220e6737aba4ca31c1acf89b256f897a5889e6bef4456e6e48",
+      "version": "v8f44c4990c6e"
+    },
+    {
+      "id": "TC-contacts-19",
+      "key": "contacts-26",
+      "title": "Contacts state-transition item 26 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-26"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "dd447a51c269992f27ad0d783ab1c6400e4fc78defb0092ae70feedf2f1b4303",
+      "version": "vdd447a51c269"
+    },
+    {
+      "id": "TC-contacts-20",
+      "key": "contacts-27",
+      "title": "Contacts state-transition item 27 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-27"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "7996468a918de92286523a0990a1356abd34cd9a3ad6b33ff99e0d42fee7e321",
+      "version": "v7996468a918d"
+    },
+    {
+      "id": "TC-contacts-21",
+      "key": "contacts-3",
+      "title": "Contacts enum item 3 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-3"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "ae32c30ecfe5d5f4ac0bcdf75e0818e2c91b898c2dae32e705f9b1ef89f64005",
+      "version": "vae32c30ecfe5"
+    },
+    {
+      "id": "TC-contacts-22",
+      "key": "contacts-4",
+      "title": "Contacts enum item 4 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-4"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "8dd4e8acd5ddc13710921f986c1c5c22ef7873c075638b55008001a1d3981e55",
+      "version": "v8dd4e8acd5dd"
+    },
+    {
+      "id": "TC-contacts-23",
+      "key": "contacts-5",
+      "title": "Contacts enum item 5 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-5"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "be2e7296145dcf6b4df692db5e6d05164e40b96f15c54dfdd5400082827c0911",
+      "version": "vbe2e7296145d"
+    },
+    {
+      "id": "TC-contacts-24",
+      "key": "contacts-6",
+      "title": "Contacts enum item 6 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-6"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "f9215a04cf6aaf59fe84d1563cd76629aeb967332d6bcb721356e85f7234dcc1",
+      "version": "vf9215a04cf6a"
+    },
+    {
+      "id": "TC-contacts-25",
+      "key": "contacts-7",
+      "title": "Contacts enum item 7 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-7"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "aebfcae13fa9b741f8310ece001b494bdf105d67520b2633f69630ba7f4ce744",
+      "version": "vaebfcae13fa9"
+    },
+    {
+      "id": "TC-contacts-26",
+      "key": "contacts-8",
+      "title": "Contacts enum item 8 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-8"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "ea3dcd2a2299e0069c36db2e728a98d7432d35892386202aa5753e3c23c1b2ec",
+      "version": "vea3dcd2a2299"
+    },
+    {
+      "id": "TC-contacts-27",
+      "key": "contacts-9",
+      "title": "Contacts ep item 9 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "mutates": false,
+      "visual": false,
+      "api": false,
+      "performance": false,
+      "assumption": false,
+      "assumptions": [],
+      "preconditions": [],
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "data": {},
+      "covers": [
+        "CI-contacts-9"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ],
+      "clarifications": [],
+      "hash": "9515ac4eadcd95eabb13f4d7d0d59f412967acddce7fb38e30205e099a9fda89",
+      "version": "v9515ac4eadcd"
+    }
+  ],
+  "problems": [],
+  "built": {
+    "inputs": {
+      "cases": "fe50d4a82e655e0f3aa35edb5a98aeb55518e30b39464572f5575e081bd17428",
+      "model": "09b42e8baa5c75f881c4efcd79f59749d908f6a162a85e43722f00fd5ff09573",
+      "interactions": "8c75212e0d8e2aec0effa2ce947ab03217ac4026f76af257a22e789459e640fe",
+      "ruleFacts": "d23e2a1ca533c6f7bffac7b82c74a6a5556bccf461b1bcdc652374be0021af3e",
+      "openPoints": "87853e03c97acc19e414efe9dd8471eb9424d1ebda7285b7da05cff7a59ac258",
+      "flows": "17c53eae85f22c1f45a7b6cdac7180e87cbcb8c6f30aa3769ee39393f17962b8",
+      "clarifications": "f643809e6ce34cc6649fbe8bebc90511bfe4329dea3e93841c80b3e88dcd2bcf",
+      "config": "36c09f7c282c1534b57695bcf593333f29d0196cfa21d9b4fc59eeecf22cacf3",
+      "imported": null,
+      "catalogue": null,
+      "scope": null
+    },
+    "outputs": {
+      "file": "9e51e0e2d69e272ec1269ef61f2eb4702a644b299b40522ee5ef7b2e25bed0df",
+      "summary": "230156db1ebafe23b39d17c3459af372432ed0148a6cbf1279ac1fc30de94bf8"
+    }
+  },
+  "verified": {
+    "cases": "fe50d4a82e655e0f3aa35edb5a98aeb55518e30b39464572f5575e081bd17428",
+    "file": "9e51e0e2d69e272ec1269ef61f2eb4702a644b299b40522ee5ef7b2e25bed0df",
+    "summary": "230156db1ebafe23b39d17c3459af372432ed0148a6cbf1279ac1fc30de94bf8",
+    "model": "09b42e8baa5c75f881c4efcd79f59749d908f6a162a85e43722f00fd5ff09573",
+    "interactions": "8c75212e0d8e2aec0effa2ce947ab03217ac4026f76af257a22e789459e640fe",
+    "ruleFacts": "d23e2a1ca533c6f7bffac7b82c74a6a5556bccf461b1bcdc652374be0021af3e",
+    "openPoints": "87853e03c97acc19e414efe9dd8471eb9424d1ebda7285b7da05cff7a59ac258",
+    "flows": "17c53eae85f22c1f45a7b6cdac7180e87cbcb8c6f30aa3769ee39393f17962b8",
+    "clarifications": "f643809e6ce34cc6649fbe8bebc90511bfe4329dea3e93841c80b3e88dcd2bcf",
+    "config": "36c09f7c282c1534b57695bcf593333f29d0196cfa21d9b4fc59eeecf22cacf3"
+  }
+}

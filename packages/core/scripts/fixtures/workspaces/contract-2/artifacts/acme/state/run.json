@@ -1,0 +1,119 @@
+{
+  "layoutVersion": 2,
+  "product": "acme",
+  "environment": "default",
+  "runId": "acme-run-1",
+  "createdAt": "2026-10-01T09:00:00.000Z",
+  "target": {
+    "url": "https://app.acme.test"
+  },
+  "mode": "readonly",
+  "configPath": "config/acme.yaml",
+  "permissionsPath": "node_modules/@testagentic/atf/config/permissions.yaml",
+  "modules": [
+    "contacts"
+  ],
+  "steps": [
+    "explore",
+    "testcases"
+  ],
+  "caseTypes": [
+    "ui"
+  ],
+  "testcasesMode": {
+    "contacts": "generate"
+  },
+  "startedOnHost": "claude-code",
+  "provenance": {
+    "framework": null,
+    "package": {
+      "name": "@testagentic/atf",
+      "version": "0.1.0"
+    },
+    "plugin": null,
+    "browserServer": "@playwright/mcp@0.0.83",
+    "models": {
+      "default": {
+        "claude": "claude-opus-5-5",
+        "copilot": "gpt-6-luna"
+      },
+      "agents": {}
+    },
+    "templates": "afa47d13a52b889c8c9f09603806aa28013f06b2bbaf3b4610fefed6632f07ae",
+    "node": "v24.19.0",
+    "config": [
+      {
+        "name": "permissions.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/permissions.yaml"
+        ],
+        "digest": "dc7a2ff9b1e71cfdc18cb1f4cf33d86ef71e22ef2367328d403fc5c13ac8ff72"
+      },
+      {
+        "name": "models.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/models.yaml"
+        ],
+        "digest": "e9174411f17ba535220621cf76c764e1091bf9cf900f05fbb8b1ff2815d12359"
+      },
+      {
+        "name": "platforms.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/platforms.yaml"
+        ],
+        "digest": "385d14b9ee8c535d33353598ee721314bdd5a1f2b7145dd6bc3ff4310c87c601"
+      },
+      {
+        "name": "mcp.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/mcp.yaml"
+        ],
+        "digest": "ddc20e95b6441642de3b3556db31f06b3a48ff6acba89caa97eb9fa74315ad9b"
+      },
+      {
+        "name": "hooks.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/hooks.yaml"
+        ],
+        "digest": "6fdcc5a3b87da7faa39c52f48748bd7b05d620c1e3c040f8d65d39ce43a33e89"
+      }
+    ]
+  },
+  "stages": {
+    "_product/knowledge": {
+      "status": "done",
+      "startedAt": "2026-10-01T09:00:00.000Z",
+      "attempts": 1,
+      "finishedAt": "2026-10-01T09:00:00.000Z"
+    },
+    "contacts/module-knowledge": {
+      "status": "done",
+      "startedAt": "2026-10-01T09:00:00.000Z",
+      "attempts": 1,
+      "finishedAt": "2026-10-01T09:00:00.000Z"
+    },
+    "contacts/explore": {
+      "status": "done",
+      "startedAt": "2026-10-01T09:00:00.000Z",
+      "attempts": 1,
+      "finishedAt": "2026-10-01T09:00:00.000Z"
+    },
+    "contacts/testcases": {
+      "status": "done",
+      "startedAt": "2026-10-01T09:00:00.000Z",
+      "attempts": 1,
+      "finishedAt": "2026-10-01T09:00:00.000Z"
+    },
+    "_product/report": {
+      "status": "done",
+      "startedAt": "2026-10-01T09:00:00.000Z",
+      "attempts": 1,
+      "finishedAt": "2026-10-01T09:00:00.000Z"
+    }
+  }
+}

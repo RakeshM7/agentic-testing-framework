@@ -175,7 +175,9 @@ function safetyNotice(cc) {
 function provenanceLine(p, cc) {
   if (!p) return "";
   const parts = [
-    p.framework ? `framework ${code(p.framework.commit.slice(0, 10))}${p.framework.dirty ? " (with uncommitted changes)" : ""}` : "framework commit unknown",
+    // the release (docs/packaging.md §3.10), and the commit of a source checkout; an installed package has no commit
+    p.package ? `${esc(p.package.name)} ${code(p.package.version)}` : null,
+    p.framework ? `framework ${code(p.framework.commit.slice(0, 10))}${p.framework.dirty ? " (with uncommitted changes)" : ""}` : p.package ? null : "framework commit unknown",
     p.browserServer ? `browser server ${code(p.browserServer)}` : null,
     Object.keys(p.models?.default ?? {}).length ? `models ${Object.entries(p.models.default).map(([k, v]) => `${esc(k)} ${code(v)}`).join(", ")}${Object.keys(p.models.agents ?? {}).length ? " (some agents differ)" : ""}` : null,
     p.node ? `Node.js ${esc(p.node)}` : null,

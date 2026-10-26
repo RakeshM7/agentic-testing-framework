@@ -1,0 +1,79 @@
+# What the published @testagentic/atf may contain (docs/packaging.md §2, §3.11): every file in packages/core/dist,
+# by its path there with `/`. `node scripts/build-package.mjs` checks the build against it, and the release workflow
+# runs the same check (`--check`) before it publishes.
+#   - A plain path is required: the check fails when dist lacks it.
+#   - A glob (`*` within one folder, `**` across folders, `?` one character) must match at least one file.
+#   - A line starting with `!` is never allowed, even when a line above matches it.
+# A dist file no line allows fails the check, as does a required one that is missing. Add a line here only for a file
+# a client's install needs at run time: tests, fixtures, the decision log, feedback/ and the maintainer docs never ship.
+
+# the package itself
+package.json
+LICENSE.md
+
+# the CLI and the hook entries (bundled)
+bin/atf.mjs
+scripts/hooks/pretooluse.mjs
+scripts/hooks/posttooluse.mjs
+scripts/hooks/hosts/index.mjs
+scripts/hooks/hosts/claude.mjs
+scripts/hooks/hosts/copilot.mjs
+scripts/hooks/hosts/vscode.mjs
+
+# every script agents and the CLI call as node {fw}/scripts/<x>.mjs, and the libraries loaded at run time by path or
+# with import(), each bundled at its source path
+scripts/*.mjs
+scripts/lib/*.mjs
+scripts/lib/agents/*.mjs
+scripts/lib/agents/renderers/*.mjs
+scripts/lib/gate/*.mjs
+scripts/lib/guard.mjs
+scripts/lib/roots.mjs
+scripts/lib/decisions.mjs
+scripts/lib/hook-log.mjs
+scripts/lib/guard-check.mjs
+scripts/lib/telemetry.mjs
+scripts/lib/cli.mjs
+scripts/lib/doctor.mjs
+scripts/run.mjs
+scripts/doctor.mjs
+scripts/build-agents.mjs
+
+# the browser server's init page (config/mcp.yaml --init-page, D-076), as written
+scripts/browser/init-page.cjs
+
+# agent sources, default config, templates and schemas, as written
+agents/*.md
+agents/_shared/*.md
+config/hooks.yaml
+config/mcp.yaml
+config/models.yaml
+config/permissions.yaml
+config/platforms.yaml
+config/run-config.example.yaml
+templates/**
+schemas/*.schema.json
+
+# the artifact-contract migrations, as written (D-095): atf migrate loads each step by path. Add migrations/*.mjs with
+# the first step (a glob must match a file)
+migrations/README.md
+
+# the agent-facing docs only (packages/core/docs); the maintainer docs stay in the monorepo
+docs/agent-handoffs.md
+docs/artifact-contract.md
+docs/conventions.md
+docs/k6-conventions.md
+docs/platforms.md
+docs/playwright-conventions.md
+
+# never shipped
+!**/*.test.mjs
+!scripts/test-helpers.mjs
+!scripts/build-package.mjs
+!scripts/e2e.mjs
+!scripts/fixtures/**
+!**/node_modules/**
+!**/.*
+!**/.*/**
+!docs/decisions.md
+!feedback/**

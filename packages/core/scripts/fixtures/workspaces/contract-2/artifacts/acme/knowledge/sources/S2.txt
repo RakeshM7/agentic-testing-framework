@@ -1,0 +1,4 @@
+<h1>contacts</h1>
+Records can be bulk-updated.
+A record name must be unique within the account.
+Only admins can delete records.

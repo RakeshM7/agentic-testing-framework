@@ -14,9 +14,43 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { frameworkRoot, workspaceRoot } from "./roots.mjs";
+import { WORKSPACE_MARKER, frameworkRoot, readMarker, workspaceRoot } from "./roots.mjs";
 
-export const LAYOUT_VERSION = 2;
+// The artifact-contract version (docs/packaging.md §3.10): the layout and meaning of everything a workspace keeps
+// (artifacts/, run state, the test code's managed files) as this code reads and writes it. An integer, apart from the
+// package's semver: it changes only when the contract changes in a way that needs a migration (`npx atf migrate`), so
+// many package versions share one contract. Recorded in a workspace's atf/atf.json "contract" (atf init writes it) and,
+// as `layoutVersion`, in every run.json (run.mjs init). run.schema.json's layoutVersion const must equal it.
+export const CONTRACT_VERSION = 2;
+// its name before packaging (D-066, D-081 name it so)
+export const LAYOUT_VERSION = CONTRACT_VERSION;
+// A workspace whose atf/atf.json has no "contract" predates the field and is on today's layout: 2, fixed, never "the
+// current one", so a later contract bump still sends such a workspace through the migration.
+export const UNRECORDED_CONTRACT = 2;
+
+// A workspace's recorded contract, from its marker (roots.mjs readMarker). No marker (one directory that is both, D-085)
+// or no "contract" counts as UNRECORDED_CONTRACT. -> { contract, recorded } | { error }
+export function workspaceContract(root = workspaceRoot) {
+  const { cfg, error } = readMarker(root);
+  if (error) return { error };
+  if (!cfg || cfg.contract === undefined) return { contract: UNRECORDED_CONTRACT, recorded: false };
+  if (!Number.isInteger(cfg.contract) || cfg.contract < 1) return { error: `${WORKSPACE_MARKER} "contract" must be a whole number of 1 or more (the artifact-contract version), not ${JSON.stringify(cfg.contract)}` };
+  return { contract: cfg.contract, recorded: true };
+}
+
+// Why this code can't work in a workspace, by its contract: the marker can't be read, or it records another contract
+// than CONTRACT_VERSION. Newer is a workspace a later package migrated (an older package would misread it); older needs
+// `npx atf migrate` first. -> null | { detail, fix }. run.mjs init refuses on it; the doctor's base group fails with it.
+export function contractProblem(root = workspaceRoot, { contract = CONTRACT_VERSION } = {}) {
+  const w = workspaceContract(root);
+  if (w.error) return { detail: w.error, fix: `correct ${WORKSPACE_MARKER} (a whole-number "contract", or none for ${UNRECORDED_CONTRACT})` };
+  if (w.contract === contract) return null;
+  const has = `${WORKSPACE_MARKER} ${w.recorded ? `records artifact contract ${w.contract}` : `records no contract, so ${w.contract} is assumed`}`;
+  return w.contract > contract
+    ? { detail: `${has}, newer than this framework's ${contract}: a newer @testagentic/atf migrated this workspace, and this one would misread its artifacts`, fix: "install that newer @testagentic/atf in the workspace (npm install --save-dev @testagentic/atf@<that version>)" }
+    : { detail: `${has}, older than this framework's ${contract}: its artifacts must be migrated first`, fix: `npx atf migrate (in the workspace): it migrates the artifacts and records contract ${contract}` };
+}
+
 export const PRODUCT_SCOPE = "_product";
 // Two roots (D-085, scripts/lib/roots.mjs): every path below hangs off the workspace; the schemas (and the templates and
 // default config, elsewhere) come from the framework. In this repository they are the same directory.

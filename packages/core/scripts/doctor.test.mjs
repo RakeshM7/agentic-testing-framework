@@ -9,6 +9,7 @@ import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { SETUP_WORKFLOW, sync } from "./lib/sync.mjs";
 import { INSTALLED_PACKAGE, installedWorkspace, put, startRun, tempRoot } from "./test-helpers.mjs";
 import { expandFw } from "./lib/roots.mjs";
+import { CONTRACT_VERSION } from "./lib/contract.mjs";
 
 // a framework command as printed from this repo's workspace: `node scripts/...`, or `node packages/core/scripts/...`
 const FW = expandFw("{fw}/").replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
@@ -67,13 +68,13 @@ test("base and login: Node version, pinned framework dependencies, and the login
   m.core(".");
   const noBranded = { ...m.opts, exists: () => false };
   let checks = await runChecks(cfg(), ["base", "login"], { ...noBranded, nodeVersion: "18.20.0" });
-  assert.deepEqual(ids(checks), { node: "fail", "framework-deps": "fail", "login-browser": "fail" });
+  assert.deepEqual(ids(checks), { node: "fail", "framework-deps": "fail", "workspace-contract": "ok", "login-browser": "fail" });
   assert.match(checks.find((c) => c.id === "framework-deps").detail, /playwright is 1\.63\.0, package\.json pins 1\.64\.1/);
   assert.deepEqual(checks.find((c) => c.id === "login-browser").autofix, { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: m.root });
   put(m.root, "node_modules/playwright/package.json", JSON.stringify({ version: "1.64.1" }));
   m.installed("chromium", "1248");
   checks = await runChecks(cfg(), ["base", "login"], noBranded);
-  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "login-browser": "warn" });
+  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "workspace-contract": "ok", "login-browser": "warn" });
   assert.match(checks.find((c) => c.id === "login-browser").detail, /some single sign-on providers block/);
   const only = (p) => ({ ...m.opts, exists: (x) => x === p });
   assert.equal(ids(await runChecks(cfg(), ["login"], only("/opt/google/chrome/chrome")))["login-browser"], "warn");
@@ -90,7 +91,7 @@ test("base in a monorepo: dependencies hoisted to the workspace's node_modules c
   m.core(".");
   const opts = { ...m.opts, framework: fw, exists: () => false };
   let checks = await runChecks(cfg(), ["base", "login"], opts);
-  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "framework-peers": "fail", "login-browser": "fail" });
+  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "framework-peers": "fail", "workspace-contract": "ok", "login-browser": "fail" });
   const peers = checks.find((c) => c.id === "framework-peers");
   assert.match(peers.detail, /playwright is not installed/);
   assert.deepEqual(peers.autofix, { cmd: "npm", args: ["install"], cwd: m.root }, "the workspace lists it: npm install there");
@@ -99,13 +100,36 @@ test("base in a monorepo: dependencies hoisted to the workspace's node_modules c
   put(m.root, "node_modules/playwright/package.json", JSON.stringify({ version: "1.64.1" }));
   m.installed("chromium", "1248");
   checks = await runChecks(cfg(), ["base", "login"], opts);
-  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "framework-peers": "ok", "login-browser": "warn" }, "the hoisted playwright-core's Chromium too");
+  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "framework-peers": "ok", "workspace-contract": "ok", "login-browser": "warn" }, "the hoisted playwright-core's Chromium too");
   // a workspace that does not list the peer is told what to add, never changed by --fix
   put(m.root, "package.json", JSON.stringify({ workspaces: ["packages/*"] }));
   put(m.root, "node_modules/playwright/package.json", JSON.stringify({ version: "1.63.0" }));
   const unlisted = (await runChecks(cfg(), ["base"], opts)).find((c) => c.id === "framework-peers");
   assert.equal(unlisted.fix, "npm install --save-dev playwright@1.64.1 (in the workspace)");
   assert.equal(unlisted.autofix, undefined);
+});
+
+test("base: the workspace's artifact contract must be this code's: unrecorded counts as 2; newer, older or unreadable fails with the fix (docs/packaging.md §3.10)", async () => {
+  const m = machine();
+  const check = async () => (await runChecks(cfg(), ["base"], m.opts)).find((c) => c.id === "workspace-contract");
+  assert.deepEqual(await check(), { group: "base", id: "workspace-contract", ok: true, level: undefined, detail: `artifact contract ${CONTRACT_VERSION} (not recorded in atf/atf.json, 2 assumed)` }, "no marker: one directory that is both");
+  put(m.root, "atf/atf.json", "{}\n");
+  assert.equal((await check()).detail, "artifact contract 2 (not recorded in atf/atf.json, 2 assumed)", "a marker from before the field");
+  put(m.root, "atf/atf.json", `{ "contract": ${CONTRACT_VERSION} }\n`);
+  assert.deepEqual([(await check()).ok, (await check()).detail], [true, `artifact contract ${CONTRACT_VERSION}`]);
+  put(m.root, "atf/atf.json", `{ "contract": ${CONTRACT_VERSION + 1} }\n`);
+  let c = await check();
+  assert.deepEqual([c.ok, c.level], [false, "fail"]);
+  assert.match(c.detail, /^atf\/atf\.json records artifact contract 3, newer than this framework's 2: a newer @testagentic\/atf migrated this workspace/);
+  assert.match(c.fix, /^install that newer @testagentic\/atf in the workspace/);
+  assert.equal(c.autofix, undefined, "never autofixed");
+  put(m.root, "atf/atf.json", '{ "contract": 1 }\n');
+  c = await check();
+  assert.match(c.detail, /^atf\/atf\.json records artifact contract 1, older than this framework's 2: its artifacts must be migrated first$/);
+  assert.equal(c.fix, "npx atf migrate (in the workspace): it migrates the artifacts and records contract 2");
+  assert.equal(failures(await runChecks(cfg(), ["base"], m.opts)).length, 1, "it blocks every stage, as base does");
+  put(m.root, "atf/atf.json", '{ "contract": "2" }\n');
+  assert.match((await check()).detail, /^atf\/atf\.json "contract" must be a whole number of 1 or more \(the artifact-contract version\), not "2"$/);
 });
 
 test("browser: the MCP server's channel must be installed, and it must run the framework's init page instead of a --storage-state (D-076)", async () => {

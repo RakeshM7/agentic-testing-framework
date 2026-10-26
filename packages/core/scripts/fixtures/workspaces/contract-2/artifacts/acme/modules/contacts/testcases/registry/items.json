@@ -1,0 +1,168 @@
+{
+  "module": "contacts",
+  "next": 28,
+  "items": {
+    "field|contacts|checkbox|subscribed|checked": {
+      "id": "CI-contacts-1",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|checkbox|subscribed|unchecked": {
+      "id": "CI-contacts-2",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|combobox|owner|enum:me": {
+      "id": "CI-contacts-3",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|combobox|owner|enum:outside": {
+      "id": "CI-contacts-4",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|combobox|owner|enum:unassigned": {
+      "id": "CI-contacts-5",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|combobox|sort by|enum:created": {
+      "id": "CI-contacts-6",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|combobox|sort by|enum:name": {
+      "id": "CI-contacts-7",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|combobox|sort by|enum:outside": {
+      "id": "CI-contacts-8",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|searchbox|search contacts|valid": {
+      "id": "CI-contacts-9",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|textbox|email|valid": {
+      "id": "CI-contacts-10",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|textbox|name|missing": {
+      "id": "CI-contacts-11",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "field|contacts|textbox|name|valid": {
+      "id": "CI-contacts-12",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "flow|create-contact": {
+      "id": "CI-contacts-13",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "rule|3a63584c25": {
+      "id": "CI-contacts-14",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "rule|3ad13b8861": {
+      "id": "CI-contacts-15",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-1|button \"New contact\"|ST-contacts-2": {
+      "id": "CI-contacts-16",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-1|columnheader \"Name\"|ST-contacts-5": {
+      "id": "CI-contacts-17",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-1|link \"Acme CRM\"|ST-contacts-1": {
+      "id": "CI-contacts-18",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-1|link \"Contacts\"|ST-contacts-1": {
+      "id": "CI-contacts-19",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-1|link \"Jane Doe\"|ST-contacts-4": {
+      "id": "CI-contacts-20",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-1|tab \"All\"|ST-contacts-1": {
+      "id": "CI-contacts-21",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-1|tab \"Mine\"|ST-contacts-3": {
+      "id": "CI-contacts-22",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-2|button \"Cancel\"|ST-contacts-1": {
+      "id": "CI-contacts-23",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-3|tab \"All\"|ST-contacts-1": {
+      "id": "CI-contacts-24",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-4|link \"Back to contacts\"|ST-contacts-1": {
+      "id": "CI-contacts-25",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-4|link \"Jane Doe\"|ST-contacts-4": {
+      "id": "CI-contacts-26",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "transition|ST-contacts-5|columnheader \"Name ▲\"|ST-contacts-1": {
+      "id": "CI-contacts-27",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    }
+  }
+}

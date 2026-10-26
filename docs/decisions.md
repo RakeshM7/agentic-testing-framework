@@ -149,6 +149,8 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-091 | Each workspace has its own decision log, named in atf/atf.json | Accepted | 2026-10-26 |
 | D-092 | Hook registrations are generated and the build owns only the framework's own hook entries; a client's own MCP entries fail with a pointer | Accepted | 2026-10-26 |
 | D-093 | A client workspace opts in to the Copilot cloud agent by committing its agent and hook files; the setup workflow is written once and then the client's | Accepted | 2026-10-26 |
+| D-094 | The package is published to a private npmjs org as an unminified bundle with an allow-listed file set; nothing ships while the licence is a draft | Accepted | 2026-10-26 |
+| D-095 | Semver with an artifact-contract version and tested migrations; a run never resumes across a breaking line | Accepted | 2026-10-26 |
 
 ## Decisions
 
@@ -1826,3 +1828,66 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - pnpm clients, whose committed hook would name a machine-specific path.
 - **Affects:** `packages/core/scripts/lib/sync.mjs`, `packages/core/scripts/lib/init.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/roots.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/templates/workspace/copilot-setup-steps.yml`, `docs/cloud-agent-verification.md`
 - **Confirmed by the user on:** 2026-10-24 (draft P-3's opt-in) and 2026-10-26 (the setup workflow written once and client-owned; build now, verify live after; report then restore the committed files). This extends D-018, D-035, D-089 and D-091 without weakening them.
+
+### D-094 · The package is published to a private npmjs org as an unminified bundle with an allow-listed file set; nothing ships while the licence is a draft
+- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §2, §3.11 and phase 4: the distribution part of draft P-2)
+- **Decision:**
+  - **Registry (user, 2026-10-26):** `@testagentic/atf` is published to the npmjs private org, `access: restricted` (`publishConfig`). Each client gets its own read-only token, used as `ATF_NPM_TOKEN`. The source `package.json` stays `private: true`; only the built package can be published.
+  - **Version (user):** the first release is `0.1.0`; the breaking-line rules are in D-095.
+  - **Licence (user):** `"license": "UNLICENSED"` with `LICENSE.md`. Until legal supplies the EULA, it is an all-rights-reserved placeholder whose first line is `DRAFT — NOT FOR RELEASE`, and the release refuses to publish while that marker is present.
+  - **The bundle** (`scripts/build-package.mjs`, `npm run build`) writes `packages/core/dist/`, with esbuild as a build-time devDependency.
+    - **Scripts:** every client-side `scripts/**.mjs` and `bin/atf.mjs` is bundled at its source path, so `{fw}/scripts/<x>.mjs` stays valid. The output is ESM for node20, unminified and without sourcemaps, so hook-error stack traces stay readable. `node:` built-ins and the runtime dependencies stay external.
+    - **Lazy imports stay lazy:** every relative `import()` remains a dynamic import of the bundled sibling. That keeps the hook entries importing only built-ins statically, so a missing dependency still fails closed (D-020).
+    - **`import.meta.url`** is rewritten to each inlined module's own path in the bundle.
+    - **Copied as written:** `agents/`, `config/`, `templates/`, `schemas/`, the agent-facing `docs/`, `scripts/browser/init-page.cjs` and `LICENSE.md`.
+    - **Generated:** a `package.json` (no `private`, no devDependencies, the postinstall sync).
+    - **Never shipped:** tests, test helpers, `scripts/fixtures/`, the e2e harness, the build script, the decision log, `feedback/` and the maintainer docs.
+  - **The allow-list** is `packages/core/package-files.txt`: plain paths are required, globs must each match, and `!` lines are never allowed. The build, and the release, fail on a stray or missing file.
+  - **The release** (`.github/workflows/release.yml`) runs on a `core-v<semver>` tag, or by manual dispatch, which defaults to a dry run. In order it runs:
+    1. `npm ci`;
+    2. `npm run check`;
+    3. the build;
+    4. the allow-list check;
+    5. the release gate, which refuses a DRAFT licence or a tag that doesn't match the version;
+    6. `npm publish ./packages/core/dist` with the repository secret `NPM_TOKEN`.
+
+    There is no `--provenance`: npm's provenance needs a public source repository, and it would publish the repository and commit to a public log.
+  - **The client `.npmrc`** (written by `atf init`) maps `@testagentic` to `registry.npmjs.org`, with `_authToken=${ATF_NPM_TOKEN?}`. The `?` makes an unset variable empty, so npm still runs without it. This replaces D-089's commented-out placeholder.
+- **Why:**
+  - The user chose the npmjs private org (standard tooling, per-client tokens) and a placeholder licence that legal replaces.
+  - Bundling and the allow-list are the agreed light friction (§2); unminified keeps support possible.
+  - The DRAFT gate makes it impossible to ship without the legal text.
+  - Keeping the hooks' imports lazy preserves fail-closed behaviour in the shipped code, not just in the source.
+- **Affects:** `packages/core/scripts/build-package.mjs`, `packages/core/scripts/build-package.test.mjs`, `packages/core/package-files.txt`, `packages/core/LICENSE.md`, `packages/core/package.json`, `.github/workflows/release.yml`, `packages/core/templates/workspace/_npmrc`
+- **Confirmed by the user on:** 2026-10-24 (draft P-2) and 2026-10-26 (npmjs private org, a DRAFT licence placeholder, esbuild, version 0.1.0). This extends D-020, D-086 and D-089 without weakening them.
+
+### D-095 · Semver with an artifact-contract version and tested migrations; a run never resumes across a breaking line
+- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §3.10 and phase 4: draft P-9)
+- **Decision:**
+  - **Two versions.**
+    - The package version is semver; the first release is 0.1.0 (D-094).
+    - The artifact-contract version is `CONTRACT_VERSION` in `scripts/lib/contract.mjs`, kept as `LAYOUT_VERSION` too, and today 2. It is a whole number that changes only when the artifact contract changes in a way that needs a migration.
+  - **The breaking line** is the version up to its first non-zero part: `1.4.2` is line `1`, `0.3.7` is line `0.3`. So before 1.0, a minor is breaking.
+  - **Where the contract is recorded.**
+    - In the workspace: `atf/atf.json` `"contract"`, written by `atf init`. A workspace without it counts as 2.
+    - In each run: the contract it started on is `run.json` `layoutVersion` (the schema's `const` equals `CONTRACT_VERSION`).
+    - Provenance gains `package: {name, version}` and `plugin: null` (phase 6). The report shows the package version.
+  - **Run start and resume.**
+    - `run.mjs init` refuses a new run or a resume while the workspace's contract differs from the code's: older means `npx atf migrate` first, newer means install the newer package.
+    - Resume refuses a run started on another breaking line, or on another contract. Within a line it continues, and records each version change in `run.json` `packageChanges` and the run's history.
+    - Runs from before this change count as compatible.
+    - The doctor's `workspace-contract` check reports the same mismatches. `atf version` (text or `--json`) prints the package, the contracts, Node and the plugin.
+  - **Migrations.**
+    - Each step is a file `migrations/<from>-to-<to>.mjs` that exports `from`, `to`, `describe`, `touches` (paths under `artifacts/`) and `migrate(ctx)`. A step may touch only what `touches` declares. Its writes are held until it returns, and it must be idempotent: the machinery reruns it and fails the step on any further change.
+    - No step ships while the contract is 2. `migrations/` ships with the package (D-094).
+  - **`atf migrate [--dry-run]`.** It refuses a newer contract, a gap in the chain, `--env`, and a source checkout. A real run:
+    1. takes `artifacts/.migrate.lock`;
+    2. backs up every run state to `artifacts/.migrate-backups/<time>-<from>-to-<to>/`;
+    3. per step, writes the step's files, sets `layoutVersion` in every run (active runs included, under their run lock), then sets `atf/atf.json` `"contract"`;
+    4. records each step in `artifacts/migrations.jsonl`.
+
+    On a failing step the workspace stays on the last completed contract. The guard's `workspace-settings` rule refuses `atf migrate`, a dry run included, to framework agents (D-088).
+  - **Compatibility gate.** `scripts/fixtures/workspaces/contract-<n>/` holds frozen workspaces as each contract's release wrote them: generated offline by `generate.mjs` with the pipeline test's stand-in agents (D-084), deterministic, with no absolute paths. `contract-fixtures.test.mjs`, run in CI, migrates each one with the package's own steps, then reads all of it. A release that can no longer read what an earlier one wrote fails CI. A contract bump adds a fixture and keeps the old ones.
+- **Why:** clients keep long-lived knowledge, catalogues, test cases and runs. An upgrade must not lose them or silently misread them, and a run must finish on the code that started it.
+- **Affects:** `packages/core/scripts/lib/contract.mjs`, `packages/core/scripts/run.mjs`, `packages/core/scripts/lib/provenance.mjs`, `packages/core/schemas/run.schema.json`, `packages/core/scripts/lib/migrate.mjs`, `packages/core/scripts/migrate.test.mjs`, `packages/core/migrations/README.md`, `packages/core/scripts/contract-fixtures.test.mjs`, `packages/core/scripts/fixtures/workspaces/generate.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/guard.mjs`
+- **Confirmed by the user on:** 2026-10-24 (draft P-9) and 2026-10-26 (version 0.1.0; a 0.x minor is breaking). This extends D-066, D-071, D-072, D-077, D-084 and D-088 without weakening them.

@@ -1,0 +1,61 @@
+### Page state
+- Page URL: https://app.acme.test/contacts
+- Page Title: Contacts - Acme CRM
+- Page Snapshot:
+```yaml
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - link "Acme CRM" [ref=e4] [cursor=pointer]:
+      - /url: /contacts
+    - navigation "Main" [ref=e5]:
+      - list [ref=e6]:
+        - listitem [ref=e7]:
+          - link "Contacts" [ref=e8] [cursor=pointer]:
+            - /url: /contacts
+        - listitem [ref=e9]:
+          - link "Deals" [ref=e10] [cursor=pointer]:
+            - /url: /deals
+        - listitem [ref=e11]:
+          - link "Help" [ref=e12] [cursor=pointer]:
+            - /url: https://help.vendor.test/contacts
+    - button "Sign out" [ref=e13] [cursor=pointer]
+  - main [ref=e14]:
+    - heading "Contacts" [level=1] [ref=e15]
+    - button "New contact" [ref=e16] [cursor=pointer]
+    - searchbox "Search contacts" [ref=e17]
+    - combobox "Sort by" [ref=e18]:
+      - option "Name" [selected]
+      - option "Created"
+    - tablist [ref=e19]:
+      - tab "All" [selected] [ref=e20]
+      - tab "Mine" [ref=e21]
+    - table "Contacts" [ref=e22]:
+      - rowgroup [ref=e23]:
+        - row "Name Email Created" [ref=e24]:
+          - columnheader "Name" [ref=e25]
+          - columnheader "Email" [ref=e26]
+          - columnheader "Created" [ref=e27]
+      - rowgroup [ref=e28]:
+        - row "Jane Doe jane@private.test 2026-10-01" [ref=e29]:
+          - cell "Jane Doe" [ref=e30]:
+            - link "Jane Doe" [ref=e31] [cursor=pointer]:
+              - /url: /contacts/101
+          - cell "jane@private.test" [ref=e32]
+          - cell "2026-10-01" [ref=e33]
+    - paragraph [ref=e44]: Showing 1-1 of 1
+    - button "Delete selected" [disabled] [ref=e45]
+  - dialog "New contact" [ref=e60]:
+    - heading "New contact" [level=2] [ref=e61]
+    - textbox "Name *" [ref=e62]
+    - textbox "Email" [ref=e63]:
+      - /placeholder: name@example.com
+    - combobox "Owner" [ref=e64]:
+      - option "Me" [selected]
+      - option "Unassigned"
+    - checkbox "Subscribed" [ref=e65]
+    - button "Save" [ref=e66] [cursor=pointer]
+    - button "Cancel" [ref=e67] [cursor=pointer]
+  - contentinfo [ref=e46]:
+    - link "Privacy" [ref=e47] [cursor=pointer]:
+      - /url: /privacy
+```

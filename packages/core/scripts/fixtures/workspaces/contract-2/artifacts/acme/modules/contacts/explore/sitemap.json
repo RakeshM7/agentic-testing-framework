@@ -1,0 +1,43 @@
+[
+  {
+    "id": "PG-contacts-1",
+    "url": "https://app.acme.test/contacts",
+    "slug": "contacts",
+    "title": "Contacts - Acme CRM",
+    "template": "/contacts",
+    "links": [
+      "//help.vendor.test/contacts",
+      "/contacts",
+      "/contacts/{id}",
+      "/deals",
+      "/privacy"
+    ],
+    "states": [
+      "ST-contacts-1",
+      "ST-contacts-2",
+      "ST-contacts-3",
+      "ST-contacts-5"
+    ],
+    "domSnapshotPath": "pages/contacts/dom-snapshot.md",
+    "statesDir": "pages/contacts/states/"
+  },
+  {
+    "id": "PG-contacts-2",
+    "url": "https://app.acme.test/contacts/101",
+    "slug": "contacts-id",
+    "title": "Jane Doe - Acme CRM",
+    "template": "/contacts/{id}",
+    "links": [
+      "//help.vendor.test/contacts",
+      "/contacts",
+      "/contacts/{id}",
+      "/deals",
+      "/privacy"
+    ],
+    "states": [
+      "ST-contacts-4"
+    ],
+    "domSnapshotPath": "pages/contacts-id/dom-snapshot.md",
+    "statesDir": "pages/contacts-id/states/"
+  }
+]

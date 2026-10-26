@@ -6,14 +6,15 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileS
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { carryForward, diffRuns, endInfo, endRun, initRun, makeRunId, next, nextStep, setStage, stagePrompt, status, validateProduct } from "./run.mjs";
-import { loadJson, paths, frameworkRoot } from "./lib/contract.mjs";
+import { carryForward, diffRuns, endInfo, endRun, initRun, makeRunId, next, nextStep, resumeProblem, setStage, stagePrompt, status, validateProduct } from "./run.mjs";
+import { CONTRACT_VERSION, LAYOUT_VERSION, loadJson, paths, frameworkRoot } from "./lib/contract.mjs";
 import { CONFIG_FILES, configPath } from "./lib/config.mjs";
 import { GROUPS, recordDoctor } from "./lib/doctor.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
 import { collect } from "./report-data.mjs";
 import { buildCatalogue, markApproved, put, renderFoundation, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
 import { append, read as readLedger } from "./lib/ledger.mjs";
+import { packageOf, releaseLine } from "./lib/provenance.mjs";
 
 const SITEMAP = JSON.stringify([{ url: "https://app.acme.test/contacts", slug: "contacts-list", title: "Contacts" }]);
 const CSV_HEADER = "ID,Module,Question,Steps to execute,Answer,Clarification agent notes,Run ID\r\n";
@@ -612,8 +613,12 @@ test("init records what the run is made with: framework commit, browser server, 
   assert.equal(here.node, process.version);
   assert.deepEqual(here.config.map((c) => c.name), CONFIG_FILES);
   const { root, run } = startRun();
-  assert.deepEqual(Object.keys(run.provenance).sort(), ["browserServer", "config", "framework", "models", "node", "templates"]);
+  assert.deepEqual(Object.keys(run.provenance).sort(), ["browserServer", "config", "framework", "models", "node", "package", "plugin", "templates"]);
   assert.equal(run.provenance.framework, null, "not a git checkout: unknown, never guessed");
+  assert.equal(run.provenance.package, null, "the scratch framework has no package.json: unknown, never guessed");
+  assert.equal(run.provenance.plugin, null);
+  assert.deepEqual(here.package, packageOf(frameworkRoot));
+  assert.equal(here.package.name, JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8")).name);
   // one directory that is both: nothing can override the framework's config. The scratch framework holds only
   // permissions.yaml, so the others are recorded with an unknown digest, never a guessed one
   assert.deepEqual(run.provenance.config.map((c) => [c.name, c.source, c.files]), CONFIG_FILES.map((n) => [n, "framework", [`config/${n}`]]));
@@ -624,8 +629,143 @@ test("init records what the run is made with: framework commit, browser server, 
   const report = await collect("acme", { root });
   assert.deepEqual(report.provenance, run.provenance);
   assert.deepEqual(report.customConfig, { permissions: null, other: [] });
-  assert.match(renderDeck({ ...report, provenance: here }), new RegExp(`Made with framework <code>${here.framework.commit.slice(0, 10)}</code>`));
+  assert.match(renderDeck({ ...report, provenance: here }), new RegExp(`Made with @testagentic/atf <code>${here.package.version.replace(/\./g, "\\.")}</code> &middot; framework <code>${here.framework.commit.slice(0, 10)}</code>`));
+  assert.match(renderDeck(report), /Made with framework commit unknown/, "neither known: said so");
   assert.doesNotMatch(renderDeck(report), /Custom safety config|customized config/);
+});
+
+// Versions (docs/packaging.md §3.10). A release is faked by passing the package in (initRun's `pkg`), never by
+// writing the framework's package.json.
+const PKG = (version) => ({ name: "@testagentic/atf", version });
+function versionedRun(version, files = {}) {
+  const root = tempRoot();
+  for (const [rel, text] of Object.entries(files)) put(root, rel, text);
+  const cfg = writeConfig(root);
+  const r = initRun(cfg, { root, framework: root, runId: "acme-run-1", env: { CLAUDECODE: "1" }, pkg: version && PKG(version) });
+  assert.deepEqual(r.errors, undefined);
+  recordCanary("acme", root, { host: "claude-code", agent: "orchestrator-agent" });
+  recordDoctor("acme", root, { groups: GROUPS, checks: [] });
+  const resume = (v) => initRun(cfg, { root, framework: root, resume: true, pkg: v && PKG(v) });
+  return { root, cfg, run: r.run, resume, runFile: paths("acme", root).runFile };
+}
+
+test("the contract version: LAYOUT_VERSION is its alias, every run.json records it, and the schema pins the same value", async () => {
+  assert.equal(CONTRACT_VERSION, 2);
+  assert.equal(LAYOUT_VERSION, CONTRACT_VERSION);
+  const schema = JSON.parse(readFileSync(path.join(frameworkRoot, "schemas", "run.schema.json"), "utf8"));
+  assert.equal(schema.properties.layoutVersion.const, CONTRACT_VERSION, "a contract bump moves the schema with it");
+  const { run } = startRun();
+  assert.equal(run.layoutVersion, CONTRACT_VERSION);
+  assert.equal(run.contractVersion, undefined, "no second field for the same number");
+});
+
+test("the breaking line: the first non-zero component (pre-1.0 a minor is breaking); not semver is null", () => {
+  for (const [v, line] of [["0.1.0", "0.1"], ["0.1.9", "0.1"], ["0.2.0", "0.2"], ["1.0.0", "1"], ["1.4.2", "1"], ["2.0.0-rc.1", "2"], ["0.3.0+build.5", "0.3"], ["0.0.4", "0.0.4"], ["10.0.1", "10"]])
+    assert.equal(releaseLine(v), line, v);
+  for (const v of ["", "1.0", "v1.0.0", "01.0.0", "banana", null, undefined]) assert.equal(releaseLine(v), null, String(v));
+});
+
+test("init records the package's name and version in provenance, and no plugin; the report's title slide shows the release", async () => {
+  const { root, run } = versionedRun("0.1.0");
+  assert.deepEqual(run.provenance.package, PKG("0.1.0"));
+  assert.equal(run.provenance.plugin, null);
+  assert.equal(run.packageChanges, undefined);
+  assert.deepEqual(await validateProduct("acme", { root }), []);
+  const { renderDeck } = await import("./lib/report.mjs");
+  const deck = renderDeck(await collect("acme", { root }));
+  assert.match(deck, /Made with @testagentic\/atf <code>0\.1\.0<\/code> &middot; /, "an installed release: no commit, and no 'unknown' either");
+  assert.doesNotMatch(deck, /framework commit unknown/);
+  // by default the framework's own package.json, read at run time
+  assert.deepEqual(packageOf(frameworkRoot), (({ name, version }) => ({ name, version }))(JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8"))));
+  assert.equal(packageOf(root), null, "no package.json: unknown");
+});
+
+test("resume across versions: another breaking line is refused (a 0.x minor, a major), and the run is left as it was", () => {
+  for (const [from, to, lines] of [["0.1.0", "0.2.0", "0.1 and 0.2"], ["0.1.4", "1.0.0", "0.1 and 1"], ["1.4.0", "2.0.0", "1 and 2"], ["2.0.0", "1.9.9", "2 and 1"]]) {
+    const v = versionedRun(from);
+    const before = readFileSync(v.runFile, "utf8");
+    const r = v.resume(to);
+    assert.equal(r.errors.length, 1, `${from} -> ${to}`);
+    assert.equal(
+      r.errors[0],
+      `run acme-run-1 was started with @testagentic/atf ${from}, and this is @testagentic/atf ${to}, another breaking line (${lines}). Finish the run with ${from} (npm install --save-dev @testagentic/atf@${from} in the workspace, then resume), or end it (node scripts/run.mjs end acme --abandon) and start a new run`
+    );
+    assert.equal(readFileSync(v.runFile, "utf8"), before, "nothing written: no interruption, no version change");
+  }
+  // a version this package can't compare with its own is refused, never guessed
+  const odd = versionedRun("banana");
+  assert.match(odd.resume("0.1.0").errors[0], /^run acme-run-1 was started with @testagentic\/atf banana, and this is @testagentic\/atf 0\.1\.0, and the two can't be compared as semver\. Finish the run with banana/);
+  const unread = versionedRun("0.1.0");
+  assert.match(unread.resume(null).errors[0], /this framework's own version can't be read from its package\.json \(reinstall it\), so the two can't be compared/);
+});
+
+test("resume within a line continues and records each version change in the run, and end carries them into its history", async () => {
+  const v = versionedRun("0.1.0");
+  await setStage("acme", "knowledge", undefined, "start", undefined, { root: v.root });
+  const r = v.resume("0.1.3");
+  assert.equal(r.errors, undefined);
+  assert.deepEqual(r.interrupted, ["_product/knowledge"], "the D-071 interruption still happens");
+  assert.deepEqual((({ at, ...c }) => c)(r.packageChange), { name: "@testagentic/atf", from: "0.1.0", to: "0.1.3" });
+  const run = loadJson(v.runFile);
+  assert.deepEqual(run.packageChanges, [r.packageChange]);
+  assert.deepEqual(run.provenance.package, PKG("0.1.0"), "provenance keeps the release the run started with");
+  assert.equal(v.resume("0.1.3").packageChange, undefined, "the same version again: nothing to record");
+  v.resume("0.1.4");
+  assert.deepEqual(loadJson(v.runFile).packageChanges.map((c) => [c.from, c.to]), [["0.1.0", "0.1.3"], ["0.1.3", "0.1.4"]]);
+  assert.match(v.resume("0.2.0").errors[0], /^run acme-run-1 was started with @testagentic\/atf 0\.1\.4, .*another breaking line \(0\.1 and 0\.2\)\. Finish the run with 0\.1\.4 /, "compared with the version the run last ran on");
+  assert.deepEqual(await validateProduct("acme", { root: v.root }), []);
+  const major = versionedRun("1.2.0");
+  assert.deepEqual([major.resume("1.9.0").packageChange.from, major.resume("1.9.0").errors], ["1.2.0", undefined], "a 1.x minor is the same line");
+  const summary = await endRun("acme", { root: v.root });
+  assert.deepEqual(summary.packageChanges.map((c) => c.to), ["0.1.3", "0.1.4"]);
+  assert.deepEqual(loadJson(path.join(paths("acme", v.root).historyDir, "acme-run-1.json")).packageChanges, summary.packageChanges);
+});
+
+test("a run that predates package versions resumes as compatible, recording nothing", () => {
+  for (const strip of [(run) => delete run.provenance.package, (run) => delete run.provenance]) {
+    const v = versionedRun("0.1.0");
+    const run = loadJson(v.runFile);
+    strip(run);
+    writeFileSync(v.runFile, JSON.stringify(run));
+    const r = v.resume("7.0.0");
+    assert.equal(r.errors, undefined);
+    assert.equal(r.packageChange, undefined);
+    assert.equal(loadJson(v.runFile).packageChanges, undefined);
+  }
+  assert.equal(resumeProblem({ runId: "x", layoutVersion: CONTRACT_VERSION }, { pkg: PKG("3.0.0"), product: "acme", fw: "" }), null);
+});
+
+test("resume on another artifact contract is refused until npx atf migrate (older), or left to the package that wrote it (newer)", () => {
+  for (const [layout, message] of [
+    [1, "run acme-run-1 was started on artifact contract 1, and this framework uses contract 2: run npx atf migrate in the workspace first, which migrates its state, then resume"],
+    [3, "run acme-run-1 was started on artifact contract 3, newer than this framework's 2: finish it with the @testagentic/atf that started it"],
+  ]) {
+    const v = versionedRun("0.1.0");
+    const run = loadJson(v.runFile);
+    writeFileSync(v.runFile, JSON.stringify({ ...run, layoutVersion: layout }));
+    const before = readFileSync(v.runFile, "utf8");
+    assert.deepEqual(v.resume("0.1.0").errors, [message]);
+    assert.equal(readFileSync(v.runFile, "utf8"), before);
+  }
+});
+
+test("init and resume refuse a workspace whose atf/atf.json records another contract; none recorded counts as 2", () => {
+  const ok = versionedRun("0.1.0", { "atf/atf.json": "{}\n" });
+  assert.equal(ok.run.layoutVersion, 2, "a marker without contract: today's layout");
+  for (const [text, message] of [
+    ['{ "contract": 3 }', /^atf\/atf\.json records artifact contract 3, newer than this framework's 2: a newer @testagentic\/atf migrated this workspace, and this one would misread its artifacts\. Fix: install that newer @testagentic\/atf in the workspace \(npm install --save-dev @testagentic\/atf@<that version>\)$/],
+    ['{ "contract": 1 }', /^atf\/atf\.json records artifact contract 1, older than this framework's 2: its artifacts must be migrated first\. Fix: npx atf migrate \(in the workspace\): it migrates the artifacts and records contract 2$/],
+    ['{ "contract": "two" }', /^atf\/atf\.json "contract" must be a whole number of 1 or more \(the artifact-contract version\), not "two"\. Fix: correct atf\/atf\.json/],
+  ]) {
+    const root = tempRoot();
+    put(root, "atf/atf.json", text);
+    const r = initRun(writeConfig(root), { root, framework: root, runId: "acme-run-1", pkg: PKG("0.1.0") });
+    assert.match(r.errors?.[0] ?? "", message, text);
+    assert.ok(!existsSync(paths("acme", root).state), `${text}: no run state written`);
+    // an active run: the resume is refused the same way, before the run's own checks
+    put(ok.root, "atf/atf.json", text);
+    assert.match(ok.resume("0.1.0").errors[0], message);
+  }
 });
 
 // A client's workspace apart from the real framework (D-085), with the given files under it (atf/ overrides, a run-config

@@ -17,7 +17,7 @@ import { checkTool } from "./lib/guard.mjs";
 import { networkGuarded } from "./lib/browser-tools.mjs";
 import { append } from "./lib/ledger.mjs";
 import { resolvePermissions, shellAllowed } from "./lib/permissions.mjs";
-import { collectProvenance } from "./lib/provenance.mjs";
+import { collectProvenance, packageOf } from "./lib/provenance.mjs";
 import { expandFw, findWorkspace, frameworkRel, frameworkRoot, hookWorkspaceRoot, isInstalled, resolveWorkspaceRoot, sameDir, workspaceRoot } from "./lib/roots.mjs";
 import { normalize } from "./hooks/hosts/claude.mjs";
 import { initRun } from "./run.mjs";
@@ -69,6 +69,9 @@ test("a split workspace: run state, the ledger and artifacts land in the workspa
   // what the run is made with is the framework's: its commit, browser server and models, as this workspace has them
   // (config files are recorded from the workspace, D-077)
   assert.deepEqual(r.run.provenance, collectProvenance(frameworkRoot, ws));
+  // the release is the framework's own package.json, whichever workspace runs it (docs/packaging.md §3.10)
+  assert.deepEqual(r.run.provenance.package, packageOf(frameworkRoot));
+  assert.ok(r.run.provenance.package?.version, "a version is recorded");
   assert.match(r.run.permissionsPath, /config\/permissions\.yaml$/);
   assert.equal(path.resolve(ws, r.run.permissionsPath), configPath("permissions.yaml"), "the framework's own permissions, by default");
   // the frozen commands are the ones the agents run from the workspace

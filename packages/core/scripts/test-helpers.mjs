@@ -430,12 +430,17 @@ export const INSTALLED_PACKAGE = "node_modules/@testagentic/atf";
 // -> { root: the workspace, framework: the installed copy }, both real paths. Pass them to in-process calls
 // (build({ root, framework }), plan(argv, { workspace: root, framework }), runChecks(…, { root, framework })), or run the
 // copy's own scripts (`node <framework>/bin/atf.mjs …`) for anything that depends on where the script lives.
-export function installedWorkspace() {
+// `from` installs another copy instead of this source, such as the built package (scripts/build-package.mjs dist).
+export function installedWorkspace({ from = frameworkRoot } = {}) {
   const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), "atf-client-")));
   cpSync(CLIENT_FIXTURE, root, { recursive: true });
   const framework = path.join(root, ...INSTALLED_PACKAGE.split("/"));
-  const skip = new Set([path.join(frameworkRoot, "scripts", "fixtures")]);
-  cpSync(frameworkRoot, framework, { recursive: true, filter: (src) => path.basename(src) !== "node_modules" && !skip.has(src) });
+  const skip = new Set([path.join(from, "scripts", "fixtures"), path.join(from, "dist")]);
+  cpSync(from, framework, { recursive: true, filter: (src) => path.basename(src) !== "node_modules" && !skip.has(src) });
+  // pinned to the version installed, as npm leaves it, so a release's version bump never touches the fixture
+  const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+  pkg.devDependencies["@testagentic/atf"] = JSON.parse(readFileSync(path.join(framework, "package.json"), "utf8")).version;
+  writeFileSync(path.join(root, "package.json"), `${JSON.stringify(pkg, null, 2)}\n`);
   const deps = path.dirname(packageDir("js-yaml", frameworkRoot));
   for (const name of readdirSync(deps)) {
     if (name.startsWith(".") || name === "@testagentic" || name === "node_modules") continue;

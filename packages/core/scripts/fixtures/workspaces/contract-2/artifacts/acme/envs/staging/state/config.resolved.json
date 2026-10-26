@@ -1,0 +1,78 @@
+{
+  "product": "acme",
+  "environment": "staging",
+  "target": {
+    "api_urls": [],
+    "url": "https://app.acme.test"
+  },
+  "steps": [
+    "explore",
+    "testcases"
+  ],
+  "modules": [
+    {
+      "slug": "contacts",
+      "name": "Contacts",
+      "entry_url": "https://app.acme.test/contacts"
+    }
+  ],
+  "authorizations": {
+    "authenticated_crawl": false,
+    "credentials_file": null,
+    "session_state_file": null,
+    "identities": [],
+    "mode": "readonly"
+  },
+  "about": {
+    "name": "acme",
+    "visibility": "public",
+    "description": ""
+  },
+  "api": {
+    "specs": [],
+    "graphql": [],
+    "auth_header": null,
+    "discovery_budget": 40,
+    "probe_budget": 50,
+    "probe_delay_ms": 500,
+    "plan_budget": 300
+  },
+  "feature": {
+    "description": "",
+    "requirement_docs": []
+  },
+  "knowledge": {
+    "references": [],
+    "max_extra_sources": 20
+  },
+  "explore": {
+    "max_pages": 40,
+    "max_states": 150
+  },
+  "permissions_file": "config/permissions.yaml",
+  "testcases": {
+    "output_format": "gherkin",
+    "max_cases": 200
+  },
+  "clarifications": {
+    "unresolved_policy": "stop"
+  },
+  "limits": {
+    "review_rounds": 3,
+    "heal_rounds": 3
+  },
+  "concurrency": {
+    "modules": 1,
+    "clarification_rows": 1
+  },
+  "k6": {
+    "budget": 10,
+    "caps": {
+      "rps": 10,
+      "duration_s": 120,
+      "soak_duration_s": 1800
+    },
+    "slo": {},
+    "modules": {}
+  }
+}

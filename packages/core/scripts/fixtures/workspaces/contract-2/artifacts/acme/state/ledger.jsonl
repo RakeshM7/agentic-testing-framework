@@ -1,0 +1,1 @@
+{"ts":"2026-10-01T09:00:00.000Z","runId":"acme-run-1","event":"created","type":"contact","ref":"c-1001","label":"ATF contact 1","module":"contacts","stage":"playwright-ui","agent":"pw-ui-test-runner-triager"}

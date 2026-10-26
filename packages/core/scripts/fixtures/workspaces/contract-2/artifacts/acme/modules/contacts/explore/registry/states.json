@@ -1,0 +1,36 @@
+{
+  "module": "contacts",
+  "next": 6,
+  "states": {
+    "/contacts 01acf9832158b832": {
+      "id": "ST-contacts-1",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "/contacts f417fc954ac164c4": {
+      "id": "ST-contacts-2",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "/contacts 656a73a7cef8b538": {
+      "id": "ST-contacts-3",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "/contacts/{} f4aebca3cabcc576": {
+      "id": "ST-contacts-4",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "/contacts 644ad0576bd83550": {
+      "id": "ST-contacts-5",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    }
+  }
+}

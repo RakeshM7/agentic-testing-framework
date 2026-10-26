@@ -4,7 +4,8 @@
 // (`run.mjs doctor <product>`, which records the result in state/doctor.json for `stage … start`).
 //
 // Groups, and the stages that need them (STAGE_NEEDS):
-//   base     Node.js, the framework's own dependencies, and its peer dependency (playwright) in the workspace; for
+//   base     Node.js, the framework's own dependencies, and its peer dependency (playwright) in the workspace; the
+//            workspace's artifact contract (atf/atf.json "contract") against this code's; for
 //            an installed framework, the host files in sync with it (atf check), and with the cloud-agent opt-in its
 //            setup workflow and the committed files git must not ignore
 //   login    the browser the login opens (lib/login.mjs, D-069): Microsoft Edge, else Google Chrome, else the
@@ -24,7 +25,7 @@ import os from "node:os";
 import path from "node:path";
 import { INIT_PAGE } from "./browser-tools.mjs";
 import { configLocation, ejectedRel, loadConfig, overlayRel } from "./config.mjs";
-import { STAGES, frameworkRoot, paths } from "./contract.mjs";
+import { CONTRACT_VERSION, STAGES, UNRECORDED_CONTRACT, contractProblem, frameworkRoot, paths, workspaceContract } from "./contract.mjs";
 import { tryReadJson, writeJson } from "./files.mjs";
 import { expandFw, isInstalled } from "./roots.mjs";
 
@@ -93,11 +94,23 @@ export function packageDir(name, from) {
 
 // ---- the checks, one function per group --------------------------------------------------------------------------
 
-// The base group: Node.js and the framework's dependencies, then, for an installed framework, its host files.
+// The base group: Node.js and the framework's dependencies, the workspace's contract, then, for an installed framework,
+// its host files.
 async function base(ctx) {
   const out = deps(ctx);
+  if (ctx.root) out.push(contractCheck(ctx));
   if (ctx.root && isInstalled(ctx.framework)) out.push(...(await hostFiles(ctx)));
   return out;
+}
+
+// The workspace's artifact contract against this code's (docs/packaging.md §3.10), as run.mjs init refuses it: a
+// workspace a newer package migrated, or one an older package left that needs npx atf migrate. Never autofixed: a
+// migration is a human's step.
+function contractCheck({ root }) {
+  const problem = contractProblem(root);
+  if (problem) return { id: "workspace-contract", ok: false, level: "fail", ...problem };
+  const { recorded } = workspaceContract(root);
+  return { id: "workspace-contract", ok: true, detail: `artifact contract ${CONTRACT_VERSION}${recorded ? "" : ` (not recorded in atf/atf.json, ${UNRECORDED_CONTRACT} assumed)`}` };
 }
 
 // The framework's own dependencies: its package.json, each resolved from the framework root the way Node resolves it

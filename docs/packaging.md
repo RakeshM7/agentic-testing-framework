@@ -1,6 +1,6 @@
 # Packaging the framework for clients
 
-**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1 to 3 are in force (D-085 as amended by D-086, and D-087 to D-093; the cloud-agent opt-in is experimental until verified live); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
+**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1 to 4 are in force (D-085 as amended by D-086, and D-087 to D-095; the cloud-agent opt-in is experimental until verified live); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
 
 ## 1. What was decided in the interview
 
@@ -280,7 +280,9 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 | P-2 · private licensed package, monorepo | monorepo part: D-086; distribution part: phase 4 | 2a, 4 |
 | P-3 · `atf sync`, git-ignored host files, `atf init` | D-089 (and D-092 for client hooks and MCP servers) | 3b |
 | P-3 · the cloud-agent opt-in | D-093 (experimental: `docs/cloud-agent-verification.md`) | 3c |
+| P-2 · distribution: npmjs private org, bundle, allow-list, EULA gate | D-094 | 4 |
 | P-4 · config overlays and eject | D-088 | 3a |
+| P-9 · contract version, `atf migrate`, frozen fixtures | D-095 | 4 |
 | P-5 · agent add-on fragments | D-090 | 3b |
 | P-6 · the client decision log | D-091 | 3b |
 | P-10 · `atf` CLI replaces the Makefile | D-087 (the `make` targets; the other commands land with phases 3 to 5) | 2b |
@@ -298,7 +300,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 - **Confirmed by the user on:** — (extends D-002 and D-020 without weakening them)
 
 ### P-2 · Clients get a private, licensed npm package built from a monorepo
-- **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
+- **Status:** Accepted: the monorepo part as D-086 (phase 2a), the distribution part as D-094 (2026-10-26, phase 4: npmjs private org, 0.1.0, a DRAFT licence gate) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **Monorepo.** This repo holds `packages/core` (the package), `packages/claude-plugin`, later `packages/vscode`, with the repo root as the maintainers' workspace, which consumes the package through the npm workspace link like a client.
   - **Distribution.** The package is published only to a private registry, one access token per client. It is `UNLICENSED`, with a commercial EULA.
@@ -379,7 +381,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 - **Supersedes:** D-083 (where the issues go at run end) · **Confirmed by the user on:** —
 
 ### P-9 · Semver with tested artifact migrations; a run never resumes across a major
-- **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
+- **Status:** Accepted, recorded in decisions.md as D-095 (2026-10-26, phase 4) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **Contract version.** `LAYOUT_VERSION` becomes the artifact-contract version, recorded in `atf/atf.json` and `run.json`. Provenance adds the package and plugin versions.
   - **Within a major.** Patch and minor releases read every artifact of their major, checked against frozen workspace fixtures in CI.

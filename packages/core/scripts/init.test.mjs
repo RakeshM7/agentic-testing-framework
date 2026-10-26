@@ -10,6 +10,7 @@ import { plan, run } from "./lib/cli.mjs";
 import { parseDecisions } from "./lib/decisions.mjs";
 import { CLIENT_GITIGNORE, DOCTOR_BASE_SCRIPT, INIT_BLOCK_END, INIT_BLOCK_START, packageName, withDeps, withInitBlock } from "./lib/init.mjs";
 import { frameworkRoot } from "./lib/roots.mjs";
+import { CONTRACT_VERSION, workspaceContract } from "./lib/contract.mjs";
 import { SETUP_TEMPLATE, SETUP_WORKFLOW, BLOCK_START as SYNC_BLOCK_START } from "./lib/sync.mjs";
 import { installedWorkspace, put, tempRoot } from "./test-helpers.mjs";
 
@@ -49,18 +50,21 @@ test("atf init --no-install in a folder that doesn't exist yet: every file, {fw}
   assert.equal(pkg.devDependencies.playwright, "1.64.1");
   assert.match(readFileSync(path.join(dir, "package.json"), "utf8"), /^\{\n {2}"name"[\s\S]*\}\n$/, "2-space indent, trailing newline");
 
-  // .npmrc: the registry template, inactive, a token only by environment variable
+  // .npmrc: the scope on registry.npmjs.org, a token only by environment variable (optional, so npm runs without it)
   const npmrc = readFileSync(path.join(dir, ".npmrc"), "utf8");
-  assert.match(npmrc, /^# @testagentic:registry=https:\/\/\S+$/m);
-  assert.match(npmrc, /^# \/\/\S+:_authToken=\$\{ATF_NPM_TOKEN\}$/m);
-  assert.ok(npmrc.split("\n").every((l) => l === "" || l.startsWith("#")), "every line commented out until the registry is set");
+  assert.match(npmrc, /^@testagentic:registry=https:\/\/registry\.npmjs\.org\/$/m);
+  assert.match(npmrc, /^\/\/registry\.npmjs\.org\/:_authToken=\$\{ATF_NPM_TOKEN\?\}$/m);
+  assert.equal(npmrc.split("\n").filter((l) => l && !l.startsWith("#")).length, 2, "only those two lines are active");
 
   // .gitignore: the init block with the whole baseline
   assert.equal(readFileSync(path.join(dir, ".gitignore"), "utf8"), [INIT_BLOCK_START, ...CLIENT_GITIGNORE, INIT_BLOCK_END, ""].join("\n"));
   for (const must of ["/artifacts/", "node_modules/", ".env", ".env.*", ".auth/"]) assert.ok(CLIENT_GITIGNORE.includes(must), must);
 
   // atf/: the marker and the empty decision log, which the hook parses with no entries
-  assert.equal(readFileSync(path.join(dir, "atf/atf.json"), "utf8"), "{}\n");
+  // atf/atf.json: the marker, with the artifact contract the workspace starts on (docs/packaging.md §3.10)
+  assert.equal(readFileSync(path.join(dir, "atf/atf.json"), "utf8"), `{\n  "contract": ${CONTRACT_VERSION}\n}\n`);
+  assert.deepEqual(workspaceContract(dir), { contract: CONTRACT_VERSION, recorded: true });
+  assert.ok(r.logs.includes(`  created  atf/atf.json: artifact contract ${CONTRACT_VERSION}`));
   assert.equal(existsSync(path.join(dir, SETUP_WORKFLOW)), false, "no cloud-agent opt-in, no setup workflow");
   const log = readFileSync(path.join(dir, "atf/decisions.md"), "utf8");
   assert.deepEqual(parseDecisions(log), []);
@@ -176,6 +180,7 @@ test("a file init can't read safely stops it before anything is written (exit 1)
     [".gitignore", `${INIT_BLOCK_START}\nx\n`, /the atf init block is malformed/],
     ["atf/atf.json", "{ nope", /atf\/atf\.json could not be read as JSON/],
     ["atf/atf.json", '{ "cloud_agent": "yes" }', /atf\/atf\.json "cloud_agent" must be true or false, not "yes"; fix it, then run atf init again$/],
+    ["atf/atf.json", '{ "contract": 2.5 }', /atf\/atf\.json "contract" must be a whole number of 1 or more \(the artifact-contract version\), not 2\.5; fix it, then run atf init again$/],
   ]) {
     const dir = path.join(tempRoot(), "ws");
     put(dir, file, text);
@@ -185,6 +190,18 @@ test("a file init can't read safely stops it before anything is written (exit 1)
     assert.equal(r.errors.at(-1), "atf init: nothing was written.");
     assert.deepEqual(readdirSync(dir).filter((f) => f !== file.split("/")[0]), [], `${file}: nothing else written`);
     assert.deepEqual(r.calls, [], `${file}: no install, no doctor`);
+  }
+});
+
+test("an existing atf.json is never rewritten: without \"contract\" it counts as 2, and another contract is left for the doctor and run.mjs init to refuse", () => {
+  for (const [text, contract] of [["{}\n", { contract: 2, recorded: false }], ['{ "contract": 1 }\n', { contract: 1, recorded: true }]]) {
+    const dir = path.join(tempRoot(), "ws");
+    put(dir, "atf/atf.json", text);
+    const r = init(["--no-install"], { cwd: dir });
+    assert.equal(r.code, 0, r.errors.join("\n"));
+    assert.ok(r.logs.includes("  present  atf/atf.json: left as it is"));
+    assert.equal(readFileSync(path.join(dir, "atf/atf.json"), "utf8"), text);
+    assert.deepEqual(workspaceContract(dir), contract);
   }
 });
 

@@ -28,3 +28,6 @@ config/interview-answers.json
 
 # Saved browser session (credentials); never commit
 auth.json
+
+# The built @testagentic/atf (packages/core/scripts/build-package.mjs): published by the release workflow, never committed
+packages/core/dist/

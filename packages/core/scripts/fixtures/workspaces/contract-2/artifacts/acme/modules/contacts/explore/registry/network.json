@@ -1,0 +1,54 @@
+{
+  "module": "contacts",
+  "next": 9,
+  "requests": {
+    "GET //www.google-analytics.com/collect": {
+      "id": "NI-contacts-1",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "GET /api/v1/contacts": {
+      "id": "NI-contacts-2",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "GET /api/v1/contacts/{}": {
+      "id": "NI-contacts-3",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "GET /api/v1/contacts/{}/notes": {
+      "id": "NI-contacts-4",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "GET /api/v1/users/{}/avatar": {
+      "id": "NI-contacts-5",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "GET /contacts": {
+      "id": "NI-contacts-6",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "GET /graphql": {
+      "id": "NI-contacts-7",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "POST /api/v1/telemetry": {
+      "id": "NI-contacts-8",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    }
+  }
+}

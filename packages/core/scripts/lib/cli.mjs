@@ -16,14 +16,23 @@
 // `atf init [dir]` creates a client's workspace (packaging §3.3, §3.6, §3.7; scripts/lib/init.mjs): the files it lacks,
 // never overwriting one, then the install and sync that make the host files, and the doctor's base checks. It is the
 // one command that runs outside a workspace, since it makes one.
+//
+// `atf version [--json]` says what is running (docs/packaging.md §3.10): the package's name and version, the artifact
+// contract it reads and writes, the contract the workspace records, Node.js and the plugin. It reads only, and works
+// outside a workspace too.
+//
+// `atf migrate [--dry-run]` brings the workspace's artifacts to this package's artifact contract (docs/packaging.md
+// §3.10; scripts/lib/migrate.mjs): every product and environment at once, so it takes no --env. It runs in a child node,
+// since the migration is async and run() is not.
 import { spawnSync } from "node:child_process";
 import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { CONFIG_FILES, configPath } from "./config.mjs";
-import { SLUG_RE, STAGES } from "./contract.mjs";
+import { CONTRACT_VERSION, SLUG_RE, STAGES, UNRECORDED_CONTRACT, contractProblem, workspaceContract } from "./contract.mjs";
 import { DOCTOR_BASE_SCRIPT, applyInit, initPlan, initRefusal, installedIn } from "./init.mjs";
-import { expandFw, findWorkspace, frameworkRel, frameworkRoot, isInstalled, isWithin, sameDir, workspaceRoot } from "./roots.mjs";
+import { packageOf } from "./provenance.mjs";
+import { WORKSPACE_MARKER, expandFw, findWorkspace, frameworkRel, frameworkRoot, isInstalled, isWithin, sameDir, workspaceRoot } from "./roots.mjs";
 import { SETUP_WORKFLOW, TOKEN_ENV, sync } from "./sync.mjs";
 
 export const USAGE = `atf <command> [<product>] [options]       every command works the same on macOS, Windows and Linux
@@ -40,6 +49,14 @@ One-time setup:
   atf doctor <product> [--no-fix]                   check (and install what it safely can) what every stage needs;
                                                     login, run, resume and automate run it first
   atf e2e [--keep]                                  the live end-to-end check (framework source checkout only)
+  atf version [--json]                              the package and its version, the artifact contract, the
+                                                    workspace's recorded contract, Node.js and the plugin
+
+Upgrading:
+  atf migrate [--dry-run]                           bring the workspace's artifacts to this package's artifact
+                                                    contract, after an upgrade that changes it: backs up the run
+                                                    state, then applies the package's migrations (--dry-run: show
+                                                    them, write nothing)
 
 Host files (the agents, hooks and MCP config of Claude Code, Copilot and VS Code):
   atf sync                                          render them from the installed package and atf/; npm install
@@ -89,6 +106,8 @@ const COMMANDS = {
   validate: { args: ["product"] },
   doctor: { args: ["product"], options: { "no-fix": { type: "boolean" } } },
   e2e: { args: [], options: { keep: { type: "boolean" } } },
+  version: { args: [], options: { json: { type: "boolean" } } },
+  migrate: { args: [], options: { "dry-run": { type: "boolean" } } },
   sync: { args: [], options: { postinstall: { type: "boolean" } } },
   check: { args: [] },
   eject: { args: ["subcommand", "file..."] },
@@ -187,6 +206,11 @@ export function plan(argv, ctx = {}) {
     case "e2e":
       if (isInstalled(framework)) return fail("atf e2e runs only in the framework's source checkout, not from an installed package");
       return steps(node("e2e.mjs", ...(v.keep ? ["--keep"] : [])));
+    case "version":
+      return { print: versionText(versionInfo({ workspace, framework }), { json: Boolean(v.json) }) };
+    case "migrate":
+      if (v.env) return fail("atf migrate migrates every product and environment of the workspace at once: it takes no --env");
+      return steps({ cmd: process.execPath, args: ["--input-type=module", "-e", MIGRATE_SCRIPT, workspace, framework, ...(v["dry-run"] ? ["--dry-run"] : [])] });
     case "sync":
       return v.postinstall ? postinstallPlan({ env, cwd, framework }) : { steps: [{ sync: { workspace, framework } }] };
     case "check":
@@ -255,6 +279,41 @@ export function plan(argv, ctx = {}) {
   return fail(`atf ${name}: not implemented`);
 }
 
+// What `atf version` reports. The workspace is none when an installed framework has no workspace around it (the one
+// case main() would refuse for any other command); one directory that is both reads its own marker, if any.
+// -> { package: {name, version} | null, contract, workspace: null | {root, contract, recorded, problem?} | {root, error},
+//      node, plugin: null }
+export function versionInfo({ workspace = workspaceRoot, framework = frameworkRoot, node = process.version } = {}) {
+  let ws = null;
+  if (!(sameDir(workspace, framework) && isInstalled(framework))) {
+    const w = workspaceContract(workspace);
+    const problem = !w.error && contractProblem(workspace);
+    ws = { root: workspace, ...w, ...(problem ? { problem: `${problem.detail}. Fix: ${problem.fix}` } : {}) };
+  }
+  // plugin: the Claude Code plugin's version, locked to the package's (packaging §3.12), from phase 6
+  return { package: packageOf(framework), contract: CONTRACT_VERSION, workspace: ws, node, plugin: null };
+}
+
+export function versionText(info, { json = false } = {}) {
+  if (json) return JSON.stringify(info, null, 2);
+  const w = info.workspace;
+  const ws = !w
+    ? "none (not inside an atf workspace)"
+    : w.error
+      ? `unreadable: ${w.error}`
+      : w.recorded
+        ? `${w.contract} (${WORKSPACE_MARKER})`
+        : `not recorded, ${UNRECORDED_CONTRACT} assumed`;
+  return [
+    info.package ? `${info.package.name} ${info.package.version}` : "package: unknown (the framework's package.json can't be read)",
+    `artifact contract: ${info.contract}`,
+    `workspace contract: ${ws}`,
+    ...(w?.problem ? [`  ${w.problem}`] : []),
+    `Node.js: ${info.node}`,
+    `plugin: ${info.plugin ? `${info.plugin.name} ${info.plugin.version}` : "none"}`,
+  ].join("\n");
+}
+
 // atf init's steps. `standalone`: it runs outside any workspace (main() skips workspaceError), since it makes one.
 //   1. the files (init.mjs initPlan, read here; written by run(), which reports each one)
 //   2. the host files: in process when this framework is the one installed in `dir`; otherwise npm install renders them
@@ -309,6 +368,18 @@ function postinstallPlan({ env, cwd, framework }) {
 }
 
 const SYNC_FIX = "npx atf sync";
+
+// atf migrate in a child node (argv: the workspace, the framework, then --dry-run or nothing): lib/migrate.mjs
+// migrateWorkspace() is async (it imports the package's steps) while run() is synchronous, as with init.mjs
+// DOCTOR_BASE_SCRIPT. Its exit code is the command's. The CLI never imports migrate.mjs itself: loaded by path, it stays
+// its own module in the published build, where its import() of the steps is its own.
+export const MIGRATE_SCRIPT = `
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+const [workspace, framework, flag] = process.argv.slice(1);
+const { migrateWorkspace } = await import(pathToFileURL(path.join(framework, "scripts", "lib", "migrate.mjs")).href);
+process.exitCode = await migrateWorkspace({ workspace, framework, dryRun: flag === "--dry-run" });
+`;
 
 // One sync or check: what changed, or what stops it. -> exit code (0 for every outcome of the postinstall).
 function syncStep({ workspace, framework, check = false, postinstall = false }, out) {
