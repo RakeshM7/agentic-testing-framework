@@ -48,6 +48,9 @@ function setup(content) {
   const root = mkdtempSync(path.join(tmpdir(), "atf-feedback-"));
   mkdirSync(path.join(root, "docs"), { recursive: true });
   mkdirSync(path.join(root, "scripts"), { recursive: true });
+  // the maintainers' log, where the monorepo's atf.json names it (a workspace's default is atf/decisions.md)
+  mkdirSync(path.join(root, "atf"), { recursive: true });
+  writeFileSync(path.join(root, "atf/atf.json"), JSON.stringify({ decisions: "docs/decisions.md" }));
   writeFileSync(path.join(root, "docs/decisions.md"), DECISIONS);
   writeFileSync(path.join(root, "scripts/review.test.mjs"), "// test\n");
   const file = path.join(root, "feedback/human/2026-10-19-x.md");

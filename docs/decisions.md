@@ -97,7 +97,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-039 | VS Code's settings cover its local agent; its Copilot CLI engine gets the combined ceiling | Accepted | 2026-10-12 |
 | D-040 | On VS Code, the guard's verdict is a decision on stdout with exit 0, never an exit code | Accepted | 2026-10-12 |
 | D-041 | A restricted agent may `cd` into the repo root before an allowed command | Accepted | 2026-10-12 |
-| D-042 | Hook registrations are generated; the PostToolUse hook is async, sync or off by one build flag | Accepted | 2026-10-13 |
+| D-042 | Hook registrations are generated; the PostToolUse hook is async, sync or off by one build flag | Superseded by D-092 | 2026-10-13 |
 | D-043 | Three layers of 34 agents: one fixer per domain, foundations built once, the explorer records its row | Accepted | 2026-10-16 |
 | D-044 | A script gate runs before every review, and `orchestration.mjs next` drives each domain's loop | Accepted | 2026-10-16 |
 | D-045 | The endpoint catalogue is script-built: stable ids, full coverage, guarded GET probes, API hosts are the target | Accepted | 2026-10-17 |
@@ -144,6 +144,10 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-086 | The monorepo: the repo root is the workspace and the framework is packages/core; read-only only when installed | Accepted | 2026-10-26 |
 | D-087 | A cross-platform atf CLI replaces the Makefile; the guard refuses its human-only forms like the make targets | Accepted | 2026-10-26 |
 | D-088 | A workspace overrides framework config by overlay or eject; atf/ is human-only and every run records what was customized | Accepted | 2026-10-26 |
+| D-089 | A client workspace is created by atf init and its host files rendered by atf sync, automatically on install, and git-ignored | Accepted | 2026-10-26 |
+| D-090 | A workspace extends an agent with an add-on fragment; it never replaces the body | Accepted | 2026-10-26 |
+| D-091 | Each workspace has its own decision log, named in atf/atf.json | Accepted | 2026-10-26 |
+| D-092 | Hook registrations are generated and the build owns only the framework's own hook entries; a client's own MCP entries fail with a pointer | Accepted | 2026-10-26 |
 
 ## Decisions
 
@@ -614,7 +618,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Affects:** `packages/core/scripts/lib/guard.mjs`
 
 ### D-042 · Hook registrations are generated; the PostToolUse hook is async, sync or off by one build flag
-- **Status:** Accepted · **Date:** 2026-10-13 · **Source:** conversation with the user, 2026-10-13. On a managed Windows machine every hook launch costs about 1–1.5 s of process start-up (the hook's own work is about 0.1 s), so a Bash or Edit call waited about 2 s for its two hooks.
+- **Status:** Superseded by D-092 (2026-10-26) · **Date:** 2026-10-13 · **Source:** conversation with the user, 2026-10-13. On a managed Windows machine every hook launch costs about 1–1.5 s of process start-up (the hook's own work is about 0.1 s), so a Bash or Edit call waited about 2 s for its two hooks.
 - **Decision:**
   - `scripts/build-agents.mjs` renders every host's hook registrations (D-020) from `config/hooks.yaml` via `scripts/lib/hook-registrations.mjs`: `.github/hooks/framework-guard.json`, `.vscode/hooks/framework-guard.json`, and the `hooks` key of `.claude/settings.json` (its other keys are kept). `npm run check` fails on drift as for every generated file (D-018).
   - `post_tool_use` in `config/hooks.yaml` is one mode for all hosts. `npm run build-agents -- --post-hook <mode>` saves it and rebuilds; with `--check`, or an unknown mode, nothing is written.
@@ -1685,3 +1689,110 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - Overrides widen what agents may do, so agents may not write them (D-013). Every run and its report show when the safety ceiling was not the package's.
 - **Affects:** `packages/core/scripts/lib/config.mjs`, `packages/core/scripts/config.test.mjs`, `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/guard.test.mjs`, `packages/core/scripts/lib/browser-tools.mjs`, `packages/core/scripts/run.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/provenance.mjs`, `packages/core/scripts/report-data.mjs`, `packages/core/scripts/lib/report.mjs`, `packages/core/schemas/run.schema.json`, `packages/core/schemas/report.schema.json`, `packages/core/scripts/lib/cli.mjs`
 - **Confirmed by the user on:** 2026-10-24 (draft P-4) and 2026-10-26 (`atf/` writes refused to framework agents, and to unattributed calls during a run; a human's own session may write there). This extends D-006, D-013, D-061, D-077 and D-087 without weakening them.
+
+### D-089 · A client workspace is created by atf init and its host files rendered by atf sync, automatically on install, and git-ignored
+- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §3.3, §3.6 and phase 3b: draft P-3, and the 3b choices)
+- **Decision:**
+  - **`atf sync`** renders the workspace's host files from the installed framework, through the same build, with the workspace's overlays, ejected config and fragments. It checks everything first and writes nothing on error.
+    - In an installed workspace it also maintains a marked `.gitignore` block. The block lists the framework's generated agent files one by one (both hosts, sorted, glob characters escaped) plus `.mcp.json`, `.vscode/mcp.json` and the two `framework-guard.json` files. It never touches lines outside the block.
+    - `.claude/settings.json` and `.vscode/settings.json` are not ignored: the client decides whether to commit them.
+    - In a source checkout the generated files stay committed (D-018) and there is no block.
+  - **`atf check`** runs the same build in check mode. It exits 1 on drift (the block included) or a build error, and points to `npx atf sync`.
+  - **Automatic on install (user, 2026-10-26).** The package's `postinstall` runs `atf sync --postinstall`:
+    - in a source checkout, it does nothing, so `npm ci` in CI never regenerates the committed files;
+    - it finds the workspace from `INIT_CWD`;
+    - with no workspace, or a framework installed outside it, it prints a hint;
+    - an error is printed with "run npx atf sync";
+    - it always exits 0: an install never fails because of it.
+  - **The doctor backstops a skipped sync.** Its base `host-files` check (installed only) fails with `npx atf sync`, covering `--ignore-scripts` and npm's hidden postinstall output.
+  - **Client agents coexist.** In an installed workspace, a file in the agent folders without the framework's `# GENERATED` marker is the client's own: the build never reads, rewrites or reports it. A marked file with no source is stray: check flags it and build deletes it. A client agent with a framework agent's file name (case-insensitive) or `name:` is an error. A source checkout keeps D-018's strictness.
+  - **The installed header** says the file is generated by `atf sync` from `@testagentic/atf`, and that clients change it through `atf/agents/<name>.extra.md` or `atf/` config, then `npx atf sync`. A source checkout's header is unchanged.
+  - **`atf init [dir] [--no-install]`** creates a workspace without ever overwriting: it creates only what is missing and reports what it left alone. It creates:
+    - `package.json`, with `@testagentic/atf` and its peer dependencies pinned to the running version;
+    - `.npmrc`, a commented-out registry template whose token is read from `ATF_NPM_TOKEN` (phase 4 sets the registry);
+    - an init-owned `.gitignore` block for run output and secrets (`artifacts/`, `.auth/`, `.env*`, reports);
+    - `atf/atf.json`;
+    - the empty decision log (D-091);
+    - `AGENTS.md`, the client's committed brief;
+    - `config/`;
+    - `.vscode/settings.json`, written once, because the VS Code hosts need its keys.
+
+    Then it installs: the postinstall syncs, or an installed copy syncs in-process. The doctor's base checks follow.
+    - It refuses a folder inside the framework, inside another workspace, or holding a framework source checkout.
+    - It is exempt from D-087's "a workspace is required once installed".
+  - **`atf init` is human-only too.** The guard's `workspace-settings` rule (D-088) refuses it to framework agents, as it refuses `atf eject`.
+  - **The client-workspace fixture.** `scripts/fixtures/client-workspace/` and `installedWorkspace()` (`scripts/test-helpers.mjs`) test all of this offline against a real installed copy.
+- **Why:**
+  - Prompts stay out of the client's git history, and an upgrade is just a version bump followed by the automatic sync.
+  - The postinstall can't be relied on alone (scripts disabled, output hidden), so the doctor checks the result.
+  - A source checkout must never self-heal its committed files, or the drift check would hide hand edits.
+  - Clients keep their own agents next to ours without losing them on every sync.
+- **Affects:** `packages/core/scripts/lib/sync.mjs`, `packages/core/scripts/sync.test.mjs`, `packages/core/scripts/lib/init.mjs`, `packages/core/scripts/init.test.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/bin/atf.mjs`, `packages/core/package.json`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/agents/renderers/common.mjs`, `packages/core/templates/workspace/AGENTS.md`, `packages/core/templates/workspace/_npmrc`, `packages/core/templates/workspace/_vscode-settings.json`, `packages/core/scripts/fixtures/client-workspace/package.json`, `packages/core/scripts/test-helpers.mjs`, `packages/core/scripts/lib/guard.mjs`
+- **Confirmed by the user on:** 2026-10-24 (draft P-3) and 2026-10-26 (sync automatically on install; a built-in client fixture). This narrows D-018 to the framework's own repository, which keeps its generated files committed, while an installed client workspace git-ignores them; D-018 stays in force there. It extends D-086, D-087 and D-088 without weakening them.
+
+### D-090 · A workspace extends an agent with an add-on fragment; it never replaces the body
+- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §3.5 and phase 3b: draft P-5)
+- **Decision:**
+  - **Appended at build.** A workspace's `atf/agents/<name>.extra.md` is added to that agent's body at build time (`build-agents`, `atf sync`):
+    - first the source body;
+    - then one blank line and `## Project additions (from atf/agents/<name>.extra.md)`;
+    - then one blank line and the fragment, trimmed.
+
+    Line endings follow the source, and `{fw}/` expands as in a source.
+  - **Linted as a whole.** The body lint runs on the combined text on every platform (`forbidden_in_body`, `body_limit`, the `{fw}` rules); errors name both files.
+  - **Identity untouched.** Tools, model, MCP servers and subagents still come only from config.
+  - **The build fails, naming the file, and writes nothing,** for any of these:
+    - a fragment with frontmatter;
+    - a fragment with a `_shared/` include;
+    - an empty fragment;
+    - a fragment for an agent the framework doesn't have;
+    - any other file in `atf/agents/` (dot-files are ignored).
+  - **Fixed in passing:** a CRLF source's include lines keep their `\r`, so a Windows checkout no longer drifts.
+- **Why:** clients need house rules per agent, but prompt fixes must keep flowing with upgrades; a replaced body would stop receiving them. Linting the combined text keeps a fragment from smuggling in a platform tool name or overflowing a host's limit.
+- **Affects:** `packages/core/scripts/lib/agents/source.mjs`, `packages/core/scripts/lib/agents/lint.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/build-agents.test.mjs`
+- **Confirmed by the user on:** 2026-10-24 (draft P-5). This extends D-006, D-018, D-019 and D-059 without weakening them.
+
+### D-091 · Each workspace has its own decision log, named in atf/atf.json
+- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §3.7 and phase 3b: draft P-6)
+- **Decision:**
+  - **Where the log is.** `atf/atf.json` `"decisions"` names the workspace's log; without it, the log is `atf/decisions.md`. The framework's own repository names `docs/decisions.md`.
+  - **One resolver.** `decisionsFile()` in `scripts/lib/decisions.mjs` serves the confirmation hook, its per-session memo (keyed by workspace and log), the lookup CLI (`decisions.mjs for|index|show`, which now print the log they read and warn when it doesn't exist) and `feedback.mjs`.
+  - **Fails closed.** When the location is unreadable, every governed write asks:
+    - `atf.json` is invalid;
+    - the `decisions` value is not a string;
+    - the path is absolute, a drive or UNC path, or leaves the workspace.
+
+    A log that doesn't exist governs nothing, as before.
+  - **A template for clients.** `templates/workspace/decisions.md` is the empty client log that `atf init` creates. It has the same rules and entry format, rewritten for a client repo (overlays, fragments, run-configs, house rules about test code), and no entries.
+  - **Ours stays internal.** The framework's `docs/decisions.md` is never shipped (phase 4).
+  - **Agents cite the workspace's log through the lookup command,** never a fixed path.
+- **Why:** clients make their own lasting choices (overlays, fragments, conventions), and the same confirmation hook should guard them. Our rationale is internal and governs a framework clients can't edit.
+- **Affects:** `packages/core/scripts/lib/decisions.mjs`, `packages/core/scripts/decisions.mjs`, `packages/core/scripts/decisions.test.mjs`, `packages/core/templates/workspace/decisions.md`, `atf/atf.json`, `packages/core/agents/feedback-implementor-agent.md`
+- **Confirmed by the user on:** 2026-10-24 (draft P-6). This extends D-031 and D-082 without weakening them.
+
+### D-092 · Hook registrations are generated and the build owns only the framework's own hook entries; a client's own MCP entries fail with a pointer
+- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-26 (packaging phase 3b: a client's own Claude Code hooks and MCP servers were silently dropped on every sync)
+- **Decision:**
+  - **Carried over from D-042, unchanged:**
+    - `build-agents` (`atf sync` in a client workspace) renders every host's hook registrations (D-020) from `config/hooks.yaml` through `scripts/lib/hook-registrations.mjs`: `.github/hooks/framework-guard.json`, `.vscode/hooks/framework-guard.json`, and the hooks in `.claude/settings.json`. Drift fails the check (D-018).
+    - `post_tool_use` is one mode for all hosts: `async` (default; background on Claude Code, synchronous where a host has none), `sync` or `off`.
+    - `build-agents -- --post-hook <mode>` saves it and rebuilds. It is refused while `atf/` overrides `hooks.yaml` (D-088).
+    - The PreToolUse guard is always registered and always blocking, on every host, and is not configurable.
+  - **New: only the framework's own entries in `.claude/settings.json` `hooks`.**
+    - **What counts as the framework's:** a `command` hook running `node <…>/scripts/hooks/pretooluse.mjs|posttooluse.mjs … --host claude-code`. This holds for any `{fw}` path, quoted or not, either separator, and with or without the `CLAUDE_PROJECT_DIR` prefix, so an upgrade replaces older renderings instead of duplicating them.
+    - **The merge:** sync removes those entries everywhere, then puts the framework's groups first in each event and the framework's events first. The client's own groups and events follow in their order, and every other settings key is kept.
+    - **The guard always comes out first.** The merged first PreToolUse group must be exactly the guard, or the build fails.
+    - **Malformed files fail.** A malformed `hooks` key, event or group is an error naming the file, with nothing written.
+    - **Drift and formatting:** only the framework's entries can drift. A file whose merge changes nothing keeps its own text and formatting.
+    - **The two `framework-guard.json` files** are still rendered whole.
+  - **New: a client's own MCP entries.** In an installed workspace, when `.mcp.json` or `.vscode/mcp.json` holds a server the effective `mcp.yaml` doesn't define, sync and check fail before writing anything. The error names the file and server and says to add it under `servers:` in `atf/mcp.yaml`, or in `atf/config/mcp.yaml` when that file is ejected.
+    - Any other top-level key (VS Code's `inputs`) fails the same way, telling the client to keep it outside the rendered file: `mcp.yaml` can't express it yet.
+    - Invalid JSON fails the same way.
+    - A source checkout renders the files whole, as before.
+  - **The doctor's browser hints** name what a client edits (`atf/mcp.yaml`, or the ejected copy), not the package's `config/mcp.yaml`.
+- **Why:**
+  - A client's own hooks and servers must not vanish silently on every sync. Merging keeps their hooks next to the guard, which stays mandatory and first.
+  - For MCP servers, one supported place (the overlay) beats a partly hand-kept generated file.
+  - Known limits: an MCP JSON file carries no marker, so a server a later package version drops is reported as the client's. `disableAllHooks: true` in any Claude Code settings layer turns every hook off, the guard included; the build keeps that key like any other.
+- **Affects:** `packages/core/config/hooks.yaml`, `packages/core/scripts/lib/hook-registrations.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/mcp.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/hooks.test.mjs`
+- **Supersedes:** D-042 (the build owned the whole `hooks` key; the rest is carried over above) · **Confirmed by the user on:** 2026-10-26 (own only the framework's hook entries; fail with a pointer on a client's own MCP server). This extends D-018, D-020 and D-088 without weakening them.

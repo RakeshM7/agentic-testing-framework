@@ -128,6 +128,45 @@ test("browser: the MCP server's channel must be installed, and it must run the f
   assert.match(checks.find((c) => c.id === "mcp-session").detail, /no login: the browser server starts logged out/);
 });
 
+test("browser: the fix names the file this workspace edits and how it re-renders: config/mcp.yaml and npm run build-agents in a source checkout; atf/mcp.yaml or the ejected atf/config/mcp.yaml and npx atf sync when installed", async () => {
+  const m = machine();
+  const browserChecks = async (framework) => {
+    const at = (checks, id) => checks.find((c) => c.id === id);
+    put(framework, "config/mcp.yaml", "servers: {}\n");
+    const none = at(await runChecks(cfg(), ["browser"], { ...m.opts, framework }), "mcp-browser");
+    put(framework, "config/mcp.yaml", mcpYaml(["--isolated"]));
+    const session = at(await runChecks(cfg(), ["browser"], { ...m.opts, framework }), "mcp-session");
+    return { fixes: [none.fix, session.fix], detail: none.detail };
+  };
+  // a source checkout (the framework root is the repo): its own config/mcp.yaml and build script, word for word as before
+  const source = await browserChecks(m.root);
+  assert.deepEqual(source.fixes, [
+    "define the browser server in config/mcp.yaml, then npm run build-agents",
+    `add "--init-page", "scripts/browser/init-page.cjs" to the browser server's args in config/mcp.yaml, then run npm run build-agents and restart the agent session`,
+  ]);
+  assert.equal(source.detail, "config/mcp.yaml names no browser_server");
+  // installed in a client's workspace (node_modules): the package's config/mcp.yaml is not the client's to edit, and
+  // there is no build-agents script. The overlay atf/mcp.yaml (D-088), with the init page by its {fw} path
+  const installed = path.join(m.root, "node_modules", "@testagentic", "atf");
+  const overlay = "atf/mcp.yaml (an overlay of the package's config/mcp.yaml: a list such as args replaces the package's whole list)";
+  const got = await browserChecks(installed);
+  assert.deepEqual(got.fixes, [
+    `define the browser server in ${overlay}, then npx atf sync (in the workspace)`,
+    `add "--init-page", "{fw}/scripts/browser/init-page.cjs" to the browser server's args in ${overlay}, then run npx atf sync (in the workspace) and restart the agent session`,
+  ]);
+  assert.equal(got.detail, "the effective mcp.yaml (node_modules/@testagentic/atf/config/mcp.yaml) names no browser_server");
+  assert.ok(got.fixes.every((f) => !f.includes("build-agents") && !f.includes(" config/mcp.yaml,")));
+  // an overlay already there: still the overlay, and the detail names both files
+  put(m.root, "atf/mcp.yaml", "browser_server: nothing\n");
+  const none = (await runChecks(cfg(), ["browser"], { ...m.opts, framework: installed })).find((c) => c.id === "mcp-browser");
+  assert.equal(none.fix, `define the browser server in ${overlay}, then npx atf sync (in the workspace)`);
+  assert.equal(none.detail, "the effective mcp.yaml (node_modules/@testagentic/atf/config/mcp.yaml + atf/mcp.yaml) names no browser_server");
+  // ejected: the overlay is ignored, so the fix names the ejected copy
+  put(m.root, "atf/config/mcp.yaml", mcpYaml(["--isolated"]));
+  const checks = await runChecks(cfg(), ["browser"], { ...m.opts, framework: installed });
+  assert.equal(checks.find((c) => c.id === "mcp-session").fix, `add "--init-page", "{fw}/scripts/browser/init-page.cjs" to the browser server's args in atf/config/mcp.yaml (your ejected copy), then run npx atf sync (in the workspace) and restart the agent session`);
+});
+
 test("browser: a bundled-chromium MCP server is checked against the build its cached Playwright needs", async () => {
   const m = machine();
   const env = { ...m.env, npm_config_cache: path.join(m.root, "npm") };

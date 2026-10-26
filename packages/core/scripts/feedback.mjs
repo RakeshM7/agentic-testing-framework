@@ -3,7 +3,7 @@
 //
 //   feedback.mjs triage <file> [--plan <path> ...]
 //        per finding, the files it names (else the file's related_files) plus the planned paths, and the Accepted
-//        decisions (docs/decisions.md Affects) governing them. Run before changing anything.
+//        decisions (the workspace's decision log, their Affects) governing them. Run before changing anything.
 //   feedback.mjs check <file>
 //        frontmatter valid; every '## Finding N' has a Resolution entry (fixed | deferred | declined) with a reason,
 //        Files changed and Decisions considered; a decision-conflict deferral names the decision; a fixed finding that

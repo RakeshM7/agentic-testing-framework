@@ -8,17 +8,30 @@
 //
 // The guard matches `atf approve`, `atf import … --approved` and `atf sweep` literally, so the parser accepts no
 // command alias or abbreviation and no `--approved=<value>` (node:util parseArgs, strict).
+//
+// `atf sync --postinstall` is the package's npm postinstall (packaging §3.3): it renders the host files of the
+// workspace `npm install` ran in (INIT_CWD), and never fails the install. It does nothing for a framework that is not
+// installed, so `npm ci` in the monorepo can't regenerate the committed files the drift check compares (D-018).
+//
+// `atf init [dir]` creates a client's workspace (packaging §3.3, §3.6, §3.7; scripts/lib/init.mjs): the files it lacks,
+// never overwriting one, then the install and sync that make the host files, and the doctor's base checks. It is the
+// one command that runs outside a workspace, since it makes one.
 import { spawnSync } from "node:child_process";
 import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { CONFIG_FILES, configPath } from "./config.mjs";
 import { SLUG_RE, STAGES } from "./contract.mjs";
-import { expandFw, frameworkRel, frameworkRoot, isInstalled, sameDir, workspaceRoot } from "./roots.mjs";
+import { DOCTOR_BASE_SCRIPT, applyInit, initPlan, initRefusal, installedIn } from "./init.mjs";
+import { expandFw, findWorkspace, frameworkRel, frameworkRoot, isInstalled, isWithin, sameDir, workspaceRoot } from "./roots.mjs";
+import { sync } from "./sync.mjs";
 
 export const USAGE = `atf <command> [<product>] [options]       every command works the same on macOS, Windows and Linux
 
 One-time setup:
+  atf init [<dir>] [--no-install]                   create a test workspace here (or in <dir>): package.json, .npmrc,
+                                                    .gitignore, atf/, AGENTS.md, config/, .vscode/settings.json; then
+                                                    npm install, sync and a dependency check. Never overwrites a file
   atf setup                                         install dependencies and a browser
   atf config <product> --url <url> [--no-login]     create config/<product>.yaml from the example, then log in
   atf interview                                     or: the orchestrator asks a few questions and writes the config
@@ -27,6 +40,11 @@ One-time setup:
   atf doctor <product> [--no-fix]                   check (and install what it safely can) what every stage needs;
                                                     login, run, resume and automate run it first
   atf e2e [--keep]                                  the live end-to-end check (framework source checkout only)
+
+Host files (the agents, hooks and MCP config of Claude Code, Copilot and VS Code):
+  atf sync                                          render them from the installed package and atf/; npm install
+                                                    runs it too
+  atf check                                         fail when they are out of date, or atf/ has an error
 
 Config:
   atf eject config [<file>]                         copy the package's config/<file> (or all five) to atf/config/,
@@ -63,6 +81,7 @@ const COMMON = { env: { type: "string" }, host: { type: "string" }, help: { type
 // positionals: names, `?` optional, `...` the rest
 const COMMANDS = {
   help: { args: [] },
+  init: { args: ["dir?"], options: { "no-install": { type: "boolean" } } },
   setup: { args: [] },
   config: { args: ["product"], options: { url: { type: "string" }, "no-login": { type: "boolean" } } },
   interview: { args: [] },
@@ -70,6 +89,8 @@ const COMMANDS = {
   validate: { args: ["product"] },
   doctor: { args: ["product"], options: { "no-fix": { type: "boolean" } } },
   e2e: { args: [], options: { keep: { type: "boolean" } } },
+  sync: { args: [], options: { postinstall: { type: "boolean" } } },
+  check: { args: [] },
   eject: { args: ["subcommand", "file..."] },
   status: { args: ["product"] },
   next: { args: ["product"] },
@@ -86,10 +107,10 @@ const COMMANDS = {
 
 const fail = (error) => ({ error });
 
-// argv -> { steps: [{ cmd, args, env?, agent? } | { write } | { eject }], notes? } | { print } | { error }. `ctx` carries what the plan reads
-// from outside: env, workspace, framework, exists(file).
+// argv -> { steps: [{ cmd, args, env?, agent?, cwd?, failNote? } | { write } | { eject } | { sync, failNote? } | { init } |
+// { say }], notes?, postinstall?, standalone? } | { print } | { error }. `ctx` carries what the plan reads from outside: env, cwd, workspace, framework, exists(file).
 export function plan(argv, ctx = {}) {
-  const { env = process.env, workspace = workspaceRoot, framework = frameworkRoot, exists = existsSync } = ctx;
+  const { env = process.env, cwd = process.cwd(), workspace = workspaceRoot, framework = frameworkRoot, exists = existsSync } = ctx;
   const [name = "help", ...rest] = argv;
   if (name === "--help" || name === "-h") return { print: USAGE };
   const spec = Object.hasOwn(COMMANDS, name) ? COMMANDS[name] : null;
@@ -104,11 +125,13 @@ export function plan(argv, ctx = {}) {
   if (name === "help" || v.help) return { print: USAGE };
 
   const named = {};
-  const required = spec.args.filter((a) => !a.endsWith("..."));
+  const required = spec.args.filter((a) => !a.endsWith("...") && !a.endsWith("?"));
+  const optional = spec.args.filter((a) => a.endsWith("?")).map((a) => a.slice(0, -1));
+  const known = required.length + optional.length;
   if (positionals.length < required.length) return fail(`atf ${name} needs ${required.map((a) => `<${a}>`).join(" ")}, e.g. ${example(name)}`);
-  if (positionals.length > required.length && !spec.args.some((a) => a.endsWith("..."))) return fail(`atf ${name}: unexpected '${positionals[required.length]}'`);
-  required.forEach((a, i) => (named[a] = positionals[i]));
-  const extra = positionals.slice(required.length);
+  if (positionals.length > known && !spec.args.some((a) => a.endsWith("..."))) return fail(`atf ${name}: unexpected '${positionals[known]}'`);
+  [...required, ...optional].forEach((a, i) => (named[a] = positionals[i]));
+  const extra = positionals.slice(known);
   for (const k of ["product", "module"]) if (named[k] !== undefined && !SLUG_RE.test(named[k])) return fail(`<${k}> '${named[k]}' must be a lowercase kebab-case slug`);
   if (v.module !== undefined && !SLUG_RE.test(v.module)) return fail(`--module '${v.module}' must be a lowercase kebab-case slug`);
   if (v.env !== undefined && !SLUG_RE.test(v.env)) return fail(`--env '${v.env}' must be a lowercase kebab-case environment name`);
@@ -134,6 +157,8 @@ export function plan(argv, ctx = {}) {
   const needConfig = (hint = "") => (hasConfig() ? null : fail(`No ${config}${hint}`));
 
   switch (name) {
+    case "init":
+      return initCommand({ dir: path.resolve(cwd, named.dir ?? "."), framework, cwd, noInstall: Boolean(v["no-install"]) });
     case "setup":
       return steps({ cmd: "npm", args: ["install"], shell: true }, { cmd: "npx", args: ["playwright", "install", "chromium"], shell: true });
     case "config": {
@@ -162,6 +187,10 @@ export function plan(argv, ctx = {}) {
     case "e2e":
       if (isInstalled(framework)) return fail("atf e2e runs only in the framework's source checkout, not from an installed package");
       return steps(node("e2e.mjs", ...(v.keep ? ["--keep"] : [])));
+    case "sync":
+      return v.postinstall ? postinstallPlan({ env, cwd, framework }) : { steps: [{ sync: { workspace, framework } }] };
+    case "check":
+      return { steps: [{ sync: { workspace, framework, check: true } }] };
     case "eject": {
       // An ejected atf/config/<file> is the whole file from then on (packaging §3.4): the package's copy and any overlay
       // atf/<file> are no longer read, so an upgrade can't change it. Every target is checked before anything is
@@ -226,6 +255,104 @@ export function plan(argv, ctx = {}) {
   return fail(`atf ${name}: not implemented`);
 }
 
+// atf init's steps. `standalone`: it runs outside any workspace (main() skips workspaceError), since it makes one.
+//   1. the files (init.mjs initPlan, read here; written by run(), which reports each one)
+//   2. the host files: in process when this framework is the one installed in `dir`; otherwise npm install renders them
+//      through the package's postinstall. npm install also runs when init added a dependency to package.json.
+//   3. the doctor's base group in a child node, on the framework installed there (init.mjs DOCTOR_BASE_SCRIPT)
+//   4. the next steps
+// --no-install skips the install and the check (they need the package from the registry) and names the install as
+// the first next step instead. A step after the files that fails says what is in place and what is not (failNote), and
+// exits 1.
+function initCommand({ dir, framework, cwd, noInstall }) {
+  const refusal = initRefusal(dir, framework);
+  if (refusal) return fail(refusal);
+  let p;
+  try {
+    p = initPlan({ dir, framework });
+  } catch (e) {
+    p = { actions: [], errors: [`can't read the framework's package or templates in ${framework} (${e.message}); reinstall the package`] };
+  }
+  const here = installedIn(dir, framework);
+  const needsInstall = !here || p.depsAdded;
+  const steps = [{ init: { dir, actions: p.actions, errors: p.errors } }];
+  if (here) steps.push({ sync: { workspace: dir, framework }, failNote: `atf init: the workspace files above are in place, but the host files were not rendered. Fix the error above, then run ${SYNC_FIX} in ${dir}.` });
+  if (needsInstall && !noInstall)
+    steps.push({ cmd: "npm", args: ["install"], shell: true, cwd: dir, failNote: `atf init: the workspace files above are in place, but npm install failed, so the framework and its dependencies are not installed in ${dir} and the host files were not rendered. Fix the error above, then run npm install there: its postinstall renders the host files.` });
+  if (!noInstall) steps.push({ cmd: process.execPath, args: ["--input-type=module", "-e", DOCTOR_BASE_SCRIPT, dir, p.name ?? "@testagentic/atf"], cwd: dir, failNote: "atf init: the workspace is set up, but the dependency check above found a problem. Fix it as it says, then run npx atf check (the host files), or npx atf doctor <product> once you have a run-config." });
+  const rel = path.relative(cwd, dir);
+  const next = [
+    ...(rel ? [`cd ${/\s/.test(rel) ? JSON.stringify(rel) : rel}`] : []),
+    ...(needsInstall && noInstall ? ["npm install                                    installs the framework and Playwright, then renders the host files"] : []),
+    "npx atf config <product> --url <target url>    create the product's run-config, then log in (or: npx atf interview)",
+    "npx atf run <product>                          start the run",
+  ];
+  const say = ["", "Next:", ...next.map((l, i) => `  ${i + 1}. ${l}`), "Commit what init created; the host files sync renders stay git-ignored."];
+  return { steps: [...steps, { say }], standalone: true };
+}
+
+// npm runs a dependency's postinstall in the package's own folder and sets INIT_CWD to the folder `npm install` ran
+// in, so the workspace is the nearest atf/atf.json at or above INIT_CWD (the working directory without npm).
+//   - a framework that is not installed (the monorepo's packages/core, linked by npm workspaces): nothing, silently;
+//     its host files are committed and checked for drift, never regenerated by an install (D-018)
+//   - no workspace yet (the package installed before atf init): one hint
+//   - a framework installed somewhere else (a global install, run from inside some workspace): not this workspace's
+//     package, so its paths must not land in this workspace's hook commands
+// Every outcome exits 0: a postinstall must never fail the client's install (the doctor reports stale host files).
+function postinstallPlan({ env, cwd, framework }) {
+  if (!isInstalled(framework)) return { steps: [], postinstall: true };
+  const from = path.resolve(env.INIT_CWD || cwd);
+  const workspace = findWorkspace(from);
+  if (!workspace) return { print: `atf: no atf workspace at ${from} (no atf/atf.json there or above): run npx atf init to create one; it renders the host files.`, postinstall: true };
+  if (!isWithin(framework, workspace)) return { print: `atf: this @testagentic/atf (${framework}) is not installed in ${workspace}, so its host files were left as they are: run npx atf sync from the workspace.`, postinstall: true };
+  return { steps: [{ sync: { workspace, framework, postinstall: true } }], postinstall: true };
+}
+
+const SYNC_FIX = "npx atf sync";
+
+// One sync or check: what changed, or what stops it. -> exit code (0 for every outcome of the postinstall).
+function syncStep({ workspace, framework, check = false, postinstall = false }, out) {
+  let r;
+  try {
+    r = sync({ workspace, framework, check });
+  } catch (e) {
+    r = { errors: [e.message], changed: [] };
+  }
+  const label = postinstall ? "atf sync (postinstall)" : `atf ${check ? "check" : "sync"}`;
+  if (r.errors.length) {
+    for (const e of r.errors) out.error(`${label}: error: ${e}`);
+    if (postinstall) {
+      out.error(`${label}: the host files were not updated; your install itself succeeded. Fix the error above, then run ${SYNC_FIX}.`);
+      return 0;
+    }
+    out.error(check ? `Fix the error above, then run ${SYNC_FIX}.` : `Nothing was written. Fix the error above, then run ${SYNC_FIX} again.`);
+    return 1;
+  }
+  for (const f of r.changed) out.log(`${label}: ${check ? "out of date" : "updated"}: ${f}`);
+  const n = r.changed.length;
+  if (check) {
+    if (!n) return out.log(`${label}: the host files are in sync with the framework.`), 0;
+    out.error(`${n} host file(s) out of date with the framework: run ${SYNC_FIX}.`);
+    return 1;
+  }
+  out.log(n ? `${label}: ${n} file(s) updated.` : `${label}: the host files are up to date.`);
+  return 0;
+}
+
+// atf init's files: an error the plan found writes nothing; otherwise every file is reported as created, updated or
+// present. -> exit code
+function initStep({ dir, actions, errors }, out) {
+  out.log(`atf init: ${dir}`);
+  if (errors.length) {
+    for (const e of errors) out.error(`atf init: error: ${e}`);
+    out.error("atf init: nothing was written.");
+    return 1;
+  }
+  const r = applyInit({ dir, actions });
+  for (const line of r.lines) if (/^(?: {2}FAILED|atf init stopped)/.test(line)) out.error(line); else out.log(line);
+  return r.code;
+}
+
 const alreadyEjected = (files) =>
   `${files.map((f) => f.file).join(", ")} ${files.length === 1 ? "is" : "are"} already ejected; edit ${files.length === 1 ? "it" : "them"} instead. Nothing was written.`;
 
@@ -258,6 +385,9 @@ export function configFromExample(text, { product, url }) {
 
 // Executes a plan's steps in the workspace; returns the exit code. `spawn` is spawnSync's shape (tests stub it).
 export function run(p, { workspace = workspaceRoot, platform = process.platform, spawn = spawnSync, out = console } = {}) {
+  // a step with a failNote is one stage of a command that already changed something (atf init): it fails with 1 and
+  // says what is in place and what is not
+  const failed = (step, code) => (step.failNote ? (out.error(step.failNote), 1) : code);
   if (p.print) {
     out.log(p.print);
     return 0;
@@ -267,6 +397,20 @@ export function run(p, { workspace = workspaceRoot, platform = process.platform,
     return 2;
   }
   for (const step of p.steps) {
+    if (step.sync) {
+      const code = syncStep(step.sync, out);
+      if (code) return failed(step, code);
+      continue;
+    }
+    if (step.init) {
+      const code = initStep(step.init, out);
+      if (code) return code;
+      continue;
+    }
+    if (step.say) {
+      for (const line of step.say) out.log(line);
+      continue;
+    }
     if (step.write) {
       const target = path.join(workspace, step.write.file);
       if (existsSync(target)) {
@@ -302,13 +446,13 @@ export function run(p, { workspace = workspaceRoot, platform = process.platform,
         out.error(line.error);
         return 2;
       }
-      r = spawn(line.line, [], { cwd: workspace, env, stdio: "inherit", shell: true });
-    } else r = spawn(step.cmd, step.args, { cwd: workspace, env, stdio: "inherit" });
+      r = spawn(line.line, [], { cwd: step.cwd ?? workspace, env, stdio: "inherit", shell: true });
+    } else r = spawn(step.cmd, step.args, { cwd: step.cwd ?? workspace, env, stdio: "inherit" });
     if (r.error) {
       out.error(r.error.code === "ENOENT" ? `${step.cmd} not found on PATH${step.agent ? " (install it, or pick another with --host or ATF_AGENT)" : ""}` : r.error.message);
-      return 1;
+      return failed(step, 1);
     }
-    if (r.status !== 0) return r.status ?? 1;
+    if (r.status !== 0) return failed(step, r.status ?? 1);
   }
   return 0;
 }
@@ -320,8 +464,25 @@ export function workspaceError({ workspace = workspaceRoot, framework = framewor
   return null;
 }
 
-export function main(argv) {
+export function main(argv, { out = console } = {}) {
+  if (isPostinstall(argv)) return postinstall(argv, { out });
   const p = plan(argv);
-  const wsErr = !p.print && !p.error && workspaceError();
-  return run(wsErr ? { error: wsErr } : p);
+  const wsErr = !p.print && !p.error && !p.standalone && workspaceError();
+  return run(wsErr ? { error: wsErr } : p, { out });
+}
+
+// `--postinstall` is a flag of sync only: `atf check --postinstall` is refused by the parser, like any unknown option.
+export const isPostinstall = (argv) => argv[0] === "sync" && argv.includes("--postinstall");
+
+// The postinstall: the plan's own workspace (from INIT_CWD), not this process's, and exit 0 whatever happens, a
+// usage error and an exception included, each printed with the command that fixes it.
+export function postinstall(argv, { ctx, out = console } = {}) {
+  try {
+    const p = plan(argv, ctx);
+    if (p.error) out.error(`atf sync (postinstall): ${p.error.replace(/\.$/, "")}. Run ${SYNC_FIX} from your workspace.`);
+    else run(p, { out });
+  } catch (e) {
+    out.error(`atf sync (postinstall): ${e.message}. Your install itself succeeded; run ${SYNC_FIX} from your workspace.`);
+  }
+  return 0;
 }

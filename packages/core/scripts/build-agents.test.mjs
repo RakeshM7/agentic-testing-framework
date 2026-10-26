@@ -2,16 +2,19 @@
 // config/permissions.yaml only, platform syntax only from config/platforms.yaml.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
 import { build } from "./build-agents.mjs";
+import { renderHookRegistrations } from "./lib/hook-registrations.mjs";
 import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { splitFrontmatter } from "./lib/agents/source.mjs";
+import { generatedNote, isGenerated } from "./lib/agents/renderers/common.mjs";
 import { frameworkRoot } from "./lib/contract.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
-import { expandFw, frameworkRel, workspaceRoot } from "./lib/roots.mjs";
+import { expandFw, frameworkRel, isInstalled, workspaceRoot } from "./lib/roots.mjs";
+import { installedWorkspace } from "./test-helpers.mjs";
 
 // Sources and config are the framework's; the generated files are the workspace's (the same directory, or the
 // monorepo's root with the framework in packages/core), rendered with `{fw}/` as the framework's path from there.
@@ -265,4 +268,459 @@ test("every worker that can ask records its request through requests.mjs add, an
     assert.match(text, /requests=<path> ids=<ids>/, `${name} takes requests=<path> ids=<ids>`);
     assert.ok(!/missing="|gap="|request="/.test(text), `${name}: the old free-text parameters are gone`);
   }
+});
+
+// ---- add-on fragments (docs/packaging.md §3.5): a workspace's atf/agents/<name>.extra.md, appended under a fixed heading
+// A framework copy and a client workspace apart from it (D-085), so fragments are read from the workspace, not the sources.
+function splitPair() {
+  const framework = scratch();
+  const ws = mkdtempSync(path.join(tmpdir(), "atf-ws-"));
+  mkdirSync(path.join(ws, "atf", "agents"), { recursive: true });
+  writeFileSync(path.join(ws, "atf", "atf.json"), "{}\n");
+  return { framework, ws, run: (opts = {}) => build({ root: ws, framework, ...opts }) };
+}
+const fragmentFile = (ws, name) => path.join(ws, "atf", "agents", `${name}.extra.md`);
+const OUTS = (name) => [`.claude/agents/${name}.md`, `.github/agents/${name}.agent.md`];
+const HEADING = "## Project additions (from atf/agents/pw-ui-fixer.extra.md)";
+
+test("a fragment is appended under the fixed heading in every platform's file; no fragment changes nothing", () => {
+  const { framework, ws, run } = splitPair();
+  assert.deepEqual(run().errors, []);
+  const read = (rel) => readFileSync(path.join(ws, rel), "utf8");
+  const before = Object.fromEntries([...OUTS("pw-ui-fixer"), ...OUTS("testcase-writer")].map((rel) => [rel, read(rel)]));
+  // an empty atf/agents/ (and a dot-file in it) is no fragment: byte for byte the same files
+  writeFileSync(path.join(ws, "atf", "agents", ".DS_Store"), "x");
+  assert.deepEqual(run({ check: true }), { errors: [], changed: [] });
+
+  writeFileSync(fragmentFile(ws, "pw-ui-fixer"), "\n\nHouse rule: run `npm run lint` before reporting.\n- second line\n\n\n");
+  assert.deepEqual(run().errors, []);
+  const eol = readFileSync(path.join(framework, "agents", "pw-ui-fixer.md"), "utf8").includes("\r\n") ? "\r\n" : "\n";
+  for (const rel of OUTS("pw-ui-fixer")) {
+    const expected = before[rel].replace(/(\r?\n)+$/, "") + [eol, HEADING, "", "House rule: run `npm run lint` before reporting.", "- second line"].join(eol) + eol;
+    assert.equal(read(rel), expected, `${rel}: one blank line, the heading, one blank line, the trimmed fragment`);
+  }
+  for (const rel of OUTS("testcase-writer")) assert.equal(read(rel), before[rel], `${rel}: another agent is untouched`);
+  // identity is the framework's and config's only: the frontmatter is unchanged
+  for (const rel of OUTS("pw-ui-fixer")) assert.deepEqual(splitFrontmatter(read(rel), rel).meta, splitFrontmatter(before[rel], rel).meta);
+  // removing it puts the files back
+  rmSync(fragmentFile(ws, "pw-ui-fixer"));
+  assert.deepEqual(run({ check: true }).changed.sort(), OUTS("pw-ui-fixer").sort());
+});
+
+test("a fragment is linted and limited as part of the combined body, with errors naming it; nothing is written", () => {
+  const { framework, ws, run } = splitPair();
+  const lint = (text) => {
+    writeFileSync(fragmentFile(ws, "pw-ui-fixer"), text);
+    return run();
+  };
+  for (const tool of ["AskUserQuestion", "runSubagent"]) {
+    const r = lint(`Ask with ${tool} when unsure.\n`);
+    assert.ok(r.errors.some((e) => e.startsWith(`agents/pw-ui-fixer.md + atf/agents/pw-ui-fixer.extra.md: body names platform-specific '${tool}'`)), r.errors.join("\n"));
+    assert.deepEqual(r.changed, []);
+  }
+  assert.ok(lint("Run node {fw}scripts/x.mjs\n").errors.some((e) => /pw-ui-fixer\.extra\.md: '\{fw\}s' -- the only template token/.test(e)));
+  assert.ok(lint("{{ product }}\n").errors.some((e) => /pw-ui-fixer\.extra\.md: template syntax/.test(e)));
+  // under the Copilot limit alone, over it once appended to the source's body
+  const limit = platforms.copilot.body_limit;
+  const r = lint("x".repeat(limit - 100) + "\n");
+  assert.ok(r.errors.some((e) => /^agents\/pw-ui-fixer\.md \+ atf\/agents\/pw-ui-fixer\.extra\.md: body is \d+ characters, over the copilot limit/.test(e)), r.errors.join("\n"));
+  assert.ok(!existsSync(path.join(ws, ".claude")), "an error writes nothing");
+  // `{fw}/` is the one token, and a fragment gets it expanded like a source
+  assert.deepEqual(lint("Read `{fw}/docs/conventions.md` first.\n").errors, []);
+  assert.ok(readFileSync(path.join(ws, ".claude", "agents", "pw-ui-fixer.md"), "utf8").includes(`Read \`${frameworkRel(ws, framework)}/docs/conventions.md\` first.`));
+});
+
+test("a fragment can't carry frontmatter or an include; an unknown agent's fragment or a stray entry fails, named", () => {
+  const { ws, run } = splitPair();
+  const errs = () => run({ check: true }).errors;
+  writeFileSync(fragmentFile(ws, "pw-ui-fixer"), "---\nname: pw-ui-fixer\ntools: Read, Bash, WebSearch\nmodel: opus\n---\nMore rules.\n");
+  assert.ok(errs().some((e) => /^atf\/agents\/pw-ui-fixer\.extra\.md: an add-on fragment has no frontmatter/.test(e)));
+  writeFileSync(fragmentFile(ws, "pw-ui-fixer"), "\r\n---\r\nmodel: opus\r\n---\r\n"); // after the trim, CRLF too
+  assert.ok(errs().some((e) => /pw-ui-fixer\.extra\.md: an add-on fragment has no frontmatter/.test(e)));
+  writeFileSync(fragmentFile(ws, "pw-ui-fixer"), "<!-- include: _shared/fixer.md -->\n");
+  assert.ok(errs().some((e) => /pw-ui-fixer\.extra\.md: an add-on fragment cannot include _shared\//.test(e)));
+  writeFileSync(fragmentFile(ws, "pw-ui-fixer"), " \n\n");
+  assert.ok(errs().some((e) => /pw-ui-fixer\.extra\.md: empty/.test(e)));
+  rmSync(fragmentFile(ws, "pw-ui-fixer"));
+
+  writeFileSync(fragmentFile(ws, "pw-ui-fxer"), "Typo in the name.\n");
+  assert.deepEqual(errs(), ["atf/agents/pw-ui-fxer.extra.md: the framework has no agent 'pw-ui-fxer' to add to"]);
+  rmSync(fragmentFile(ws, "pw-ui-fxer"));
+  for (const stray of ["pw-ui-fixer.md", "notes.txt", "pw-ui-fixer.EXTRA.MD", "sub/pw-ui-fixer.extra.md"]) {
+    mkdirSync(path.dirname(path.join(ws, "atf", "agents", stray)), { recursive: true });
+    writeFileSync(path.join(ws, "atf", "agents", stray), "text\n");
+    const top = stray.split("/")[0];
+    assert.deepEqual(errs(), [`atf/agents/${top}: only <agent>.extra.md add-on fragments belong in atf/agents/`], stray);
+    rmSync(path.join(ws, "atf", "agents", top), { recursive: true });
+  }
+  assert.deepEqual(errs(), []);
+});
+
+test("check mode flags a changed fragment as drift in that agent's files only", () => {
+  const { ws, run } = splitPair();
+  writeFileSync(fragmentFile(ws, "pw-ui-fixer"), "Rule one.\n");
+  assert.deepEqual(run().errors, []);
+  assert.deepEqual(run({ check: true }), { errors: [], changed: [] });
+  writeFileSync(fragmentFile(ws, "pw-ui-fixer"), "Rule one.\nRule two.\n");
+  assert.deepEqual(run({ check: true }).changed.sort(), OUTS("pw-ui-fixer").sort());
+});
+
+test("a CRLF source keeps CRLF through its fragment; a workspace that is its own framework reads atf/agents/ too", () => {
+  const root = scratch();
+  const src = path.join(root, "agents", "pw-ui-fixer.md");
+  writeFileSync(src, readFileSync(src, "utf8").replace(/\r?\n/g, "\r\n"));
+  mkdirSync(path.join(root, "atf", "agents"), { recursive: true });
+  writeFileSync(path.join(root, "atf", "agents", "pw-ui-fixer.extra.md"), "Line one.\nLine two.\n"); // LF, as a client may save it
+  assert.deepEqual(build({ root }).errors, []);
+  for (const rel of OUTS("pw-ui-fixer")) {
+    const text = readFileSync(path.join(root, rel), "utf8");
+    // the fragment's lines, and the line its `<!-- include: _shared/fixer.md -->` stood on, as a Windows checkout has them
+    assert.ok(!/(^|[^\r])\n/.test(text), `${rel}: CRLF throughout`);
+    assert.ok(text.endsWith(`\r\n\r\n${HEADING}\r\n\r\nLine one.\r\nLine two.\r\n`), rel);
+  }
+});
+
+// ---- a client's workspace (docs/packaging.md §3.5–3.6): the framework installed in node_modules, its sources not the
+// client's to edit, and the agent folders shared with the client's own agents
+const noteOf = (root, rel) => readFileSync(path.join(root, rel), "utf8").split(/\r?\n/)[1];
+const put = (root, rel, text) => {
+  mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+  writeFileSync(path.join(root, rel), text);
+};
+const CLIENT_AGENT = (name) => `---\nname: ${name}\ndescription: Our own reviewer.\n---\nReview against our style guide.\n`;
+
+test("the generated note in a source checkout is word for word what the committed files have (no drift from the installed wording)", () => {
+  for (const rel of OUTS("pw-ui-fixer"))
+    assert.equal(noteOf(workspaceRoot, rel), expandFw("# GENERATED from {fw}/agents/pw-ui-fixer.md by {fw}/scripts/build-agents.mjs -- edit the source, then run npm run build-agents.", FW), rel);
+  const root = scratch();
+  assert.ok(!isInstalled(root));
+  assert.deepEqual(build({ root }).errors, []);
+  for (const rel of OUTS("pw-ui-fixer")) assert.equal(noteOf(root, rel), "# GENERATED from agents/pw-ui-fixer.md by scripts/build-agents.mjs -- edit the source, then run npm run build-agents.");
+  assert.equal(generatedNote("pw-ui-fixer", FW), expandFw("# GENERATED from {fw}/agents/pw-ui-fixer.md by {fw}/scripts/build-agents.mjs -- edit the source, then run npm run build-agents.", FW));
+});
+
+test("installed: the generated note names atf sync, the agent's fragment and atf/ config, never npm run build-agents", () => {
+  const { root, framework } = installedWorkspace();
+  assert.ok(isInstalled(framework));
+  assert.deepEqual(build({ root, framework }).errors, []);
+  const note = "# GENERATED by atf sync from @testagentic/atf (agents/pw-ui-fixer.md) -- do not edit: add instructions in atf/agents/pw-ui-fixer.extra.md, or config in atf/ (overlays, or npx atf eject config), then run npx atf sync.";
+  for (const rel of OUTS("pw-ui-fixer")) {
+    const text = readFileSync(path.join(root, rel), "utf8");
+    assert.equal(noteOf(root, rel), note, rel);
+    assert.ok(isGenerated(text), `${rel}: still carries the generated marker`);
+    assert.ok(!text.includes("npm run build-agents"), rel);
+  }
+  // it is still a YAML comment: the frontmatter's keys are the same as a source checkout renders them
+  const scratchRoot = scratch();
+  build({ root: scratchRoot });
+  const meta = (r) => splitFrontmatter(readFileSync(path.join(r, ".claude/agents/pw-ui-fixer.md"), "utf8"), "x").meta;
+  assert.deepEqual(Object.keys(meta(root)), Object.keys(meta(scratchRoot)));
+});
+
+test("installed: a client's own agent (no generated marker) survives build and check, untouched and unreported", () => {
+  const { root, framework } = installedWorkspace();
+  const own = {
+    ".claude/agents/house-style.md": CLIENT_AGENT("house-style"),
+    ".github/agents/house-style.agent.md": CLIENT_AGENT("house-style"),
+    // a comment of their own tool's, or our wording anywhere but the frontmatter's first line, is not our marker
+    ".claude/agents/tooled.md": "---\n# GENERATED by our own scaffolder\nname: tooled\ndescription: x\n---\n",
+    ".github/agents/notes.agent.md": "Body only, no frontmatter.\n# GENERATED from agents/notes.md by scripts/build-agents.mjs\n",
+    ".claude/agents/README.txt": "not an agent file\n",
+  };
+  for (const [rel, text] of Object.entries(own)) put(root, rel, text);
+  const first = build({ root, framework });
+  assert.deepEqual(first.errors, []);
+  assert.ok(!first.changed.some((rel) => rel in own), first.changed.join("\n"));
+  assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: [] });
+  assert.deepEqual(build({ root, framework }), { errors: [], changed: [] });
+  for (const [rel, text] of Object.entries(own)) assert.equal(readFileSync(path.join(root, rel), "utf8"), text, rel);
+});
+
+test("installed: a framework-marked agent file with no source (a dropped agent) is reported by check and removed by build", () => {
+  const { root, framework } = installedWorkspace();
+  assert.deepEqual(build({ root, framework }).errors, []);
+  const generatedText = (rel) => readFileSync(path.join(root, rel), "utf8");
+  const orphans = {
+    ".claude/agents/retired-one.md": generatedText(".claude/agents/pw-ui-fixer.md"),
+    ".github/agents/retired-one.agent.md": generatedText(".github/agents/pw-ui-fixer.agent.md"),
+    // as an older package (or a source checkout's build) wrote it: the marker is either wording
+    ".claude/agents/older-one.md": "---\n# GENERATED from node_modules/@testagentic/atf/agents/older-one.md by node_modules/@testagentic/atf/scripts/build-agents.mjs -- edit the source, then run npm run build-agents.\nname: older-one\n---\n",
+  };
+  for (const [rel, text] of Object.entries(orphans)) put(root, rel, text);
+  put(root, ".claude/agents/house-style.md", CLIENT_AGENT("house-style"));
+  const wanted = Object.keys(orphans).sort();
+  assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: wanted }, "check flags them as out of date");
+  for (const rel of wanted) assert.ok(existsSync(path.join(root, rel)), `check removes nothing: ${rel}`);
+  const r = build({ root, framework });
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual([...r.changed].sort(), wanted);
+  for (const rel of wanted) assert.ok(!existsSync(path.join(root, rel)), `${rel} removed`);
+  assert.ok(existsSync(path.join(root, ".claude/agents/house-style.md")), "the client's own agent stays");
+  assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: [] });
+});
+
+test("installed: a client agent whose file or name: is a framework agent's is an error naming it; nothing is written", () => {
+  const { root, framework } = installedWorkspace();
+  const clash = {
+    ".claude/agents/pw-ui-fixer.md": CLIENT_AGENT("pw-ui-fixer"),
+    // on a case-insensitive disk this IS the generated file's path
+    ".github/agents/Testcase-Writer.agent.md": CLIENT_AGENT("my-scribe"),
+    // another file name, but the hosts (and the guard, D-021) know an agent by its name:
+    ".claude/agents/my-conductor.md": CLIENT_AGENT("orchestrator-agent"),
+  };
+  for (const [rel, text] of Object.entries(clash)) put(root, rel, text);
+  for (const check of [true, false]) {
+    const { errors, changed } = build({ root, framework, check });
+    assert.deepEqual(changed, []);
+    assert.equal(errors.length, 3, errors.join("\n"));
+    assert.ok(errors.some((e) => e.startsWith(".claude/agents/pw-ui-fixer.md: your own agent (no GENERATED marker), but the framework's agent 'pw-ui-fixer' is written to this file, so atf sync would overwrite it: rename")), errors.join("\n"));
+    assert.ok(errors.some((e) => e.startsWith(".github/agents/Testcase-Writer.agent.md: your own agent (no GENERATED marker), but the framework's agent 'testcase-writer'")), errors.join("\n"));
+    assert.ok(errors.some((e) => e.startsWith(".claude/agents/my-conductor.md: your own agent is named 'orchestrator-agent', the name of a framework agent; rename it")), errors.join("\n"));
+  }
+  for (const [rel, text] of Object.entries(clash)) assert.equal(readFileSync(path.join(root, rel), "utf8"), text, rel);
+  assert.ok(!existsSync(path.join(root, ".claude/agents/testcase-writer.md")), "an error writes nothing");
+  assert.ok(!existsSync(path.join(root, ".mcp.json")));
+  // renamed, it syncs
+  rmSync(path.join(root, ".claude/agents/pw-ui-fixer.md"));
+  rmSync(path.join(root, ".github/agents/Testcase-Writer.agent.md"));
+  put(root, ".claude/agents/my-conductor.md", CLIENT_AGENT("house-conductor"));
+  assert.deepEqual(build({ root, framework }).errors, []);
+});
+
+test("a source checkout stays as strict as before: any agent file without a source is an error, marked or not, and stays", () => {
+  for (const pair of [false, true]) {
+    // the framework as its own workspace, and a source checkout apart from the workspace (neither is installed)
+    const framework = scratch();
+    const root = pair ? mkdtempSync(path.join(tmpdir(), "atf-ws-")) : framework;
+    assert.ok(!isInstalled(framework));
+    assert.deepEqual(build({ root, framework }).errors, []);
+    put(root, ".claude/agents/retired-one.md", readFileSync(path.join(root, ".claude/agents/pw-ui-fixer.md"), "utf8"));
+    put(root, ".github/agents/house-style.agent.md", CLIENT_AGENT("house-style"));
+    for (const check of [true, false]) {
+      const { errors, changed } = build({ root, framework, check });
+      assert.deepEqual(changed, []);
+      assert.deepEqual(errors.sort(), [
+        ".claude/agents/retired-one.md: not generated from agents/ (no source or no permissions row); remove it or add agents/<name>.md",
+        ".github/agents/house-style.agent.md: not generated from agents/ (no source or no permissions row); remove it or add agents/<name>.md",
+      ]);
+    }
+    assert.ok(existsSync(path.join(root, ".claude/agents/retired-one.md")), "never removed there");
+    // a hand-made file at a generated path is drift there, as before, not a clash
+    rmSync(path.join(root, ".claude/agents/retired-one.md"));
+    rmSync(path.join(root, ".github/agents/house-style.agent.md"));
+    put(root, ".claude/agents/pw-ui-fixer.md", CLIENT_AGENT("pw-ui-fixer"));
+    assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: [".claude/agents/pw-ui-fixer.md"] });
+  }
+});
+
+// ---- the MCP config files in a client's workspace: rendered whole, so what the client added by hand is named, never
+// dropped (lib/mcp.mjs foreignMcpEntries)
+const json = (root, rel) => JSON.parse(readFileSync(path.join(root, rel), "utf8"));
+const SERVER = { command: "npx", args: ["-y", "@acme/mcp-jira"] };
+const OVERLAY_HINT = "add it under 'servers:' in atf/mcp.yaml (an overlay: its servers merge into the framework's, server by server), then run npx atf sync";
+
+test("installed: an MCP server the client added by hand fails build and check, naming the file, the server and atf/mcp.yaml; nothing is written", () => {
+  const { root, framework } = installedWorkspace();
+  const mine = JSON.stringify({ mcpServers: { playwright: { command: "old" }, jira: SERVER } }, null, 2);
+  put(root, ".mcp.json", mine);
+  put(root, ".vscode/mcp.json", JSON.stringify({ servers: { jira: SERVER, docs: { url: "https://docs.acme.test/mcp" } } }));
+  for (const check of [true, false]) {
+    const { errors, changed } = build({ root, framework, check });
+    assert.deepEqual(changed, []);
+    assert.deepEqual(errors, [
+      `.mcp.json: MCP server 'jira' is yours: mcp.yaml (the framework's, with your atf/ overrides) doesn't define it, so atf sync would drop it: ${OVERLAY_HINT}`,
+      `.vscode/mcp.json: MCP server 'jira' is yours: mcp.yaml (the framework's, with your atf/ overrides) doesn't define it, so atf sync would drop it: ${OVERLAY_HINT}`,
+      `.vscode/mcp.json: MCP server 'docs' is yours: mcp.yaml (the framework's, with your atf/ overrides) doesn't define it, so atf sync would drop it: ${OVERLAY_HINT}`,
+    ]);
+  }
+  assert.equal(readFileSync(path.join(root, ".mcp.json"), "utf8"), mine, "untouched");
+  for (const f of [".claude", ".github"]) assert.equal(existsSync(path.join(root, f)), false, `${f}: nothing written`);
+  // ejected: the overlay would be ignored, so the pointer names the ejected copy
+  put(root, "atf/config/mcp.yaml", readFileSync(path.join(framework, "config", "mcp.yaml"), "utf8"));
+  assert.match(build({ root, framework, check: true }).errors[0], /add it under 'servers:' in atf\/config\/mcp\.yaml \(your ejected copy\), then run npx atf sync$/);
+});
+
+test("installed: a server defined through the atf/mcp.yaml overlay renders beside the framework's, and build and check pass", () => {
+  const { root, framework } = installedWorkspace();
+  put(root, ".mcp.json", JSON.stringify({ mcpServers: { jira: SERVER } }));
+  put(root, "atf/mcp.yaml", "servers:\n  jira:\n    command: npx\n    args: ['-y', '@acme/mcp-jira']\n");
+  assert.deepEqual(build({ root, framework }).errors, []);
+  for (const [rel, key] of [[".mcp.json", "mcpServers"], [".vscode/mcp.json", "servers"]]) {
+    const servers = json(root, rel)[key];
+    assert.deepEqual(Object.keys(servers), ["playwright", "jira"], rel);
+    assert.deepEqual(servers.jira, SERVER, rel);
+    assert.ok(servers.playwright.args.includes("node_modules/@testagentic/atf/scripts/browser/init-page.cjs"), rel);
+  }
+  assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: [] });
+  // the framework's own server changed by hand is ours: drift, rewritten by a build, never an error
+  const vs = json(root, ".vscode/mcp.json");
+  vs.servers.playwright.args.push("--headless");
+  put(root, ".vscode/mcp.json", JSON.stringify(vs));
+  assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: [".vscode/mcp.json"] });
+});
+
+test("installed: a top-level key the render doesn't produce (VS Code's inputs) fails with where to keep it; so does a file that isn't a JSON object", () => {
+  const { root, framework } = installedWorkspace();
+  const vs = { inputs: [{ type: "promptString", id: "jira-token", password: true }], servers: {} };
+  put(root, ".vscode/mcp.json", JSON.stringify(vs));
+  assert.deepEqual(build({ root, framework, check: true }).errors, [
+    ".vscode/mcp.json: 'inputs' is not rendered from mcp.yaml (only its servers are), so atf sync would drop it: move it out of .vscode/mcp.json (atf sync renders the whole file), for example into your own user-level MCP configuration, then run npx atf sync",
+  ]);
+  // an overlay can't carry it: mcp.yaml renders only servers, so the error stands
+  put(root, "atf/mcp.yaml", "inputs:\n  - { type: promptString, id: jira-token }\n");
+  assert.equal(build({ root, framework }).errors.length, 1);
+  assert.deepEqual(json(root, ".vscode/mcp.json"), vs, "untouched");
+  rmSync(path.join(root, "atf", "mcp.yaml"));
+  for (const [text, want] of [
+    ["{ not json", /^\.vscode\/mcp\.json: not valid JSON \(.*\); atf sync renders this file whole from mcp\.yaml, so it can't tell which servers are yours: fix the JSON or remove the file, then run npx atf sync$/],
+    ["[]", /^\.vscode\/mcp\.json: must be a JSON object with 'servers' \(atf sync renders it from mcp\.yaml\); fix it or remove the file, then run npx atf sync$/],
+    ['{ "servers": [] }', /^\.vscode\/mcp\.json: 'servers' must be an object of servers; fix it or remove the file, then run npx atf sync$/],
+  ]) {
+    put(root, ".vscode/mcp.json", text);
+    const { errors } = build({ root, framework });
+    assert.equal(errors.length, 1, text);
+    assert.match(errors[0], want);
+    assert.equal(readFileSync(path.join(root, ".vscode/mcp.json"), "utf8"), text);
+  }
+  // only the framework's server, as a sync left it: no error
+  rmSync(path.join(root, ".vscode/mcp.json"));
+  assert.deepEqual(build({ root, framework }).errors, []);
+  assert.deepEqual(build({ root, framework }), { errors: [], changed: [] });
+});
+
+test("a source checkout renders its MCP files whole, as before: every server there is ours (D-018)", () => {
+  const root = scratch();
+  put(root, ".mcp.json", JSON.stringify({ mcpServers: { jira: SERVER }, extra: true }));
+  const checked = build({ root, check: true });
+  assert.deepEqual(checked.errors, []);
+  assert.ok(checked.changed.includes(".mcp.json"), "drift, not an error");
+  assert.deepEqual(build({ root }).errors, []);
+  assert.deepEqual(Object.keys(json(root, ".mcp.json")), ["mcpServers"]);
+  assert.deepEqual(Object.keys(json(root, ".mcp.json").mcpServers), ["playwright"]);
+});
+
+// ---- .claude/settings.json: the build owns only the framework's own hook entries (lib/hook-registrations.mjs)
+const CLIENT_PRE = { matcher: "Bash", hooks: [{ type: "command", command: "node scripts/hooks/pretooluse.mjs" }] }; // theirs: no --host claude-code
+const CLIENT_POST = { matcher: "Edit|Write", hooks: [{ type: "command", command: "npx prettier --write \"$CLAUDE_FILE_PATHS\"" }] };
+const CLIENT_STOP = { hooks: [{ type: "command", command: "say done" }] };
+const settingsOf = (root) => json(root, ".claude/settings.json");
+const frameworkCommands = (hooks) =>
+  Object.entries(hooks).flatMap(([event, groups]) => groups.flatMap((g) => g.hooks.filter((h) => / --host claude-code$/.test(h.command)).map((h) => `${event}: ${h.command}`)));
+
+test("installed: the client's own Claude hooks and settings survive build and check, after the framework's entries, in their order", () => {
+  const { root, framework } = installedWorkspace();
+  const mine = { permissions: { allow: ["Bash(ls:*)"] }, hooks: { Stop: [CLIENT_STOP], PreToolUse: [CLIENT_PRE], PostToolUse: [CLIENT_POST] }, model: "opus" };
+  put(root, ".claude/settings.json", JSON.stringify(mine));
+  assert.deepEqual(build({ root, framework }).errors, []);
+  const s = settingsOf(root);
+  assert.deepEqual(Object.keys(s), ["permissions", "hooks", "model"], "the keys keep their order");
+  assert.deepEqual(s.permissions, mine.permissions);
+  assert.deepEqual(Object.keys(s.hooks), ["PreToolUse", "PostToolUse", "Stop"], "the framework's events first, then the client's");
+  assert.equal(s.hooks.PreToolUse.length, 2);
+  assert.match(s.hooks.PreToolUse[0].hooks[0].command, /node_modules\/@testagentic\/atf\/scripts\/hooks\/pretooluse\.mjs" --host claude-code$/);
+  assert.deepEqual(s.hooks.PreToolUse[1], CLIENT_PRE, "a client's own scripts/hooks/pretooluse.mjs (no --host claude-code) is theirs");
+  assert.match(s.hooks.PostToolUse[0].hooks[0].command, /posttooluse\.mjs" --host claude-code$/);
+  assert.deepEqual(s.hooks.PostToolUse.slice(1), [CLIENT_POST]);
+  assert.deepEqual(s.hooks.Stop, [CLIENT_STOP]);
+  // stable: check is clean, and a second build writes nothing
+  assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: [] });
+  assert.deepEqual(build({ root, framework }), { errors: [], changed: [] });
+  // the client edits, reformats and reorders their own: not drift, and the file is left as they wrote it
+  s.hooks.Stop.push({ hooks: [{ type: "command", command: "say again" }] });
+  const reformatted = JSON.stringify({ model: s.model, hooks: { Stop: s.hooks.Stop, PostToolUse: s.hooks.PostToolUse, PreToolUse: s.hooks.PreToolUse }, permissions: s.permissions }, null, 4);
+  put(root, ".claude/settings.json", reformatted);
+  assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: [] });
+  assert.deepEqual(build({ root, framework }), { errors: [], changed: [] });
+  assert.equal(readFileSync(path.join(root, ".claude/settings.json"), "utf8"), reformatted);
+  // an edit of the framework's entry is drift, and a build restores only that entry
+  const edited = JSON.parse(reformatted);
+  edited.hooks.PreToolUse[0].matcher = "Bash";
+  put(root, ".claude/settings.json", JSON.stringify(edited));
+  assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: [".claude/settings.json"] });
+  assert.deepEqual(build({ root, framework }).changed, [".claude/settings.json"]);
+  const restored = settingsOf(root);
+  assert.notEqual(restored.hooks.PreToolUse[0].matcher, "Bash");
+  assert.deepEqual(restored.hooks.PreToolUse.slice(1), [CLIENT_PRE]);
+  assert.deepEqual(restored.hooks.Stop, s.hooks.Stop);
+});
+
+test("an older framework's hook entries (another {fw}, the pre-move path, the old prefix, a shared group) are replaced, never duplicated", () => {
+  const { root, framework } = installedWorkspace();
+  const old = (entry, p) => ({ type: "command", command: `node "${p}/scripts/hooks/${entry}.mjs" --host claude-code` });
+  put(root, ".claude/settings.json", JSON.stringify({
+    hooks: {
+      PreToolUse: [
+        { matcher: "Bash|Write", hooks: [old("pretooluse", "${CLAUDE_PROJECT_DIR:-.}")] },
+        CLIENT_PRE,
+        { matcher: "Bash", hooks: [{ type: "command", command: "node \"${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}node_modules/@testagentic/atf-old/scripts/hooks/pretooluse.mjs\" --host claude-code" }] },
+      ],
+      // a client hook added inside the framework's own group: theirs stays, in a group of its own
+      PostToolUse: [{ matcher: "Edit", hooks: [{ type: "command", async: true, command: "node scripts\\hooks\\posttooluse.mjs --host claude-code" }, CLIENT_POST.hooks[0]] }],
+      // a framework entry in another event is ours too; the event goes once nothing of the client's is left
+      Notification: [{ hooks: [old("posttooluse", "$CLAUDE_PROJECT_DIR")] }],
+    },
+  }));
+  assert.deepEqual(build({ root, framework }).errors, []);
+  const { hooks } = settingsOf(root);
+  const fwPath = 'node "${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}node_modules/@testagentic/atf/scripts/hooks/';
+  assert.deepEqual(frameworkCommands(hooks), [`PreToolUse: ${fwPath}pretooluse.mjs" --host claude-code`, `PostToolUse: ${fwPath}posttooluse.mjs" --host claude-code`]);
+  assert.deepEqual(hooks.PreToolUse.slice(1), [CLIENT_PRE]);
+  assert.deepEqual(hooks.PostToolUse.slice(1), [{ matcher: "Edit", hooks: [CLIENT_POST.hooks[0]] }]);
+  assert.deepEqual(Object.keys(hooks), ["PreToolUse", "PostToolUse"]);
+  assert.deepEqual(build({ root, framework, check: true }), { errors: [], changed: [] });
+});
+
+test("the PreToolUse guard is always registered first, whatever the client's hooks hold; off drops only the framework's PostToolUse", () => {
+  const { root, framework } = installedWorkspace();
+  put(root, "atf/hooks.yaml", "post_tool_use: off\n");
+  for (const hooks of [{}, { PreToolUse: [] }, { PreToolUse: [CLIENT_PRE] }, { PostToolUse: [CLIENT_POST] }]) {
+    put(root, ".claude/settings.json", JSON.stringify({ hooks }));
+    assert.deepEqual(build({ root, framework }).errors, [], JSON.stringify(hooks));
+    const got = settingsOf(root).hooks;
+    assert.match(got.PreToolUse[0].hooks[0].command, /scripts\/hooks\/pretooluse\.mjs" --host claude-code$/, JSON.stringify(hooks));
+    assert.equal(got.PreToolUse[0].hooks[0].async, undefined, "the guard always blocks");
+    assert.deepEqual(got.PreToolUse.slice(1), hooks.PreToolUse ?? []);
+    assert.deepEqual(got.PostToolUse, hooks.PostToolUse, "off: the client's PostToolUse stays, the framework's is not registered");
+  }
+});
+
+test("a malformed hooks key, or settings that aren't a JSON object, is an error naming .claude/settings.json; nothing is written", () => {
+  const { root, framework } = installedWorkspace();
+  for (const [settings, want] of [
+    [{ hooks: [] }, "'hooks' must be an object (event -> list of matcher groups), not a list"],
+    [{ hooks: "none" }, "'hooks' must be an object (event -> list of matcher groups), not a string"],
+    [{ hooks: { PreToolUse: { matcher: "Bash" } } }, "hooks.PreToolUse must be a list of matcher groups, not an object"],
+    [{ hooks: { Stop: [CLIENT_STOP, "say"] } }, "hooks.Stop[1] must be an object with a 'hooks' list, not a string"],
+    [{ hooks: { PreToolUse: [{ matcher: "Bash", command: "x" }] } }, "hooks.PreToolUse[0] must be an object with a 'hooks' list, not an object"],
+    [[], "must be a JSON object, not a list"],
+  ]) {
+    const text = JSON.stringify(settings);
+    put(root, ".claude/settings.json", text);
+    for (const check of [true, false]) assert.deepEqual(build({ root, framework, check }), { errors: [`.claude/settings.json: ${want}; fix it, nothing was written`], changed: [] }, text);
+    assert.equal(readFileSync(path.join(root, ".claude/settings.json"), "utf8"), text);
+    assert.equal(existsSync(path.join(root, ".mcp.json")), false, "nothing else written either");
+  }
+  put(root, ".claude/settings.json", "{ not json");
+  assert.match(build({ root, framework }).errors[0], /^\.claude\/settings\.json: /);
+});
+
+test("a source checkout's settings: the same merge, and its output byte for byte what the framework-only file was", () => {
+  // this repo's committed file holds only the framework's entries: --check leaves it exactly as it is
+  const committed = readFileSync(path.join(workspaceRoot, ".claude", "settings.json"), "utf8");
+  const fw = frameworkRel(workspaceRoot, frameworkRoot);
+  assert.equal(renderHookRegistrations("async", committed, fw).get(".claude/settings.json"), committed);
+  // and the whole-key render of before (no file, or a file with no hooks) is still what a merge produces
+  for (const mode of ["async", "sync", "off"]) {
+    const fresh = renderHookRegistrations(mode, undefined, fw).get(".claude/settings.json");
+    assert.equal(renderHookRegistrations(mode, fresh, fw).get(".claude/settings.json"), fresh, mode);
+    assert.equal(renderHookRegistrations(mode, "{}", fw).get(".claude/settings.json"), fresh, mode);
+    assert.equal(renderHookRegistrations(mode, "", fw).get(".claude/settings.json"), fresh, mode);
+  }
+  // a switch of mode rewrites only the framework's entries, in the source checkout too
+  const root = scratch();
+  put(root, ".claude/settings.json", JSON.stringify({ hooks: { Stop: [CLIENT_STOP] } }));
+  assert.deepEqual(build({ root, postHook: "sync" }).errors, []);
+  assert.deepEqual(build({ root, postHook: "off" }).errors, []);
+  assert.deepEqual(settingsOf(root).hooks.Stop, [CLIENT_STOP]);
+  assert.deepEqual(Object.keys(settingsOf(root).hooks), ["PreToolUse", "Stop"]);
 });
