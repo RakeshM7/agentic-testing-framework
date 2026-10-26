@@ -640,7 +640,7 @@ function splitRun(files = {}, extra = []) {
 
 test("init records where each config file came from, with digests; the report flags permissions that are not the framework's own copy", async () => {
   const { renderDeck } = await import("./lib/report.mjs");
-  const fwFile = (n) => configPath(n); // the real framework's copy: outside the workspace, so recorded absolute
+  const fwFile = (n) => configPath(n).replaceAll("\\", "/"); // the real framework's copy: outside the workspace, so recorded absolute, with `/`
   const deckOf = async (root) => {
     const report = await collect("acme", { root });
     assert.deepEqual(await validateData("report", report), []);

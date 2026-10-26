@@ -35,6 +35,8 @@ const put = (root, rel, text) => {
   mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
   writeFileSync(path.join(root, rel), text);
 };
+// a recorded source path: `/` on every OS (Windows included)
+const slashed = (p) => p.replaceAll("\\", "/");
 const fwText = (fw, name) => readFileSync(path.join(fw, "config", name), "utf8");
 
 test("the overlay rule: a map merges key by key, a list replaces, null deletes; nothing is changed in place", () => {
@@ -58,7 +60,7 @@ test("no atf/ override: the framework's own copy, byte for byte, for every file 
     assert.equal(configText(name, opts), fwText(fw, name), name);
     assert.deepEqual(loadConfig(name, opts), yaml.load(fwText(fw, name)), name);
     assert.equal(configPath(name, opts), path.join(fw, "config", name));
-    assert.deepEqual(configSource(name, opts), { name, source: "framework", files: [path.join(fw, "config", name)], digest: sha(fwText(fw, name)) }, "the framework, outside the workspace: absolute");
+    assert.deepEqual(configSource(name, opts), { name, source: "framework", files: [slashed(path.join(fw, "config", name))], digest: sha(fwText(fw, name)) }, "the framework, outside the workspace: absolute");
   }
   // this process's own roots (the monorepo, or one directory): today's text
   assert.equal(configText("models.yaml"), readFileSync(path.join(frameworkRoot, "config", "models.yaml"), "utf8"));
@@ -84,7 +86,7 @@ test("an overlay is merged over the framework's copy; its text is a dump under a
   assert.match(text.split("\n")[0], /^# Effective models\.yaml: .*config\/models\.yaml, overlaid by atf\/models\.yaml/);
   assert.deepEqual(yaml.load(text), models, "the text is the object");
   const src = configSource("models.yaml", opts);
-  assert.deepEqual(src, { name: "models.yaml", source: "overlay", files: [path.join(fw, "config", "models.yaml"), "atf/models.yaml"], digest: sha(text) });
+  assert.deepEqual(src, { name: "models.yaml", source: "overlay", files: [slashed(path.join(fw, "config", "models.yaml")), "atf/models.yaml"], digest: sha(text) });
   assert.equal(configPath("models.yaml", opts), path.join(fw, "config", "models.yaml"), "configPath stays the framework's own copy");
 
   // a list replaces the base list, null deletes a key

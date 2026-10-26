@@ -58,10 +58,11 @@ export function configPath(name, { framework = frameworkRoot } = {}) {
   return path.join(framework, "config", name);
 }
 
-// A file as a person finds it: from the workspace with `/`, else absolute.
+// A file as a person finds it: from the workspace, else absolute; with `/` on every OS, so a run's provenance and the
+// effective text read the same everywhere.
 function shown(file, workspace) {
   const rel = path.relative(path.resolve(workspace), file);
-  return rel && !rel.startsWith("..") && !path.isAbsolute(rel) ? rel.replaceAll("\\", "/") : file;
+  return (rel && !rel.startsWith("..") && !path.isAbsolute(rel) ? rel : file).replaceAll("\\", "/");
 }
 
 // -> { source, files: [absolute paths, base first] }. Only existence decides; nothing is read.
