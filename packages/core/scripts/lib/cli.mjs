@@ -24,7 +24,7 @@ import { CONFIG_FILES, configPath } from "./config.mjs";
 import { SLUG_RE, STAGES } from "./contract.mjs";
 import { DOCTOR_BASE_SCRIPT, applyInit, initPlan, initRefusal, installedIn } from "./init.mjs";
 import { expandFw, findWorkspace, frameworkRel, frameworkRoot, isInstalled, isWithin, sameDir, workspaceRoot } from "./roots.mjs";
-import { sync } from "./sync.mjs";
+import { SETUP_WORKFLOW, TOKEN_ENV, sync } from "./sync.mjs";
 
 export const USAGE = `atf <command> [<product>] [options]       every command works the same on macOS, Windows and Linux
 
@@ -328,11 +328,18 @@ function syncStep({ workspace, framework, check = false, postinstall = false }, 
     out.error(check ? `Fix the error above, then run ${SYNC_FIX}.` : `Nothing was written. Fix the error above, then run ${SYNC_FIX} again.`);
     return 1;
   }
+  const created = r.created ?? [];
+  const problems = r.problems ?? [];
   for (const f of r.changed) out.log(`${label}: ${check ? "out of date" : "updated"}: ${f}`);
-  const n = r.changed.length;
+  // the cloud agent's setup workflow (atf.json "cloud_agent"): written once, then the client's
+  for (const f of created) out.log(check ? `${label}: missing: ${f} (${SYNC_FIX} creates it)` : `${label}: created: ${f}: the Copilot cloud agent's setup steps, yours from now on. Commit it, merge it to the default branch, and add the Agents secret ${TOKEN_ENV}.`);
+  // what sync never rewrites: a warning when syncing, a failure when checking
+  for (const p of problems) out.error(`${label}: ${check ? "error" : "warning"}: ${p.detail}. Fix: ${p.fix}.`);
+  const n = r.changed.length + created.length;
   if (check) {
-    if (!n) return out.log(`${label}: the host files are in sync with the framework.`), 0;
-    out.error(`${n} host file(s) out of date with the framework: run ${SYNC_FIX}.`);
+    if (!n && !problems.length) return out.log(`${label}: the host files are in sync with the framework.`), 0;
+    if (n) out.error(`${n} host file(s) out of date with the framework: run ${SYNC_FIX}.`);
+    if (problems.length) out.error(`Fix ${SETUP_WORKFLOW} as above: atf sync never rewrites it.`);
     return 1;
   }
   out.log(n ? `${label}: ${n} file(s) updated.` : `${label}: the host files are up to date.`);

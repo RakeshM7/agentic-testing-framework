@@ -148,6 +148,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-090 | A workspace extends an agent with an add-on fragment; it never replaces the body | Accepted | 2026-10-26 |
 | D-091 | Each workspace has its own decision log, named in atf/atf.json | Accepted | 2026-10-26 |
 | D-092 | Hook registrations are generated and the build owns only the framework's own hook entries; a client's own MCP entries fail with a pointer | Accepted | 2026-10-26 |
+| D-093 | A client workspace opts in to the Copilot cloud agent by committing its agent and hook files; the setup workflow is written once and then the client's | Accepted | 2026-10-26 |
 
 ## Decisions
 
@@ -1796,3 +1797,32 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - Known limits: an MCP JSON file carries no marker, so a server a later package version drops is reported as the client's. `disableAllHooks: true` in any Claude Code settings layer turns every hook off, the guard included; the build keeps that key like any other.
 - **Affects:** `packages/core/config/hooks.yaml`, `packages/core/scripts/lib/hook-registrations.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/mcp.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/hooks.test.mjs`
 - **Supersedes:** D-042 (the build owned the whole `hooks` key; the rest is carried over above) · **Confirmed by the user on:** 2026-10-26 (own only the framework's hook entries; fail with a pointer on a client's own MCP server). This extends D-018, D-020 and D-088 without weakening them.
+
+### D-093 · A client workspace opts in to the Copilot cloud agent by committing its agent and hook files; the setup workflow is written once and then the client's
+- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §3.6 and phase 3c: draft P-3's cloud-agent opt-in). It is based on GitHub's documentation as of 2026-10-26, and is experimental until `docs/cloud-agent-verification.md` is run on a real repository.
+- **Decision:**
+  - **The opt-in.** `atf/atf.json` `"cloud_agent": true` (a boolean; anything else is an error naming the file, with nothing written). It is read only in an installed workspace. The marker is parsed in one place (`readMarker` in `scripts/lib/roots.mjs`, also used by D-091's resolver).
+  - **What gets committed.** With the opt-in, sync's `.gitignore` block leaves out every entry under `.github/` (the framework's `.github/agents/<name>.agent.md` files and `.github/hooks/framework-guard.json`), so the client commits them and merges them to the default branch. `.claude/agents/`, `.mcp.json`, `.vscode/mcp.json` and `.vscode/hooks/framework-guard.json` stay ignored: the cloud agent never reads the MCP files and takes its servers from repository settings. Turning the opt-in off restores the full block.
+  - **The setup workflow (user: written once, client-owned).** `.github/workflows/copilot-setup-steps.yml` is written from `templates/workspace/copilot-setup-steps.yml`, only with the opt-in, only in an installed workspace, and only when absent: by `atf init` or by the first sync after the opt-in. atf never rewrites it.
+    - It checks out, sets up Node, and runs `npm ci` with the Agents secret `ATF_NPM_TOKEN`.
+    - It then reports committed Copilot files that the postinstall's re-render changed (`git diff --exit-code --stat -- .github/agents .github/hooks`, continue-on-error).
+    - It restores them (`git checkout -- .github/agents .github/hooks`), so the agent works with the reviewed files and its pull request never carries agent or hook changes (user, 2026-10-26).
+  - **Verified, never rewritten.**
+    - `atf check` and the doctor (`cloud-agent-setup`) require the workflow's `copilot-setup-steps` job to run `npm ci` or `npm install` with `ATF_NPM_TOKEN` in its env.
+    - A missing workflow is out of date for check; a non-matching one is an error for check and a warning for sync, which still renders.
+    - The doctor warns (`cloud-agent-git`) when the client's own `.gitignore` hides files the cloud agent must read.
+  - **Fails closed.** The committed hook runs `node node_modules/@testagentic/atf/scripts/hooks/pretooluse.mjs`. If `npm ci` fails, the script is missing and, per GitHub's docs, a crashing preToolUse hook denies every tool call. A timeout fails open, so the guard must stay well under `timeoutSec` (D-035).
+  - **After an upgrade** the client re-syncs, commits and merges the Copilot files again.
+- **Why:**
+  - Per GitHub's docs, the cloud agent reads custom agents and hooks only from files committed to the default branch, and has no organization-level hooks. Committing is the only route, so the client opts in knowingly: it puts the Copilot prompts in their git (§2).
+  - The re-render during setup must never turn into unreviewed changes to the guard's registration in an agent's pull request.
+- **Known limits, still to verify live:**
+  - which branch the profile is read from;
+  - that setup output is visible to the hook;
+  - fail-closed in practice;
+  - the built-in MCP tool names;
+  - Agents secrets on the workflow's own test triggers;
+  - a workspace in a subfolder of the repository (GitHub reads `.github/` only at the repository root);
+  - pnpm clients, whose committed hook would name a machine-specific path.
+- **Affects:** `packages/core/scripts/lib/sync.mjs`, `packages/core/scripts/lib/init.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/roots.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/templates/workspace/copilot-setup-steps.yml`, `docs/cloud-agent-verification.md`
+- **Confirmed by the user on:** 2026-10-24 (draft P-3's opt-in) and 2026-10-26 (the setup workflow written once and client-owned; build now, verify live after; report then restore the committed files). This extends D-018, D-035, D-089 and D-091 without weakening them.

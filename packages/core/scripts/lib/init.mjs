@@ -6,7 +6,7 @@
 // has, and what to leave alone. applyInit() writes exactly that, and refuses a file that changed since it was read, so a
 // re-run on an existing workspace is safe and reports every file as present. A file the plan can't read safely (a
 // package.json that isn't a JSON object, a malformed init block in .gitignore, an atf/atf.json the decision hook
-// can't read) stops the whole init before anything is written.
+// can't read or with a "cloud_agent" that isn't a boolean) stops the whole init before anything is written.
 //
 // The committed files (AGENTS.md, atf/decisions.md, config/README.md, .vscode/settings.json) name the framework as
 // node_modules/<package>, where npm installs it, whatever runs init: the package from npx's cache, a copy already
@@ -27,10 +27,14 @@
 //   config/README.md       only when config/ doesn't exist yet: how to create a run-config
 //   .vscode/settings.json  VS Code's chat settings the hosts need (agent and hook locations, nested subagents,
 //                          AGENTS.md); sync never writes it, so a client edits and commits it like any settings file
+//   .github/workflows/copilot-setup-steps.yml
+//                          only when an existing atf/atf.json has "cloud_agent": true: the Copilot cloud agent's
+//                          setup steps, the client's from then on (sync.mjs)
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { decisionsFile } from "./decisions.mjs";
 import { FW_TOKEN, WORKSPACE_MARKER, expandFw, findWorkspace, isInstalled, isWithin } from "./roots.mjs";
+import { SETUP_TEMPLATE, SETUP_WORKFLOW, TOKEN_ENV, cloudAgent } from "./sync.mjs";
 
 export const TEMPLATES = ["templates", "workspace"];
 // The client's run output and secrets: what this workspace's tools write that must never reach git. Patterns without a
@@ -183,6 +187,14 @@ export function initPlan({ dir, framework }) {
   else create("config/README.md", expandFw(tpl("config-README.md"), fwRel), ["the run-configs' folder"]);
   const vscode = tpl("_vscode-settings.json").replaceAll(`${FW_TOKEN}\\\\/`, () => `${fwInJsonRegex(fwRel)}\\\\/`).replaceAll(FW_TOKEN, () => fwRel);
   create(".vscode/settings.json", vscode, ["VS Code's chat settings for the agents and the guard's hooks"]);
+  // the Copilot cloud agent's setup steps, when an existing atf.json already opts in (a later opt-in gets it from the
+  // next sync); the same marker error as the log's is reported once
+  if (existsSync(at(WORKSPACE_MARKER))) {
+    const opt = cloudAgent(root);
+    if (opt.error) {
+      if (opt.error !== log.error) errors.push(`${opt.error}; fix it, then run atf init again`);
+    } else if (opt.on) create(SETUP_WORKFLOW, read(path.join(framework, ...SETUP_TEMPLATE.split("/"))), [`the Copilot cloud agent's setup steps, yours from now on; merge it to the default branch and add the Agents secret ${TOKEN_ENV}`]);
+  }
   return { actions, errors, depsAdded, fwRel, name: fwPkg.name };
 }
 

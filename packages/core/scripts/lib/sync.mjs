@@ -17,16 +17,27 @@
 //                           so the block names the framework's agent files one by one instead
 // The agent files follow the roster: the effective permissions.yaml's agents through each platform's output template
 // (platforms.yaml), as the build derives them; an agent the package adds or drops changes the block on the next sync.
-// Phase 3c's cloud-agent opt-in commits the Copilot files (.github/agents/, .github/hooks/), so it filters this one
-// list (ignoredEntries), never a second copy.
 //
-// sync() checks everything before it writes anything: a malformed block, an unreadable .gitignore or any build error
-// (a bad overlay or fragment, a stray or missing source) leaves every file as it was (D-018).
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+// The cloud-agent opt-in (packaging §3.6), atf/atf.json `"cloud_agent": true`: the Copilot cloud coding agent reads
+// custom agents and hooks only as committed (.github/agents/*.agent.md, .github/hooks/*.json on the default branch),
+// and never .mcp.json or .vscode/. So the opt-in commits everything the build writes under .github/ (the framework's
+// Copilot agent files and .github/hooks/framework-guard.json): it filters the one list (ignoredEntries), never a second
+// copy, and turning it off brings the whole block back. It also needs the package installed before the agent starts,
+// or the committed guard hook has no script to run and denies every call: GitHub's copilot-setup-steps job does that,
+// in .github/workflows/copilot-setup-steps.yml. Sync writes it from templates/workspace/ when it is missing (atf init
+// does too), and never again: it is the client's, who may add steps. What sync can't fix it only reports (problems):
+// a workflow without a job step that runs npm ci (or npm install) with ATF_NPM_TOKEN in its env. Sync warns; check and
+// the doctor fail. Only in an installed workspace: a source checkout commits all of .github/ already (D-018).
+//
+// sync() checks everything before it writes anything: a malformed block, an unreadable .gitignore or atf.json, a bad
+// "cloud_agent" or any build error (a bad overlay or fragment, a stray or missing source) leaves every file as it was
+// (D-018).
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import yaml from "js-yaml";
 import { build } from "../build-agents.mjs";
 import { loadConfig } from "./config.mjs";
-import { isInstalled } from "./roots.mjs";
+import { WORKSPACE_MARKER, frameworkRel, isInstalled, readMarker } from "./roots.mjs";
 
 // The other files the build writes whole, besides the agents: workspace-relative, `/`-separated, written into the block
 // anchored at the workspace root. Never a folder (see above).
@@ -53,8 +64,69 @@ export function generatedAgentFiles({ workspace, framework }) {
   return platforms.flatMap((p) => (typeof p?.output === "string" ? names.map((n) => p.output.replaceAll("{name}", n)) : []));
 }
 
-// Everything the block lists, sorted (code-unit order, the same on every OS and locale) so atf check is stable.
-export const ignoredEntries = (agentFiles) => [...new Set([...agentFiles, ...CLIENT_IGNORED])].sort();
+// Every whole file the build writes, sorted (code-unit order, the same on every OS and locale) so atf check is stable.
+const hostEntries = (agentFiles) => [...new Set([...agentFiles, ...CLIENT_IGNORED])].sort();
+// What the cloud agent reads from git: the build's files under .github/ (its Copilot agents, its hook registration).
+const forCloudAgent = (entry) => entry.startsWith(".github/");
+// Everything the block lists: all of it, or with the cloud-agent opt-in all but what the cloud agent reads.
+export const ignoredEntries = (agentFiles, { cloudAgent = false } = {}) => hostEntries(agentFiles).filter((e) => !(cloudAgent && forCloudAgent(e)));
+// With the opt-in, what the client commits for the cloud agent: those files and the setup workflow.
+export const cloudAgentFiles = (agentFiles) => [...hostEntries(agentFiles).filter(forCloudAgent), SETUP_WORKFLOW];
+
+// ---- the cloud-agent opt-in ----------------------------------------------------------------------------------------
+
+export const CLOUD_AGENT_KEY = "cloud_agent";
+export const SETUP_WORKFLOW = ".github/workflows/copilot-setup-steps.yml";
+export const SETUP_TEMPLATE = "templates/workspace/copilot-setup-steps.yml";
+export const SETUP_JOB = "copilot-setup-steps";
+export const TOKEN_ENV = "ATF_NPM_TOKEN";
+
+// atf.json's object (roots.mjs readMarker; null without one) -> { on } | { error }. Absent is off; anything but a
+// boolean is refused, since a typo ("yes", "true") must not silently leave the cloud agent without its files.
+export function cloudAgentOf(cfg) {
+  const v = cfg?.[CLOUD_AGENT_KEY];
+  if (v === undefined) return { on: false };
+  if (typeof v !== "boolean") return { error: `${WORKSPACE_MARKER} "${CLOUD_AGENT_KEY}" must be true or false, not ${JSON.stringify(v)}` };
+  return { on: v };
+}
+// The workspace's opt-in -> { on } | { error }
+export function cloudAgent(workspace) {
+  const m = readMarker(workspace);
+  return m.error ? { error: m.error } : cloudAgentOf(m.cfg);
+}
+
+// The template, as a client finds it in their install.
+export const setupTemplateRel = (workspace, framework) => [frameworkRel(workspace, framework), SETUP_TEMPLATE].filter(Boolean).join("/");
+
+// What a client's setup workflow lacks, or null. Tolerant: any layout GitHub accepts, as long as the job
+// `copilot-setup-steps` has a step whose `run` runs npm ci or npm install with ATF_NPM_TOKEN in its env (the step's, the
+// job's or the workflow's). Read, never rewritten.
+export function setupWorkflowProblem(text) {
+  let doc;
+  try {
+    doc = yaml.load(text);
+  } catch (e) {
+    return `is not valid YAML (${e.message.split("\n")[0]})`;
+  }
+  const job = doc?.jobs?.[SETUP_JOB];
+  if (!job || typeof job !== "object") return `has no job named ${SETUP_JOB}, the one GitHub runs before the cloud agent starts`;
+  const installs = (Array.isArray(job.steps) ? job.steps : []).filter((s) => typeof s?.run === "string" && /\bnpm\s+(?:ci|install|i)\b/.test(s.run));
+  if (!installs.length) return `has no step in its ${SETUP_JOB} job that runs npm ci (or npm install)`;
+  const hasToken = (o) => o?.env && typeof o.env === "object" && Object.hasOwn(o.env, TOKEN_ENV);
+  if (!installs.some((s) => [s, job, doc].some(hasToken))) return `runs npm ci (or npm install) without ${TOKEN_ENV} in its env, the registry token the committed .npmrc reads`;
+  return null;
+}
+
+// The setup workflow in an opted-in workspace -> { create: the template's text } when missing | { problem: { detail,
+// fix } } | {}. Throws on a file it can't read.
+function setupWorkflow({ workspace, framework }) {
+  const file = path.join(workspace, ...SETUP_WORKFLOW.split("/"));
+  if (!existsSync(file)) return { create: readFileSync(path.join(framework, ...SETUP_TEMPLATE.split("/")), "utf8") };
+  const problem = setupWorkflowProblem(readFileSync(file, "utf8"));
+  if (!problem) return {};
+  const fix = `add a step to the ${SETUP_JOB} job that runs npm ci with \`env: { ${TOKEN_ENV}: \${{ secrets.${TOKEN_ENV} }} }\` (the repository's Agents secret), as ${setupTemplateRel(workspace, framework)} does; atf never rewrites this file`;
+  return { problem: { detail: `${SETUP_WORKFLOW} ${problem}: without the framework installed, the cloud agent's guard denies every tool call`, fix } };
+}
 
 // a literal path as a gitignore pattern: its glob characters escaped (agent names are plain today; the roster isn't ours
 // to trust blindly once a workspace overlay can add to it)
@@ -80,30 +152,40 @@ export function withGitignoreBlock(text, entries) {
   return { text: lines.join(eol) };
 }
 
-// -> { errors, changed: [workspace-relative paths that differ (or would, with check)], installed }
+// -> { errors, changed: [workspace-relative paths that differ (or would, with check)], created: [the setup workflow,
+// written (or missing, with check)], problems: [{ detail, fix }] (what sync reports and never fixes), installed,
+// cloudAgent, committed: [what the opt-in commits for the cloud agent] }
 export function sync({ workspace, framework, check = false }) {
   const installed = isInstalled(framework);
+  const result = { errors: [], changed: [], created: [], problems: [], installed, cloudAgent: false, committed: [] };
+  const fail = (errors, changed = []) => ({ ...result, errors, changed });
   let ignore = null;
+  let setup = {};
   if (installed) {
+    const opt = cloudAgent(workspace);
+    if (opt.error) return fail([opt.error]);
+    result.cloudAgent = opt.on;
     const file = path.join(workspace, GITIGNORE);
     let current;
     try {
       current = existsSync(file) ? readFileSync(file, "utf8") : "";
     } catch (e) {
-      return { errors: [`${GITIGNORE}: ${e.message}`], changed: [], installed };
+      return fail([`${GITIGNORE}: ${e.message}`]);
     }
-    let entries;
+    let agentFiles;
     try {
-      entries = ignoredEntries(generatedAgentFiles({ workspace, framework }));
+      agentFiles = generatedAgentFiles({ workspace, framework });
+      if (opt.on) setup = setupWorkflow({ workspace, framework });
     } catch (e) {
-      return { errors: [e.message], changed: [], installed };
+      return fail([e.message]);
     }
-    const next = withGitignoreBlock(current, entries);
-    if (next.error) return { errors: [`${GITIGNORE}: ${next.error}`], changed: [], installed };
+    const next = withGitignoreBlock(current, ignoredEntries(agentFiles, { cloudAgent: opt.on }));
+    if (next.error) return fail([`${GITIGNORE}: ${next.error}`]);
     if (next.text !== current) ignore = { file, text: next.text };
+    if (opt.on) result.committed = cloudAgentFiles(agentFiles);
   }
   const r = build({ root: workspace, framework, check });
-  if (r.errors.length) return { errors: r.errors, changed: [], installed };
+  if (r.errors.length) return fail(r.errors);
   const changed = [...r.changed];
   if (ignore) {
     changed.push(GITIGNORE);
@@ -111,9 +193,19 @@ export function sync({ workspace, framework, check = false }) {
       try {
         writeFileSync(ignore.file, ignore.text, "utf8");
       } catch (e) {
-        return { errors: [`${GITIGNORE}: ${e.message} (the host files were written)`], changed: r.changed, installed };
+        return fail([`${GITIGNORE}: ${e.message} (the host files were written)`], r.changed);
       }
     }
   }
-  return { errors: [], changed, installed };
+  if (setup.create !== undefined && !check) {
+    const file = path.join(workspace, ...SETUP_WORKFLOW.split("/"));
+    try {
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, setup.create, { encoding: "utf8", flag: "wx" }); // never over a file that appeared meanwhile
+    } catch (e) {
+      if (e.code !== "EEXIST") return fail([`${SETUP_WORKFLOW}: ${e.message} (the host files were written)`], changed);
+      setup = {};
+    }
+  }
+  return { ...result, changed, created: setup.create !== undefined ? [SETUP_WORKFLOW] : [], problems: setup.problem ? [setup.problem] : [] };
 }

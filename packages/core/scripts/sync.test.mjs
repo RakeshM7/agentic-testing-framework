@@ -9,7 +9,8 @@ import path from "node:path";
 import { USAGE, main, plan, postinstall, run } from "./lib/cli.mjs";
 import { runChecks } from "./lib/doctor.mjs";
 import { frameworkRoot, workspaceRoot } from "./lib/roots.mjs";
-import { BLOCK_END, BLOCK_START, CLIENT_IGNORED, generatedAgentFiles, gitignoreBlock, ignoredEntries, sync, withGitignoreBlock } from "./lib/sync.mjs";
+import yaml from "js-yaml";
+import { BLOCK_END, BLOCK_START, CLIENT_IGNORED, SETUP_TEMPLATE, SETUP_WORKFLOW, cloudAgentFiles, cloudAgentOf, generatedAgentFiles, gitignoreBlock, ignoredEntries, setupWorkflowProblem, sync, withGitignoreBlock } from "./lib/sync.mjs";
 import { INSTALLED_PACKAGE, installedWorkspace, put, tempRoot } from "./test-helpers.mjs";
 
 const HOOKS = `${INSTALLED_PACKAGE}/scripts/hooks/`;
@@ -357,4 +358,134 @@ test("atf sync and atf check keep the client's own Claude hooks, and stop at an 
   assert.equal(atf(["check"], ws).code, 0);
   ({ hooks } = JSON.parse(read(ws.root, ".claude/settings.json")));
   assert.deepEqual(hooks.PostToolUse.slice(1), [lint]);
+});
+
+// ---- the cloud-agent opt-in (atf/atf.json "cloud_agent": true) ---------------------------------------------------
+
+const TEMPLATE = readFileSync(path.join(frameworkRoot, ...SETUP_TEMPLATE.split("/")), "utf8");
+const optIn = (root, value = true) => put(root, "atf/atf.json", `${JSON.stringify({ cloud_agent: value })}\n`);
+const agentFilesOf = (ws) => generatedAgentFiles({ workspace: ws.root, framework: ws.framework });
+const CREATED = `atf sync: created: ${SETUP_WORKFLOW}: the Copilot cloud agent's setup steps, yours from now on. Commit it, merge it to the default branch, and add the Agents secret ATF_NPM_TOKEN.`;
+const IN_SYNC = { code: 0, lines: ["atf check: the host files are in sync with the framework."] };
+
+test("the cloud-agent opt-in: the block leaves the Copilot files to git, the setup workflow is written once, and turning it off restores the block", (t) => {
+  const ws = installedWorkspace();
+  assert.equal(atf(["sync"], ws).code, 0);
+  assert.equal(existsSync(path.join(ws.root, SETUP_WORKFLOW)), false, "no opt-in, no workflow");
+  optIn(ws.root);
+  // check: the block and the missing workflow, nothing written
+  assert.deepEqual(atf(["check"], ws), { code: 1, lines: ["atf check: out of date: .gitignore", `atf check: missing: ${SETUP_WORKFLOW} (npx atf sync creates it)`, "stderr: 2 host file(s) out of date with the framework: run npx atf sync."] });
+  assert.equal(existsSync(path.join(ws.root, SETUP_WORKFLOW)), false);
+  assert.deepEqual(atf(["sync"], ws).lines, ["atf sync: updated: .gitignore", CREATED, "atf sync: 2 file(s) updated."]);
+  assert.equal(read(ws.root, SETUP_WORKFLOW), TEMPLATE, "the template as it is");
+  // the block: every .github/ entry out, the Claude Code and VS Code files still in
+  const block = read(ws.root, ".gitignore").trimEnd().split("\n");
+  assert.deepEqual(block, gitignoreBlock(ignoredEntries(agentFilesOf(ws), { cloudAgent: true })));
+  assert.ok(!block.some((l) => l.startsWith("/.github/")), block.join("\n"));
+  for (const kept of ["/.claude/agents/report-generator.md", "/.mcp.json", "/.vscode/mcp.json", "/.vscode/hooks/framework-guard.json"]) assert.ok(block.includes(kept), kept);
+  // what the client commits: the framework's Copilot agents one by one, the guard's registration, the workflow
+  const committed = cloudAgentFiles(agentFilesOf(ws));
+  assert.deepEqual(committed, [...listed(ws.root, ".github/agents").map((f) => `.github/agents/${f}`).sort(), ".github/hooks/framework-guard.json", SETUP_WORKFLOW]);
+  assert.equal(block.length + committed.length - 1, blockOf(ws).length, "the opt-in moves entries out of the block, nothing else");
+  assert.deepEqual(atf(["check"], ws), IN_SYNC);
+  // the workflow is the client's from now on: their own step stays, sync never writes it again
+  const mine = `${TEMPLATE}      - run: echo my own step\n`;
+  writeFileSync(path.join(ws.root, SETUP_WORKFLOW), mine);
+  assert.deepEqual(atf(["sync"], ws).lines, ["atf sync: the host files are up to date."]);
+  assert.equal(read(ws.root, SETUP_WORKFLOW), mine);
+  assert.deepEqual(atf(["check"], ws), IN_SYNC);
+  // off again (false, or the key gone): the whole block is back; the workflow is left alone and no longer checked
+  optIn(ws.root, false);
+  assert.deepEqual(atf(["check"], ws), { code: 1, lines: ["atf check: out of date: .gitignore", "stderr: 1 host file(s) out of date with the framework: run npx atf sync."] });
+  assert.equal(atf(["sync"], ws).code, 0);
+  assert.equal(read(ws.root, ".gitignore"), `${blockOf(ws).join("\n")}\n`);
+  assert.equal(read(ws.root, SETUP_WORKFLOW), mine);
+  writeFileSync(path.join(ws.root, SETUP_WORKFLOW), "not: [valid\n");
+  put(ws.root, "atf/atf.json", "{}\n");
+  assert.deepEqual(atf(["check"], ws), IN_SYNC);
+  // on again with the workflow deleted: written again, since it is missing
+  rmSync(path.join(ws.root, SETUP_WORKFLOW));
+  optIn(ws.root);
+  assert.ok(atf(["sync"], ws).lines.includes(CREATED));
+  assert.equal(read(ws.root, SETUP_WORKFLOW), TEMPLATE);
+  // and git agrees with the block, where git is installed
+  const init = git(["init", "-q"], ws.root);
+  if (init.error || init.status !== 0) return t.skip(`git is not available: ${init.error?.message ?? init.stderr}`);
+  const asked = [".github/agents/report-generator.agent.md", ".github/hooks/framework-guard.json", SETUP_WORKFLOW, ".claude/agents/report-generator.md", ".mcp.json", ".vscode/mcp.json", ".vscode/hooks/framework-guard.json"];
+  const r = git(["check-ignore", "--", ...asked], ws.root);
+  assert.deepEqual(r.stdout.trim().split(/\r?\n/), asked.slice(3));
+});
+
+test("a cloud_agent that isn't true or false: sync and check stop, naming atf/atf.json, and nothing is written", () => {
+  const ws = installedWorkspace();
+  for (const bad of ["yes", "true", 1, null, {}]) {
+    put(ws.root, "atf/atf.json", JSON.stringify({ cloud_agent: bad }));
+    for (const verb of ["sync", "check"]) {
+      const r = atf([verb], ws);
+      assert.equal(r.code, 1, `${verb} ${JSON.stringify(bad)}`);
+      assert.equal(r.lines[0], `stderr: atf ${verb}: error: atf/atf.json "cloud_agent" must be true or false, not ${JSON.stringify(bad)}`);
+    }
+  }
+  for (const f of [".claude", ".github", ".vscode", ".mcp.json", ".gitignore"]) assert.equal(existsSync(path.join(ws.root, f)), false, f);
+  assert.deepEqual([cloudAgentOf(null), cloudAgentOf({}), cloudAgentOf({ cloud_agent: true }), cloudAgentOf({ cloud_agent: false })], [{ on: false }, { on: false }, { on: true }, { on: false }]);
+});
+
+test("the setup workflow is checked, never rewritten: check fails and sync warns when no step installs the framework with ATF_NPM_TOKEN", () => {
+  const ws = installedWorkspace();
+  optIn(ws.root);
+  assert.equal(atf(["sync"], ws).code, 0);
+  const noToken = TEMPLATE.replace(/\n {8}env:\n {10}ATF_NPM_TOKEN: .*\n/, "\n");
+  assert.notEqual(noToken, TEMPLATE);
+  writeFileSync(path.join(ws.root, SETUP_WORKFLOW), noToken);
+  const detail = `${SETUP_WORKFLOW} runs npm ci (or npm install) without ATF_NPM_TOKEN in its env, the registry token the committed .npmrc reads: without the framework installed, the cloud agent's guard denies every tool call`;
+  const fix = `add a step to the copilot-setup-steps job that runs npm ci with \`env: { ATF_NPM_TOKEN: \${{ secrets.ATF_NPM_TOKEN }} }\` (the repository's Agents secret), as ${INSTALLED_PACKAGE}/${SETUP_TEMPLATE} does; atf never rewrites this file`;
+  assert.deepEqual(atf(["check"], ws), { code: 1, lines: [`stderr: atf check: error: ${detail}. Fix: ${fix}.`, `stderr: Fix ${SETUP_WORKFLOW} as above: atf sync never rewrites it.`] });
+  assert.deepEqual(atf(["sync"], ws), { code: 0, lines: [`stderr: atf sync: warning: ${detail}. Fix: ${fix}.`, "atf sync: the host files are up to date."] });
+  assert.equal(read(ws.root, SETUP_WORKFLOW), noToken, "never rewritten");
+  // a client may restructure it: a workflow-level env and a multi-line run that installs pass
+  const restructured = "name: setup\non: workflow_dispatch\nenv:\n  ATF_NPM_TOKEN: ${{ secrets.ATF_NPM_TOKEN }}\njobs:\n  copilot-setup-steps:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: deps\n        run: |\n          npm config get registry\n          npm install --no-audit\n";
+  writeFileSync(path.join(ws.root, SETUP_WORKFLOW), restructured);
+  assert.deepEqual(atf(["check"], ws), IN_SYNC);
+});
+
+test("setupWorkflowProblem: tolerant of layout, strict about the job, the install step and the token", () => {
+  const job = (steps) => `jobs:\n  copilot-setup-steps:\n    runs-on: ubuntu-latest\n    steps:\n${steps}`;
+  assert.equal(setupWorkflowProblem(TEMPLATE), null);
+  assert.equal(setupWorkflowProblem(job("      - run: npm i\n        env: { ATF_NPM_TOKEN: x }\n")), null, "npm i, the step's env");
+  assert.equal(setupWorkflowProblem(`${job("      - run: npm ci\n")}    env:\n      ATF_NPM_TOKEN: x\n`), null, "the job's env");
+  assert.match(setupWorkflowProblem("jobs: [\n"), /^is not valid YAML \(/);
+  assert.match(setupWorkflowProblem(""), /^has no job named copilot-setup-steps, the one GitHub runs/);
+  assert.match(setupWorkflowProblem("jobs:\n  setup:\n    steps:\n      - run: npm ci\n"), /^has no job named copilot-setup-steps/);
+  assert.match(setupWorkflowProblem(job("      - run: echo hi\n      - uses: actions/setup-node@v4\n")), /^has no step in its copilot-setup-steps job that runs npm ci \(or npm install\)$/);
+  assert.match(setupWorkflowProblem(job("      - run: npm ci\n      - run: echo\n        env: { ATF_NPM_TOKEN: x }\n")), /without ATF_NPM_TOKEN in its env/, "the token on another step");
+});
+
+test("the setup workflow template: valid YAML, the job GitHub runs, CI's Node, npm ci with the Agents secret, a last atf check that never stops the job, no browsers", () => {
+  const doc = yaml.load(TEMPLATE);
+  assert.deepEqual(Object.keys(doc.jobs), ["copilot-setup-steps"]);
+  const { steps } = doc.jobs["copilot-setup-steps"];
+  assert.equal(steps.length, 5);
+  assert.equal(steps[0].uses, "actions/checkout@v4");
+  assert.equal(steps[1].uses, "actions/setup-node@v4");
+  // the Node version CI tests the package on (this repository's CI; the package declares no engines)
+  const ci = path.join(frameworkRoot, "..", "..", ".github", "workflows", "ci.yml");
+  if (existsSync(ci)) assert.equal(steps[1].with["node-version"], yaml.load(readFileSync(ci, "utf8")).jobs.check.steps.find((s) => s.uses?.startsWith("actions/setup-node")).with["node-version"]);
+  assert.deepEqual({ run: steps[2].run, env: steps[2].env }, { run: "npm ci", env: { ATF_NPM_TOKEN: "${{ secrets.ATF_NPM_TOKEN }}" } });
+  // npm ci's postinstall re-renders the committed Copilot files: report a difference (stale files), then restore them
+  // so the agent's pull request never carries agent or hook changes (D-093)
+  assert.deepEqual({ run: steps[3].run, coe: steps[3]["continue-on-error"] }, { run: "git diff --exit-code --stat -- .github/agents .github/hooks", coe: true });
+  assert.deepEqual({ run: steps[4].run, coe: steps[4]["continue-on-error"] }, { run: "git checkout -- .github/agents .github/hooks", coe: undefined });
+  assert.doesNotMatch(TEMPLATE, /playwright install|setup-k6/);
+  for (const said of [/merge it\s+(?:#\s+)?there/, /Add your own steps/, /If npm ci fails, .*\n# .*denies every tool call/]) assert.match(TEMPLATE, said);
+  assert.equal(setupWorkflowProblem(TEMPLATE), null);
+});
+
+test("a source checkout never gets the setup workflow, whatever atf.json says (D-018: all of .github/ is committed there)", () => {
+  const root = tempRoot();
+  put(root, "atf/atf.json", '{ "cloud_agent": true }\n');
+  const ws = { root, framework: frameworkRoot };
+  assert.equal(atf(["sync"], ws).code, 0);
+  assert.equal(existsSync(path.join(root, SETUP_WORKFLOW)), false);
+  assert.equal(existsSync(path.join(root, ".gitignore")), false);
+  assert.equal(atf(["check"], ws).code, 0);
 });

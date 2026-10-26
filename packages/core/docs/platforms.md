@@ -93,6 +93,12 @@ npm run build-agents -- --post-hook off     # not registered: faster, but every 
 ### Copilot cloud coding agent
 1. Assign an issue and pick an agent; `AGENTS.md` is its brief. `.github/workflows/copilot-setup-steps.yml` installs the scripts, the generated projects' dependencies and k6.
 2. It is for framework maintenance and offline work only (D-030). It has no live browser. A full-run there gets the run's combined ceiling, as on the CLI (D-038). It can't answer a confirmation, so edits to decision-governed files are refused and it reports them in the PR.
+3. **In a client workspace (opt-in, experimental, D-093).** The cloud agent reads custom agents and hooks only from files committed to the default branch, so the git-ignored host files never reach it.
+   - **The opt-in:** set `"cloud_agent": true` in `atf/atf.json` and run `npx atf sync`. Sync stops ignoring `.github/agents/` and `.github/hooks/framework-guard.json`, and writes `.github/workflows/copilot-setup-steps.yml` once. That file is yours afterwards. It runs `npm ci` with the Agents secret `ATF_NPM_TOKEN`, reports committed Copilot files that are stale, then restores them, so an agent's PR never changes them.
+   - **Commit and merge:** commit those files and merge them to the default branch. After a package upgrade, sync and commit them again.
+   - **If `npm ci` fails** in setup, the guard's script is missing and every tool call is denied.
+   - **The MCP files stay ignored:** the cloud agent takes MCP servers from repository settings.
+   - **Before clients rely on it,** run the checklist in the framework repository's `docs/cloud-agent-verification.md` on a real repository.
 
 ## When the guard check fails
 

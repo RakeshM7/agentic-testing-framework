@@ -1,0 +1,46 @@
+# Environment for the GitHub Copilot cloud coding agent (atf/atf.json "cloud_agent": true): GitHub runs the
+# `copilot-setup-steps` job before the agent starts, and reads this file from the default branch only, so merge it
+# there. atf wrote it once, from @testagentic/atf's templates/workspace/copilot-setup-steps.yml; it is yours now and atf
+# never rewrites it. Add your own steps after these, and keep the job's name, which GitHub looks for. `npx atf check`
+# and the doctor look for the npm ci step with ATF_NPM_TOKEN in its env (D-093).
+#
+# Safety: the agent's tool calls go through the committed .github/hooks/framework-guard.json, which runs the installed
+# package's guard (node_modules/@testagentic/atf/scripts/hooks/pretooluse.mjs). If npm ci fails, that script is
+# missing and the guard denies every tool call. A failed step doesn't stop the agent from starting, so when it does
+# nothing, read this job's log. The cloud agent does no live browser work, so there are no browsers here.
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/copilot-setup-steps.yml]
+  pull_request:
+    paths: [.github/workflows/copilot-setup-steps.yml]
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # the private registry's token, which the committed .npmrc reads from the environment: the repository's Agents
+      # secret ATF_NPM_TOKEN (Settings > Secrets and variables > Agents). The runs the triggers above start, to test
+      # this file, read your Actions secrets instead.
+      - name: The framework and its dependencies
+        run: npm ci
+        env:
+          ATF_NPM_TOKEN: ${{ secrets.ATF_NPM_TOKEN }}
+      # npm ci's postinstall re-rendered the host files from the installed package, the committed Copilot ones included:
+      # a difference here means they are stale (a human runs npx atf sync and commits them); the job goes on
+      - name: Committed Copilot files match the framework
+        run: git diff --exit-code --stat -- .github/agents .github/hooks
+        continue-on-error: true
+      # then put the committed versions back, so the agent works with what was reviewed and its pull request never
+      # carries changes to the agent or hook files
+      - name: Keep the committed Copilot files
+        run: git checkout -- .github/agents .github/hooks
