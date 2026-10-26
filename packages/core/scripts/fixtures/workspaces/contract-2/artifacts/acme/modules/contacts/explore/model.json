@@ -1,0 +1,1247 @@
+{
+  "module": "contacts",
+  "runId": "acme-run-1",
+  "mode": "readonly",
+  "budgets": {
+    "max_states": 150,
+    "max_pages": 40,
+    "states": 5,
+    "pages": 2,
+    "reached": {
+      "states": false,
+      "pages": false
+    }
+  },
+  "prefixes": [
+    "/contacts"
+  ],
+  "pages": [
+    {
+      "id": "PG-contacts-1",
+      "slug": "contacts",
+      "template": "/contacts",
+      "url": "https://app.acme.test/contacts",
+      "title": "Contacts - Acme CRM",
+      "states": [
+        "ST-contacts-1",
+        "ST-contacts-2",
+        "ST-contacts-3",
+        "ST-contacts-5"
+      ]
+    },
+    {
+      "id": "PG-contacts-2",
+      "slug": "contacts-id",
+      "template": "/contacts/{id}",
+      "url": "https://app.acme.test/contacts/101",
+      "title": "Jane Doe - Acme CRM",
+      "states": [
+        "ST-contacts-4"
+      ]
+    }
+  ],
+  "states": [
+    {
+      "id": "ST-contacts-1",
+      "fingerprint": "3cd58640fd964574",
+      "shape": "01acf9832158b832",
+      "dataSlots": [],
+      "page": "PG-contacts-1",
+      "url": "https://app.acme.test/contacts",
+      "title": "Contacts - Acme CRM",
+      "snapshot": "pages/contacts/states/ST-contacts-1.md",
+      "reach": {
+        "from": "ST-contacts-1",
+        "url": "https://app.acme.test/contacts",
+        "steps": []
+      },
+      "frontier": 14
+    },
+    {
+      "id": "ST-contacts-2",
+      "fingerprint": "e37217d0903b1f4e",
+      "shape": "f417fc954ac164c4",
+      "dataSlots": [],
+      "page": "PG-contacts-1",
+      "url": "https://app.acme.test/contacts",
+      "title": "Contacts - Acme CRM",
+      "snapshot": "pages/contacts/states/ST-contacts-2.md",
+      "reach": {
+        "from": "ST-contacts-1",
+        "url": "https://app.acme.test/contacts",
+        "steps": [
+          "button \"New contact\""
+        ]
+      },
+      "frontier": 19
+    },
+    {
+      "id": "ST-contacts-3",
+      "fingerprint": "5fa605897d62067f",
+      "shape": "656a73a7cef8b538",
+      "dataSlots": [],
+      "page": "PG-contacts-1",
+      "url": "https://app.acme.test/contacts",
+      "title": "Contacts - Acme CRM",
+      "snapshot": "pages/contacts/states/ST-contacts-3.md",
+      "reach": {
+        "from": "ST-contacts-1",
+        "url": "https://app.acme.test/contacts",
+        "steps": [
+          "tab \"Mine\""
+        ]
+      },
+      "frontier": 13
+    },
+    {
+      "id": "ST-contacts-4",
+      "fingerprint": "effa25ac6c93d685",
+      "shape": "f4aebca3cabcc576",
+      "dataSlots": [],
+      "page": "PG-contacts-2",
+      "url": "https://app.acme.test/contacts/101",
+      "title": "Jane Doe - Acme CRM",
+      "snapshot": "pages/contacts-id/states/ST-contacts-4.md",
+      "reach": {
+        "from": "ST-contacts-1",
+        "url": "https://app.acme.test/contacts",
+        "steps": [
+          "link \"Jane Doe\""
+        ]
+      },
+      "frontier": 11
+    },
+    {
+      "id": "ST-contacts-5",
+      "fingerprint": "068204c1eb000565",
+      "shape": "644ad0576bd83550",
+      "dataSlots": [],
+      "page": "PG-contacts-1",
+      "url": "https://app.acme.test/contacts",
+      "title": "Contacts - Acme CRM",
+      "snapshot": "pages/contacts/states/ST-contacts-5.md",
+      "reach": {
+        "from": "ST-contacts-1",
+        "url": "https://app.acme.test/contacts",
+        "steps": [
+          "columnheader \"Name\""
+        ]
+      },
+      "frontier": 14
+    }
+  ],
+  "transitions": [
+    {
+      "from": "ST-contacts-1",
+      "actions": [
+        "button \"New contact\""
+      ],
+      "items": [
+        "FR-contacts-2"
+      ],
+      "to": "ST-contacts-2"
+    },
+    {
+      "from": "ST-contacts-2",
+      "actions": [
+        "button \"Cancel\""
+      ],
+      "items": [
+        "FR-contacts-15"
+      ],
+      "to": "ST-contacts-1"
+    },
+    {
+      "from": "ST-contacts-1",
+      "actions": [
+        "tab \"Mine\""
+      ],
+      "items": [
+        "FR-contacts-14"
+      ],
+      "to": "ST-contacts-3"
+    },
+    {
+      "from": "ST-contacts-3",
+      "actions": [
+        "tab \"All\""
+      ],
+      "items": [
+        "FR-contacts-45"
+      ],
+      "to": "ST-contacts-1"
+    },
+    {
+      "from": "ST-contacts-1",
+      "actions": [
+        "tab \"All\""
+      ],
+      "items": [
+        "FR-contacts-13"
+      ],
+      "to": "ST-contacts-1"
+    },
+    {
+      "from": "ST-contacts-1",
+      "actions": [
+        "link \"Jane Doe\""
+      ],
+      "items": [
+        "FR-contacts-11"
+      ],
+      "to": "ST-contacts-4"
+    },
+    {
+      "from": "ST-contacts-4",
+      "actions": [
+        "link \"Back to contacts\""
+      ],
+      "items": [
+        "FR-contacts-52"
+      ],
+      "to": "ST-contacts-1"
+    },
+    {
+      "from": "ST-contacts-4",
+      "actions": [
+        "link \"Jane Doe\""
+      ],
+      "items": [
+        "FR-contacts-57"
+      ],
+      "to": "ST-contacts-4"
+    },
+    {
+      "from": "ST-contacts-1",
+      "actions": [
+        "columnheader \"Name\""
+      ],
+      "items": [
+        "FR-contacts-4"
+      ],
+      "to": "ST-contacts-5"
+    },
+    {
+      "from": "ST-contacts-5",
+      "actions": [
+        "columnheader \"Name ▲\""
+      ],
+      "items": [
+        "FR-contacts-61"
+      ],
+      "to": "ST-contacts-1"
+    },
+    {
+      "from": "ST-contacts-1",
+      "actions": [
+        "link \"Acme CRM\""
+      ],
+      "items": [
+        "FR-contacts-6"
+      ],
+      "to": "ST-contacts-1"
+    },
+    {
+      "from": "ST-contacts-1",
+      "actions": [
+        "link \"Contacts\""
+      ],
+      "items": [
+        "FR-contacts-7"
+      ],
+      "to": "ST-contacts-1"
+    }
+  ],
+  "frontier": [
+    {
+      "id": "FR-contacts-1",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Delete selected",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "disabled",
+      "detail": "disabled when captured",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-2",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "New contact",
+      "kind": "control",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-2"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-3",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Sign out",
+      "chrome": true,
+      "kind": "control",
+      "status": "excluded",
+      "reason": "logout",
+      "detail": "ends the session",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-4",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "columnheader",
+      "name": "Name",
+      "kind": "control",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-5"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-5",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "combobox",
+      "name": "Sort by",
+      "kind": "input",
+      "status": "excluded",
+      "reason": "not-allowed-in-mode",
+      "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-6",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Acme CRM",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-1"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-7",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Contacts",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-1"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-8",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Deals",
+      "url": "https://app.acme.test/deals",
+      "target": "/deals",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/deals is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-9",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Help",
+      "url": "https://help.vendor.test/contacts",
+      "target": "//help.vendor.test/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "external",
+      "detail": "help.vendor.test",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-10",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Privacy",
+      "url": "https://app.acme.test/privacy",
+      "target": "/privacy",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/privacy is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-11",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Jane Doe",
+      "examples": [
+        "Jane Doe",
+        "Raj Patel",
+        "Li Wei"
+      ],
+      "occurrences": 3,
+      "url": "https://app.acme.test/contacts/101",
+      "target": "/contacts/{id}",
+      "kind": "navigation",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-4"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-12",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "searchbox",
+      "name": "Search contacts",
+      "kind": "input",
+      "status": "excluded",
+      "reason": "not-allowed-in-mode",
+      "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-13",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "tab",
+      "name": "All",
+      "kind": "control",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-1"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-14",
+      "state": "ST-contacts-1",
+      "page": "PG-contacts-1",
+      "role": "tab",
+      "name": "Mine",
+      "kind": "control",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-3"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-15",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Cancel",
+      "containers": [
+        "dialog:New contact"
+      ],
+      "kind": "control",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-1"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-16",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Delete selected",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-1",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-17",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "New contact",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-2",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-18",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Save",
+      "containers": [
+        "dialog:New contact"
+      ],
+      "kind": "control",
+      "status": "excluded",
+      "reason": "not-allowed-in-mode",
+      "detail": "readonly: never submit or commit",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-19",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Sign out",
+      "chrome": true,
+      "kind": "control",
+      "status": "excluded",
+      "reason": "logout",
+      "detail": "ends the session",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-20",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "checkbox",
+      "name": "Subscribed",
+      "containers": [
+        "dialog:New contact"
+      ],
+      "kind": "input",
+      "status": "excluded",
+      "reason": "unreachable",
+      "detail": "toggling it changes nothing on screen until the dialog is saved",
+      "citation": "observation:explore/captures/subscribed.md",
+      "by": "agent"
+    },
+    {
+      "id": "FR-contacts-21",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "combobox",
+      "name": "Owner",
+      "containers": [
+        "dialog:New contact"
+      ],
+      "kind": "input",
+      "status": "excluded",
+      "reason": "not-allowed-in-mode",
+      "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-22",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "combobox",
+      "name": "Sort by",
+      "kind": "input",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-5",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-23",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Acme CRM",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-6",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-24",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Contacts",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-7",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-25",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Deals",
+      "url": "https://app.acme.test/deals",
+      "target": "/deals",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/deals is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-26",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Help",
+      "url": "https://help.vendor.test/contacts",
+      "target": "//help.vendor.test/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "external",
+      "detail": "help.vendor.test",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-27",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Privacy",
+      "url": "https://app.acme.test/privacy",
+      "target": "/privacy",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/privacy is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-28",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Jane Doe",
+      "url": "https://app.acme.test/contacts/101",
+      "target": "/contacts/{id}",
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-11",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-29",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "searchbox",
+      "name": "Search contacts",
+      "kind": "input",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-12",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-30",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "tab",
+      "name": "All",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-13",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-31",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "tab",
+      "name": "Mine",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-14",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-32",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "textbox",
+      "name": "Email",
+      "containers": [
+        "dialog:New contact"
+      ],
+      "kind": "input",
+      "status": "excluded",
+      "reason": "not-allowed-in-mode",
+      "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-33",
+      "state": "ST-contacts-2",
+      "page": "PG-contacts-1",
+      "role": "textbox",
+      "name": "Name *",
+      "containers": [
+        "dialog:New contact"
+      ],
+      "kind": "input",
+      "status": "excluded",
+      "reason": "not-allowed-in-mode",
+      "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-34",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Delete selected",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-1",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-35",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "New contact",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-2",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-36",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Sign out",
+      "chrome": true,
+      "kind": "control",
+      "status": "excluded",
+      "reason": "logout",
+      "detail": "ends the session",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-37",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "combobox",
+      "name": "Sort by",
+      "kind": "input",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-5",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-38",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Acme CRM",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-6",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-39",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Contacts",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-7",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-40",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Deals",
+      "url": "https://app.acme.test/deals",
+      "target": "/deals",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/deals is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-41",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Help",
+      "url": "https://help.vendor.test/contacts",
+      "target": "//help.vendor.test/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "external",
+      "detail": "help.vendor.test",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-42",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Privacy",
+      "url": "https://app.acme.test/privacy",
+      "target": "/privacy",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/privacy is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-43",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Jane Doe",
+      "url": "https://app.acme.test/contacts/101",
+      "target": "/contacts/{id}",
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-11",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-44",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "searchbox",
+      "name": "Search contacts",
+      "kind": "input",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-12",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-45",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "tab",
+      "name": "All",
+      "kind": "control",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-1"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-46",
+      "state": "ST-contacts-3",
+      "page": "PG-contacts-1",
+      "role": "tab",
+      "name": "Mine",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-14",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-47",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "button",
+      "name": "Assign to Jane Doe",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "not-allowed-in-mode",
+      "detail": "readonly: never submit or commit",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-48",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "button",
+      "name": "Delete",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "not-allowed-in-mode",
+      "detail": "readonly: never submit or commit",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-49",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "button",
+      "name": "Edit",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "unreachable",
+      "detail": "opens the edit form in a new window the browser tool cannot follow",
+      "citation": "observation:explore/captures/edit-popup.md",
+      "by": "agent"
+    },
+    {
+      "id": "FR-contacts-50",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "button",
+      "name": "Sign out",
+      "chrome": true,
+      "kind": "control",
+      "status": "excluded",
+      "reason": "logout",
+      "detail": "ends the session",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-51",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "link",
+      "name": "Acme CRM",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-6",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-52",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "link",
+      "name": "Back to contacts",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "kind": "navigation",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-1"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-53",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "link",
+      "name": "Contacts",
+      "occurrences": 2,
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-7",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-54",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "link",
+      "name": "Deals",
+      "url": "https://app.acme.test/deals",
+      "target": "/deals",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/deals is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-55",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "link",
+      "name": "Help",
+      "url": "https://help.vendor.test/contacts",
+      "target": "//help.vendor.test/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "external",
+      "detail": "help.vendor.test",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-56",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "link",
+      "name": "Privacy",
+      "url": "https://app.acme.test/privacy",
+      "target": "/privacy",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/privacy is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-57",
+      "state": "ST-contacts-4",
+      "page": "PG-contacts-2",
+      "role": "link",
+      "name": "Jane Doe",
+      "url": "https://app.acme.test/contacts/101",
+      "target": "/contacts/{id}",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-4"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-58",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Delete selected",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-1",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-59",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "New contact",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-2",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-60",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "button",
+      "name": "Sign out",
+      "chrome": true,
+      "kind": "control",
+      "status": "excluded",
+      "reason": "logout",
+      "detail": "ends the session",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-61",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "columnheader",
+      "name": "Name ▲",
+      "kind": "control",
+      "status": "mapped",
+      "refs": [
+        "ST-contacts-1"
+      ],
+      "explored": true
+    },
+    {
+      "id": "FR-contacts-62",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "combobox",
+      "name": "Sort by",
+      "kind": "input",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-5",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-63",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Acme CRM",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-6",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-64",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Contacts",
+      "url": "https://app.acme.test/contacts",
+      "target": "/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-7",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-65",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Deals",
+      "url": "https://app.acme.test/deals",
+      "target": "/deals",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/deals is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-66",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Help",
+      "url": "https://help.vendor.test/contacts",
+      "target": "//help.vendor.test/contacts",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "external",
+      "detail": "help.vendor.test",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-67",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Privacy",
+      "url": "https://app.acme.test/privacy",
+      "target": "/privacy",
+      "chrome": true,
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "out-of-module",
+      "detail": "/privacy is outside /contacts",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-68",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "link",
+      "name": "Jane Doe",
+      "examples": [
+        "Jane Doe",
+        "Raj Patel",
+        "Li Wei"
+      ],
+      "occurrences": 3,
+      "url": "https://app.acme.test/contacts/101",
+      "target": "/contacts/{id}",
+      "kind": "navigation",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-11",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-69",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "searchbox",
+      "name": "Search contacts",
+      "kind": "input",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-12",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-70",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "tab",
+      "name": "All",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-13",
+      "by": "script"
+    },
+    {
+      "id": "FR-contacts-71",
+      "state": "ST-contacts-5",
+      "page": "PG-contacts-1",
+      "role": "tab",
+      "name": "Mine",
+      "kind": "control",
+      "status": "excluded",
+      "reason": "duplicate-of",
+      "detail": "FR-contacts-14",
+      "by": "script"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "module": "contacts",
+  "facts": [
+    {
+      "file": "modules/contacts/notes.md",
+      "line": 13,
+      "category": "rules",
+      "text": "- Record names are unique per account [S2 \"must be unique within the account\"].",
+      "citations": [
+        {
+          "source": "S2",
+          "quote": "must be unique within the account",
+          "evidence": "script-fetched"
+        }
+      ],
+      "evidence": "script-fetched"
+    },
+    {
+      "file": "modules/contacts/notes.md",
+      "line": 17,
+      "category": "roles",
+      "text": "- Admins delete records [S2 \"Only admins can delete records\"].",
+      "citations": [
+        {
+          "source": "S2",
+          "quote": "Only admins can delete records",
+          "evidence": "script-fetched"
+        }
+      ],
+      "evidence": "script-fetched"
+    }
+  ]
+}

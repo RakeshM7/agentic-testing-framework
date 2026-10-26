@@ -6,7 +6,8 @@
 // has, and what to leave alone. applyInit() writes exactly that, and refuses a file that changed since it was read, so a
 // re-run on an existing workspace is safe and reports every file as present. A file the plan can't read safely (a
 // package.json that isn't a JSON object, a malformed init block in .gitignore, an atf/atf.json the decision hook
-// can't read or with a "cloud_agent" that isn't a boolean) stops the whole init before anything is written.
+// can't read, with a "cloud_agent" that isn't a boolean or a "contract" that isn't a whole number) stops the whole init
+// before anything is written.
 //
 // The committed files (AGENTS.md, atf/decisions.md, config/README.md, .vscode/settings.json) name the framework as
 // node_modules/<package>, where npm installs it, whatever runs init: the package from npx's cache, a copy already
@@ -21,7 +22,9 @@
 //   .npmrc                 the private registry template, commented out (see templates/workspace/_npmrc for why)
 //   .gitignore             run output and secrets, in a marked block init alone writes (apart from sync's block):
 //                          missing lines are added inside it, the client's lines are never touched
-//   atf/atf.json           the workspace marker, `{}`
+//   atf/atf.json           the workspace marker, with the artifact-contract version the workspace starts on
+//                          (`{ "contract": 2 }`, contract.mjs CONTRACT_VERSION; docs/packaging.md §3.10). An existing
+//                          marker is left as it is: without "contract" it counts as 2, today's layout
 //   the decision log       atf/decisions.md (or what atf.json "decisions" names), the empty log, with its rules
 //   AGENTS.md              the committed brief every host reads at session start (§3.6)
 //   config/README.md       only when config/ doesn't exist yet: how to create a run-config
@@ -32,6 +35,7 @@
 //                          setup steps, the client's from then on (sync.mjs)
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { CONTRACT_VERSION, workspaceContract } from "./contract.mjs";
 import { decisionsFile } from "./decisions.mjs";
 import { FW_TOKEN, WORKSPACE_MARKER, expandFw, findWorkspace, isInstalled, isWithin } from "./roots.mjs";
 import { SETUP_TEMPLATE, SETUP_WORKFLOW, TOKEN_ENV, cloudAgent } from "./sync.mjs";
@@ -177,7 +181,7 @@ export function initPlan({ dir, framework }) {
   else if (ignore.text === undefined) actions.push({ file: ".gitignore", kind: "present", notes: [] });
   else actions.push(ignoreBefore === null ? { file: ".gitignore", kind: "create", text: ignore.text, notes: [] } : { file: ".gitignore", kind: "update", before: ignoreBefore, text: ignore.text, notes: [`added ${ignore.added.join(" ")}`] });
 
-  create(WORKSPACE_MARKER, "{}\n");
+  create(WORKSPACE_MARKER, json({ contract: CONTRACT_VERSION }), [`artifact contract ${CONTRACT_VERSION}`]);
   // the log the hook will read: atf.json's "decisions" when it already names one, else the default
   const log = existsSync(at(WORKSPACE_MARKER)) ? decisionsFile(root) : { file: "atf/decisions.md" };
   if (log.error) errors.push(`${log.error}; fix it, then run atf init again`);
@@ -190,6 +194,10 @@ export function initPlan({ dir, framework }) {
   // the Copilot cloud agent's setup steps, when an existing atf.json already opts in (a later opt-in gets it from the
   // next sync); the same marker error as the log's is reported once
   if (existsSync(at(WORKSPACE_MARKER))) {
+    // an existing marker's contract is the doctor's to compare with this package (init's last step); only a value no
+    // reader can use stops init. Its unreadable-marker error is the log's, reported once.
+    const contract = workspaceContract(root);
+    if (contract.error && !log.error) errors.push(`${contract.error}; fix it, then run atf init again`);
     const opt = cloudAgent(root);
     if (opt.error) {
       if (opt.error !== log.error) errors.push(`${opt.error}; fix it, then run atf init again`);

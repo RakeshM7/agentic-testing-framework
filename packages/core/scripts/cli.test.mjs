@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { HOSTS, USAGE, agentCommand, configFromExample, plan, run, windowsCommandLine, workspaceError } from "./lib/cli.mjs";
+import { HOSTS, USAGE, agentCommand, configFromExample, plan, run, versionInfo, windowsCommandLine, workspaceError } from "./lib/cli.mjs";
+import { CONTRACT_VERSION } from "./lib/contract.mjs";
 import { frameworkRoot } from "./lib/roots.mjs";
 import { put, tempRoot } from "./test-helpers.mjs";
 
@@ -111,8 +112,41 @@ test("the human-only forms are spelled exactly: no alias, no abbreviation, no --
 
 test("help and usage", () => {
   for (const argv of [[], ["help"], ["--help"], ["-h"], ["run", "--help"]]) assert.equal(plan(argv, ctx(ws())).print, USAGE, argv.join(" "));
-  for (const cmd of ["init", "setup", "config", "interview", "login", "validate", "doctor", "e2e", "eject", "run", "status", "next", "diff", "resume", "explore", "clarifications", "testcases", "k6", "report", "automate", "steps", "import", "approve", "sweep"])
+  for (const cmd of ["init", "setup", "config", "interview", "login", "validate", "doctor", "e2e", "version", "migrate", "eject", "run", "status", "next", "diff", "resume", "explore", "clarifications", "testcases", "k6", "report", "automate", "steps", "import", "approve", "sweep"])
     assert.match(USAGE, new RegExp(`atf (?:\\S+\\|)*${cmd}\\b`), `${cmd} is in the usage`);
+});
+
+test("atf version: the package and its version, the artifact contract, the workspace's recorded contract, Node.js and the plugin; text or --json", () => {
+  // a framework at a faked release: its own package.json, never this repository's
+  const fw = tempRoot();
+  put(fw, "package.json", JSON.stringify({ name: "@testagentic/atf", version: "0.3.1" }));
+  const root = ws();
+  const text = (workspace, framework = fw) => plan(["version"], ctx(workspace, { framework })).print;
+  assert.equal(text(root), ["@testagentic/atf 0.3.1", `artifact contract: ${CONTRACT_VERSION}`, "workspace contract: not recorded, 2 assumed", `Node.js: ${process.version}`, "plugin: none"].join("\n"));
+  put(root, "atf/atf.json", `{ "contract": ${CONTRACT_VERSION} }`);
+  assert.match(text(root), new RegExp(`^workspace contract: ${CONTRACT_VERSION} \\(atf/atf\\.json\\)$`, "m"));
+  put(root, "atf/atf.json", '{ "contract": 1 }');
+  assert.match(text(root), /^workspace contract: 1 \(atf\/atf\.json\)\n {2}atf\/atf\.json records artifact contract 1, older than this framework's 2: .*Fix: npx atf migrate/m);
+  put(root, "atf/atf.json", "{ broken");
+  assert.match(text(root), /^workspace contract: unreadable: atf\/atf\.json could not be read as JSON/m);
+  // an installed package with no workspace around it: it still answers (main() refuses other commands there)
+  const installed = path.join(tempRoot(), "node_modules", "@testagentic", "atf");
+  put(installed, "package.json", JSON.stringify({ name: "@testagentic/atf", version: "1.0.0" }));
+  assert.match(text(installed, installed), /^@testagentic\/atf 1\.0\.0\n[\s\S]*^workspace contract: none \(not inside an atf workspace\)$/m);
+  assert.match(text(root, tempRoot()), /^package: unknown \(the framework's package\.json can't be read\)$/m);
+
+  put(root, "atf/atf.json", "{}");
+  const json = JSON.parse(plan(["version", "--json"], ctx(root, { framework: fw })).print);
+  assert.deepEqual(json, { package: { name: "@testagentic/atf", version: "0.3.1" }, contract: CONTRACT_VERSION, workspace: { root, contract: 2, recorded: false }, node: process.version, plugin: null });
+  assert.deepEqual(versionInfo({ workspace: installed, framework: installed, node: "v20.0.0" }), { package: { name: "@testagentic/atf", version: "1.0.0" }, contract: CONTRACT_VERSION, workspace: null, node: "v20.0.0", plugin: null });
+  // by default, this framework's own package.json
+  assert.equal(JSON.parse(plan(["version", "--json"], ctx(root)).print).package.version, JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8")).version);
+  // strict like every command; run() prints it and exits 0
+  assert.match(plan(["version", "--jso"], ctx(root)).error, /Unknown option '--jso'/);
+  assert.match(plan(["version", "extra"], ctx(root)).error, /^atf version: unexpected 'extra'$/);
+  const logs = [];
+  assert.equal(run(plan(["version"], ctx(root, { framework: fw })), { out: { log: (m) => logs.push(m), error: (m) => logs.push(m) } }), 0);
+  assert.match(logs[0], /^@testagentic\/atf 0\.3\.1\n/);
 });
 
 test("atf config writes the run-config from the example, then logs in unless --no-login", () => {

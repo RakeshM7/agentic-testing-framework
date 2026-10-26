@@ -1,0 +1,15 @@
+{
+  "module": "product",
+  "next": 2,
+  "points": {
+    "the seat limit per plan is not documented": {
+      "id": "KQ-product-1",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1",
+      "text": "The seat limit per plan is not documented.",
+      "category": "limits",
+      "file": "overview.md"
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "runId": "acme-staging-run-1",
+  "product": "acme",
+  "mode": "readonly",
+  "createdAt": "2026-10-01T09:00:00.000Z",
+  "endedAt": "2026-10-01T09:00:00.000Z",
+  "outcome": "abandoned",
+  "notChosen": [
+    "clarifications",
+    "api-discovery",
+    "playwright-repo",
+    "playwright-ui",
+    "playwright-api",
+    "k6"
+  ],
+  "stages": [
+    {
+      "stage": "knowledge",
+      "module": null,
+      "status": "pending",
+      "complete": false
+    },
+    {
+      "stage": "module-knowledge",
+      "module": "contacts",
+      "status": "pending",
+      "complete": false
+    },
+    {
+      "stage": "explore",
+      "module": "contacts",
+      "status": "pending",
+      "complete": false
+    },
+    {
+      "stage": "clarifications",
+      "module": "contacts",
+      "status": "not-chosen",
+      "complete": false
+    },
+    {
+      "stage": "api-discovery",
+      "module": "contacts",
+      "status": "not-chosen",
+      "complete": false
+    },
+    {
+      "stage": "testcases",
+      "module": "contacts",
+      "status": "pending",
+      "complete": false
+    },
+    {
+      "stage": "playwright-repo",
+      "module": null,
+      "status": "not-chosen",
+      "complete": false
+    },
+    {
+      "stage": "playwright-ui",
+      "module": "contacts",
+      "status": "not-chosen",
+      "complete": false
+    },
+    {
+      "stage": "playwright-api",
+      "module": "contacts",
+      "status": "not-chosen",
+      "complete": false
+    },
+    {
+      "stage": "k6",
+      "module": "contacts",
+      "status": "not-chosen",
+      "complete": false
+    },
+    {
+      "stage": "report",
+      "module": null,
+      "status": "pending",
+      "complete": false
+    }
+  ],
+  "manifest": {
+    "file": "artifacts/acme/results/acme-staging-run-1/manifest.json",
+    "files": 66
+  }
+}

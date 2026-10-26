@@ -1,0 +1,1 @@
+Billing shows the seat limit per plan: 5 seats on the starter plan.

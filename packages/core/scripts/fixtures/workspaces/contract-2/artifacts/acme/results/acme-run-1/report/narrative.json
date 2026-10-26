@@ -1,0 +1,12 @@
+{
+  "executiveSummary": [
+    {
+      "text": "The run explored the contacts module.",
+      "cites": [
+        "modules[module=contacts].explored"
+      ]
+    }
+  ],
+  "risks": [],
+  "recommendations": []
+}

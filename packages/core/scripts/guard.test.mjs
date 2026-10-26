@@ -961,6 +961,9 @@ test("every framework script is writable by feedback-implementor-agent or delibe
     "scripts/lib/cli.mjs", "scripts/cli.test.mjs",
     // D-089: sync renders the hook registrations and MCP configs into the workspace; init writes its atf/ settings
     "scripts/lib/sync.mjs", "scripts/sync.test.mjs", "scripts/lib/init.mjs", "scripts/init.test.mjs",
+    // D-094: what the package ships and its fail-closed hooks are decided by the build; D-095: migrate rewrites atf/atf.json
+    // and every run's state, and the frozen-workspace test is the compatibility gate
+    "scripts/build-package.mjs", "scripts/build-package.test.mjs", "scripts/lib/migrate.mjs", "scripts/migrate.test.mjs", "scripts/contract-fixtures.test.mjs",
   ]);
   const files = [];
   // node_modules is git-ignored and never the framework's own code, wherever an install put it; paths as the run's
@@ -1083,7 +1086,9 @@ test("the workspace's atf/ is human-only: no framework agent writes there or eje
     // the CLI's eject writes atf/config/ in process, however it is started
     "npx atf eject config", "node packages/core/bin/atf.mjs eject config permissions.yaml", "atf ej''ect config", "bash -c \"npx atf eject config models.yaml\"",
     // the CLI's init writes a workspace's atf/ in process too, in any folder
-    "npx atf init", "npx atf init ../other-ws --no-install", "npx @testagentic/atf init", "node node_modules/@testagentic/atf/bin/atf.mjs init", "atf in''it", "bash -c \"npx atf init\""];
+    "npx atf init", "npx atf init ../other-ws --no-install", "npx @testagentic/atf init", "node node_modules/@testagentic/atf/bin/atf.mjs init", "atf in''it", "bash -c \"npx atf init\"",
+    // the CLI's migrate writes atf/atf.json and every run's state in process, a dry run included (D-095)
+    "npx atf migrate", "npx atf migrate --dry-run", "node node_modules/@testagentic/atf/bin/atf.mjs migrate", "atf mig''rate", "bash -c \"npx atf migrate\""];
   const as = (agent, c) => ({ ...c, agent });
   for (const root of roots)
     for (const agent of roster) {

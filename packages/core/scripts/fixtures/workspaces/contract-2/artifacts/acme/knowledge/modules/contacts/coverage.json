@@ -1,0 +1,40 @@
+{
+  "pass": "contacts",
+  "runId": "acme-run-1",
+  "maxExtraSources": 20,
+  "items": [
+    {
+      "kind": "extra",
+      "title": "contacts guide",
+      "type": "vendor-doc",
+      "id": "https://help.acme.test/contacts",
+      "status": "mapped",
+      "refs": [
+        "S2"
+      ]
+    }
+  ],
+  "summary": {
+    "inputs": {
+      "total": 0,
+      "read": 0,
+      "failed": 0,
+      "excluded": 0,
+      "pending": 0
+    },
+    "extra": {
+      "cap": 20,
+      "used": 1,
+      "deferred": 0
+    },
+    "liveProduct": 0
+  },
+  "verified": {
+    "overview": "a78a0102240345f1ede0513a1c4267be79b51d268b3129c851451aa9bd4cb3d2",
+    "glossary": "20b0069ca76af1cdfc9540972fcdc76f62d06c99286b1d45a3b54c2667ccd027",
+    "notes": "eb7211a39486823c1f0729cb26bdb9c060d8f6f2254ab18aa175605385b714ad",
+    "sources": "3997c0d706c001158904686ec94b3c96e394cffc40e0525656d8a18a58d084f1",
+    "openPoints": "87853e03c97acc19e414efe9dd8471eb9424d1ebda7285b7da05cff7a59ac258",
+    "ruleFacts": "d23e2a1ca533c6f7bffac7b82c74a6a5556bccf461b1bcdc652374be0021af3e"
+  }
+}

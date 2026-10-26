@@ -1,0 +1,61 @@
+# Publishes @testagentic/atf (docs/packaging.md §2, §3.11): the bundled build in packages/core/dist, never the source,
+# to the private @testagentic org on registry.npmjs.org (access restricted; each client reads it with its own token).
+# Runs on a tag core-v<semver> that matches packages/core/package.json, or by hand for an existing tag (a dry run by
+# default). It refuses while LICENSE.md is still the DRAFT placeholder. Needs the repository secret NPM_TOKEN: an npm
+# automation (or granular, publish-only) token of the @testagentic org.
+#
+# No --provenance: npm accepts provenance only from a public source repository (GitHub changelog, 2023-07-26,
+# "publishing with provenance is restricted to public source repositories only"), and the attestation goes to the
+# public Sigstore transparency log, naming the repository and commit of a package meant to stay private.
+name: Release
+
+on:
+  push:
+    tags: ["core-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag to release, core-v<version> (it must exist and match packages/core/package.json)"
+        required: true
+        type: string
+      dry_run:
+        description: "Run npm publish --dry-run: everything but the upload"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          # writes an .npmrc that reads NODE_AUTH_TOKEN for registry.npmjs.org
+          registry-url: https://registry.npmjs.org/
+      - run: npm ci
+      # the generated host files, the decision log and the whole test suite, the build's own tests included
+      - run: npm run check
+      - name: Build packages/core/dist
+        run: npm run build --workspace @testagentic/atf
+      - name: Check dist against packages/core/package-files.txt
+        run: node packages/core/scripts/build-package.mjs --check
+      - name: Refuse a DRAFT licence or a tag that doesn't match the version
+        run: node packages/core/scripts/build-package.mjs --release "$TAG"
+      - name: Publish
+        run: npm publish ./packages/core/dist ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

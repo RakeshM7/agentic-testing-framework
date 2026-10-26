@@ -1,0 +1,1241 @@
+{
+  "variables": {
+    "product_dir": "artifacts/${product}",
+    "knowledge": "artifacts/${product}/knowledge",
+    "modules": "artifacts/${product}/modules/${module}",
+    "state": "artifacts/${product}/state",
+    "results": "artifacts/${product}/results/${run_id}",
+    "pw_project": "playwright-tests/${product}",
+    "k6_project": "k6-tests/${product}"
+  },
+  "agents": {
+    "orchestrator-agent": {
+      "layer": 0,
+      "spawns": [
+        "knowledge-generator",
+        "module-explorer",
+        "api-discoverer",
+        "clarification-orchestrator",
+        "testcase-orchestrator",
+        "playwright-ui-orchestrator",
+        "playwright-api-orchestrator",
+        "k6-orchestrator",
+        "report-generator",
+        "pw-repo-owner"
+      ],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/run.mjs *",
+        "node node_modules/@testagentic/atf/scripts/run-config.mjs *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/knowledge.mjs *",
+        "node node_modules/@testagentic/atf/scripts/clarifications.mjs status *",
+        "node node_modules/@testagentic/atf/scripts/testcases.mjs import *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${product_dir}/**",
+          "config/**"
+        ],
+        "write": [
+          "${state}/notes.md",
+          "config/interview-answers.json",
+          "${state}/scenario-answers.json"
+        ]
+      },
+      "ask_user": "allowed",
+      "browser_session": "shared"
+    },
+    "knowledge-generator": {
+      "layer": 1,
+      "spawns": [],
+      "live_target": {
+        "browser": "read",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "allowed",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/knowledge.mjs add-source *",
+        "node node_modules/@testagentic/atf/scripts/knowledge.mjs input *",
+        "node node_modules/@testagentic/atf/scripts/knowledge.mjs snapshot *",
+        "node node_modules/@testagentic/atf/scripts/knowledge.mjs render *",
+        "node node_modules/@testagentic/atf/scripts/knowledge.mjs merge-glossary *",
+        "node node_modules/@testagentic/atf/scripts/knowledge.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/knowledge.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "config/**",
+          "${state}/config.resolved.json",
+          "${knowledge}/**",
+          "<requirement docs and references listed in the run-config>"
+        ],
+        "write": [
+          "${knowledge}/overview.md",
+          "${knowledge}/glossary.md",
+          "${knowledge}/captures/**",
+          "${knowledge}/modules/${module}/overview.md",
+          "${knowledge}/modules/${module}/glossary.md",
+          "${knowledge}/modules/${module}/notes.md"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "module-explorer": {
+      "layer": 1,
+      "spawns": [],
+      "live_target": {
+        "browser": "mutate",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/explore.mjs *",
+        "node node_modules/@testagentic/atf/scripts/clarifications.mjs append *",
+        "node node_modules/@testagentic/atf/scripts/clarifications.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/clarifications.mjs set-steps *",
+        "node node_modules/@testagentic/atf/scripts/clarifications.mjs record *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs add *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs deleted *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs owns *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${knowledge}/**",
+          "${modules}/**",
+          "${state}/config.resolved.json"
+        ],
+        "write": [
+          "${modules}/explore/flows/**",
+          "${modules}/explore/module-summary.md",
+          "${modules}/explore/new-questions.json",
+          "${modules}/explore/overlay.json",
+          "${modules}/explore/captures/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "api-discoverer": {
+      "layer": 1,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "read",
+        "load": "none"
+      },
+      "web_research": "allowed",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/endpoints.mjs *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${knowledge}/**",
+          "${modules}/**"
+        ],
+        "write": [
+          "${modules}/api/overlay.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "clarification-orchestrator": {
+      "layer": 1,
+      "spawns": [
+        "clarification-explorer"
+      ],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/orchestration.mjs *",
+        "node node_modules/@testagentic/atf/scripts/clarifications.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/clarifications.mjs status *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**"
+        ],
+        "write": [
+          "${state}/orchestration/clarifications-${module}.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "clarification-explorer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "mutate",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/clarifications.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/clarifications.mjs record *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs add *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs deleted *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs owns *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**",
+          "${knowledge}/**"
+        ],
+        "write": [
+          "${modules}/clarification-evidence/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "fresh"
+    },
+    "testcase-orchestrator": {
+      "layer": 1,
+      "spawns": [
+        "testcase-writer",
+        "testcase-reviewer"
+      ],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/orchestration.mjs *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/run.mjs status *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**"
+        ],
+        "write": [
+          "${state}/orchestration/testcases-${module}.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "testcase-writer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/testcases.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/testcases.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/testcases.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**",
+          "${knowledge}/**",
+          "${results}/${module}/testcases/review-findings.md",
+          "${results}/${module}/testcases/gate-findings.md"
+        ],
+        "write": [
+          "${modules}/testcases/cases.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "testcase-reviewer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/testcases.mjs review-check *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**",
+          "${knowledge}/**",
+          "${results}/${module}/testcases/gate-findings.md"
+        ],
+        "write": [
+          "${results}/${module}/testcases/review.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-repo-owner": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "allowed",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs render * --side repo",
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs install *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${knowledge}/**",
+          "${state}/orchestration/**",
+          "${product_dir}/foundation/**",
+          "${state}/config.resolved.json",
+          "${results}/*/*/requests.json"
+        ],
+        "write": [
+          "${product_dir}/foundation/repo-overlay.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "playwright-ui-orchestrator": {
+      "layer": 1,
+      "spawns": [
+        "pw-repo-owner",
+        "pw-ui-scaffolder",
+        "pw-ui-pom-writer",
+        "pw-ui-tests-writer",
+        "pw-ui-reviewer",
+        "pw-ui-fixer",
+        "pw-ui-test-runner-triager"
+      ],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/orchestration.mjs *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/run.mjs status *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**",
+          "${pw_project}/**",
+          "${results}/${module}/playwright-ui/**"
+        ],
+        "write": [
+          "${state}/orchestration/playwright-ui-${module}.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-ui-scaffolder": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "allowed",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs render * --side ui",
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs add *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${knowledge}/**",
+          "${modules}/**",
+          "${state}/config.resolved.json",
+          "${product_dir}/foundation/**"
+        ],
+        "write": [
+          "${product_dir}/foundation/ui-overlay.json",
+          "${pw_project}/helpers/ui/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-ui-pom-writer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/ui-code.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/ui-code.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/ui-code.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs add *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**"
+        ],
+        "write": [
+          "${pw_project}/pages/${module}/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-ui-tests-writer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/ui-code.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/ui-code.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/ui-code.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs add *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**"
+        ],
+        "write": [
+          "${pw_project}/tests/ui/${module}/cases.spec.ts",
+          "${pw_project}/helpers/ui/${module}.data.ts"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-ui-reviewer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/review.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**",
+          "${results}/${module}/playwright-ui/gate-findings.md"
+        ],
+        "write": [
+          "${results}/${module}/playwright-ui/review.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-ui-fixer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "project",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/ui-code.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/ui-code.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/ui-code.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/fix.mjs check *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**",
+          "${results}/${module}/playwright-ui/review-findings.md",
+          "${results}/${module}/playwright-ui/review.json",
+          "${results}/${module}/playwright-ui/gate-findings.md",
+          "${results}/${module}/playwright-ui/triage.md",
+          "${results}/${module}/playwright-ui/triage.json"
+        ],
+        "write": [
+          "${pw_project}/pages/**",
+          "${pw_project}/tests/ui/**",
+          "${pw_project}/helpers/ui/**",
+          "${results}/${module}/playwright-ui/fix-report.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-ui-test-runner-triager": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "mutate",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "project",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/triage.mjs prepare *",
+        "node node_modules/@testagentic/atf/scripts/triage.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/triage.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/triage.mjs paths *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**",
+          "${product_dir}/known-issues.json"
+        ],
+        "write": [
+          "${results}/${module}/playwright-ui/triage-overlay.json",
+          "${pw_project}/test-results/ui/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "playwright-api-orchestrator": {
+      "layer": 1,
+      "spawns": [
+        "pw-repo-owner",
+        "api-test-planner",
+        "pw-api-scaffolder",
+        "pw-api-client-writer",
+        "pw-api-tests-writer",
+        "pw-api-reviewer",
+        "pw-api-fixer",
+        "pw-api-test-runner-triager"
+      ],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/orchestration.mjs *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/run.mjs status *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**",
+          "${pw_project}/**",
+          "${results}/${module}/playwright-api/**"
+        ],
+        "write": [
+          "${state}/orchestration/playwright-api-${module}.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "api-test-planner": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/api-plan.mjs *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**",
+          "${knowledge}/**"
+        ],
+        "write": [
+          "${modules}/api/plan-overlay.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-api-scaffolder": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "allowed",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs render * --side api",
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs add *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${knowledge}/**",
+          "${modules}/**",
+          "${state}/config.resolved.json",
+          "${product_dir}/foundation/**"
+        ],
+        "write": [
+          "${product_dir}/foundation/api-overlay.json",
+          "${pw_project}/helpers/api/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-api-client-writer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/api-code.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/api-code.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/api-code.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs add *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**",
+          "${knowledge}/**"
+        ],
+        "write": [
+          "${modules}/api-code/client-overlay.json",
+          "${pw_project}/helpers/api/${module}.composite.ts"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-api-tests-writer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/api-code.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/api-code.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/api-code.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs add *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**",
+          "${knowledge}/**"
+        ],
+        "write": [
+          "${modules}/api-code/tests-overlay.json",
+          "${pw_project}/helpers/api/${module}.payloads.ts",
+          "${pw_project}/helpers/api/${module}.glue.ts"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-api-reviewer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/review.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**",
+          "${results}/${module}/playwright-api/gate-findings.md"
+        ],
+        "write": [
+          "${results}/${module}/playwright-api/review.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-api-fixer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "project",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/api-code.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/api-code.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/api-code.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/fix.mjs check *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**",
+          "${results}/${module}/playwright-api/review-findings.md",
+          "${results}/${module}/playwright-api/review.json",
+          "${results}/${module}/playwright-api/gate-findings.md",
+          "${results}/${module}/playwright-api/triage.md",
+          "${results}/${module}/playwright-api/triage.json"
+        ],
+        "write": [
+          "${pw_project}/helpers/api/**",
+          "${results}/${module}/playwright-api/fix-report.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "pw-api-test-runner-triager": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "mutate",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "project",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/triage.mjs prepare *",
+        "node node_modules/@testagentic/atf/scripts/triage.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/triage.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/triage.mjs paths *"
+      ],
+      "filesystem": {
+        "read": [
+          "${pw_project}/**",
+          "${modules}/**",
+          "${product_dir}/known-issues.json"
+        ],
+        "write": [
+          "${results}/${module}/playwright-api/triage-overlay.json",
+          "${pw_project}/test-results/api/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "k6-orchestrator": {
+      "layer": 1,
+      "spawns": [
+        "k6-workload-designer",
+        "k6-lib-writer",
+        "k6-script-writer",
+        "k6-reviewer",
+        "k6-fixer",
+        "k6-runner-triager"
+      ],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/orchestration.mjs *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/run.mjs status *",
+        "node node_modules/@testagentic/atf/scripts/ledger.mjs list *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**",
+          "${k6_project}/**",
+          "${results}/${module}/k6/**"
+        ],
+        "write": [
+          "${state}/orchestration/k6-${module}.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "k6-workload-designer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/workload.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/workload.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/workload.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${modules}/**",
+          "${knowledge}/**",
+          "${results}/${module}/playwright-api/**",
+          "${state}/config.resolved.json"
+        ],
+        "write": [
+          "${modules}/k6/workload-overlay.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "k6-lib-writer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs render * --side k6",
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/foundation.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${k6_project}/**",
+          "${modules}/**",
+          "${knowledge}/**",
+          "${state}/config.resolved.json",
+          "${product_dir}/foundation/**"
+        ],
+        "write": [
+          "${product_dir}/foundation/k6-overlay.json",
+          "${k6_project}/lib/ext/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "k6-script-writer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/k6-code.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/k6-code.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/k6-code.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/requests.mjs add *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${k6_project}/**",
+          "${modules}/**"
+        ],
+        "write": [
+          "${k6_project}/scripts/slots/${module}.js"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "k6-reviewer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/review.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${k6_project}/**",
+          "${modules}/**",
+          "${results}/${module}/k6/gate-findings.md"
+        ],
+        "write": [
+          "${results}/${module}/k6/review.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "k6-fixer": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/k6-code.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/k6-code.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/k6-code.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/fix.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${k6_project}/**",
+          "${modules}/**",
+          "${results}/${module}/k6/review-findings.md",
+          "${results}/${module}/k6/review.json",
+          "${results}/${module}/k6/gate-findings.md",
+          "${results}/${module}/k6/triage.md",
+          "${results}/${module}/k6/triage.json"
+        ],
+        "write": [
+          "${k6_project}/scripts/slots/${module}.js",
+          "${k6_project}/lib/ext/**",
+          "${results}/${module}/k6/fix-report.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "k6-runner-triager": {
+      "layer": 2,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "run"
+      },
+      "web_research": "none",
+      "shell": "project",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/triage.mjs prepare *",
+        "node node_modules/@testagentic/atf/scripts/triage.mjs build *",
+        "node node_modules/@testagentic/atf/scripts/triage.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/triage.mjs paths *"
+      ],
+      "filesystem": {
+        "read": [
+          "${k6_project}/**",
+          "${modules}/**",
+          "${product_dir}/known-issues.json"
+        ],
+        "write": [
+          "${results}/${module}/k6/triage-overlay.json",
+          "${k6_project}/results/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "report-generator": {
+      "layer": 1,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "restricted",
+      "shell_allow": [
+        "node node_modules/@testagentic/atf/scripts/report-data.mjs *",
+        "node node_modules/@testagentic/atf/scripts/report.mjs render *",
+        "node node_modules/@testagentic/atf/scripts/report.mjs check *",
+        "node node_modules/@testagentic/atf/scripts/report.mjs paths *",
+        "node node_modules/@testagentic/atf/scripts/framework-issues.mjs add *"
+      ],
+      "filesystem": {
+        "read": [
+          "${product_dir}/**"
+        ],
+        "write": [
+          "${results}/report/narrative.json"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    },
+    "feedback-implementor-agent": {
+      "layer": 1,
+      "spawns": [],
+      "live_target": {
+        "browser": "none",
+        "http": "none",
+        "load": "none"
+      },
+      "web_research": "none",
+      "shell": "project",
+      "shell_allow": [],
+      "filesystem": {
+        "read": [
+          "feedback/**",
+          "agents/**",
+          "docs/**",
+          "scripts/**",
+          "config/**",
+          "schemas/**",
+          "templates/**"
+        ],
+        "write": [
+          "agents/*.md",
+          "agents/_shared/*.md",
+          "docs/**",
+          "feedback/**",
+          "scripts/api-code.mjs",
+          "scripts/api-code.test.mjs",
+          "scripts/api-plan.mjs",
+          "scripts/api-plan.test.mjs",
+          "scripts/build-agents.mjs",
+          "scripts/build-agents.test.mjs",
+          "scripts/clarifications.mjs",
+          "scripts/clarifications.test.mjs",
+          "scripts/decisions.test.mjs",
+          "scripts/doctor.mjs",
+          "scripts/doctor.test.mjs",
+          "scripts/domains.test.mjs",
+          "scripts/endpoints.mjs",
+          "scripts/endpoints.test.mjs",
+          "scripts/explore.mjs",
+          "scripts/explore.test.mjs",
+          "scripts/fix.mjs",
+          "scripts/fix.test.mjs",
+          "scripts/foundation.mjs",
+          "scripts/foundation.test.mjs",
+          "scripts/gate.mjs",
+          "scripts/gate.test.mjs",
+          "scripts/k6-code.mjs",
+          "scripts/k6-code.test.mjs",
+          "scripts/knowledge.mjs",
+          "scripts/knowledge.test.mjs",
+          "scripts/login.test.mjs",
+          "scripts/orchestration.mjs",
+          "scripts/orchestration.test.mjs",
+          "scripts/report-data.mjs",
+          "scripts/report.mjs",
+          "scripts/report.test.mjs",
+          "scripts/requests.mjs",
+          "scripts/results.mjs",
+          "scripts/review.mjs",
+          "scripts/review.test.mjs",
+          "scripts/run-config.mjs",
+          "scripts/run-config.test.mjs",
+          "scripts/run.mjs",
+          "scripts/run.test.mjs",
+          "scripts/shared-libs.test.mjs",
+          "scripts/test-helpers.mjs",
+          "scripts/testcases.mjs",
+          "scripts/testcases.test.mjs",
+          "scripts/triage.mjs",
+          "scripts/triage.test.mjs",
+          "scripts/ui-code.mjs",
+          "scripts/ui-code.test.mjs",
+          "scripts/workload.mjs",
+          "scripts/workload.test.mjs",
+          "scripts/lib/api-code.mjs",
+          "scripts/lib/api-discovery.mjs",
+          "scripts/lib/api-plan.mjs",
+          "scripts/lib/citations.mjs",
+          "scripts/lib/clarifications.mjs",
+          "scripts/lib/contract.mjs",
+          "scripts/lib/coverage.mjs",
+          "scripts/lib/csv.mjs",
+          "scripts/lib/doctor.mjs",
+          "scripts/lib/domain-flows.mjs",
+          "scripts/lib/files.mjs",
+          "scripts/lib/history.mjs",
+          "scripts/lib/provenance.mjs",
+          "scripts/lib/bug-export.mjs",
+          "scripts/lib/framework-issues.mjs",
+          "scripts/framework-issues.mjs",
+          "scripts/e2e.mjs",
+          "scripts/pipeline.test.mjs",
+          "scripts/lib/endpoints.mjs",
+          "scripts/lib/explore.mjs",
+          "scripts/lib/fix.mjs",
+          "scripts/lib/foundation.mjs",
+          "scripts/lib/graphql.mjs",
+          "scripts/lib/k6-code.mjs",
+          "scripts/lib/knowledge.mjs",
+          "scripts/lib/login.mjs",
+          "scripts/lib/mcp.mjs",
+          "scripts/lib/openapi.mjs",
+          "scripts/lib/probe.mjs",
+          "scripts/lib/registry.mjs",
+          "scripts/lib/report.mjs",
+          "scripts/lib/requests.mjs",
+          "scripts/lib/run-config-draft.mjs",
+          "scripts/lib/review.mjs",
+          "scripts/lib/testcases.mjs",
+          "scripts/lib/triage.mjs",
+          "scripts/lib/ts-scan.mjs",
+          "scripts/lib/ui-code.mjs",
+          "scripts/lib/verified.mjs",
+          "scripts/lib/workload.mjs",
+          "scripts/lib/gate/*.mjs",
+          "scripts/fixtures/**",
+          "schemas/*.json",
+          "templates/**"
+        ]
+      },
+      "ask_user": "none",
+      "browser_session": "shared"
+    }
+  },
+  "managed_files": [
+    "${pw_project}/package.json",
+    "${pw_project}/package-lock.json",
+    "${pw_project}/playwright.config.ts",
+    "${pw_project}/tsconfig.json",
+    "${pw_project}/.gitignore",
+    "${pw_project}/.env.example",
+    "${pw_project}/.github/workflows/playwright.yml",
+    "${pw_project}/README.md",
+    "${pw_project}/.foundation-managed.json",
+    "${pw_project}/utils/shared/**",
+    "${pw_project}/config/ui/settings.ts",
+    "${pw_project}/config/ui/README.md",
+    "${pw_project}/fixtures/ui/base.ts",
+    "${pw_project}/fixtures/ui/auth.setup.ts",
+    "${pw_project}/fixtures/ui/index.ts",
+    "${pw_project}/fixtures/ui/pages/**",
+    "${pw_project}/config/api/settings.ts",
+    "${pw_project}/config/api/README.md",
+    "${pw_project}/fixtures/api/base.ts",
+    "${pw_project}/fixtures/api/auth.setup.ts",
+    "${pw_project}/fixtures/api/index.ts",
+    "${pw_project}/helpers/api/schema.ts",
+    "${pw_project}/clients/**",
+    "${pw_project}/tests/api/**",
+    "${pw_project}/config/api/schemas/**",
+    "${pw_project}/fixtures/api/clients/**",
+    "${k6_project}/lib/*.js",
+    "${k6_project}/README.md",
+    "${k6_project}/.gitignore",
+    "${product_dir}/modules/*/k6/workload.json",
+    "${product_dir}/modules/*/k6/workload-coverage.json",
+    "${product_dir}/modules/*/k6/workload-registry.json",
+    "${product_dir}/modules/*/k6/code-plan.json",
+    "${product_dir}/modules/*/k6/parked.json",
+    "${product_dir}/modules/*/k6/legacy/**",
+    "${k6_project}/scripts/*.js",
+    "${results}/*/*/results.json",
+    "${results}/*/*/triage.json",
+    "${results}/*/*/triage.md",
+    "${product_dir}/modules/*/triage/**",
+    "${product_dir}/known-issues.json",
+    "${results}/*/*/review-check.json",
+    "${results}/*/*/fix-snapshot.json",
+    "${results}/*/*/review-findings.md",
+    "${results}/*/*/requests.json",
+    "${results}/report/report.json",
+    "${results}/report/index.html",
+    "${results}/report/report-check.json",
+    "${results}/bugs/**",
+    "${results}/framework-issues.json"
+  ]
+}

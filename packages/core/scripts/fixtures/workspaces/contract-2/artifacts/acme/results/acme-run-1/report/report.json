@@ -1,0 +1,890 @@
+{
+  "schemaVersion": 1,
+  "product": "acme",
+  "runId": "acme-run-1",
+  "mode": "readonly",
+  "target": "https://app.acme.test",
+  "environment": "default",
+  "provenance": {
+    "framework": null,
+    "package": {
+      "name": "@testagentic/atf",
+      "version": "0.1.0"
+    },
+    "plugin": null,
+    "browserServer": "@playwright/mcp@0.0.83",
+    "models": {
+      "default": {
+        "claude": "claude-opus-5-5",
+        "copilot": "gpt-6-luna"
+      },
+      "agents": {}
+    },
+    "templates": "afa47d13a52b889c8c9f09603806aa28013f06b2bbaf3b4610fefed6632f07ae",
+    "node": "v24.19.0",
+    "config": [
+      {
+        "name": "permissions.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/permissions.yaml"
+        ],
+        "digest": "dc7a2ff9b1e71cfdc18cb1f4cf33d86ef71e22ef2367328d403fc5c13ac8ff72"
+      },
+      {
+        "name": "models.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/models.yaml"
+        ],
+        "digest": "e9174411f17ba535220621cf76c764e1091bf9cf900f05fbb8b1ff2815d12359"
+      },
+      {
+        "name": "platforms.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/platforms.yaml"
+        ],
+        "digest": "385d14b9ee8c535d33353598ee721314bdd5a1f2b7145dd6bc3ff4310c87c601"
+      },
+      {
+        "name": "mcp.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/mcp.yaml"
+        ],
+        "digest": "ddc20e95b6441642de3b3556db31f06b3a48ff6acba89caa97eb9fa74315ad9b"
+      },
+      {
+        "name": "hooks.yaml",
+        "source": "framework",
+        "files": [
+          "node_modules/@testagentic/atf/config/hooks.yaml"
+        ],
+        "digest": "6fdcc5a3b87da7faa39c52f48748bd7b05d620c1e3c040f8d65d39ce43a33e89"
+      }
+    ]
+  },
+  "customConfig": {
+    "permissions": null,
+    "other": []
+  },
+  "generatedAt": "2026-10-01T09:00:00.000Z",
+  "totals": {
+    "modules": 1,
+    "modulesExplored": 1,
+    "clarifications": {
+      "total": 2,
+      "answered": 0,
+      "unconfirmed": 2,
+      "awaitingApproval": 0
+    },
+    "testcases": 27,
+    "approvals": {
+      "approved": 0,
+      "rejected": 0,
+      "changes": 0,
+      "awaiting": 27
+    },
+    "playwrightUiSpecs": 0,
+    "playwrightApiSpecs": 0,
+    "k6Scripts": 0,
+    "execution": {
+      "playwright-ui": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0,
+        "modulesRun": 0,
+        "modulesNotRun": 0,
+        "modulesNoResults": 1
+      },
+      "playwright-api": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0,
+        "modulesRun": 0,
+        "modulesNotRun": 0,
+        "modulesNoResults": 1
+      },
+      "k6": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0,
+        "modulesRun": 0,
+        "modulesNotRun": 0,
+        "modulesNoResults": 1
+      }
+    },
+    "triage": {
+      "byClass": {},
+      "bugClusters": [],
+      "unverified": []
+    },
+    "coverage": {
+      "total": 110,
+      "mapped": 46,
+      "excluded": 64,
+      "deferred": 0,
+      "pending": 0
+    },
+    "assumptions": {
+      "k6Thresholds": 0,
+      "assumptionCases": 0,
+      "weakRuleFacts": 0,
+      "k6Leftovers": 0,
+      "k6UntrackedCreates": 0
+    },
+    "stages": {
+      "failed": 0,
+      "blocked": 0,
+      "awaitingApproval": 0,
+      "notChosen": 6
+    },
+    "missing": 9,
+    "effort": {
+      "stageMs": 0,
+      "stepMs": 0,
+      "spawns": 0,
+      "tokens": 0
+    }
+  },
+  "bugs": [],
+  "queues": {
+    "testcaseApprovals": [
+      {
+        "module": "contacts",
+        "built": true,
+        "approvalCsv": "artifacts/acme/modules/contacts/testcases/approval.csv",
+        "approved": 0,
+        "rejected": 0,
+        "changes": 0,
+        "awaiting": 27
+      }
+    ],
+    "clarifications": [
+      {
+        "module": "contacts",
+        "id": "contacts-1",
+        "kind": "unanswered",
+        "question": "Is \"Name\" required when creating a contact?",
+        "nextStep": null,
+        "file": "artifacts/acme/modules/contacts/clarifications.csv"
+      },
+      {
+        "module": "contacts",
+        "id": "contacts-2",
+        "kind": "unanswered",
+        "question": "What format does \"Email\" accept?",
+        "nextStep": null,
+        "file": "artifacts/acme/modules/contacts/clarifications.csv"
+      }
+    ]
+  },
+  "coverage": {
+    "ledgers": [
+      {
+        "ledger": "knowledge",
+        "module": null,
+        "available": true,
+        "reason": null,
+        "counts": {
+          "total": 1,
+          "mapped": 1,
+          "excluded": 0,
+          "deferred": 0,
+          "pending": 0
+        },
+        "deferred": [],
+        "excluded": []
+      },
+      {
+        "ledger": "explore-frontier",
+        "module": "contacts",
+        "available": true,
+        "reason": null,
+        "counts": {
+          "total": 71,
+          "mapped": 12,
+          "excluded": 59,
+          "deferred": 0,
+          "pending": 0
+        },
+        "deferred": [],
+        "excluded": [
+          {
+            "id": "FR-contacts-1",
+            "reason": "disabled",
+            "detail": "disabled when captured"
+          },
+          {
+            "id": "FR-contacts-3",
+            "reason": "logout",
+            "detail": "ends the session"
+          },
+          {
+            "id": "FR-contacts-5",
+            "reason": "not-allowed-in-mode",
+            "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)"
+          },
+          {
+            "id": "FR-contacts-8",
+            "reason": "out-of-module",
+            "detail": "/deals is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-9",
+            "reason": "external",
+            "detail": "help.vendor.test"
+          },
+          {
+            "id": "FR-contacts-10",
+            "reason": "out-of-module",
+            "detail": "/privacy is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-12",
+            "reason": "not-allowed-in-mode",
+            "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)"
+          },
+          {
+            "id": "FR-contacts-16",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-1"
+          },
+          {
+            "id": "FR-contacts-17",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-2"
+          },
+          {
+            "id": "FR-contacts-18",
+            "reason": "not-allowed-in-mode",
+            "detail": "readonly: never submit or commit"
+          },
+          {
+            "id": "FR-contacts-19",
+            "reason": "logout",
+            "detail": "ends the session"
+          },
+          {
+            "id": "FR-contacts-20",
+            "reason": "unreachable",
+            "detail": "toggling it changes nothing on screen until the dialog is saved"
+          },
+          {
+            "id": "FR-contacts-21",
+            "reason": "not-allowed-in-mode",
+            "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)"
+          },
+          {
+            "id": "FR-contacts-22",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-5"
+          },
+          {
+            "id": "FR-contacts-23",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-6"
+          },
+          {
+            "id": "FR-contacts-24",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-7"
+          },
+          {
+            "id": "FR-contacts-25",
+            "reason": "out-of-module",
+            "detail": "/deals is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-26",
+            "reason": "external",
+            "detail": "help.vendor.test"
+          },
+          {
+            "id": "FR-contacts-27",
+            "reason": "out-of-module",
+            "detail": "/privacy is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-28",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-11"
+          },
+          {
+            "id": "FR-contacts-29",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-12"
+          },
+          {
+            "id": "FR-contacts-30",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-13"
+          },
+          {
+            "id": "FR-contacts-31",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-14"
+          },
+          {
+            "id": "FR-contacts-32",
+            "reason": "not-allowed-in-mode",
+            "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)"
+          },
+          {
+            "id": "FR-contacts-33",
+            "reason": "not-allowed-in-mode",
+            "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)"
+          },
+          {
+            "id": "FR-contacts-34",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-1"
+          },
+          {
+            "id": "FR-contacts-35",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-2"
+          },
+          {
+            "id": "FR-contacts-36",
+            "reason": "logout",
+            "detail": "ends the session"
+          },
+          {
+            "id": "FR-contacts-37",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-5"
+          },
+          {
+            "id": "FR-contacts-38",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-6"
+          },
+          {
+            "id": "FR-contacts-39",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-7"
+          },
+          {
+            "id": "FR-contacts-40",
+            "reason": "out-of-module",
+            "detail": "/deals is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-41",
+            "reason": "external",
+            "detail": "help.vendor.test"
+          },
+          {
+            "id": "FR-contacts-42",
+            "reason": "out-of-module",
+            "detail": "/privacy is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-43",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-11"
+          },
+          {
+            "id": "FR-contacts-44",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-12"
+          },
+          {
+            "id": "FR-contacts-46",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-14"
+          },
+          {
+            "id": "FR-contacts-47",
+            "reason": "not-allowed-in-mode",
+            "detail": "readonly: never submit or commit"
+          },
+          {
+            "id": "FR-contacts-48",
+            "reason": "not-allowed-in-mode",
+            "detail": "readonly: never submit or commit"
+          },
+          {
+            "id": "FR-contacts-49",
+            "reason": "unreachable",
+            "detail": "opens the edit form in a new window the browser tool cannot follow"
+          },
+          {
+            "id": "FR-contacts-50",
+            "reason": "logout",
+            "detail": "ends the session"
+          },
+          {
+            "id": "FR-contacts-51",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-6"
+          },
+          {
+            "id": "FR-contacts-53",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-7"
+          },
+          {
+            "id": "FR-contacts-54",
+            "reason": "out-of-module",
+            "detail": "/deals is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-55",
+            "reason": "external",
+            "detail": "help.vendor.test"
+          },
+          {
+            "id": "FR-contacts-56",
+            "reason": "out-of-module",
+            "detail": "/privacy is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-58",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-1"
+          },
+          {
+            "id": "FR-contacts-59",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-2"
+          },
+          {
+            "id": "FR-contacts-60",
+            "reason": "logout",
+            "detail": "ends the session"
+          },
+          {
+            "id": "FR-contacts-62",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-5"
+          },
+          {
+            "id": "FR-contacts-63",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-6"
+          },
+          {
+            "id": "FR-contacts-64",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-7"
+          },
+          {
+            "id": "FR-contacts-65",
+            "reason": "out-of-module",
+            "detail": "/deals is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-66",
+            "reason": "external",
+            "detail": "help.vendor.test"
+          },
+          {
+            "id": "FR-contacts-67",
+            "reason": "out-of-module",
+            "detail": "/privacy is outside /contacts"
+          },
+          {
+            "id": "FR-contacts-68",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-11"
+          },
+          {
+            "id": "FR-contacts-69",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-12"
+          },
+          {
+            "id": "FR-contacts-70",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-13"
+          },
+          {
+            "id": "FR-contacts-71",
+            "reason": "duplicate-of",
+            "detail": "FR-contacts-14"
+          }
+        ]
+      },
+      {
+        "ledger": "explore-open-points",
+        "module": "contacts",
+        "available": true,
+        "reason": null,
+        "counts": {
+          "total": 4,
+          "mapped": 3,
+          "excluded": 1,
+          "deferred": 0,
+          "pending": 0
+        },
+        "deferred": [],
+        "excluded": [
+          {
+            "id": "KQ-contacts-3",
+            "reason": "dismissed",
+            "detail": "the admin guide sets it per plan; nothing to explore here"
+          }
+        ]
+      },
+      {
+        "ledger": "explore-inputs",
+        "module": "contacts",
+        "available": true,
+        "reason": null,
+        "counts": {
+          "total": 6,
+          "mapped": 2,
+          "excluded": 4,
+          "deferred": 0,
+          "pending": 0
+        },
+        "deferred": [],
+        "excluded": [
+          {
+            "id": "FR-contacts-5",
+            "reason": "explained",
+            "detail": "its options are listed in interactions.json"
+          },
+          {
+            "id": "FR-contacts-12",
+            "reason": "explained",
+            "detail": "search is covered by the list flow"
+          },
+          {
+            "id": "FR-contacts-20",
+            "reason": "explained",
+            "detail": "a plain opt-in flag"
+          },
+          {
+            "id": "FR-contacts-21",
+            "reason": "explained",
+            "detail": "its options are listed in interactions.json; no rule to ask about"
+          }
+        ]
+      },
+      {
+        "ledger": "knowledge",
+        "module": "contacts",
+        "available": true,
+        "reason": null,
+        "counts": {
+          "total": 1,
+          "mapped": 1,
+          "excluded": 0,
+          "deferred": 0,
+          "pending": 0
+        },
+        "deferred": [],
+        "excluded": []
+      },
+      {
+        "ledger": "testcases",
+        "module": "contacts",
+        "available": true,
+        "reason": null,
+        "counts": {
+          "total": 27,
+          "mapped": 27,
+          "excluded": 0,
+          "deferred": 0,
+          "pending": 0
+        },
+        "byTechnique": {
+          "boolean": {
+            "total": 2,
+            "mapped": 2,
+            "excluded": 0,
+            "pending": 0,
+            "deferred": 0
+          },
+          "enum": {
+            "total": 6,
+            "mapped": 6,
+            "excluded": 0,
+            "pending": 0,
+            "deferred": 0
+          },
+          "ep": {
+            "total": 3,
+            "mapped": 3,
+            "excluded": 0,
+            "pending": 0,
+            "deferred": 0
+          },
+          "required": {
+            "total": 1,
+            "mapped": 1,
+            "excluded": 0,
+            "pending": 0,
+            "deferred": 0
+          },
+          "flow": {
+            "total": 1,
+            "mapped": 1,
+            "excluded": 0,
+            "pending": 0,
+            "deferred": 0
+          },
+          "rule": {
+            "total": 2,
+            "mapped": 2,
+            "excluded": 0,
+            "pending": 0,
+            "deferred": 0
+          },
+          "state-transition": {
+            "total": 12,
+            "mapped": 12,
+            "excluded": 0,
+            "pending": 0,
+            "deferred": 0
+          }
+        },
+        "deferred": [],
+        "excluded": []
+      },
+      {
+        "ledger": "api-plan",
+        "module": "contacts",
+        "available": false,
+        "reason": "api-plan ledger not written",
+        "file": null
+      },
+      {
+        "ledger": "api-code",
+        "module": "contacts",
+        "available": false,
+        "reason": "api-code ledger not written",
+        "file": null
+      },
+      {
+        "ledger": "ui-code",
+        "module": "contacts",
+        "available": false,
+        "reason": "ui-code ledger not written",
+        "file": null
+      },
+      {
+        "ledger": "workload",
+        "module": "contacts",
+        "available": false,
+        "reason": "workload ledger not written",
+        "file": null
+      }
+    ]
+  },
+  "assumptions": {
+    "k6Thresholds": [],
+    "assumptionCases": [],
+    "ruleFacts": [],
+    "knownLimits": [
+      {
+        "id": "D-052-split",
+        "source": "docs/agent-handoffs.md",
+        "text": "Some data still splits states: a record's status shown as a badge, a heading that names the record without repeating the page title, a record name in a dialog title, an owner shown as a plain button."
+      },
+      {
+        "id": "D-052-merge",
+        "source": "docs/agent-handoffs.md",
+        "text": "Some different screens still merge: section headings, a name equal to a part of the page title, record sub-page links such as Edit and Clone whose targets both erase to an id."
+      }
+    ],
+    "k6Leftovers": [],
+    "k6Untracked": []
+  },
+  "failedStages": [],
+  "blockedStages": [],
+  "awaitingApprovalStages": [],
+  "incompleteStages": [],
+  "steps": [
+    {
+      "step": "explore",
+      "chosen": true
+    },
+    {
+      "step": "clarifications",
+      "chosen": false
+    },
+    {
+      "step": "testcases",
+      "chosen": true
+    },
+    {
+      "step": "playwright-ui",
+      "chosen": false
+    },
+    {
+      "step": "playwright-api",
+      "chosen": false
+    },
+    {
+      "step": "k6",
+      "chosen": false
+    }
+  ],
+  "notChosenStages": [
+    {
+      "key": "contacts/clarifications",
+      "stage": "clarifications",
+      "module": "contacts"
+    },
+    {
+      "key": "contacts/api-discovery",
+      "stage": "api-discovery",
+      "module": "contacts"
+    },
+    {
+      "key": "_product/playwright-repo",
+      "stage": "playwright-repo",
+      "module": null
+    },
+    {
+      "key": "contacts/playwright-ui",
+      "stage": "playwright-ui",
+      "module": "contacts"
+    },
+    {
+      "key": "contacts/playwright-api",
+      "stage": "playwright-api",
+      "module": "contacts"
+    },
+    {
+      "key": "contacts/k6",
+      "stage": "k6",
+      "module": "contacts"
+    }
+  ],
+  "effort": {
+    "stages": [
+      {
+        "key": "_product/knowledge",
+        "status": "done",
+        "attempts": 1,
+        "durationMs": 0
+      },
+      {
+        "key": "contacts/module-knowledge",
+        "status": "done",
+        "attempts": 1,
+        "durationMs": 0
+      },
+      {
+        "key": "contacts/explore",
+        "status": "done",
+        "attempts": 1,
+        "durationMs": 0
+      },
+      {
+        "key": "contacts/testcases",
+        "status": "done",
+        "attempts": 1,
+        "durationMs": 0
+      },
+      {
+        "key": "_product/report",
+        "status": "running",
+        "attempts": 1,
+        "durationMs": null
+      }
+    ],
+    "steps": [],
+    "agents": [],
+    "spawnsRecorded": false,
+    "totals": {
+      "stageMs": 0,
+      "stepMs": 0,
+      "spawns": 0,
+      "tokens": 0
+    }
+  },
+  "missing": [
+    {
+      "section": "results",
+      "module": "contacts",
+      "reason": "playwright-ui: results.json is missing"
+    },
+    {
+      "section": "results",
+      "module": "contacts",
+      "reason": "playwright-api: results.json is missing"
+    },
+    {
+      "section": "results",
+      "module": "contacts",
+      "reason": "k6: results.json is missing"
+    },
+    {
+      "section": "k6",
+      "module": "contacts",
+      "reason": "k6/workload.json is missing: k6 scripts cannot be counted"
+    },
+    {
+      "section": "coverage",
+      "module": "contacts",
+      "reason": "api-plan ledger: plan-coverage.json does not exist"
+    },
+    {
+      "section": "coverage",
+      "module": "contacts",
+      "reason": "api-code ledger: coverage.json does not exist"
+    },
+    {
+      "section": "coverage",
+      "module": "contacts",
+      "reason": "ui-code ledger: coverage.json does not exist"
+    },
+    {
+      "section": "coverage",
+      "module": "contacts",
+      "reason": "workload ledger: workload-coverage.json does not exist"
+    },
+    {
+      "section": "effort",
+      "module": null,
+      "reason": "agent spawns were not recorded: the PostToolUse hook is off (config/hooks.yaml), or no agent was started"
+    }
+  ],
+  "modules": [
+    {
+      "module": "contacts",
+      "explored": true,
+      "clarifications": {
+        "available": true,
+        "total": 2,
+        "answered": 0,
+        "unconfirmed": 2,
+        "awaitingApproval": 0
+      },
+      "testcases": 27,
+      "approvals": {
+        "approved": 0,
+        "rejected": 0,
+        "changes": 0,
+        "awaiting": 27
+      },
+      "playwrightUiSpecs": 0,
+      "playwrightApiSpecs": 0,
+      "k6Scripts": 0,
+      "k6Planned": null,
+      "results": {
+        "playwright-ui": null,
+        "playwright-api": null,
+        "k6": null
+      },
+      "triage": {
+        "playwright-ui": null,
+        "playwright-api": null,
+        "k6": null
+      }
+    }
+  ]
+}

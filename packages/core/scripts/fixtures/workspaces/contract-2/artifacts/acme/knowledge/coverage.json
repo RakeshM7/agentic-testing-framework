@@ -1,0 +1,37 @@
+{
+  "pass": "product",
+  "runId": "acme-run-1",
+  "maxExtraSources": 20,
+  "items": [
+    {
+      "kind": "extra",
+      "title": "Acme help center",
+      "type": "vendor-doc",
+      "id": "https://help.acme.test",
+      "status": "mapped",
+      "refs": [
+        "S1"
+      ]
+    }
+  ],
+  "summary": {
+    "inputs": {
+      "total": 0,
+      "read": 0,
+      "failed": 0,
+      "excluded": 0,
+      "pending": 0
+    },
+    "extra": {
+      "cap": 20,
+      "used": 1,
+      "deferred": 0
+    },
+    "liveProduct": 0
+  },
+  "verified": {
+    "overview": "b2c090e533ab433471877e91a1582419ee43f62d7cbf8f6ed90d66f4053b0987",
+    "openPoints": "44c230ab82cc4293f072962b1c435c8754245d26a7a62382b5f95ecba9fd63b5",
+    "glossaryRows": "54e2f465538bae7735bd8a3cc31708215a8b483e3ae7922e58ad421b19f97e88"
+  }
+}

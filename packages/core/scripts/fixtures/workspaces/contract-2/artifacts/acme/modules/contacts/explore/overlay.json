@@ -1,0 +1,43 @@
+{
+  "items": {
+    "FR-contacts-20": {
+      "reason": "unreachable",
+      "detail": "toggling it changes nothing on screen until the dialog is saved",
+      "citation": "observation:explore/captures/subscribed.md"
+    },
+    "FR-contacts-49": {
+      "reason": "unreachable",
+      "detail": "opens the edit form in a new window the browser tool cannot follow",
+      "citation": "observation:explore/captures/edit-popup.md"
+    }
+  },
+  "kq": {
+    "KQ-contacts-2": {
+      "status": "observed",
+      "evidence": "observation:explore/captures/deals-link.md"
+    },
+    "KQ-contacts-3": {
+      "status": "dismissed",
+      "reason": "the admin guide sets it per plan; nothing to explore here",
+      "citation": "observation:explore/captures/deals-note.md"
+    },
+    "KQ-product-1": {
+      "status": "observed",
+      "evidence": "observation:explore/captures/owner-note.md"
+    }
+  },
+  "inputs": {
+    "FR-contacts-21": {
+      "reason": "its options are listed in interactions.json; no rule to ask about"
+    },
+    "FR-contacts-20": {
+      "reason": "a plain opt-in flag"
+    },
+    "FR-contacts-12": {
+      "reason": "search is covered by the list flow"
+    },
+    "FR-contacts-5": {
+      "reason": "its options are listed in interactions.json"
+    }
+  }
+}

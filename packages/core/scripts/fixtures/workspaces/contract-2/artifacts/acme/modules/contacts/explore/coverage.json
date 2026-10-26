@@ -1,0 +1,910 @@
+{
+  "module": "contacts",
+  "runId": "acme-run-1",
+  "mode": "readonly",
+  "budgets": {
+    "max_states": 150,
+    "max_pages": 40,
+    "states": 5,
+    "pages": 2,
+    "reached": {
+      "states": false,
+      "pages": false
+    }
+  },
+  "frontier": {
+    "summary": {
+      "total": 71,
+      "mapped": 12,
+      "excluded": 59,
+      "pending": 0,
+      "deferred": 0,
+      "byReason": {
+        "disabled": 1,
+        "logout": 5,
+        "not-allowed-in-mode": 8,
+        "out-of-module": 10,
+        "external": 5,
+        "duplicate-of": 28,
+        "unreachable": 2
+      }
+    },
+    "items": [
+      {
+        "id": "FR-contacts-1",
+        "state": "ST-contacts-1",
+        "role": "button",
+        "name": "Delete selected",
+        "status": "excluded",
+        "reason": "disabled",
+        "detail": "disabled when captured",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-2",
+        "state": "ST-contacts-1",
+        "role": "button",
+        "name": "New contact",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-2"
+        ]
+      },
+      {
+        "id": "FR-contacts-3",
+        "state": "ST-contacts-1",
+        "role": "button",
+        "name": "Sign out",
+        "status": "excluded",
+        "reason": "logout",
+        "detail": "ends the session",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-4",
+        "state": "ST-contacts-1",
+        "role": "columnheader",
+        "name": "Name",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-5"
+        ]
+      },
+      {
+        "id": "FR-contacts-5",
+        "state": "ST-contacts-1",
+        "role": "combobox",
+        "name": "Sort by",
+        "status": "excluded",
+        "reason": "not-allowed-in-mode",
+        "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-6",
+        "state": "ST-contacts-1",
+        "role": "link",
+        "name": "Acme CRM",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-1"
+        ]
+      },
+      {
+        "id": "FR-contacts-7",
+        "state": "ST-contacts-1",
+        "role": "link",
+        "name": "Contacts",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-1"
+        ]
+      },
+      {
+        "id": "FR-contacts-8",
+        "state": "ST-contacts-1",
+        "role": "link",
+        "name": "Deals",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/deals is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-9",
+        "state": "ST-contacts-1",
+        "role": "link",
+        "name": "Help",
+        "status": "excluded",
+        "reason": "external",
+        "detail": "help.vendor.test",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-10",
+        "state": "ST-contacts-1",
+        "role": "link",
+        "name": "Privacy",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/privacy is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-11",
+        "state": "ST-contacts-1",
+        "role": "link",
+        "name": "Jane Doe",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-4"
+        ]
+      },
+      {
+        "id": "FR-contacts-12",
+        "state": "ST-contacts-1",
+        "role": "searchbox",
+        "name": "Search contacts",
+        "status": "excluded",
+        "reason": "not-allowed-in-mode",
+        "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-13",
+        "state": "ST-contacts-1",
+        "role": "tab",
+        "name": "All",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-1"
+        ]
+      },
+      {
+        "id": "FR-contacts-14",
+        "state": "ST-contacts-1",
+        "role": "tab",
+        "name": "Mine",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-3"
+        ]
+      },
+      {
+        "id": "FR-contacts-15",
+        "state": "ST-contacts-2",
+        "role": "button",
+        "name": "Cancel",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-1"
+        ]
+      },
+      {
+        "id": "FR-contacts-16",
+        "state": "ST-contacts-2",
+        "role": "button",
+        "name": "Delete selected",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-1",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-17",
+        "state": "ST-contacts-2",
+        "role": "button",
+        "name": "New contact",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-2",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-18",
+        "state": "ST-contacts-2",
+        "role": "button",
+        "name": "Save",
+        "status": "excluded",
+        "reason": "not-allowed-in-mode",
+        "detail": "readonly: never submit or commit",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-19",
+        "state": "ST-contacts-2",
+        "role": "button",
+        "name": "Sign out",
+        "status": "excluded",
+        "reason": "logout",
+        "detail": "ends the session",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-20",
+        "state": "ST-contacts-2",
+        "role": "checkbox",
+        "name": "Subscribed",
+        "status": "excluded",
+        "reason": "unreachable",
+        "detail": "toggling it changes nothing on screen until the dialog is saved",
+        "citation": "observation:explore/captures/subscribed.md",
+        "by": "agent"
+      },
+      {
+        "id": "FR-contacts-21",
+        "state": "ST-contacts-2",
+        "role": "combobox",
+        "name": "Owner",
+        "status": "excluded",
+        "reason": "not-allowed-in-mode",
+        "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-22",
+        "state": "ST-contacts-2",
+        "role": "combobox",
+        "name": "Sort by",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-5",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-23",
+        "state": "ST-contacts-2",
+        "role": "link",
+        "name": "Acme CRM",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-6",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-24",
+        "state": "ST-contacts-2",
+        "role": "link",
+        "name": "Contacts",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-7",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-25",
+        "state": "ST-contacts-2",
+        "role": "link",
+        "name": "Deals",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/deals is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-26",
+        "state": "ST-contacts-2",
+        "role": "link",
+        "name": "Help",
+        "status": "excluded",
+        "reason": "external",
+        "detail": "help.vendor.test",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-27",
+        "state": "ST-contacts-2",
+        "role": "link",
+        "name": "Privacy",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/privacy is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-28",
+        "state": "ST-contacts-2",
+        "role": "link",
+        "name": "Jane Doe",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-11",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-29",
+        "state": "ST-contacts-2",
+        "role": "searchbox",
+        "name": "Search contacts",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-12",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-30",
+        "state": "ST-contacts-2",
+        "role": "tab",
+        "name": "All",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-13",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-31",
+        "state": "ST-contacts-2",
+        "role": "tab",
+        "name": "Mine",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-14",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-32",
+        "state": "ST-contacts-2",
+        "role": "textbox",
+        "name": "Email",
+        "status": "excluded",
+        "reason": "not-allowed-in-mode",
+        "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-33",
+        "state": "ST-contacts-2",
+        "role": "textbox",
+        "name": "Name *",
+        "status": "excluded",
+        "reason": "not-allowed-in-mode",
+        "detail": "readonly: typing and selecting are blocked (the browser server does not run the network guard)",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-34",
+        "state": "ST-contacts-3",
+        "role": "button",
+        "name": "Delete selected",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-1",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-35",
+        "state": "ST-contacts-3",
+        "role": "button",
+        "name": "New contact",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-2",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-36",
+        "state": "ST-contacts-3",
+        "role": "button",
+        "name": "Sign out",
+        "status": "excluded",
+        "reason": "logout",
+        "detail": "ends the session",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-37",
+        "state": "ST-contacts-3",
+        "role": "combobox",
+        "name": "Sort by",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-5",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-38",
+        "state": "ST-contacts-3",
+        "role": "link",
+        "name": "Acme CRM",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-6",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-39",
+        "state": "ST-contacts-3",
+        "role": "link",
+        "name": "Contacts",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-7",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-40",
+        "state": "ST-contacts-3",
+        "role": "link",
+        "name": "Deals",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/deals is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-41",
+        "state": "ST-contacts-3",
+        "role": "link",
+        "name": "Help",
+        "status": "excluded",
+        "reason": "external",
+        "detail": "help.vendor.test",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-42",
+        "state": "ST-contacts-3",
+        "role": "link",
+        "name": "Privacy",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/privacy is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-43",
+        "state": "ST-contacts-3",
+        "role": "link",
+        "name": "Jane Doe",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-11",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-44",
+        "state": "ST-contacts-3",
+        "role": "searchbox",
+        "name": "Search contacts",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-12",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-45",
+        "state": "ST-contacts-3",
+        "role": "tab",
+        "name": "All",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-1"
+        ]
+      },
+      {
+        "id": "FR-contacts-46",
+        "state": "ST-contacts-3",
+        "role": "tab",
+        "name": "Mine",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-14",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-47",
+        "state": "ST-contacts-4",
+        "role": "button",
+        "name": "Assign to Jane Doe",
+        "status": "excluded",
+        "reason": "not-allowed-in-mode",
+        "detail": "readonly: never submit or commit",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-48",
+        "state": "ST-contacts-4",
+        "role": "button",
+        "name": "Delete",
+        "status": "excluded",
+        "reason": "not-allowed-in-mode",
+        "detail": "readonly: never submit or commit",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-49",
+        "state": "ST-contacts-4",
+        "role": "button",
+        "name": "Edit",
+        "status": "excluded",
+        "reason": "unreachable",
+        "detail": "opens the edit form in a new window the browser tool cannot follow",
+        "citation": "observation:explore/captures/edit-popup.md",
+        "by": "agent"
+      },
+      {
+        "id": "FR-contacts-50",
+        "state": "ST-contacts-4",
+        "role": "button",
+        "name": "Sign out",
+        "status": "excluded",
+        "reason": "logout",
+        "detail": "ends the session",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-51",
+        "state": "ST-contacts-4",
+        "role": "link",
+        "name": "Acme CRM",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-6",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-52",
+        "state": "ST-contacts-4",
+        "role": "link",
+        "name": "Back to contacts",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-1"
+        ]
+      },
+      {
+        "id": "FR-contacts-53",
+        "state": "ST-contacts-4",
+        "role": "link",
+        "name": "Contacts",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-7",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-54",
+        "state": "ST-contacts-4",
+        "role": "link",
+        "name": "Deals",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/deals is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-55",
+        "state": "ST-contacts-4",
+        "role": "link",
+        "name": "Help",
+        "status": "excluded",
+        "reason": "external",
+        "detail": "help.vendor.test",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-56",
+        "state": "ST-contacts-4",
+        "role": "link",
+        "name": "Privacy",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/privacy is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-57",
+        "state": "ST-contacts-4",
+        "role": "link",
+        "name": "Jane Doe",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-4"
+        ]
+      },
+      {
+        "id": "FR-contacts-58",
+        "state": "ST-contacts-5",
+        "role": "button",
+        "name": "Delete selected",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-1",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-59",
+        "state": "ST-contacts-5",
+        "role": "button",
+        "name": "New contact",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-2",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-60",
+        "state": "ST-contacts-5",
+        "role": "button",
+        "name": "Sign out",
+        "status": "excluded",
+        "reason": "logout",
+        "detail": "ends the session",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-61",
+        "state": "ST-contacts-5",
+        "role": "columnheader",
+        "name": "Name ▲",
+        "status": "mapped",
+        "refs": [
+          "ST-contacts-1"
+        ]
+      },
+      {
+        "id": "FR-contacts-62",
+        "state": "ST-contacts-5",
+        "role": "combobox",
+        "name": "Sort by",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-5",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-63",
+        "state": "ST-contacts-5",
+        "role": "link",
+        "name": "Acme CRM",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-6",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-64",
+        "state": "ST-contacts-5",
+        "role": "link",
+        "name": "Contacts",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-7",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-65",
+        "state": "ST-contacts-5",
+        "role": "link",
+        "name": "Deals",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/deals is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-66",
+        "state": "ST-contacts-5",
+        "role": "link",
+        "name": "Help",
+        "status": "excluded",
+        "reason": "external",
+        "detail": "help.vendor.test",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-67",
+        "state": "ST-contacts-5",
+        "role": "link",
+        "name": "Privacy",
+        "status": "excluded",
+        "reason": "out-of-module",
+        "detail": "/privacy is outside /contacts",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-68",
+        "state": "ST-contacts-5",
+        "role": "link",
+        "name": "Jane Doe",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-11",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-69",
+        "state": "ST-contacts-5",
+        "role": "searchbox",
+        "name": "Search contacts",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-12",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-70",
+        "state": "ST-contacts-5",
+        "role": "tab",
+        "name": "All",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-13",
+        "by": "script"
+      },
+      {
+        "id": "FR-contacts-71",
+        "state": "ST-contacts-5",
+        "role": "tab",
+        "name": "Mine",
+        "status": "excluded",
+        "reason": "duplicate-of",
+        "detail": "FR-contacts-14",
+        "by": "script"
+      }
+    ]
+  },
+  "kq": {
+    "summary": {
+      "total": 4,
+      "mapped": 3,
+      "excluded": 1,
+      "pending": 0,
+      "deferred": 0
+    },
+    "items": [
+      {
+        "scope": "module",
+        "text": "The import flow is not documented.",
+        "category": "flows",
+        "id": "KQ-contacts-1",
+        "status": "mapped",
+        "refs": [
+          "contacts-1"
+        ],
+        "outcome": "asked"
+      },
+      {
+        "scope": "module",
+        "text": "Whether deals reference records is not documented.",
+        "category": "dependencies",
+        "id": "KQ-contacts-2",
+        "status": "mapped",
+        "refs": [
+          "observation:explore/captures/deals-link.md"
+        ],
+        "outcome": "observed"
+      },
+      {
+        "scope": "module",
+        "text": "Whether there is a maximum number of records is not documented.",
+        "category": "limits",
+        "id": "KQ-contacts-3",
+        "status": "excluded",
+        "reason": "dismissed",
+        "detail": "the admin guide sets it per plan; nothing to explore here",
+        "refs": [
+          "observation:explore/captures/deals-note.md"
+        ],
+        "outcome": "dismissed"
+      },
+      {
+        "scope": "product",
+        "text": "The seat limit per plan is not documented.",
+        "category": "limits",
+        "id": "KQ-product-1",
+        "status": "mapped",
+        "refs": [
+          "observation:explore/captures/owner-note.md"
+        ],
+        "outcome": "observed"
+      }
+    ]
+  },
+  "inputs": {
+    "summary": {
+      "total": 6,
+      "mapped": 2,
+      "excluded": 4,
+      "pending": 0,
+      "deferred": 0
+    },
+    "items": [
+      {
+        "state": "ST-contacts-1",
+        "role": "combobox",
+        "name": "Sort by",
+        "id": "FR-contacts-5",
+        "status": "excluded",
+        "reason": "explained",
+        "detail": "its options are listed in interactions.json"
+      },
+      {
+        "state": "ST-contacts-1",
+        "role": "searchbox",
+        "name": "Search contacts",
+        "id": "FR-contacts-12",
+        "status": "excluded",
+        "reason": "explained",
+        "detail": "search is covered by the list flow"
+      },
+      {
+        "state": "ST-contacts-2",
+        "role": "checkbox",
+        "name": "Subscribed",
+        "id": "FR-contacts-20",
+        "status": "excluded",
+        "reason": "explained",
+        "detail": "a plain opt-in flag"
+      },
+      {
+        "state": "ST-contacts-2",
+        "role": "combobox",
+        "name": "Owner",
+        "id": "FR-contacts-21",
+        "status": "excluded",
+        "reason": "explained",
+        "detail": "its options are listed in interactions.json; no rule to ask about"
+      },
+      {
+        "state": "ST-contacts-2",
+        "role": "textbox",
+        "name": "Email",
+        "id": "FR-contacts-32",
+        "status": "mapped",
+        "refs": [
+          "contacts-2"
+        ]
+      },
+      {
+        "state": "ST-contacts-2",
+        "role": "textbox",
+        "name": "Name *",
+        "id": "FR-contacts-33",
+        "status": "mapped",
+        "refs": [
+          "contacts-1"
+        ]
+      }
+    ]
+  },
+  "questions": [
+    {
+      "question": "Is \"Name\" required when creating a contact?",
+      "kq": [
+        "KQ-contacts-1"
+      ],
+      "items": [
+        "FR-contacts-33"
+      ],
+      "csv": "contacts-1"
+    },
+    {
+      "question": "What format does \"Email\" accept?",
+      "kq": [],
+      "items": [
+        "FR-contacts-32"
+      ],
+      "csv": "contacts-2"
+    }
+  ],
+  "liveEntities": [],
+  "verified": {
+    "model": "09b42e8baa5c75f881c4efcd79f59749d908f6a162a85e43722f00fd5ff09573",
+    "sitemap": "78afe4ad2a16d10068c3758c529975a2f0905dd7e9e9a7b5642c680e0220613f",
+    "interactions": "8c75212e0d8e2aec0effa2ce947ab03217ac4026f76af257a22e789459e640fe",
+    "inventory": "a02c8e8aa668dbe090ba7df967bb27845e2b9025433a65bf987ba965bb5fffb5",
+    "overlay": "a5bbbd8a452d28785df579f77c35a1ed79f93c1c0cf9ce496fa2157e0ffe5bc8",
+    "questions": "c6d537d73cc7e9d6e7ada26b29a1b7f7492efaa26a98237fe4e48192e472e570",
+    "summary": "89ee6dba0a93ece2005de16ff87e00a1a009e35bf587fd42962f4b11a8628ee2",
+    "log": "ec133feccb29c6c9afb94e6e05c934d8f551837c808ebc82cbd8b62e50f2fb96",
+    "registryStates": "bc251e3092e891881b4cdb90e583b4f068586426f6158f2852a70d30f5127010",
+    "registryPages": "03c1eed2c8d0c7f6b78e3fb5eb3d7595241219f2147ac8aaff840b0b9cad026f",
+    "registryFrontier": "9219f00e9dde82256b2c2434d461135ef7d9529b8789e872bbaf6218882d899d",
+    "registryNetwork": "a41cc56279c08b91568ffb785a1e9dc3d0a60f01299d7128f700e03ee5be7854",
+    "kqModule": "87853e03c97acc19e414efe9dd8471eb9424d1ebda7285b7da05cff7a59ac258",
+    "kqProduct": "44c230ab82cc4293f072962b1c435c8754245d26a7a62382b5f95ecba9fd63b5",
+    "flows": "17c53eae85f22c1f45a7b6cdac7180e87cbcb8c6f30aa3769ee39393f17962b8",
+    "clarifications": "2e631758141c8a5dc7586bc8df457b73321e2f7f0012c45e81908ea840ff9604"
+  }
+}

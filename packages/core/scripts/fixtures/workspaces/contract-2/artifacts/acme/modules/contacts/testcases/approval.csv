@@ -1,0 +1,55 @@
+TC ID,Title,Key steps,Expected,Priority,Approved,Comment,Rendered in run,Version
+TC-contacts-1,Contacts boolean item 1 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,yes,,acme-run-1,vc88a6f699e9a
+TC-contacts-2,Contacts ep item 10 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,yes,,acme-run-1,vfbcafb9fc4de
+TC-contacts-3,Contacts required item 11 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v28880c0884be
+TC-contacts-4,Contacts ep item 12 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v257f0373fbe3
+TC-contacts-5,Contacts flow item 13 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v38de99d6774b
+TC-contacts-6,Contacts rule item 14 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v244f76dcb82f
+TC-contacts-7,Contacts rule item 15 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v63e50325fb81
+TC-contacts-8,Contacts state-transition item 16 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v98f094a4fef9
+TC-contacts-9,Contacts state-transition item 17 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v4cbf393b6d08
+TC-contacts-10,Contacts state-transition item 18 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vc0040808bd61
+TC-contacts-11,Contacts state-transition item 19 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vcd170dad212c
+TC-contacts-12,Contacts boolean item 2 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v51489f6cf21b
+TC-contacts-13,Contacts state-transition item 20 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v11eb723c7edc
+TC-contacts-14,Contacts state-transition item 21 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v2ebdea03338c
+TC-contacts-15,Contacts state-transition item 22 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vfa546238a45b
+TC-contacts-16,Contacts state-transition item 23 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vd3c9e5d13bf9
+TC-contacts-17,Contacts state-transition item 24 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,ve1504f1b006c
+TC-contacts-18,Contacts state-transition item 25 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v8f44c4990c6e
+TC-contacts-19,Contacts state-transition item 26 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vdd447a51c269
+TC-contacts-20,Contacts state-transition item 27 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v7996468a918d
+TC-contacts-21,Contacts enum item 3 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vae32c30ecfe5
+TC-contacts-22,Contacts enum item 4 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v8dd4e8acd5dd
+TC-contacts-23,Contacts enum item 5 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vbe2e7296145d
+TC-contacts-24,Contacts enum item 6 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vf9215a04cf6a
+TC-contacts-25,Contacts enum item 7 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vaebfcae13fa9
+TC-contacts-26,Contacts enum item 8 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,vea3dcd2a2299
+TC-contacts-27,Contacts ep item 9 behaves as observed,"1. Open Contacts
+2. Click New contact",the New contact dialog opens,p2,,,acme-run-1,v9515ac4eadcd

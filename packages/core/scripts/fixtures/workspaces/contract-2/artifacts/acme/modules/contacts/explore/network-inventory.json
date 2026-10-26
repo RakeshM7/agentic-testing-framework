@@ -1,0 +1,158 @@
+[
+  {
+    "id": "NI-contacts-1",
+    "method": "GET",
+    "pathTemplate": "/collect",
+    "host": "www.google-analytics.com",
+    "statusCodes": [
+      204
+    ],
+    "requestKeys": [],
+    "queryKeys": [
+      "cid",
+      "uid"
+    ],
+    "responseKeys": [],
+    "pages": [
+      "contacts"
+    ],
+    "states": [
+      "ST-contacts-1"
+    ]
+  },
+  {
+    "id": "NI-contacts-2",
+    "method": "GET",
+    "pathTemplate": "/api/v1/contacts",
+    "statusCodes": [
+      200
+    ],
+    "requestKeys": [],
+    "queryKeys": [
+      "access_token",
+      "page",
+      "search"
+    ],
+    "responseKeys": [],
+    "pages": [
+      "contacts"
+    ],
+    "states": [
+      "ST-contacts-1"
+    ]
+  },
+  {
+    "id": "NI-contacts-3",
+    "method": "GET",
+    "pathTemplate": "/api/v1/contacts/{id}",
+    "statusCodes": [
+      200
+    ],
+    "requestKeys": [],
+    "queryKeys": [],
+    "responseKeys": [],
+    "pages": [
+      "contacts"
+    ],
+    "states": [
+      "ST-contacts-1"
+    ]
+  },
+  {
+    "id": "NI-contacts-4",
+    "method": "GET",
+    "pathTemplate": "/api/v1/contacts/{id}/notes",
+    "statusCodes": [
+      403
+    ],
+    "requestKeys": [],
+    "queryKeys": [],
+    "responseKeys": [],
+    "pages": [
+      "contacts"
+    ],
+    "states": [
+      "ST-contacts-1"
+    ]
+  },
+  {
+    "id": "NI-contacts-5",
+    "method": "GET",
+    "pathTemplate": "/api/v1/users/{id}/avatar",
+    "statusCodes": [
+      404
+    ],
+    "requestKeys": [],
+    "queryKeys": [],
+    "responseKeys": [],
+    "pages": [
+      "contacts"
+    ],
+    "states": [
+      "ST-contacts-1"
+    ]
+  },
+  {
+    "id": "NI-contacts-6",
+    "method": "GET",
+    "pathTemplate": "/contacts",
+    "statusCodes": [
+      200
+    ],
+    "requestKeys": [],
+    "queryKeys": [],
+    "responseKeys": [],
+    "pages": [
+      "contacts"
+    ],
+    "states": [
+      "ST-contacts-1"
+    ]
+  },
+  {
+    "id": "NI-contacts-7",
+    "method": "GET",
+    "pathTemplate": "/graphql",
+    "statusCodes": [
+      200
+    ],
+    "requestKeys": [],
+    "queryKeys": [
+      "operationName",
+      "query"
+    ],
+    "responseKeys": [],
+    "pages": [
+      "contacts"
+    ],
+    "states": [
+      "ST-contacts-1"
+    ],
+    "graphql": [
+      {
+        "operationType": "query",
+        "operationName": "ContactList",
+        "fields": [
+          "contacts"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "NI-contacts-8",
+    "method": "POST",
+    "pathTemplate": "/api/v1/telemetry",
+    "statusCodes": [
+      204
+    ],
+    "requestKeys": [],
+    "queryKeys": [],
+    "responseKeys": [],
+    "pages": [
+      "contacts"
+    ],
+    "states": [
+      "ST-contacts-1"
+    ]
+  }
+]

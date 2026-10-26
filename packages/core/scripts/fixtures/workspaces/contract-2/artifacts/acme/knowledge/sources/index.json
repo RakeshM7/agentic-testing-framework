@@ -1,0 +1,11 @@
+{
+  "S2": {
+    "location": "https://help.acme.test/contacts",
+    "status": "fresh",
+    "captured_by": "script",
+    "capturedAt": "2026-10-01",
+    "runId": "acme-run-1",
+    "sha256": "14387793171fc02507d4fcf519255b06fc0f6243b2fdf9613af2e9709ab87212",
+    "chars": 127
+  }
+}

@@ -1,0 +1,432 @@
+{
+  "module": "contacts",
+  "next": 72,
+  "items": {
+    "ST-contacts-1|button|Delete selected": {
+      "id": "FR-contacts-1",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|button|New contact": {
+      "id": "FR-contacts-2",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|button|Sign out": {
+      "id": "FR-contacts-3",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|columnheader|Name": {
+      "id": "FR-contacts-4",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|combobox|Sort by": {
+      "id": "FR-contacts-5",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|link|Acme CRM": {
+      "id": "FR-contacts-6",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|link|Contacts": {
+      "id": "FR-contacts-7",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|link|Deals": {
+      "id": "FR-contacts-8",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|link|Help": {
+      "id": "FR-contacts-9",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|link|Privacy": {
+      "id": "FR-contacts-10",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|link|[row] Name": {
+      "id": "FR-contacts-11",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|searchbox|Search contacts": {
+      "id": "FR-contacts-12",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|tab|All": {
+      "id": "FR-contacts-13",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-1|tab|Mine": {
+      "id": "FR-contacts-14",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|button|Cancel": {
+      "id": "FR-contacts-15",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|button|Delete selected": {
+      "id": "FR-contacts-16",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|button|New contact": {
+      "id": "FR-contacts-17",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|button|Save": {
+      "id": "FR-contacts-18",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|button|Sign out": {
+      "id": "FR-contacts-19",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|checkbox|Subscribed": {
+      "id": "FR-contacts-20",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|combobox|Owner": {
+      "id": "FR-contacts-21",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|combobox|Sort by": {
+      "id": "FR-contacts-22",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|link|Acme CRM": {
+      "id": "FR-contacts-23",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|link|Contacts": {
+      "id": "FR-contacts-24",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|link|Deals": {
+      "id": "FR-contacts-25",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|link|Help": {
+      "id": "FR-contacts-26",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|link|Privacy": {
+      "id": "FR-contacts-27",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|link|[row] Name": {
+      "id": "FR-contacts-28",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|searchbox|Search contacts": {
+      "id": "FR-contacts-29",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|tab|All": {
+      "id": "FR-contacts-30",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|tab|Mine": {
+      "id": "FR-contacts-31",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|textbox|Email": {
+      "id": "FR-contacts-32",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-2|textbox|Name *": {
+      "id": "FR-contacts-33",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|button|Delete selected": {
+      "id": "FR-contacts-34",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|button|New contact": {
+      "id": "FR-contacts-35",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|button|Sign out": {
+      "id": "FR-contacts-36",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|combobox|Sort by": {
+      "id": "FR-contacts-37",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|link|Acme CRM": {
+      "id": "FR-contacts-38",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|link|Contacts": {
+      "id": "FR-contacts-39",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|link|Deals": {
+      "id": "FR-contacts-40",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|link|Help": {
+      "id": "FR-contacts-41",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|link|Privacy": {
+      "id": "FR-contacts-42",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|link|[row] Name": {
+      "id": "FR-contacts-43",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|searchbox|Search contacts": {
+      "id": "FR-contacts-44",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|tab|All": {
+      "id": "FR-contacts-45",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-3|tab|Mine": {
+      "id": "FR-contacts-46",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|button|Assign to Jane Doe": {
+      "id": "FR-contacts-47",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|button|Delete": {
+      "id": "FR-contacts-48",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|button|Edit": {
+      "id": "FR-contacts-49",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|button|Sign out": {
+      "id": "FR-contacts-50",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|link|Acme CRM": {
+      "id": "FR-contacts-51",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|link|Back to contacts": {
+      "id": "FR-contacts-52",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|link|Contacts": {
+      "id": "FR-contacts-53",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|link|Deals": {
+      "id": "FR-contacts-54",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|link|Help": {
+      "id": "FR-contacts-55",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|link|Privacy": {
+      "id": "FR-contacts-56",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-4|link|[record] /contacts/{id}": {
+      "id": "FR-contacts-57",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|button|Delete selected": {
+      "id": "FR-contacts-58",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|button|New contact": {
+      "id": "FR-contacts-59",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|button|Sign out": {
+      "id": "FR-contacts-60",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|columnheader|Name ▲": {
+      "id": "FR-contacts-61",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|combobox|Sort by": {
+      "id": "FR-contacts-62",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|link|Acme CRM": {
+      "id": "FR-contacts-63",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|link|Contacts": {
+      "id": "FR-contacts-64",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|link|Deals": {
+      "id": "FR-contacts-65",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|link|Help": {
+      "id": "FR-contacts-66",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|link|Privacy": {
+      "id": "FR-contacts-67",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|link|[row] Name": {
+      "id": "FR-contacts-68",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|searchbox|Search contacts": {
+      "id": "FR-contacts-69",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|tab|All": {
+      "id": "FR-contacts-70",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    },
+    "ST-contacts-5|tab|Mine": {
+      "id": "FR-contacts-71",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1"
+    }
+  }
+}

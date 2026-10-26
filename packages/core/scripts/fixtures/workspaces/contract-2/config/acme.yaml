@@ -1,0 +1,6 @@
+product: acme
+target: {url: 'https://app.acme.test'}
+steps: [explore, testcases]
+modules:
+  - {slug: contacts, name: Contacts, entry_url: 'https://app.acme.test/contacts'}
+authorizations: {mode: readonly}

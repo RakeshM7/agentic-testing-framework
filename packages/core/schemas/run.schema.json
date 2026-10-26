@@ -20,7 +20,7 @@
     }
   },
   "properties": {
-    "layoutVersion": { "const": 2 },
+    "layoutVersion": { "const": 2, "description": "The artifact-contract version the run was started on (scripts/lib/contract.mjs CONTRACT_VERSION, docs/packaging.md §3.10; named before packaging). init --resume refuses a run on another contract until npx atf migrate has migrated the workspace." },
     "product": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
     "runId": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
     "createdAt": { "type": "string" },
@@ -45,11 +45,23 @@
       "additionalProperties": false,
       "properties": {
         "framework": { "type": ["object", "null"], "additionalProperties": false, "required": ["commit", "dirty"], "properties": { "commit": { "type": "string" }, "dirty": { "type": "boolean" } } },
+        "package": { "type": ["object", "null"], "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } }, "description": "The framework package the run was started with, from its own package.json (scripts/lib/provenance.mjs packageOf, docs/packaging.md §3.10); null when it couldn't be read. init --resume refuses a run whose package is on another breaking line (releaseLine). Absent in runs that predate it, which resume as compatible." },
+        "plugin": { "type": "null", "description": "The Claude Code plugin's version (docs/packaging.md §3.12): null until phase 6 records it. Absent in runs that predate it." },
         "browserServer": { "type": ["string", "null"] },
         "models": { "type": "object" },
         "templates": { "type": "string" },
         "node": { "type": "string" },
         "config": { "type": "array", "items": { "$ref": "#/$defs/configSource" }, "description": "Every framework config file in scripts/lib/config.mjs CONFIG_FILES order, untouched ones as `framework`. permissions.yaml here is the workspace's default; a run-config's own permissions_file replaces it, which shows as a permissionsPath other than this entry's files[0] (scripts/report-data.mjs customConfig). Absent in runs that predate config overrides." }
+      }
+    },
+    "packageChanges": {
+      "type": "array",
+      "description": "Each init --resume on another version of the package within the run's breaking line, in order (scripts/run.mjs resumeRun, docs/packaging.md §3.10): the run's provenance keeps the release it started with, and end carries these into state/history/. Absent when the run never changed version.",
+      "items": {
+        "type": "object",
+        "required": ["at", "name", "from", "to"],
+        "additionalProperties": false,
+        "properties": { "at": { "type": "string" }, "name": { "type": "string", "minLength": 1 }, "from": { "type": "string", "minLength": 1 }, "to": { "type": "string", "minLength": 1 } }
       }
     },
     "startedOnHost": { "type": "string", "description": "Host the run was started on, as guessed by run.mjs init (keys of scripts/lib/hosts.mjs HOSTS)." },

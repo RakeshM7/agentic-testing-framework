@@ -396,21 +396,25 @@ function writeUnder(call, root, dir) {
 // The workspace's own settings (packaging §3.4, the user's decision 2026-10-26, extending D-013 from the framework's
 // config/ to the client's overrides): atf/ holds the marker atf.json, the config overlays atf/<file>.yaml, the ejected
 // config atf/config/<file>.yaml, the client's decision log and agent fragments, and only a human changes them.
-// -> what the call would write there: its workspace-relative path, ATF_EJECT or ATF_INIT for a line that runs the atf
-// CLI's eject or init (they write atf/ in process, where no write target shows; matched like `atf sweep`: eject writes
-// atf/config/, init a workspace's atf/atf.json and decision log, in any folder), UNKNOWN_TARGET for a write tool whose
+// -> what the call would write there: its workspace-relative path, ATF_EJECT, ATF_INIT or ATF_MIGRATE for a line that
+// runs the atf CLI's eject, init or migrate (they write atf/ in process, where no write target shows; matched like
+// `atf sweep`: eject writes atf/config/, init a workspace's atf/atf.json and decision log, in any folder, migrate the
+// workspace's artifact contract in atf/atf.json and every run's state, D-095; --dry-run included), UNKNOWN_TARGET for a write tool whose
 // target can't be told, else null. Paths compare as in frameworkWrite() (case, separators, `..`, device and UNC
 // prefixes, symlinks into atf/), so a look-alike folder (config/atf/, artifacts/<product>/atf/) is not atf/.
 const atfEject = atfVerb("eject");
 const atfInit = atfVerb("init");
+const atfMigrate = atfVerb("migrate");
 const ATF_EJECT = Symbol("atf eject");
 const ATF_INIT = Symbol("atf init");
-const ATF_CLI_WRITES = new Map([[ATF_EJECT, "`atf eject` writes atf/config/"], [ATF_INIT, "`atf init` writes atf/ (a workspace's marker and decision log)"]]);
+const ATF_MIGRATE = Symbol("atf migrate");
+const ATF_CLI_WRITES = new Map([[ATF_EJECT, "`atf eject` writes atf/config/"], [ATF_INIT, "`atf init` writes atf/ (a workspace's marker and decision log)"], [ATF_MIGRATE, "`atf migrate` writes atf/atf.json (the workspace's artifact contract) and every run's state"]]);
 function workspaceSettingsWrite(call, root) {
   if (call.kind === "shell") {
     const lines = spellings(call.command);
     if (lines.some(atfEject)) return ATF_EJECT;
     if (lines.some(atfInit)) return ATF_INIT;
+    if (lines.some(atfMigrate)) return ATF_MIGRATE;
   }
   return writeUnder(call, root, path.join(root, "atf"));
 }

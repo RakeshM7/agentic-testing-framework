@@ -1,0 +1,11 @@
+ID,Module,Question,Steps to execute,Answer,Answer status,Clarification agent notes,Run ID
+contacts-1,contacts,"Is ""Name"" required when creating a contact?","1. Sign in.
+2. Open ""Contacts"".
+3. Click ""New contact"".
+4. Leave ""Name *"" empty and click ""Save"".
+5. Observe whether the contact is saved.",,,,acme-run-1
+contacts-2,contacts,"What format does ""Email"" accept?","1. Sign in.
+2. Open ""Contacts"".
+3. Click ""New contact"".
+4. Type ""not-an-email"" in ""Email"" and click ""Save"".
+5. Observe the message.",,,,acme-run-1

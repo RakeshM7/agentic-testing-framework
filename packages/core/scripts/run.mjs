@@ -3,7 +3,11 @@
 // artifacts/<product>/state/lock.json. State lives in state/run.json; a stage is complete only when it is marked
 // done AND its declared outputs exist and validate.
 //
-//   run.mjs init <config.yaml> [--resume] [--run-id ID]   start a run (or --resume the active one); freezes the config's
+//   run.mjs init <config.yaml> [--resume] [--run-id ID]   start a run (or --resume the active one: refused across a
+//                                                         breaking line of the package or another artifact contract,
+//                                                         a version change within the line recorded in packageChanges;
+//                                                         both refused while atf/atf.json "contract" isn't this code's,
+//                                                         docs/packaging.md §3.10); freezes the config's
 //                                                         `steps` (absent = all six) and the case types they derive into
 //                                                         run.json. Every other stage is not-chosen: never offered or
 //                                                         started, never failed or blocked. After a run that ended
@@ -72,7 +76,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import { DEFAULT_PERMISSIONS, validateRunConfig } from "./run-config.mjs";
-import { DEFAULT_ENV, LAYOUT_VERSION, PRODUCT_SCOPE, SLUG_RE, STAGES, STEPS, chosenStages, deriveCaseTypes, envName, loadJson, paths, workspaceRoot, stageChosen, stageKey, stageNeeds, testcasesModeOf, testcasesModes, validateData, validateFile, verifyOutputs } from "./lib/contract.mjs";
+import { CONTRACT_VERSION, DEFAULT_ENV, PRODUCT_SCOPE, SLUG_RE, STAGES, STEPS, chosenStages, deriveCaseTypes, envName, loadJson, paths, workspaceRoot, stageChosen, stageKey, stageNeeds, testcasesModeOf, testcasesModes, validateData, validateFile, verifyOutputs, contractProblem } from "./lib/contract.mjs";
 import { withFileLock, withFileLockAsync, writeJson } from "./lib/files.mjs";
 import { read as readLedger } from "./lib/ledger.mjs";
 import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
@@ -83,7 +87,7 @@ import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs
 import { GROUPS, STAGE_NEEDS, clearDoctor, doctorStatus, failures, recordDoctor, runChecks } from "./lib/doctor.mjs";
 import { login as openLogin } from "./lib/login.mjs";
 import { detectShellHost } from "./lib/hosts.mjs";
-import { collectProvenance } from "./lib/provenance.mjs";
+import { collectProvenance, packageOf, releaseLine } from "./lib/provenance.mjs";
 import { diffManifests, readManifest, writeManifest } from "./lib/history.mjs";
 import { issuesPath, readIssues, writeFeedback } from "./lib/framework-issues.mjs";
 import { approvalSummary, caseTypeOf, importStatus, testcasePaths } from "./lib/testcases.mjs";
@@ -96,8 +100,9 @@ export const makeRunId = (product, date = new Date(), environment = DEFAULT_ENV)
   `${product}${environment === DEFAULT_ENV ? "" : `-${environment}`}-${date.toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-")}`; // eventhub-20261007-1230, eventhub-staging-20261007-1230
 
 // root: the workspace the run lives in; framework: the framework root its permissions, provenance and commands come from
-// (D-085; the same directory in this repository).
-export function initRun(configFile, { resume = false, runId, root = workspaceRoot, framework = frameworkRoot, env = process.env } = {}) {
+// (D-085; the same directory in this repository). pkg: the running package's {name, version}, from the framework's
+// package.json unless given (tests fake a release through it).
+export function initRun(configFile, { resume = false, runId, root = workspaceRoot, framework = frameworkRoot, env = process.env, pkg = packageOf(framework) } = {}) {
   const { errors, warnings = [], normalized: cfg } = validateRunConfig(yaml.load(readFileSync(configFile, "utf8")), { root });
   if (errors?.length) return { errors };
   // the session's environment (D-081) must be the config's: every script and hook of the session works in it
@@ -110,14 +115,21 @@ export function initRun(configFile, { resume = false, runId, root = workspaceRoo
   if (cfg.environment !== environment)
     return { errors: [`${rel(root, path.resolve(configFile))} is for environment '${cfg.environment}', but this session's is '${environment}' (ATF_ENV): start the session with ATF_ENV=${cfg.environment} (npx atf run ${cfg.product} --env ${cfg.environment}), so every script and hook works in that environment`] };
   const p = paths(cfg.product, root, environment);
+  // the workspace's artifact contract (atf/atf.json "contract", docs/packaging.md §3.10) must be this code's: a newer one
+  // was migrated by a later package, an older one needs npx atf migrate first. Checked for a new run and a resume alike.
+  const contract = contractProblem(root);
+  if (contract) return { errors: [`${contract.detail}. Fix: ${contract.fix}`] };
 
   if (existsSync(p.lockFile)) {
     const lock = loadJson(p.lockFile);
     if (resume) {
+      // across versions (§3.10): refused before anything changes, so the run stays as the other version left it
+      const r = resumeRun(p.runFile, { pkg, product: cfg.product, fw: frameworkRel(root, framework) });
+      if (r.errors) return r;
       clearGuardChecks(cfg.product, root); // a resumed session must verify its own guard
       clearDoctor(cfg.product, root); // ... and check its own machine
-      const { run, interrupted } = interruptRunning(p.runFile);
-      return { resumed: true, product: cfg.product, run, ...(interrupted.length ? { interrupted } : {}) };
+      const { run, interrupted, packageChange } = r;
+      return { resumed: true, product: cfg.product, run, ...(interrupted.length ? { interrupted } : {}), ...(packageChange ? { packageChange } : {}) };
     }
     return { errors: [`run ${lock.runId} is active for product '${cfg.product}' (started ${lock.createdAt}). Use --resume, or end it: run.mjs end ${cfg.product} --abandon`] };
   }
@@ -152,7 +164,9 @@ export function initRun(configFile, { resume = false, runId, root = workspaceRoo
   for (let n = 2; existsSync(path.join(p.historyDir, `${id}.json`)) || existsSync(p.results(id)); n++) id = `${runId ?? makeRunId(cfg.product, undefined, environment)}-${n}`;
 
   const run = {
-    layoutVersion: LAYOUT_VERSION,
+    // the artifact-contract version (lib/contract.mjs CONTRACT_VERSION) the run is started on; the name predates
+    // packaging. No separate contractVersion: it would always equal this, and a migration rewrites this one.
+    layoutVersion: CONTRACT_VERSION,
     product: cfg.product,
     environment,
     runId: id,
@@ -169,8 +183,8 @@ export function initRun(configFile, { resume = false, runId, root = workspaceRoo
     // per module by run.mjs steps --import-mode
     testcasesMode: testcasesModes({ steps: STEPS.filter((s) => cfg.steps.includes(s)), modules: cfg.modules.map((m) => m.slug) }),
     startedOnHost: detectShellHost(env),
-    // what the run is made with (D-077): framework commit, browser server, models, templates, Node.js
-    provenance: collectProvenance(framework, root),
+    // what the run is made with (D-077): framework commit, package version, browser server, models, templates, Node.js
+    provenance: collectProvenance(framework, root, { pkg }),
     stages: {},
   };
   clearGuardChecks(cfg.product, root);
@@ -195,18 +209,57 @@ const runFileOf = (product, root) => paths(product, root).runFile;
 const lockedRun = (product, root, fn) => (existsSync(runFileOf(product, root)) ? withFileLock(runFileOf(product, root), fn, RUN_LOCK) : fn());
 const lockedRunAsync = (product, root, fn) => (existsSync(runFileOf(product, root)) ? withFileLockAsync(runFileOf(product, root), fn, RUN_LOCK) : fn());
 
-// init --resume (D-071): a stage still `running` belonged to a session that has ended, so nothing will ever mark it. It
-// becomes a failed attempt (`interrupted`), which next offers again while it has attempts left (D-011 counts it).
-function interruptRunning(runFile) {
+// Why a run can't be resumed by this package (docs/packaging.md §3.10), or null. The run's contract (run.json
+// layoutVersion) must be this code's: an older one waits for npx atf migrate, a newer one for the package that wrote
+// it. Its package must be on the running package's breaking line (provenance releaseLine): another major, or another
+// 0.minor, may lay out or read its state differently mid-run. The version compared is the last one the run ran on (its
+// packageChanges, else its provenance). A run with no package recorded predates this and counts as compatible; a
+// recorded version that can't be compared with the running one (not semver, or this package.json unreadable) is
+// refused, never guessed. -> null | message
+export function resumeProblem(run, { pkg, product, fw = frameworkRel() }) {
+  const end = expandFw(`node {fw}/scripts/run.mjs end ${product} --abandon`, fw);
+  if (run.layoutVersion !== CONTRACT_VERSION)
+    return run.layoutVersion > CONTRACT_VERSION
+      ? `run ${run.runId} was started on artifact contract ${run.layoutVersion}, newer than this framework's ${CONTRACT_VERSION}: finish it with the @testagentic/atf that started it`
+      : `run ${run.runId} was started on artifact contract ${run.layoutVersion}, and this framework uses contract ${CONTRACT_VERSION}: run npx atf migrate in the workspace first, which migrates its state, then resume`;
+  const was = lastPackage(run);
+  if (!was) return null;
+  const [then, current] = [releaseLine(was.version), releaseLine(pkg?.version)];
+  if (then && current && then === current) return null;
+  const finish = `Finish the run with ${was.version} (npm install --save-dev ${was.name}@${was.version} in the workspace, then resume), or end it (${end}) and start a new run`;
+  if (!pkg) return `run ${run.runId} was started with ${was.name} ${was.version}, and this framework's own version can't be read from its package.json (reinstall it), so the two can't be compared. ${finish}`;
+  const why = then && current ? `another breaking line (${then} and ${current})` : "and the two can't be compared as semver";
+  return `run ${run.runId} was started with ${was.name} ${was.version}, and this is ${pkg.name} ${pkg.version}, ${why}. ${finish}`;
+}
+
+// The package a run last ran on: its last recorded change, else the one it started with. null for a run from before
+// package versions were recorded.
+const lastPackage = (run) => {
+  const change = run.packageChanges?.at(-1);
+  return change ? { name: change.name, version: change.to } : (run.provenance?.package ?? null);
+};
+
+// init --resume, under the run lock (D-072). Across versions: resumeProblem refuses, writing nothing. Within a breaking
+// line, a version other than the one the run last ran on is appended to run.json packageChanges, the run's own record
+// of what it ran on (its provenance keeps the release it started with; end carries the changes into state/history/).
+// D-071: a stage still `running` belonged to a session that has ended, so nothing will ever mark it. It becomes a
+// failed attempt (`interrupted`), which next offers again while it has attempts left (D-011 counts it).
+// -> { run, interrupted, packageChange? } | { errors }
+function resumeRun(runFile, { pkg, product, fw }) {
   return withFileLock(runFile, () => {
     const run = loadJson(runFile);
+    const problem = resumeProblem(run, { pkg, product, fw });
+    if (problem) return { errors: [problem] };
+    const was = lastPackage(run);
+    const packageChange = was && pkg && was.version !== pkg.version ? { at: now(), name: pkg.name, from: was.version, to: pkg.version } : null;
+    if (packageChange) run.packageChanges = [...(run.packageChanges ?? []), packageChange];
     const interrupted = Object.keys(run.stages ?? {}).filter((k) => run.stages[k].status === "running");
     for (const k of interrupted) {
       const { doneRefusals, ...rec } = run.stages[k];
       run.stages[k] = { ...rec, status: "failed", interrupted: true, finishedAt: now(), error: "interrupted: the session running this stage ended before it was marked done or failed" };
     }
-    if (interrupted.length) writeJson(runFile, run);
-    return { run, interrupted };
+    if (interrupted.length || packageChange) writeJson(runFile, run);
+    return { run, interrupted, packageChange };
   }, RUN_LOCK);
 }
 
@@ -687,6 +740,8 @@ export async function endRun(product, { abandon = false, root = workspaceRoot } 
     endedAt: now(),
     ...(({ outcome, ...rest }) => ({ outcome: abandon ? "abandoned" : outcome, ...rest }))(endInfo(st, ctx)),
     stages: st.stages.map(({ stage, module, status: s, complete }) => ({ stage, module, status: s, complete })),
+    // the package versions the run was resumed on within its breaking line (docs/packaging.md §3.10)
+    ...(ctx.run.packageChanges?.length ? { packageChanges: ctx.run.packageChanges } : {}),
   };
   // what this run left behind, so a later run can be diffed against it (D-078)
   summary.manifest = writeManifest(root, product, ctx.p.results(ctx.runId), ctx.runId);
@@ -804,7 +859,7 @@ async function main() {
     if (cmd === "init") {
       const r = initRun(a, { resume: v.resume, runId: v["run-id"] });
       const carried = r.errors || r.resumed ? null : await carryForward(r.product);
-      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, steps: r.run.steps ?? STEPS, caseTypes: r.run.caseTypes, resumed: !!r.resumed, ...(r.warnings ? { warnings: r.warnings } : {}), ...(r.interrupted ? { interrupted: r.interrupted } : {}), ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: ["guard-check", "doctor", "prereqs"].map((c) => expandFw(`node {fw}/scripts/run.mjs ${c} ${r.product}`, frameworkRel())) }, r.errors ? 1 : 0);
+      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, steps: r.run.steps ?? STEPS, caseTypes: r.run.caseTypes, resumed: !!r.resumed, ...(r.warnings ? { warnings: r.warnings } : {}), ...(r.interrupted ? { interrupted: r.interrupted } : {}), ...(r.packageChange ? { packageChange: r.packageChange } : {}), ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: ["guard-check", "doctor", "prereqs"].map((c) => expandFw(`node {fw}/scripts/run.mjs ${c} ${r.product}`, frameworkRel())) }, r.errors ? 1 : 0);
     } else if (cmd === "guard-check") {
       // Reaching this line means no hook blocked the command: the guard is not active in this session.
       if (!SLUG_RE.test(a) || !existsSync(paths(a).state)) out({ errors: [`no run state for product '${a}'`] }, 1);
