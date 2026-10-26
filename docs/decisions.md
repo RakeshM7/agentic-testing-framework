@@ -143,6 +143,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-085 | The framework root and the workspace root are separate; the framework is installed read-only | Superseded by D-086 | 2026-10-24 |
 | D-086 | The monorepo: the repo root is the workspace and the framework is packages/core; read-only only when installed | Accepted | 2026-10-26 |
 | D-087 | A cross-platform atf CLI replaces the Makefile; the guard refuses its human-only forms like the make targets | Accepted | 2026-10-26 |
+| D-088 | A workspace overrides framework config by overlay or eject; atf/ is human-only and every run records what was customized | Accepted | 2026-10-26 |
 
 ## Decisions
 
@@ -1658,3 +1659,29 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - Extending the five decisions rather than superseding them keeps them governing their files: only the command surface changed.
 - **Affects:** `packages/core/bin/atf.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/scripts/cli.test.mjs`, `packages/core/package.json`, `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/guard.test.mjs`, `.github/workflows/ci.yml`
 - **Confirmed by the user on:** 2026-10-24 (draft P-10) and 2026-10-26 (positional arguments with flags, `--host` with an `ATF_AGENT` override, `node {fw}/scripts/…` in the shipped docs, `setup` and `e2e` as the only developer commands, and extending D-066, D-069, D-075, D-081 and D-084 rather than superseding them). This extends D-053 (test case approval stays human-only), D-075 (the sweep stays human-only), D-081 and D-084 without weakening them.
+
+### D-088 · A workspace overrides framework config by overlay or eject; atf/ is human-only and every run records what was customized
+- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §3.4 and phase 3a: draft P-4)
+- **Decision:**
+  - **One loader, three sources.** `scripts/lib/config.mjs` gives each framework config file (`permissions.yaml`, `models.yaml`, `platforms.yaml`, `mcp.yaml`, `hooks.yaml`) its effective value from the workspace:
+    - an ejected `atf/config/<file>` is the whole file;
+    - else an overlay `atf/<file>` is deep-merged over the framework's copy: maps merge key by key, a list replaces the base list, `null` deletes a key;
+    - else the framework's copy, as before. When the workspace and the framework are one directory, `atf/` is never an override.
+  - **Every reader goes through it.** That covers `run.mjs init` (the default permissions it freezes, D-006), the agent build, the browser tool classification (`networkGuarded`, which the guard calls with the run's workspace), the doctor and provenance. An overlay that is not a YAML mapping, or that fails a file's existing checks, is an error naming the file. A run-config's own `permissions_file` is read as before, with no overlay.
+  - **Hooks stay mandatory.** `hooks.yaml`, from any source, may hold only `post_tool_use` (`async|sync|off`). The PreToolUse guard is not configurable. `build-agents --post-hook` is refused while `atf/` overrides `hooks.yaml`.
+  - **The hard rules stay in code**, out of any override's reach: the readonly default and the mode cap (D-004), ledger-scoped deletes (D-005, D-074), fail-closed behaviour (D-007, D-036), agent identity (D-021) and the guard check before a run's first stage (D-037).
+  - **`atf eject config [<file>]`** copies the framework's file, or all five, to `atf/config/` byte for byte. It never overwrites, checks every target before writing, and refuses when the workspace and the framework are one directory.
+  - **`atf/` is human-only (guard rule `workspace-settings`).** The guard refuses writes under the workspace's `atf/` (its marker, overlays, ejected config, and later the client decision log and agent fragments):
+    - to every framework agent (the agent sources in the framework's `agents/`), in or out of a run, in any mode; if the roster can't be read, every named caller counts;
+    - during an active run, to calls a host can't attribute (D-035);
+    - including file-write tools, shell write targets and the atf CLI's `eject`.
+    A human's own session, and agent types outside the roster, may write there, under the decision-log confirmation hook.
+  - **Provenance.** `run.json` `provenance.config` lists all five files with their source (`framework`, `overlay`, `ejected`), their source files and the sha256 of the effective text; `digest` is null when a file can't be read.
+  - **The report.** `report.json` `customConfig` is derived from that and from `permissionsPath`, and is null for older runs. The deck shows a "Custom safety config" notice whenever the run's `permissions.yaml` did not come from the framework's own copy (an overlay, an ejected file or a run-config `permissions_file`), and lists the other customized files on its provenance line.
+  - **Faster atf matching.** The guard's atf-verb matches (`sweep`, `eject`, and the approve rule's string-runner form) share one matcher that looks for the program only before the verb's last occurrence. Behaviour is unchanged, but adversarial lines no longer take seconds.
+- **Why:**
+  - Clients run the pipeline under their own policies. They change who may do what, which model runs and which servers start, without forking the package, and upgrades keep flowing into every file they didn't eject.
+  - Keeping the hard rules in code means an override changes the ceilings, never whether a readonly run stays readonly.
+  - Overrides widen what agents may do, so agents may not write them (D-013). Every run and its report show when the safety ceiling was not the package's.
+- **Affects:** `packages/core/scripts/lib/config.mjs`, `packages/core/scripts/config.test.mjs`, `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/guard.test.mjs`, `packages/core/scripts/lib/browser-tools.mjs`, `packages/core/scripts/run.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/provenance.mjs`, `packages/core/scripts/report-data.mjs`, `packages/core/scripts/lib/report.mjs`, `packages/core/schemas/run.schema.json`, `packages/core/schemas/report.schema.json`, `packages/core/scripts/lib/cli.mjs`
+- **Confirmed by the user on:** 2026-10-24 (draft P-4) and 2026-10-26 (`atf/` writes refused to framework agents, and to unattributed calls during a run; a human's own session may write there). This extends D-006, D-013, D-061, D-077 and D-087 without weakening them.

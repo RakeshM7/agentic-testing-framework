@@ -27,6 +27,7 @@ code { font: .85em ui-monospace, Consolas, monospace; word-break: break-all; }
 .sev-critical, .sev-high { background: var(--bad-bg); } .sev-major, .sev-medium { background: var(--warn-bg); } .sev-minor, .sev-low, .sev-trivial { background: var(--ok-bg); }
 .callout { border-left: 4px solid var(--accent); background: var(--bg); padding: 8px 12px; margin: 10px 0; max-width: 90ch; }
 .gap { border-left-color: var(--flaky); background: var(--warn-bg); }
+.safety { border-left-color: var(--fail); background: var(--bad-bg); }
 .cites { color: var(--muted); font-size: .8rem; display: block; }
 svg { max-width: 100%; height: auto; } svg text { fill: var(--text); font: 12px system-ui, sans-serif; }
 .b-pass { fill: var(--pass); } .b-fail { fill: var(--fail); } .b-flaky { fill: var(--flaky); } .b-skip { fill: var(--skip); } .b-acc { fill: var(--accent); }

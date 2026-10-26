@@ -4,7 +4,7 @@
 // Dependency-free: the guard imports it on every hook call.
 
 import { configText } from "./config.mjs";
-import { frameworkRoot } from "./roots.mjs";
+import { frameworkRoot, workspaceRoot } from "./roots.mjs";
 
 // Navigate and observe. `click` is here on purpose: navigation needs it.
 export const BROWSER_READ = ["navigate", "navigate_back", "snapshot", "click", "hover", "take_screenshot", "wait_for", "tabs", "resize", "console_messages", "network_requests"];
@@ -29,14 +29,16 @@ export const isMutatingBrowserTool = (name) => MUTATING.has(name);
 export const isInputBrowserTool = (name) => BROWSER_INPUT.includes(name);
 
 // The init page the browser server must run for readonly input (scripts/browser/init-page.cjs), and whether the
-// framework's config/mcp.yaml -- the one source of every host's MCP config (D-028) -- passes it, by its path from the
-// workspace (`{fw}/`, D-085) or as written in a same-root repo. Read as text (scripts/lib/config.mjs): the guard stays
-// dependency-free. Any failure reads as "not guarded" (fails closed). `framework`: the framework root.
+// effective config/mcp.yaml -- the one source of every host's MCP config (D-028), as the workspace has it (the
+// framework's copy, or the workspace's atf/ override of it, scripts/lib/config.mjs) -- passes it, by its path from the
+// workspace (`{fw}/`, D-085) or as written in a same-root repo. Read as text: with no override the guard stays
+// dependency-free; an override is parsed and dumped (js-yaml). Any failure, a bad override included, reads as "not
+// guarded" (fails closed). `framework`: the framework root; `workspace`: the workspace root (the run's).
 export const INIT_PAGE = "scripts/browser/init-page.cjs";
 const INIT_PAGE_ARG = /^[ \t]*-[ \t]*["']?--init-page(?:["']?[ \t]*\r?\n[ \t]*-[ \t]*|=)["']?(?:\{fw\}\/)?scripts\/browser\/init-page\.cjs["']?[ \t]*\r?$/m;
-export function networkGuarded(framework = frameworkRoot) {
+export function networkGuarded(framework = frameworkRoot, workspace = workspaceRoot) {
   try {
-    return INIT_PAGE_ARG.test(configText("mcp.yaml", { framework }));
+    return INIT_PAGE_ARG.test(configText("mcp.yaml", { framework, workspace }));
   } catch {
     return false;
   }

@@ -5,6 +5,20 @@
   "type": "object",
   "required": ["layoutVersion", "product", "runId", "createdAt", "target", "mode", "configPath", "permissionsPath", "modules", "stages"],
   "additionalProperties": false,
+  "$defs": {
+    "configSource": {
+      "type": "object",
+      "description": "Where one framework config file came from (scripts/lib/config.mjs configSource, docs/packaging.md §3.4): the framework's own copy, the framework's copy with the workspace's atf/<name> overlay merged over it, or the workspace's ejected atf/config/<name>. files: its sources, base first, workspace-relative with `/` (absolute outside the workspace). digest: sha256 of the effective text; null when it could not be read at init.",
+      "required": ["name", "source", "files", "digest"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "enum": ["permissions.yaml", "models.yaml", "platforms.yaml", "mcp.yaml", "hooks.yaml"] },
+        "source": { "enum": ["framework", "overlay", "ejected"] },
+        "files": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "digest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  },
   "properties": {
     "layoutVersion": { "const": 2 },
     "product": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
@@ -34,7 +48,8 @@
         "browserServer": { "type": ["string", "null"] },
         "models": { "type": "object" },
         "templates": { "type": "string" },
-        "node": { "type": "string" }
+        "node": { "type": "string" },
+        "config": { "type": "array", "items": { "$ref": "#/$defs/configSource" }, "description": "Every framework config file in scripts/lib/config.mjs CONFIG_FILES order, untouched ones as `framework`. permissions.yaml here is the workspace's default; a run-config's own permissions_file replaces it, which shows as a permissionsPath other than this entry's files[0] (scripts/report-data.mjs customConfig). Absent in runs that predate config overrides." }
       }
     },
     "startedOnHost": { "type": "string", "description": "Host the run was started on, as guessed by run.mjs init (keys of scripts/lib/hosts.mjs HOSTS)." },

@@ -80,7 +80,30 @@
     "mode": { "enum": ["readonly", "full-run"] },
     "target": { "type": "string" },
     "environment": { "type": "string", "description": "the environment the run worked in (D-081); default when none was named" },
-    "provenance": { "type": ["object", "null"], "description": "run.json provenance (D-077): the framework commit, browser server, models, templates digest and Node.js the run was made with; null for runs that predate it" },
+    "provenance": { "type": ["object", "null"], "description": "run.json provenance (D-077): the framework commit, browser server, models, templates digest and Node.js the run was made with, and where each framework config file came from (config); null for runs that predate it", "properties": { "config": { "type": "array", "items": { "$ref": "run.schema.json#/$defs/configSource" } } } },
+    "customConfig": {
+      "type": ["object", "null"],
+      "description": "The framework config this run did not take from the framework's own copy (docs/packaging.md §3.4), derived from run.json by scripts/report-data.mjs customConfig. permissions: the safety ceiling of every agent, set apart and shown as a notice on the title slide: overlay (atf/permissions.yaml merged over the framework's copy), ejected (atf/config/permissions.yaml replaces it) or run-config (the run-config's own permissions_file, run.json permissionsPath); null when it is the framework's own copy. other: the overlaid or ejected models, platforms, mcp and hooks files. null for a run that predates config provenance.",
+      "required": ["permissions", "other"],
+      "additionalProperties": false,
+      "properties": {
+        "permissions": {
+          "type": ["object", "null"],
+          "required": ["source", "files"],
+          "additionalProperties": false,
+          "properties": { "source": { "enum": ["overlay", "ejected", "run-config"] }, "files": { "type": "array", "minItems": 1, "items": { "type": "string" } } }
+        },
+        "other": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "source", "files"],
+            "additionalProperties": false,
+            "properties": { "name": { "enum": ["models.yaml", "platforms.yaml", "mcp.yaml", "hooks.yaml"] }, "source": { "enum": ["overlay", "ejected"] }, "files": { "type": "array", "minItems": 1, "items": { "type": "string" } } }
+          }
+        }
+      }
+    },
     "generatedAt": { "type": "string" },
     "totals": {
       "type": "object",

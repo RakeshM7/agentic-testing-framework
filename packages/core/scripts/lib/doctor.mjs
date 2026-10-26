@@ -185,7 +185,7 @@ function browser({ root, framework, cfg, sys, exists }) {
   const out = [];
   let mcp = null;
   try {
-    mcp = loadConfig("mcp.yaml", { framework });
+    mcp = loadConfig("mcp.yaml", { framework, workspace: root });
   } catch {}
   const server = mcp?.servers?.[mcp?.browser_server];
   if (!server) return [{ id: "mcp-browser", ok: false, level: "fail", detail: "config/mcp.yaml names no browser_server", fix: "define the browser server in config/mcp.yaml, then npm run build-agents" }];

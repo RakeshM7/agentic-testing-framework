@@ -77,7 +77,7 @@ import { withFileLock, withFileLockAsync, writeJson } from "./lib/files.mjs";
 import { read as readLedger } from "./lib/ledger.mjs";
 import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
-import { configPath } from "./lib/config.mjs";
+import { configPath, configSource, loadConfig } from "./lib/config.mjs";
 import { expandFw, frameworkRoot, frameworkRel } from "./lib/roots.mjs";
 import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs";
 import { GROUPS, STAGE_NEEDS, clearDoctor, doctorStatus, failures, recordDoctor, runChecks } from "./lib/doctor.mjs";
@@ -123,12 +123,28 @@ export function initRun(configFile, { resume = false, runId, root = workspaceRoo
   }
   if (resume) return { errors: [`no active run for product '${cfg.product}' to resume`] };
 
-  // the default names the framework's own permissions (read through scripts/lib/config.mjs); any other path is the
-  // workspace's. `{fw}` in a shell allow-list becomes the framework's path from the workspace, so the frozen copy holds
-  // the exact commands the agents run.
-  const permPath = cfg.permissions_file === DEFAULT_PERMISSIONS ? configPath("permissions.yaml", { framework }) : path.resolve(root, cfg.permissions_file);
-  if (!existsSync(permPath)) return { errors: [`permissions_file ${cfg.permissions_file} not found`] };
-  const perms = resolvePermissions(yaml.load(readFileSync(permPath, "utf8")), { fw: frameworkRel(root, framework) });
+  // the default is the framework's permissions as this workspace has them (scripts/lib/config.mjs: an ejected
+  // atf/config/permissions.yaml, else the framework's copy with an atf/permissions.yaml overlay merged over it,
+  // docs/packaging.md §3.4); permissionsPath names the ejected file, else the framework's. Any other path is the
+  // workspace's own file, read as it is, with no overlay. Either way resolvePermissions checks the result, and `{fw}` in
+  // a shell allow-list becomes the framework's path from the workspace, so the frozen copy holds the exact commands the
+  // agents run.
+  let permPath, permDoc;
+  if (cfg.permissions_file === DEFAULT_PERMISSIONS) {
+    const opts = { framework, workspace: root };
+    try {
+      const { source, files } = configSource("permissions.yaml", opts);
+      permPath = source === "ejected" ? path.resolve(root, files[0]) : configPath("permissions.yaml", opts);
+      permDoc = loadConfig("permissions.yaml", opts);
+    } catch (e) {
+      return { errors: [e.code === "ENOENT" ? `permissions_file ${cfg.permissions_file} not found` : `permissions: ${e.message}`] };
+    }
+  } else {
+    permPath = path.resolve(root, cfg.permissions_file);
+    if (!existsSync(permPath)) return { errors: [`permissions_file ${cfg.permissions_file} not found`] };
+    permDoc = yaml.load(readFileSync(permPath, "utf8"));
+  }
+  const perms = resolvePermissions(permDoc, { fw: frameworkRel(root, framework) });
   if (perms.errors.length) return { errors: perms.errors.map((e) => `permissions: ${e}`) };
 
   let id = runId ?? makeRunId(cfg.product, undefined, environment);
@@ -154,7 +170,7 @@ export function initRun(configFile, { resume = false, runId, root = workspaceRoo
     testcasesMode: testcasesModes({ steps: STEPS.filter((s) => cfg.steps.includes(s)), modules: cfg.modules.map((m) => m.slug) }),
     startedOnHost: detectShellHost(env),
     // what the run is made with (D-077): framework commit, browser server, models, templates, Node.js
-    provenance: collectProvenance(framework),
+    provenance: collectProvenance(framework, root),
     stages: {},
   };
   clearGuardChecks(cfg.product, root);

@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { carryForward, diffRuns, endInfo, endRun, initRun, makeRunId, next, nextStep, setStage, stagePrompt, status, validateProduct } from "./run.mjs";
 import { loadJson, paths, frameworkRoot } from "./lib/contract.mjs";
+import { CONFIG_FILES, configPath } from "./lib/config.mjs";
 import { GROUPS, recordDoctor } from "./lib/doctor.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
 import { collect } from "./report-data.mjs";
@@ -14,6 +17,7 @@ import { append, read as readLedger } from "./lib/ledger.mjs";
 
 const SITEMAP = JSON.stringify([{ url: "https://app.acme.test/contacts", slug: "contacts-list", title: "Contacts" }]);
 const CSV_HEADER = "ID,Module,Question,Steps to execute,Answer,Clarification agent notes,Run ID\r\n";
+const sha = (s) => createHash("sha256").update(s).digest("hex");
 const ready = async (product, root) => (await next(product, { root })).map((s) => (s.module ? `${s.module}/${s.stage}` : s.stage)).sort();
 
 test("run id carries the product and a timestamp, no personal data", () => {
@@ -606,14 +610,92 @@ test("init records what the run is made with: framework commit, browser server, 
   assert.ok(here.models.default.claude, "the configured default model");
   assert.match(here.templates, /^[0-9a-f]{64}$/);
   assert.equal(here.node, process.version);
+  assert.deepEqual(here.config.map((c) => c.name), CONFIG_FILES);
   const { root, run } = startRun();
-  assert.deepEqual(Object.keys(run.provenance).sort(), ["browserServer", "framework", "models", "node", "templates"]);
+  assert.deepEqual(Object.keys(run.provenance).sort(), ["browserServer", "config", "framework", "models", "node", "templates"]);
   assert.equal(run.provenance.framework, null, "not a git checkout: unknown, never guessed");
+  // one directory that is both: nothing can override the framework's config. The scratch framework holds only
+  // permissions.yaml, so the others are recorded with an unknown digest, never a guessed one
+  assert.deepEqual(run.provenance.config.map((c) => [c.name, c.source, c.files]), CONFIG_FILES.map((n) => [n, "framework", [`config/${n}`]]));
+  assert.equal(run.provenance.config[0].digest, sha(readFileSync(path.join(root, "config", "permissions.yaml"), "utf8")));
+  assert.ok(run.provenance.config.slice(1).every((c) => c.digest === null));
   assert.deepEqual(await validateProduct("acme", { root }), []);
   const { renderDeck } = await import("./lib/report.mjs");
   const report = await collect("acme", { root });
   assert.deepEqual(report.provenance, run.provenance);
+  assert.deepEqual(report.customConfig, { permissions: null, other: [] });
   assert.match(renderDeck({ ...report, provenance: here }), new RegExp(`Made with framework <code>${here.framework.commit.slice(0, 10)}</code>`));
+  assert.doesNotMatch(renderDeck(report), /Custom safety config|customized config/);
+});
+
+// A client's workspace apart from the real framework (D-085), with the given files under it (atf/ overrides, a run-config
+// permissions file), and a run started in it.
+function splitRun(files = {}, extra = []) {
+  const ws = realpathSync.native(mkdtempSync(path.join(tmpdir(), "atf-ws-")));
+  for (const [rel, text] of Object.entries({ "atf/atf.json": "{}\n", "config/.keep": "", ...files })) put(ws, rel, text);
+  const r = initRun(writeConfig(ws, { extra }), { root: ws, runId: "acme-run-1", env: { CLAUDECODE: "1" } });
+  assert.deepEqual(r.errors, undefined);
+  return { root: ws, run: r.run };
+}
+
+test("init records where each config file came from, with digests; the report flags permissions that are not the framework's own copy", async () => {
+  const { renderDeck } = await import("./lib/report.mjs");
+  const fwFile = (n) => configPath(n).replaceAll("\\", "/"); // the real framework's copy: outside the workspace, so recorded absolute, with `/`
+  const deckOf = async (root) => {
+    const report = await collect("acme", { root });
+    assert.deepEqual(await validateData("report", report), []);
+    return { report, deck: renderDeck(report) };
+  };
+  const recorded = async (root, run) => {
+    assert.deepEqual(await validateData("run", loadJson(paths("acme", root).runFile)), []);
+    return Object.fromEntries(run.provenance.config.map((c) => [c.name, c]));
+  };
+
+  // untouched: every file the framework's, with the digest of its text; no notice, nothing listed
+  const plain = splitRun();
+  const p0 = await recorded(plain.root, plain.run);
+  for (const n of CONFIG_FILES) assert.deepEqual(p0[n], { name: n, source: "framework", files: [fwFile(n)], digest: sha(readFileSync(fwFile(n), "utf8")) }, n);
+  const d0 = await deckOf(plain.root);
+  assert.deepEqual(d0.report.customConfig, { permissions: null, other: [] });
+  assert.doesNotMatch(d0.deck, /Custom safety config|customized config/);
+
+  // an overlaid permissions.yaml: recorded with both files and the merged text's digest; the deck's notice names them
+  const over = splitRun({ "atf/permissions.yaml": "agents:\n  report-generator: {web_research: none}\n" });
+  const p1 = await recorded(over.root, over.run);
+  assert.deepEqual([p1["permissions.yaml"].source, p1["permissions.yaml"].files], ["overlay", [fwFile("permissions.yaml"), "atf/permissions.yaml"]]);
+  assert.notEqual(p1["permissions.yaml"].digest, p0["permissions.yaml"].digest);
+  assert.equal(p1["models.yaml"].source, "framework");
+  const d1 = await deckOf(over.root);
+  assert.deepEqual(d1.report.customConfig, { permissions: { source: "overlay", files: [fwFile("permissions.yaml"), "atf/permissions.yaml"] }, other: [] });
+  assert.match(d1.deck, /<div class="callout safety" role="note"><strong>Custom safety config:<\/strong> this run's permissions\.yaml, the ceiling on what every agent may do, is not the framework's own copy: the framework's <code>[^<]*<\/code> overlaid by <code>atf\/permissions\.yaml<\/code>\.<\/div>/);
+
+  // an ejected models.yaml: recorded and listed quietly with the provenance; permissions untouched, so no notice
+  const models = readFileSync(fwFile("models.yaml"), "utf8").replace(/^  claude: .*$/m, "  claude: haiku");
+  const ej = splitRun({ "atf/config/models.yaml": models });
+  const p2 = await recorded(ej.root, ej.run);
+  assert.deepEqual(p2["models.yaml"], { name: "models.yaml", source: "ejected", files: ["atf/config/models.yaml"], digest: sha(models) });
+  assert.equal(ej.run.provenance.models.default.claude, "haiku", "the models recorded are the effective ones");
+  assert.equal(p2["permissions.yaml"].source, "framework");
+  const d2 = await deckOf(ej.root);
+  assert.deepEqual(d2.report.customConfig, { permissions: null, other: [{ name: "models.yaml", source: "ejected", files: ["atf/config/models.yaml"] }] });
+  assert.doesNotMatch(d2.deck, /Custom safety config/);
+  assert.match(d2.deck, /<p class="muted">Made with [^\n]*customized config: models\.yaml \(replaced by the workspace's <code>atf\/config\/models\.yaml<\/code>\)<\/p>/);
+
+  // a run-config's own permissions_file: run.json's permissionsPath is not the recorded default's file, so it gets the
+  // notice even though the workspace overrides nothing
+  const own = splitRun({ "config/mine.yaml": readFileSync(fwFile("permissions.yaml"), "utf8") }, ["permissions_file: config/mine.yaml"]);
+  const p3 = await recorded(own.root, own.run);
+  assert.equal(p3["permissions.yaml"].source, "framework");
+  assert.equal(own.run.permissionsPath, "config/mine.yaml");
+  const d3 = await deckOf(own.root);
+  assert.deepEqual(d3.report.customConfig, { permissions: { source: "run-config", files: ["config/mine.yaml"] }, other: [] });
+  assert.match(d3.deck, /<strong>Custom safety config:<\/strong> [^<]*: the run-config's permissions_file <code>config\/mine\.yaml<\/code>\./);
+
+  // the schema is strict: an unknown source or a digest that is not sha256 hex is refused
+  const bad = loadJson(paths("acme", plain.root).runFile);
+  bad.provenance.config[0].source = "custom";
+  bad.provenance.config[1].digest = "abc";
+  assert.equal((await validateData("run", bad)).length, 2);
 });
 
 test("end keeps a manifest of what the run left behind, and diff compares two ended runs, never reading a secret (D-078)", async () => {
