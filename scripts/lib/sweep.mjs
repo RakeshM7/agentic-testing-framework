@@ -17,6 +17,7 @@ import { readJson } from "./files.mjs";
 import { append, live } from "./ledger.mjs";
 import { firstPartyHosts, loadAuth } from "./probe.mjs";
 import { validateRunConfig } from "../run-config.mjs";
+import { expandFw } from "./roots.mjs";
 
 const GONE = (status) => (status >= 200 && status < 300) || status === 404 || status === 410;
 const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -24,7 +25,7 @@ const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // What a sweep would do. -> {errors} | {cfg, items: [{entry, method, url}], manual: [{entry, reason}]}
 export function sweepPlan(product, { root, run } = {}) {
   const p = paths(product, root);
-  if (existsSync(p.lockFile)) return { errors: [`a run is active for '${product}': end it first (node scripts/run.mjs end ${product}); the sweep never races a run's own cleanup`] };
+  if (existsSync(p.lockFile)) return { errors: [expandFw(`a run is active for '${product}': end it first (node {fw}/scripts/run.mjs end ${product}); the sweep never races a run's own cleanup`)] };
   if (!existsSync(p.runFile)) return { errors: [`no run state for '${product}': nothing was ever recorded`] };
   const configPath = path.resolve(root, loadJson(p.runFile).configPath ?? "");
   if (!existsSync(configPath)) return { errors: [`the run-config the last run started from (${configPath}) is gone: the sweep needs its target and credentials`] };
@@ -81,7 +82,7 @@ export async function sweep(product, { root, run, dryRun = false, interactive, f
   const out = { dryRun, deleted: [], failed: [], manual: plan.manual.map(brief) };
   if (dryRun) return { ...out, wouldDelete: plan.items.map(brief) };
   if (!plan.items.length) return out;
-  if (!interactive?.isTTY) return { errors: ["the sweep is human-only: run it yourself in an interactive terminal (in Git Bash's mintty: winpty node scripts/ledger.mjs sweep ...); nothing was sent"] };
+  if (!interactive?.isTTY) return { errors: [expandFw("the sweep is human-only: run it yourself in an interactive terminal (in Git Bash's mintty: winpty node {fw}/scripts/ledger.mjs sweep ...); nothing was sent")] };
   const answer = await interactive.ask(`Delete ${plan.items.length} entit${plan.items.length === 1 ? "y" : "ies"} that earlier runs of ${product} left in the target? Type the product slug (${product}) to confirm: `);
   if (String(answer ?? "").trim() !== product) return { errors: ["not confirmed: nothing was sent"] };
   const auth = loadAuth(plan.cfg, root);

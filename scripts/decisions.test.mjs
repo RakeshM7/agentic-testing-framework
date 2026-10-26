@@ -1,21 +1,27 @@
 // docs/decisions.md stays consistent (and its Affects paths real), and the governance policy asks before a governed
-// file changes.
+// file changes. The log, and the paths its Affects name, are the workspace's: this repo's root, where a framework file
+// is named by its path from there (`packages/core/scripts/...` in the monorepo).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
-import { frameworkRoot } from "./lib/contract.mjs";
+import { frameworkRoot, workspaceRoot } from "./lib/contract.mjs";
 import { DECISIONS_FILE, checkDecisions, confirmedIn, entryText, parseDecisions, rememberConfirmed, shellWriteTargets } from "./lib/decisions.mjs";
-import { main as decisionsCli } from "./decisions.mjs";
+import { main as cli } from "./decisions.mjs";
 import { globToRegExp } from "./lib/permissions.mjs";
 import { toolCall } from "./lib/tool-call.mjs";
+import { expandFw, frameworkRel } from "./lib/roots.mjs";
 import { tempRoot } from "./test-helpers.mjs";
 
-const text = readFileSync(path.join(frameworkRoot, DECISIONS_FILE), "utf8");
+const fwPath = (rel) => expandFw(`{fw}/${rel}`, frameworkRel(workspaceRoot, frameworkRoot));
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const text = readFileSync(path.join(workspaceRoot, DECISIONS_FILE), "utf8");
 const decisions = parseDecisions(text);
 const index = new Map([...text.matchAll(/^\| (D-\d{3}) \| (.+?) \| (.+?) \| (\d{4}-\d{2}-\d{2}) \|$/gm)].map(([, id, title, status]) => [id, { title, status }]));
-const repoFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: frameworkRoot, encoding: "utf8" }).split("\n").filter(Boolean);
+const repoFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: workspaceRoot, encoding: "utf8" }).split("\n").filter(Boolean);
 
 test("decision IDs are unique and sequential", () => {
   assert.ok(decisions.length > 0);
@@ -43,6 +49,33 @@ test("every Affects path matches a file in the repo, so governance never silentl
     assert.ok(d.affects.length, `${d.id}: Affects lists no path`);
     for (const g of d.affects) assert.ok(repoFiles.some((f) => globToRegExp(g).test(f)), `${d.id}: Affects \`${g}\` matches no file`);
   }
+});
+
+// The entries recorded before the framework moved to packages/core are frozen (docs/packaging.md §3.11, phase 2a). Only
+// two edits may touch them: a Status value (a later decision supersedes one) and the mechanical re-rooting of an Affects
+// path: `packages/core/` before a framework path, and `packages/core/bin/atf.mjs` for `Makefile` (phase 2b). Their
+// normalized texts are hashed in scripts/fixtures/decisions-frozen.json; any other rewrite changes a hash.
+const frozenForm = (entry) =>
+  entry
+    .replace(/\r\n/g, "\n")
+    .replace(/^(- \*\*Status:\*\* )[^·\n]*/m, "$1")
+    .replace(/^- \*\*Affects:\*\* .*$/m, (line) => line.replaceAll("`packages/core/bin/atf.mjs`", "`Makefile`").replaceAll("`packages/core/", "`"));
+const frozenHash = (entry) => createHash("sha256").update(frozenForm(entry)).digest("hex");
+
+test("the entries recorded before the move are frozen: only a Status or a mechanical Affects re-rooting may change", () => {
+  const frozen = JSON.parse(readFileSync(path.join(frameworkRoot, "scripts", "fixtures", "decisions-frozen.json"), "utf8"));
+  assert.equal(Object.keys(frozen).length, 85, "D-001 to D-085");
+  for (const [id, hash] of Object.entries(frozen)) {
+    const entry = entryText(text, id);
+    assert.ok(entry, `${id} is missing`);
+    assert.equal(frozenHash(entry), hash, `${id} was rewritten: only its Status, or a packages/core/ prefix on an Affects path, may change`);
+  }
+  // the normalization forgives exactly those two edits, and nothing else
+  const entry = entryText(text, "D-002");
+  const moved = entry.replace(/^(- \*\*Status:\*\* )[^·\n]*/m, "$1Superseded by D-999 (2099-01-01) ").replace(/^- \*\*Affects:\*\* .*$/m, (l) => l.replace(/`(?!packages\/core\/)([^`]+)`/g, "`packages/core/$1`"));
+  assert.equal(frozenHash(moved), frozenHash(entry));
+  assert.notEqual(frozenHash(entry.replace(/^- \*\*Affects:\*\* `/m, "- **Affects:** `lib/")), frozenHash(entry), "another prefix is a rewrite");
+  assert.notEqual(frozenHash(entry.replace("scripts", "Scripts")), frozenHash(entry), "a text edit is a rewrite");
 });
 
 // ---- the policy ----------------------------------------------------------------------------------------------------
@@ -110,21 +143,33 @@ test("the hook entry asks Claude Code to confirm a governed edit, and remembers 
 });
 
 test("the decision lookup (D-082): the decisions governing a file, the index, and full entries, from the log itself", () => {
-  const text = readFileSync(path.join(frameworkRoot, DECISIONS_FILE), "utf8");
+  const text = readFileSync(path.join(workspaceRoot, DECISIONS_FILE), "utf8");
   const all = parseDecisions(text);
-  const forRun = decisionsCli(["for", "scripts/run.mjs", "docs/nothing-here.md"]);
+  const decisionsCli = (argv) => cli(argv, { root: workspaceRoot, cwd: workspaceRoot });
+  const forRun = decisionsCli(["for", fwPath("scripts/run.mjs"), "docs/nothing-here.md"]);
   assert.equal(forRun.code, 0);
   const ids = forRun.out.files[0].decisions.map((d) => d.id);
   assert.ok(ids.includes("D-071") && ids.includes("D-072"), "the hook's own matching on Affects");
   assert.ok(ids.every((id) => all.find((d) => d.id === id).accepted), "only Accepted decisions");
   assert.deepEqual(forRun.out.files[1], { path: "docs/nothing-here.md", decisions: [] });
-  const full = decisionsCli(["for", "scripts/lib/files.mjs", "--full"]).out;
-  assert.match(full, /^<!-- scripts\/lib\/files\.mjs: D-072 -->\n\n### D-072 · /);
-  assert.equal(full.trimEnd(), `<!-- scripts/lib/files.mjs: D-072 -->\n\n${entryText(text, "D-072")}`);
+  const files = fwPath("scripts/lib/files.mjs");
+  const full = decisionsCli(["for", files, "--full"]).out;
+  assert.match(full, new RegExp(`^<!-- ${escapeRe(files)}: D-072 -->\n\n### D-072 · `));
+  assert.equal(full.trimEnd(), `<!-- ${files}: D-072 -->\n\n${entryText(text, "D-072")}`);
   const index = decisionsCli(["index"]).out.accepted;
   assert.deepEqual(index.map((d) => d.id), all.filter((d) => d.accepted).map((d) => d.id));
   assert.ok(!index.some((d) => d.id === "D-047"), "a superseded decision is not in the index");
   assert.match(decisionsCli(["show", "D-047"]).out, /^### D-047 · .+\n- \*\*Status:\*\* Superseded by D-072/);
   assert.match(decisionsCli(["show", "D-999"]).out.errors[0], /D-999 is not in docs\/decisions\.md/);
   assert.equal(decisionsCli([]).code, 2);
+});
+
+test("the decision lookup reads a relative path from a working directory inside the workspace, else from its root", () => {
+  // from the framework's own folder, `scripts/run.mjs` is the framework's (packages/core/scripts/run.mjs in the monorepo)
+  const fromFw = cli(["for", "scripts/run.mjs"], { root: workspaceRoot, cwd: frameworkRoot }).out.files[0];
+  assert.equal(fromFw.path, fwPath("scripts/run.mjs"));
+  assert.ok(fromFw.decisions.some((d) => d.id === "D-071"), "governed by its decisions");
+  // from outside the workspace, a relative path is the workspace root's
+  assert.equal(cli(["for", "docs/decisions.md"], { root: workspaceRoot, cwd: tmpdir() }).out.files[0].path, "docs/decisions.md");
+  assert.equal(cli(["for", path.join(workspaceRoot, "AGENTS.md")], { root: workspaceRoot, cwd: tmpdir() }).out.files[0].path, "AGENTS.md");
 });

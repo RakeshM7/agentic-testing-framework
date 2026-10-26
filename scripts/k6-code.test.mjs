@@ -17,6 +17,10 @@ import { writeJson } from "./lib/files.mjs";
 import { computeModel, k6CodeContext, k6CodeUnverified, parseOptions, scriptRules, slotFindings, urlPathOf } from "./lib/k6-code.mjs";
 import { stampVerified } from "./lib/verified.mjs";
 import { markApproved, put, startRun } from "./test-helpers.mjs";
+import { expandFw } from "./lib/roots.mjs";
+
+// a framework command as printed from this repo's workspace: `node scripts/...`, or `node packages/core/scripts/...`
+const FW = expandFw("{fw}/").replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 const MOD = "artifacts/acme/modules/contacts";
 const CITE = "knowledge:modules/contacts/notes.md";
@@ -300,7 +304,7 @@ test("check: a write scenario in a readonly workload", async () => {
   writeJson(path.join(s.root, MOD, "k6/workload.json"), { ...wl, mode: "readonly" });
   const r = await s.kc("check");
   assert.equal(r.code, 1);
-  assert.match(probs(r), /the workload is not verified .*run node scripts\/workload\.mjs build acme contacts, then node scripts\/workload\.mjs check acme contacts/);
+  assert.match(probs(r), new RegExp(String.raw`the workload is not verified .*run node ${FW}scripts\/workload\.mjs build acme contacts, then node ${FW}scripts\/workload\.mjs check acme contacts`));
 });
 
 test("check: a write without trackLeftover or its delete step", async () => {

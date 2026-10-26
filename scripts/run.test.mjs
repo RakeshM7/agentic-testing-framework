@@ -352,7 +352,7 @@ test("stages not chosen are never offered or started, never failed or blocked, a
   const st = await status("acme", { root });
   const k6 = st.stages.find((r) => r.stage === "k6" && r.module === "contacts");
   assert.deepEqual([k6.status, k6.notChosen, k6.satisfied, !!k6.blocked, k6.complete], ["not-chosen", true, false, false, false]);
-  assert.match((await setStage("acme", "k6", "contacts", "start", undefined, { root })).errors[0], /^contacts\/k6 is not chosen for this run \(steps: explore\): it is never started; to run it, add the step: node scripts\/run\.mjs steps acme --add k6\. No attempt was spent\./);
+  assert.match((await setStage("acme", "k6", "contacts", "start", undefined, { root })).errors[0], new RegExp(String.raw`^contacts\/k6 is not chosen for this run \(steps: explore\): it is never started; to run it, add the step: node ${FW}scripts\/run\.mjs steps acme --add k6\. No attempt was spent\.`));
   assert.match((await setStage("acme", "playwright-repo", undefined, "start", undefined, { root })).errors[0], /^_product\/playwright-repo is not chosen for this run \(steps: explore\): it is never started\. No attempt/);
   assert.equal(loadJson(p.runFile).stages["contacts/k6"], undefined, "no attempt recorded");
 
@@ -439,6 +439,10 @@ test("prereqs: per module and chosen step, ok, missing (with the gap menu) or aw
 
 import { main as testcasesMain } from "./testcases.mjs";
 import { importCovers, scenarios } from "./run.mjs";
+import { expandFw } from "./lib/roots.mjs";
+
+// a framework command as printed from this repo's workspace: `node scripts/...`, or `node packages/core/scripts/...`
+const FW = expandFw("{fw}/").replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 test("an imported test case file stands in for a testcases stage not chosen; its UI cases need links to exploration states", async () => {
   const { root } = startRun({ extra: ["steps: [playwright-ui]"] });

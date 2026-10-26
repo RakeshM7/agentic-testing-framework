@@ -7,6 +7,10 @@ import path from "node:path";
 import { gate } from "./gate.mjs";
 import { listFindings, listedTests } from "./lib/gate/playwright.mjs";
 import { buildCases, put, startRun } from "./test-helpers.mjs";
+import { expandFw } from "./lib/roots.mjs";
+
+// a framework command as printed from this repo's workspace: `node scripts/...`, or `node packages/core/scripts/...`
+const FW = expandFw("{fw}/").replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 const rules = (root, r) => {
   const text = readFileSync(path.join(root, r.file), "utf8");
@@ -189,7 +193,7 @@ test("k6: the workload's shape, the shared lib present, and a current k6-code.mj
   const r = gate("acme", "contacts", "k6", { root, compile: false });
   assert.equal(r.verdict, "changes-required");
   assert.deepEqual([...rules(root, r)].sort(), ["k6-code", "lib"]);
-  assert.match(readFileSync(path.join(root, r.file), "utf8"), /k6-code\.mjs build acme contacts, then node scripts\/k6-code\.mjs check acme contacts/);
+  assert.match(readFileSync(path.join(root, r.file), "utf8"), new RegExp(String.raw`k6-code\.mjs build acme contacts, then node ${FW}scripts\/k6-code\.mjs check acme contacts`));
   // the shared hygiene still runs, on the slot file too
   put(root, "k6-tests/acme/scripts/slots/contacts.js", "const u = 'https://app.acme.test';\n");
   assert.ok(rules(root, gate("acme", "contacts", "k6", { root, compile: false })).has("no-hardcoded-url"));

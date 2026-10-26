@@ -602,7 +602,7 @@ async function applyStage(product, stage, module, action, error, { root, reused 
   if (STAGES[stage].scope === "module" && !ctx.run.modules.includes(module)) return { errors: [`--module must be one of [${ctx.run.modules.join(", ")}]`] };
   const key = stageKey(stage, module);
   if (!stageChosen(ctx.run, stage, STAGES[stage].scope === "product" ? null : module))
-    return { errors: [`${key} is not chosen for this run (steps: ${(ctx.run.steps ?? STEPS).join(", ")}): it is never started${STEPS.includes(stage) ? `; to run it, add the step: node scripts/run.mjs steps ${product} --add ${stage}` : ""}. No attempt was spent.`] };
+    return { errors: [`${key} is not chosen for this run (steps: ${(ctx.run.steps ?? STEPS).join(", ")}): it is never started${STEPS.includes(stage) ? expandFw(`; to run it, add the step: node {fw}/scripts/run.mjs steps ${product} --add ${stage}`) : ""}. No attempt was spent.`] };
   const prev = ctx.run.stages[key] ?? {};
   if (action === "start") {
     const row = (await status(product, { root })).stages.find((r) => r.stage === stage && (STAGES[stage].scope === "product" || r.module === module));
@@ -610,9 +610,9 @@ async function applyStage(product, stage, module, action, error, { root, reused 
     // approved imported UI cases that are only unlinked: the fix is linking them, not a human sign-off (decision 14)
     const unlinked = row?.awaitingApproval && STAGES[stage].approval === "ui" ? approvedOfType(ctx.p.productDir, module, "ui").unlinked : [];
     if (unlinked.length)
-      return { errors: [`${key} cannot start: ${unlinked.length} approved imported UI case(s) of ${module} (${unlinked.join(", ")}) are not linked to the explored screens, and no other UI case is approved. ${testcasesModeOf(ctx.run, module) === "generate" ? `Link them: the testcases stage of ${module} links them when it runs again (node scripts/run.mjs steps ${product} --reopen ${module})` : `Link them: run.mjs prereqs ${product} offers "${GAP_OPTIONS.link}" (node scripts/run.mjs steps ${product} --import-mode ${module}, the testcases stage in import mode for ${module} only)`}. No attempt was spent.`] };
+      return { errors: [`${key} cannot start: ${unlinked.length} approved imported UI case(s) of ${module} (${unlinked.join(", ")}) are not linked to the explored screens, and no other UI case is approved. ${testcasesModeOf(ctx.run, module) === "generate" ? `Link them: the testcases stage of ${module} links them when it runs again (${expandFw("node {fw}/scripts/run.mjs")} steps ${product} --reopen ${module})` : `Link them: run.mjs prereqs ${product} offers "${GAP_OPTIONS.link}" (${expandFw("node {fw}/scripts/run.mjs")} steps ${product} --import-mode ${module}, the testcases stage in import mode for ${module} only)`}. No attempt was spent.`] };
     if (row?.awaitingApproval)
-      return { errors: [`${key} is awaiting approval: ${approvalSummary(ctx.p.productDir, module).built ? `no ${what} of ${module} is approved by a human yet (testcases/approval.csv, then node scripts/testcases.mjs approve in a terminal)` : `the test cases of ${module} predate scripts/testcases.mjs, so none can be approved: rebuild them (rerun the testcases stage), then a human approves them`}; a later run picks it up. No attempt was spent.`] };
+      return { errors: [`${key} is awaiting approval: ${approvalSummary(ctx.p.productDir, module).built ? `no ${what} of ${module} is approved by a human yet (testcases/approval.csv, then ${expandFw("node {fw}/scripts/testcases.mjs approve")} in a terminal)` : `the test cases of ${module} predate scripts/testcases.mjs, so none can be approved: rebuild them (rerun the testcases stage), then a human approves them`}; a later run picks it up. No attempt was spent.`] };
     const guard = guardStatus(product, ctx.run.mode, root);
     if (!guard.ready) return { errors: [`guard not verified: ${guard.reason}`] };
     const deps = doctorStatus(product, stage, root);
@@ -793,7 +793,7 @@ async function main() {
       // Reaching this line means no hook blocked the command: the guard is not active in this session.
       if (!SLUG_RE.test(a) || !existsSync(paths(a).state)) out({ errors: [`no run state for product '${a}'`] }, 1);
       markAbsent(a, workspaceRoot);
-      out({ errors: ["the framework guard did NOT block guard-check: hooks are not active in this session, so nothing enforces the run's mode or permissions. Stop and fix the host's hook setup (docs/platforms.md), then run `node scripts/run.mjs guard-check <product>` again."] }, 1);
+      out({ errors: [expandFw("the framework guard did NOT block guard-check: hooks are not active in this session, so nothing enforces the run's mode or permissions. Stop and fix the host's hook setup ({fw}/docs/platforms.md), then run `node {fw}/scripts/run.mjs guard-check <product>` again.")] }, 1);
     } else if (cmd === "doctor") {
       const r = await doctor(a);
       out(r, r.errors || r.blockedStages.length ? 1 : 0);

@@ -11,6 +11,7 @@ import path from "node:path";
 import { csvPath, isAnswered, readRows } from "../clarifications.mjs";
 import { PRIORITIES, TYPES, parseCases, testcaseContext, testcasesUnverified } from "../testcases.mjs";
 import { finding } from "./common.mjs";
+import { expandFw } from "../roots.mjs";
 
 // The parse contract lives in lib/testcases.mjs (one reader for the gates, api-plan and the stage check).
 export { PRIORITIES, TYPES, parseCases };
@@ -22,7 +23,7 @@ export function gateTestcases({ root, product, run, cfg, productDir, module }) {
   if (!existsSync(coverage)) return [finding("blocker", "testcases/coverage.json", null, "testcases-built", "the test cases were never built by scripts/testcases.mjs", "write testcases/cases.json, then run testcases.mjs build and check")];
   const out = [];
   const why = testcasesUnverified(testcaseContext({ root, product, module, run, cfg, productDir }));
-  if (why) out.push(finding("blocker", "testcases/coverage.json", null, "testcases-check", why, "run node scripts/testcases.mjs check until it exits 0"));
+  if (why) out.push(finding("blocker", "testcases/coverage.json", null, "testcases-check", why, expandFw("run node {fw}/scripts/testcases.mjs check until it exits 0")));
 
   const cov = JSON.parse(readFileSync(coverage, "utf8"));
   const cited = new Set(cov.cases.flatMap((c) => c.evidence.filter((e) => e.startsWith("clarification:")).map((e) => e.slice("clarification:".length))));

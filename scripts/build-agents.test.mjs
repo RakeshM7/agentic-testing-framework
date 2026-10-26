@@ -11,9 +11,12 @@ import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { splitFrontmatter } from "./lib/agents/source.mjs";
 import { frameworkRoot } from "./lib/contract.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
-import { expandFw } from "./lib/roots.mjs";
+import { expandFw, frameworkRel, workspaceRoot } from "./lib/roots.mjs";
 
+// Sources and config are the framework's; the generated files are the workspace's (the same directory, or the
+// monorepo's root with the framework in packages/core), rendered with `{fw}/` as the framework's path from there.
 const load = (rel) => yaml.load(readFileSync(path.join(frameworkRoot, rel), "utf8"));
+const FW = frameworkRel(workspaceRoot, frameworkRoot);
 const perms = resolvePermissions(load("config/permissions.yaml")).resolved;
 const { platforms } = load("config/platforms.yaml");
 const { browser_server: server } = load("config/mcp.yaml");
@@ -23,7 +26,7 @@ const scriptOnly = resolvePermissions({
   agents: { probe: { layer: 2, shell: "restricted", shell_allow: ["node scripts/clarifications.mjs list *"], filesystem: { read: ["x/**"], write: [] } } },
 }).resolved.agents.probe;
 const probeTools = (platform) => toolNames(capabilitiesFor(scriptOnly), platforms[platform], server);
-const generated = (rel) => splitFrontmatter(readFileSync(path.join(frameworkRoot, rel), "utf8"), rel).meta;
+const generated = (rel) => splitFrontmatter(readFileSync(path.join(workspaceRoot, rel), "utf8"), rel).meta;
 
 // A throwaway repo root with the real config/ and agents/, so tests can break things safely.
 function scratch() {
@@ -73,7 +76,7 @@ test("Copilot frontmatter: subagent allow-list, entry agents only, identity hook
   const worker = generated(".github/agents/pw-ui-fixer.agent.md");
   assert.equal(worker["user-invocable"], false);
   assert.equal(worker.agents, undefined);
-  assert.equal(worker.hooks.PreToolUse[0].command, "node scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-fixer");
+  assert.equal(worker.hooks.PreToolUse[0].command, expandFw("node {fw}/scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-fixer", FW));
   assert.equal(worker.color, undefined, "color is Claude-only");
   const claude = generated(".claude/agents/pw-ui-fixer.md");
   assert.equal(claude.hooks, undefined, "Claude Code identifies agents from its own hook payload");
@@ -121,11 +124,11 @@ test("a body over the Copilot prompt limit fails the build", () => {
 });
 
 test("MCP servers are defined once and rendered for each platform", () => {
-  const claude = JSON.parse(readFileSync(path.join(frameworkRoot, ".mcp.json"), "utf8"));
-  const vscode = JSON.parse(readFileSync(path.join(frameworkRoot, ".vscode", "mcp.json"), "utf8"));
+  const claude = JSON.parse(readFileSync(path.join(workspaceRoot, ".mcp.json"), "utf8"));
+  const vscode = JSON.parse(readFileSync(path.join(workspaceRoot, ".vscode", "mcp.json"), "utf8"));
   assert.deepEqual(claude.mcpServers, vscode.servers);
-  // as config/mcp.yaml defines them, with its `{fw}/` expanded to the framework's path from the workspace (none here)
-  assert.deepEqual(claude.mcpServers, JSON.parse(expandFw(JSON.stringify(load("config/mcp.yaml").servers), "")));
+  // as config/mcp.yaml defines them, with its `{fw}/` expanded to the framework's path from the workspace
+  assert.deepEqual(claude.mcpServers, JSON.parse(expandFw(JSON.stringify(load("config/mcp.yaml").servers), FW)));
   assert.ok(JSON.stringify(load("config/mcp.yaml").servers).includes('"{fw}/scripts/browser/init-page.cjs"'), "the source names the init page by its framework path");
 });
 
@@ -219,12 +222,12 @@ test("the fragment directory is not an agent: no stray-source error, no generate
 });
 
 // ---- G10 (D-060): orchestrators are pure loops over script decisions; workers record requests through the script ----
-const body = (rel) => splitFrontmatter(readFileSync(path.join(frameworkRoot, rel), "utf8"), rel).body;
+const body = (rel) => splitFrontmatter(readFileSync(path.join(workspaceRoot, rel), "utf8"), rel).body;
 const DOMAIN_ORCHESTRATORS = { "playwright-ui-orchestrator": "playwright-ui", "playwright-api-orchestrator": "playwright-api", "k6-orchestrator": "k6", "testcase-orchestrator": "testcases", "clarification-orchestrator": "clarifications" };
 
 test("the five domain orchestrators are the shared loop body plus a short domain section, in every platform's file", () => {
-  // as rendered here: `{fw}/` (D-085) is empty when the framework is the workspace
-  const shared = expandFw(readFileSync(path.join(frameworkRoot, "agents", "_shared", "domain-loop.md"), "utf8"), "").replace(/\r\n/g, "\n").replace(/\n+$/, "");
+  // as rendered here: `{fw}/` (D-085) is the framework's path from the workspace, empty when they are one directory
+  const shared = expandFw(readFileSync(path.join(frameworkRoot, "agents", "_shared", "domain-loop.md"), "utf8"), FW).replace(/\r\n/g, "\n").replace(/\n+$/, "");
   for (const [name, domain] of Object.entries(DOMAIN_ORCHESTRATORS)) {
     const src = readFileSync(path.join(frameworkRoot, "agents", `${name}.md`), "utf8");
     assert.match(src, /<!-- include: _shared\/domain-loop.md -->/, `${name} includes the shared body`);

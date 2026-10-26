@@ -4,7 +4,7 @@
 // (`run.mjs doctor <product>`, which records the result in state/doctor.json for `stage … start`).
 //
 // Groups, and the stages that need them (STAGE_NEEDS):
-//   base     Node.js and the framework's own node_modules
+//   base     Node.js, the framework's own dependencies, and its peer dependency (playwright) in the workspace
 //   login    the browser the login opens (lib/login.mjs, D-069): Microsoft Edge, else Google Chrome, else the
 //            Chromium build of the framework's Playwright
 //   browser  the Playwright MCP server's browser, and its init page (which loads the run's session, D-076)
@@ -24,6 +24,7 @@ import { INIT_PAGE } from "./browser-tools.mjs";
 import { loadConfig } from "./config.mjs";
 import { STAGES, frameworkRoot, paths } from "./contract.mjs";
 import { tryReadJson, writeJson } from "./files.mjs";
+import { expandFw } from "./roots.mjs";
 
 export const GROUPS = ["base", "login", "browser", "session", "repo", "k6", "target"];
 export const STAGE_NEEDS = {
@@ -78,10 +79,22 @@ export function browserBuilds(coreDir, names, opts = {}) {
 
 const describeMissing = (missing) => missing.map((m) => `${m.name} build ${m.revision}`).join(" and ");
 
+// The folder of an installed package as Node finds it from `from`: the nearest node_modules/<name> from there up (npm
+// workspaces hoist the framework's dependencies into the workspace's node_modules). -> the folder, else null
+export function packageDir(name, from) {
+  for (let dir = path.resolve(from); ; dir = path.dirname(dir)) {
+    const d = path.join(dir, "node_modules", ...name.split("/"));
+    if (existsSync(path.join(d, "package.json"))) return d;
+    if (path.dirname(dir) === dir) return null;
+  }
+}
+
 // ---- the checks, one function per group --------------------------------------------------------------------------
 
-// The framework's own dependencies: its package.json and node_modules, under the framework root (D-085).
-function base({ framework, nodeVersion }) {
+// The framework's own dependencies: its package.json, each resolved from the framework root the way Node resolves it
+// (D-085). Its peer dependencies (playwright) are the workspace's own install, so they must resolve from the workspace
+// root, at the version the framework pins.
+function base({ root, framework, nodeVersion }) {
   const out = [];
   const major = Number(String(nodeVersion).split(".")[0]);
   out.push(major >= MIN_NODE
@@ -91,14 +104,32 @@ function base({ framework, nodeVersion }) {
   if (!pkg) return out;
   const wanted = { ...pkg.dependencies, ...pkg.devDependencies };
   const problems = [];
-  for (const [name, spec] of Object.entries(wanted)) {
-    const got = tryReadJson(path.join(framework, "node_modules", name, "package.json"));
-    if (!got) problems.push(`${name} is not installed`);
-    else if (/^\d+\.\d+\.\d+$/.test(spec) && got.version !== spec) problems.push(`${name} is ${got.version}, package.json pins ${spec}`);
-  }
-  out.push(problems.length
-    ? { id: "framework-deps", ok: false, level: "fail", detail: problems.join("; "), fix: "npm install (in the repo root)", autofix: { cmd: "npm", args: ["install"], cwd: framework } }
+  const versionProblem = (name, spec, from) => {
+    const dir = packageDir(name, from);
+    const got = dir && tryReadJson(path.join(dir, "package.json"));
+    if (!got) return `${name} is not installed`;
+    return /^\d+\.\d+\.\d+$/.test(spec) && got.version !== spec ? `${name} is ${got.version}, package.json pins ${spec}` : null;
+  };
+  for (const [name, spec] of Object.entries(wanted)) problems.push(versionProblem(name, spec, framework));
+  out.push(problems.some(Boolean)
+    ? { id: "framework-deps", ok: false, level: "fail", detail: problems.filter(Boolean).join("; "), fix: "npm install (in the repo root)", autofix: { cmd: "npm", args: ["install"], cwd: framework } }
     : { id: "framework-deps", ok: true, detail: `${Object.keys(wanted).length} framework dependencies installed` });
+  const peers = Object.entries(pkg.peerDependencies ?? {});
+  if (!peers.length || !root) return out;
+  const ws = tryReadJson(path.join(root, "package.json"));
+  const unlisted = peers.filter(([name]) => !{ ...ws?.dependencies, ...ws?.devDependencies }[name]);
+  const peerProblems = peers.map(([name, spec]) => versionProblem(name, spec, root)).filter(Boolean);
+  out.push(peerProblems.length
+    ? {
+      id: "framework-peers",
+      ok: false,
+      level: "fail",
+      detail: `the framework's peer dependencies must resolve from the workspace: ${peerProblems.join("; ")}`,
+      ...(unlisted.length
+        ? { fix: `npm install --save-dev ${unlisted.map(([n, spec]) => `${n}@${spec}`).join(" ")} (in the workspace)` }
+        : { fix: "npm install (in the workspace)", autofix: { cmd: "npm", args: ["install"], cwd: root } }),
+    }
+    : { id: "framework-peers", ok: true, detail: `${peers.map(([n, spec]) => `${n} ${spec}`).join(", ")} resolve from the workspace` });
   return out;
 }
 
@@ -108,7 +139,7 @@ function login({ framework, sys, exists }) {
   const channel = loginChannel({ sys, exists });
   if (channel === "msedge") return [{ id: "login-browser", ok: true, detail: "the login opens Microsoft Edge" }];
   if (channel === "chrome") return [{ id: "login-browser", ok: true, level: "warn", detail: "Microsoft Edge is not installed: the login opens Google Chrome", fix: "install Microsoft Edge if your identity provider blocks Chrome" }];
-  const b = browserBuilds(path.join(framework, "node_modules", "playwright-core"), ["chromium"], sys);
+  const b = browserBuilds(packageDir("playwright-core", framework) ?? path.join(framework, "node_modules", "playwright-core"), ["chromium"], sys);
   if (!b) return [{ id: "login-browser", ok: false, level: "fail", detail: "neither Microsoft Edge nor Google Chrome is installed, and the framework's Playwright is not installed", fix: "install Microsoft Edge, or npm install (in the repo root)", autofix: { cmd: "npm", args: ["install"], cwd: framework } }];
   if (b.missing.length)
     return [{ id: "login-browser", ok: false, level: "fail", detail: `neither Microsoft Edge nor Google Chrome is installed, and Playwright ${b.version} needs ${describeMissing(b.missing)}, which is not downloaded`, fix: "install Microsoft Edge, or npx playwright install chromium (in the repo root)", autofix: { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: framework } }];
@@ -250,7 +281,7 @@ function session({ root, cfg, now, product }) {
 function repo({ root, product, sys }) {
   const pw = paths(product, root).pwProject;
   const rel = slash(path.relative(root, pw));
-  const install = { fix: `node scripts/foundation.mjs install ${product} (or in ${rel}: npm install, then npx playwright install chromium)`, autofix: { steps: [{ cmd: "npm", args: ["install"], cwd: pw }, { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: pw }] } };
+  const install = { fix: expandFw(`node {fw}/scripts/foundation.mjs install ${product} (or in ${rel}: npm install, then npx playwright install chromium)`), autofix: { steps: [{ cmd: "npm", args: ["install"], cwd: pw }, { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: pw }] } };
   // Not built yet is not a problem: the run's playwright-repo stage builds and installs it. `pending` makes
   // doctorStatus ask for a fresh check once it exists.
   if (!existsSync(path.join(pw, "package.json"))) return [{ id: "repo-deps", ok: true, level: "warn", pending: true, detail: `${rel} is not built yet (the playwright-repo stage builds and installs it; checked again after that)` }];
@@ -338,7 +369,7 @@ export function clearDoctor(product, root) {
 // -> { ready, reason? } for starting `stage`
 export function doctorStatus(product, stage, root) {
   const rec = tryReadJson(path.join(paths(product, root).state, RECORD));
-  const rerun = `node scripts/run.mjs doctor ${product}`;
+  const rerun = expandFw(`node {fw}/scripts/run.mjs doctor ${product}`);
   if (!rec) return { ready: false, reason: `the dependency check has not run in this session: run \`${rerun}\`` };
   const needs = STAGE_NEEDS[stage] ?? [];
   const unchecked = needs.filter((g) => !rec.groups?.includes(g));

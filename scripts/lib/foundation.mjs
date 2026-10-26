@@ -28,6 +28,7 @@ import { tryReadJson, writeAtomic } from "./files.mjs";
 import { firstPartyHosts } from "./probe.mjs";
 import { parseSnapshot } from "./explore.mjs";
 import { sha256 } from "./verified.mjs";
+import { expandFw } from "./roots.mjs";
 
 export const SIDES = ["repo", "ui", "api", "k6"];
 export const OWNER = { repo: "pw-repo-owner", ui: "pw-ui-scaffolder", api: "pw-api-scaffolder", k6: "k6-lib-writer" };
@@ -217,15 +218,17 @@ function templatesHash(side, root) {
   return sha(walk(dir).map((f) => `${f}\n${readTemplate(path.join(dir, f))}`).join("\n\0"));
 }
 
+// `{{name}}` from the values; a framework command in a template is written `node {fw}/scripts/...` (the framework's
+// path from the workspace, roots.mjs expandFw).
 function fill(text, values, where) {
-  return text.replace(/\{\{(\w+)\}\}/g, (_, k) => {
+  return expandFw(text).replace(/\{\{(\w+)\}\}/g, (_, k) => {
     if (!(k in values)) throw new Error(`${where}: no value for {{${k}}}`);
     return String(values[k]);
   });
 }
 
 function withHeader(target, template, text, overlayRel, product, side) {
-  const lines = [`${HEADER} Rendered from ${template}.`, `Change ${overlayRel} and run: node scripts/foundation.mjs render ${product} --side ${side}`];
+  const lines = [`${HEADER} Rendered from ${template}.`, expandFw(`Change ${overlayRel} and run: node {fw}/scripts/foundation.mjs render ${product} --side ${side}`)];
   const base = path.posix.basename(target);
   if (/\.(ts|js|mjs)$/.test(base)) return `${lines.map((l) => `// ${l}`).join("\n")}\n${text}`;
   if (base.endsWith(".md")) return `<!-- ${lines.join(" ")} -->\n${text}`;
@@ -630,8 +633,8 @@ export function renderSide(ctx, side, overlay) {
   if (side === "repo") {
     const json = [...files.keys()].filter((f) => f.endsWith(".json")).sort();
     const sidecar = {
-      generatedBy: `${HEADER} Rendered from ${TEMPLATE_DIRS.repo} by: node scripts/foundation.mjs render ${ctx.product} --side repo`,
-      why: "JSON can't hold a comment, so this record marks the managed JSON files. node scripts/foundation.mjs check fails when one is hand-edited.",
+      generatedBy: expandFw(`${HEADER} Rendered from ${TEMPLATE_DIRS.repo} by: node {fw}/scripts/foundation.mjs render ${ctx.product} --side repo`),
+      why: expandFw("JSON can't hold a comment, so this record marks the managed JSON files. node {fw}/scripts/foundation.mjs check fails when one is hand-edited."),
       files: Object.fromEntries(json.map((f) => [f, { template: files.get(f).template, checked: f === "package.json" ? "everything except the dependency versions (package-lock.json pins them)" : "everything" }])),
       unchecked: ["package-lock.json"],
     };
@@ -667,7 +670,7 @@ export function currentStamp(ctx, side) {
 // null when the side's verified stamp matches what is on disk, else why not (for the domain flows and the stage).
 export function foundationUnverified(ctx, side) {
   const m = tryReadJson(ctx.fp.manifest(side));
-  const cmd = `node scripts/foundation.mjs render ${ctx.product} --side ${side}, then check`;
+  const cmd = expandFw(`node {fw}/scripts/foundation.mjs render ${ctx.product} --side ${side}, then check`);
   if (!m) return `the ${side} foundation was never rendered (${cmd})`;
   if (!m.verified) return `the ${side} foundation never passed foundation.mjs check (${cmd})`;
   const now = currentStamp(ctx, side);
@@ -722,7 +725,7 @@ export function driftProblems(ctx, side, rendered) {
   const out = [];
   for (const [target, { content }] of rendered.files) {
     const file = path.join(project, target);
-    if (!existsSync(file)) out.push({ file: target, problem: `${target} is missing: run node scripts/foundation.mjs render ${ctx.product} --side ${side}` });
+    if (!existsSync(file)) out.push({ file: target, problem: expandFw(`${target} is missing: run node {fw}/scripts/foundation.mjs render ${ctx.product} --side ${side}`) });
     else if (contentHash(target, readFileSync(file, "utf8")) !== contentHash(target, content))
       out.push({ file: target, problem: `${target} was hand-edited: it differs from its render of ${rendered.files.get(target).template}. Managed files are never edited: change the ${side} overlay and re-render` });
   }
@@ -980,7 +983,7 @@ export async function render(ctx, side, validate) {
 export async function check(ctx, side, validate, { compile = true, exec } = {}) {
   const { overlay, problems } = await loadValid(ctx, side, validate);
   const out = [...problems];
-  if (!existsSync(ctx.fp.manifest(side))) out.push(`the ${side} foundation was never rendered: run node scripts/foundation.mjs render ${ctx.product} --side ${side}`);
+  if (!existsSync(ctx.fp.manifest(side))) out.push(expandFw(`the ${side} foundation was never rendered: run node {fw}/scripts/foundation.mjs render ${ctx.product} --side ${side}`));
   if (overlay) {
     const rendered = renderSide(ctx, side, overlay);
     out.push(...driftProblems(ctx, side, rendered).map((d) => d.problem));
@@ -999,7 +1002,7 @@ export async function check(ctx, side, validate, { compile = true, exec } = {}) 
 
 // npm install (the lockfile pins what it resolves) and the Playwright browser, in the Playwright project.
 export function install(ctx, exec = (c, a, d) => runCommand(c, a, d, { timeout: 900_000 })) {
-  if (!existsSync(path.join(ctx.pwProject, "package.json"))) return { code: 1, out: { problems: [`render the repo side first: node scripts/foundation.mjs render ${ctx.product} --side repo`] } };
+  if (!existsSync(path.join(ctx.pwProject, "package.json"))) return { code: 1, out: { problems: [expandFw(`render the repo side first: node {fw}/scripts/foundation.mjs render ${ctx.product} --side repo`)] } };
   const problems = [];
   const npm = exec("npm", ["install"], ctx.pwProject);
   if (npm) problems.push(`npm install failed: ${npm}`);

@@ -25,6 +25,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { SIDES, check, foundationContext, foundationPathsOut, install, render } from "./lib/foundation.mjs";
+import { expandFw } from "./lib/roots.mjs";
 
 const USAGE = "usage: foundation.mjs render <product> --side repo|ui|api|k6 | check <product> [--side S] [--static] | install <product> | paths <product> [--side S]";
 const usage = (extra) => ({ code: 2, out: { errors: [...(extra ? [extra] : []), USAGE] } });
@@ -57,7 +58,7 @@ export async function main(argv, { root = workspaceRoot, exec } = {}) {
   }
   if (cmd === "check") {
     const sides = v.side ? [v.side] : SIDES.filter((s) => existsSync(ctx.fp.manifest(s)));
-    if (!sides.length) return { code: 1, out: { valid: false, problems: [`nothing rendered yet: node scripts/foundation.mjs render ${product} --side repo`] } };
+    if (!sides.length) return { code: 1, out: { valid: false, problems: [expandFw(`nothing rendered yet: node {fw}/scripts/foundation.mjs render ${product} --side repo`)] } };
     const results = [];
     for (const s of sides) results.push(await check(ctx, s, validateData, { compile: !v.static, ...(exec ? { exec } : {}) }));
     const valid = results.every((r) => r.valid);

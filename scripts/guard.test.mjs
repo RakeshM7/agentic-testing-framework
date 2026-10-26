@@ -8,7 +8,7 @@ import { toolCall } from "./lib/tool-call.mjs";
 import { shellAllowed } from "./lib/permissions.mjs";
 import { normalize } from "./hooks/hosts/claude.mjs";
 import { append } from "./lib/ledger.mjs";
-import { paths } from "./lib/contract.mjs";
+import { frameworkRoot, paths } from "./lib/contract.mjs";
 import { startRun, tempRoot } from "./test-helpers.mjs";
 
 // Calls as Claude Code's hook sends them, through the Claude adapter (the guard itself only sees canonical calls).
@@ -902,9 +902,10 @@ test("every framework script is writable by feedback-implementor-agent or delibe
     "scripts/workspace.test.mjs",
   ]);
   const files = [];
-  // node_modules is git-ignored and never the framework's own code, wherever an install put it
+  // node_modules is git-ignored and never the framework's own code, wherever an install put it; paths as the run's
+  // permissions name them, from the framework root
   const walk = (dir) => {
-    for (const d of readdirSync(dir, { withFileTypes: true })) {
+    for (const d of readdirSync(path.join(frameworkRoot, dir), { withFileTypes: true })) {
       const rel = `${dir}/${d.name}`;
       if (d.isDirectory()) { if (!["hooks", "agents", "fixtures", "node_modules"].includes(d.name)) walk(rel); } else if (rel.endsWith(".mjs")) files.push(rel);
     }

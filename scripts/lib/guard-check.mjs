@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import path from "node:path";
 import { paths } from "./contract.mjs";
 import { identityOf, labelOf } from "./hosts.mjs";
+import { expandFw } from "./roots.mjs";
 
 const ABSENT = "absent.json";
 const dirOf = (product, root) => path.join(paths(product, root).state, "guard-check");
@@ -38,8 +39,8 @@ export function markAbsent(product, root) {
 export function guardStatus(product, mode, root) {
   const dir = dirOf(product, root);
   const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
-  const how = `run \`node scripts/run.mjs guard-check ${product}\` from the agent session; a working guard blocks it`;
-  if (files.includes(ABSENT)) return { ready: false, reason: `the guard did not intercept guard-check: hooks are not active in this session. Fix the host's hook setup (docs/platforms.md), then ${how}` };
+  const how = expandFw(`run \`node {fw}/scripts/run.mjs guard-check ${product}\` from the agent session; a working guard blocks it`);
+  if (files.includes(ABSENT)) return { ready: false, reason: `the guard did not intercept guard-check: hooks are not active in this session. Fix the host's hook setup (${expandFw("{fw}/docs/platforms.md")}), then ${how}` };
   const records = files.map((f) => JSON.parse(readFileSync(path.join(dir, f), "utf8")));
   if (!records.length) return { ready: false, reason: `the guard has not been verified for this session: ${how}` };
   if (mode !== "full-run") return { ready: true };
@@ -48,5 +49,5 @@ export function guardStatus(product, mode, root) {
   // permissions to calls they cannot name (D-035).
   if (records.some((r) => identityOf(r.host) !== "agent-hook" || r.agent)) return { ready: true };
   const seen = [...new Set(records.map((r) => labelOf(r.host)))].join(", ");
-  return { ready: false, reason: `full-run on ${seen} needs the custom agents' own hooks, and none blocked guard-check: start the run from orchestrator-agent in the agent picker (docs/platforms.md), then ${how}; or run in readonly` };
+  return { ready: false, reason: `full-run on ${seen} needs the custom agents' own hooks, and none blocked guard-check: start the run from orchestrator-agent in the agent picker (${expandFw("{fw}/docs/platforms.md")}), then ${how}; or run in readonly` };
 }

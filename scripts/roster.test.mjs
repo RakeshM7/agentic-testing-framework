@@ -1,15 +1,20 @@
 // The docs, configs, agent bodies and scripts name only agents that exist in config/permissions.yaml, and every agent
 // count in the docs matches it -- so a roster change cannot leave stale text behind. docs/decisions.md is excluded:
 // it is append-only history and keeps the names of agents that were later removed.
+// The framework's files (agents, config, scripts, the agent-facing docs) and the workspace's (the briefs and the
+// maintainer docs) are both scanned: one directory, or the monorepo's root and its packages/core.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
-import { frameworkRoot } from "./lib/contract.mjs";
+import { frameworkRoot, workspaceRoot } from "./lib/contract.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
 
-const read = (rel) => readFileSync(path.join(frameworkRoot, rel), "utf8");
+const ROOTS = [...new Set([workspaceRoot, frameworkRoot])];
+// a path from whichever root holds it: the workspace's first
+const where = (rel) => ROOTS.map((r) => path.join(r, rel)).find((f) => existsSync(f)) ?? path.join(frameworkRoot, rel);
+const read = (rel) => readFileSync(where(rel), "utf8");
 const { errors, resolved } = resolvePermissions(yaml.load(read("config/permissions.yaml")));
 const agents = new Set(Object.keys(resolved.agents));
 
@@ -21,11 +26,16 @@ const NOT_AGENTS = new Set(["per-agent", "agent-to-agent", "custom-agent", "call
 // Prose may shorten a name to its role ("every runner-triager"), so a hyphen-bounded suffix of a real agent counts.
 const isAgent = (name) => agents.has(name) || [...agents].some((a) => a.endsWith(`-${name}`));
 
+// -> the files under `dir` in every root, by their path from that root (a directory in both is listed once per file)
 function files(dir, keep) {
-  return readdirSync(path.join(frameworkRoot, dir)).flatMap((f) => {
-    const rel = path.posix.join(dir, f);
-    return statSync(path.join(frameworkRoot, rel)).isDirectory() ? files(rel, keep) : keep(rel) ? [rel] : [];
-  });
+  const under = (root, d) =>
+    existsSync(path.join(root, d))
+      ? readdirSync(path.join(root, d)).flatMap((f) => {
+        const rel = path.posix.join(d, f);
+        return statSync(path.join(root, rel)).isDirectory() ? under(root, rel) : keep(rel) ? [rel] : [];
+      })
+      : [];
+  return [...new Set(ROOTS.flatMap((root) => under(root, dir)))];
 }
 const scanned = [
   ...files("agents", (f) => f.endsWith(".md")),

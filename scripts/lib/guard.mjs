@@ -16,7 +16,10 @@
 // On a host that cannot name the calling agent (scripts/lib/hosts.mjs), a full-run call gets what at least one of the
 // run's agents may do (runCeiling, D-035): every call there comes from one of the run's agents.
 // When the framework is installed apart from the workspace (D-085, scripts/lib/roots.mjs), no call writes under the
-// framework root: in or out of a run, any caller and mode (frameworkWrite()). In one directory, nothing changes.
+// framework root: in or out of a run, any caller and mode (frameworkWrite()). Only an installed framework (its real path
+// inside node_modules, roots.mjs isInstalled) is read-only: a source checkout apart from the workspace (the monorepo's
+// packages/core) stays editable under the other rules. In one directory, nothing changes.
+// A printed command names the framework's scripts from the workspace (`node {fw}/scripts/...`, roots.mjs expandFw).
 //
 // Dependency-free (imported by a PreToolUse hook on every guarded tool call).
 
@@ -28,7 +31,7 @@ import { shellWriteTargets } from "./decisions.mjs";
 import { canIdentify, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
 import { atLeast, canWrite, effectiveLiveTarget, isManaged, normalizeWritePath, runCeiling, shellAllowed, shellSegments } from "./permissions.mjs";
-import { frameworkRoot, sameDir } from "./roots.mjs";
+import { expandFw, frameworkRel, frameworkRoot, isInstalled, sameDir } from "./roots.mjs";
 
 const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 
@@ -118,7 +121,7 @@ const DECODED_VERB = /\b(?:approve|approved|importCases)\b/gi;
 const humanOnlyCmd = (cmd) => /testcases/i.test(cmd) && HUMAN_ONLY_VERB.test(cmd);
 const HUMAN_ONLY_FILES = /approvals?\.(csv|json)|approv~\d|testcases[\\/]+approv/i;
 const HUMAN_ONLY_PATH = /(^|[\\/])(testcases[\\/]+approv[^\\/]*|approvals?\.(csv|json)|approv~\d[^\\/]*)$/i;
-const HUMAN_ONLY_REASON = "test case approval is human-only: a human edits testcases/approval.csv and runs `node scripts/testcases.mjs approve` (or `import ... --approved` for a file already approved) in their own terminal";
+const HUMAN_ONLY_REASON = "test case approval is human-only: a human edits testcases/approval.csv and runs `node {fw}/scripts/testcases.mjs approve` (or `import ... --approved` for a file already approved) in their own terminal";
 // Quotes, a backslash or cmd.exe's caret inside a word only split it for this match (`--appr''oved`, `appr\ove`,
 // `appr^ove` reach the program whole), so they are dropped after the concatenations are joined: stricter only.
 const WORD_SPLITTERS = /['"`]|\\(?=[a-z])|\^(?=[a-z])/gi;
@@ -208,7 +211,7 @@ const decodedVerbs = (s) => s.match(DECODED_VERB)?.length ?? 0;
 // The ledger sweep (D-075) deletes in the target outside any run, so no tool call may start it: a line that names the
 // ledger script (or a make target) together with the sweep verb, read with quotes and word splitters dropped (stricter
 // only). The script itself also refuses without an interactive terminal and the typed product slug.
-const SWEEP_REASON = "the ledger sweep is human-only: a human runs `node scripts/ledger.mjs sweep <product>` (or `make sweep PRODUCT=<product>`) in their own terminal, between runs";
+const SWEEP_REASON = "the ledger sweep is human-only: a human runs `node {fw}/scripts/ledger.mjs sweep <product>` (or `make sweep PRODUCT=<product>`) in their own terminal, between runs";
 const SWEEP_MAKE = new RegExp(`${makeRun("")}[^;&|\\n]*\\ssweep\\b`, "i");
 function humanOnlySweep(call) {
   if (call.kind !== "shell") return false;
@@ -313,7 +316,8 @@ function managedPath(file, run) {
 }
 
 // D-085: the spelling of a framework file the call would write, else null; only when the framework root is not the
-// workspace root. A written path and every shell write target the hook can read (scripts/lib/decisions.mjs
+// workspace root and the framework is installed (isInstalled: its real path inside node_modules; a source checkout
+// apart from the workspace stays editable, and isInstalled fails closed). A written path and every shell write target the hook can read (scripts/lib/decisions.mjs
 // shellWriteTargets: redirects, tee, cp, mv, rm, sed -i, git restore, ...; a relative one from the workspace and from
 // every directory the line changes into) are compared as written (a device or UNC prefix and `..` resolved; case,
 // separators, a trailing dot or space and a stream suffix folded) and as the file system resolves them (symlinks,
@@ -323,7 +327,7 @@ function managedPath(file, run) {
 const UNKNOWN_TARGET = Symbol("unknown write target");
 const CD_DIRS = /(?:^|[;&|(]\s*)(?:cd|pushd|Set-Location)(?:\s+\/d|\s+-(?:Literal)?Path)?\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|'"()]+))/gi;
 function frameworkWrite(call, root, framework) {
-  if (!framework || sameDir(root, framework)) return null;
+  if (!framework || sameDir(root, framework) || !isInstalled(framework)) return null;
   if (call.kind === "write" && !(call.paths ?? []).length) return UNKNOWN_TARGET;
   const command = String(call.command ?? "");
   const files = call.kind === "write" ? call.paths : call.kind === "shell" ? shellWriteTargets(command) : [];
@@ -405,15 +409,17 @@ function evaluate(call, run) {
 // run's rules allow it (paths are product-specific); everything else must be allowed by EVERY active run.
 // root: the workspace root; framework: the framework root (scripts/lib/roots.mjs; the same directory in this repo).
 export function checkTool(call, root, env = process.env, { framework = frameworkRoot } = {}) {
+  // a printed command: the framework's scripts as the workspace runs them
+  const fw = (text) => expandFw(text, frameworkRel(root, framework));
   const canary = call.kind === "shell" ? CANARY.exec(call.command ?? "") : null;
   if (canary)
     return { allowed: false, rule: "canary", reason: `guard is active on ${labelOf(call.host)} (caller: ${call.agent ?? "unidentified"}); this block is expected`, canary: { product: canary[1] } };
-  if (humanOnly(call)) return deny("human-only", HUMAN_ONLY_REASON);
-  if (humanOnlySweep(call)) return deny("human-only", SWEEP_REASON);
+  if (humanOnly(call)) return deny("human-only", fw(HUMAN_ONLY_REASON));
+  if (humanOnlySweep(call)) return deny("human-only", fw(SWEEP_REASON));
   const fwFile = frameworkWrite(call, root, framework);
   if (fwFile === UNKNOWN_TARGET) return deny("framework-readonly", `could not tell which file ${call.tool} writes, and the framework (${framework}) is installed read-only (D-085); refusing`);
   if (fwFile)
-    return deny("framework-readonly", `${fwFile} is part of the installed framework (${framework}), which no agent changes (D-085): change the workspace's own files instead, or report it (scripts/framework-issues.mjs add)`);
+    return deny("framework-readonly", `${fwFile} is part of the installed framework (${framework}), which no agent changes (D-085): change the workspace's own files instead, or report it (${fw("node {fw}/scripts/framework-issues.mjs add")})`);
   const runs = findActiveRuns(root, env, framework);
   if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHosts: [] }, null) : ALLOW;
   // Managed foundation files (D-054) are rendered by scripts/foundation.mjs through node, never by a hooked write: no
@@ -424,15 +430,15 @@ export function checkTool(call, root, env = process.env, { framework = framework
       if (managed)
         return deny(
           "managed-file",
-          /\/fixtures\/(ui|api)\/index\.ts$|\/fixtures\/ui\/pages\//i.test(`/${managed}`)
+          fw(/\/fixtures\/(ui|api)\/index\.ts$|\/fixtures\/ui\/pages\//i.test(`/${managed}`)
             ? `${managed} is generated from the module registrations (D-056): run the module's build (ui-code.mjs or api-code.mjs), never edit it`
             : /\/(clients|tests\/api|config\/api\/schemas|fixtures\/api\/clients)\//i.test(`/${managed}`)
-              ? `${managed} is generated by scripts/api-code.mjs from the endpoint catalogue and the API plan (D-056): change the client or tests overlay, or a slot of helpers/api/<module>.payloads.ts or .glue.ts, and run api-code.mjs build`
+              ? `${managed} is generated by {fw}/scripts/api-code.mjs from the endpoint catalogue and the API plan (D-056): change the client or tests overlay, or a slot of helpers/api/<module>.payloads.ts or .glue.ts, and run api-code.mjs build`
               : /\/k6\/workload(-coverage|-registry)?\.json$/i.test(`/${managed}`)
-                ? `${managed} is written by scripts/workload.mjs (D-057): change k6/workload-overlay.json and run workload.mjs build, then check`
+                ? `${managed} is written by {fw}/scripts/workload.mjs (D-057): change k6/workload-overlay.json and run workload.mjs build, then check`
                 : /\/k6\/(code-plan\.json|parked\.json|legacy\/)|^\/k6-tests\/[^/]+\/scripts\//i.test(`/${managed}`)
-                  ? `${managed} is generated by scripts/k6-code.mjs from the verified workload (D-057): write only the slots of k6-tests/<product>/scripts/slots/<module>.js and run k6-code.mjs build, then check`
-                  : `${managed} is rendered by scripts/foundation.mjs from templates/: change the side's overlay (artifacts/<product>/foundation/) and run foundation.mjs render`,
+                  ? `${managed} is generated by {fw}/scripts/k6-code.mjs from the verified workload (D-057): write only the slots of k6-tests/<product>/scripts/slots/<module>.js and run k6-code.mjs build, then check`
+                  : `${managed} is rendered by {fw}/scripts/foundation.mjs from {fw}/templates/: change the side's overlay (artifacts/<product>/foundation/) and run foundation.mjs render`),
         );
     }
   const verdicts = runs.map((r) => evaluate(call, r));

@@ -7,7 +7,8 @@ import path from "node:path";
 import { main } from "./foundation.mjs";
 import { gate } from "./gate.mjs";
 import { status } from "./run.mjs";
-import { paths, frameworkRoot } from "./lib/contract.mjs";
+import { paths, frameworkRoot, workspaceRoot } from "./lib/contract.mjs";
+import { expandFw, frameworkRel } from "./lib/roots.mjs";
 import { SIDES, currentStamp, foundationContext, foundationUnverified, managedTargets, renderSide } from "./lib/foundation.mjs";
 import { listFindings } from "./lib/gate/playwright.mjs";
 import { buildCases, put, renderFoundation, startRun } from "./test-helpers.mjs";
@@ -106,7 +107,9 @@ test("templates checked out with CRLF (core.autocrlf) render the same LF bytes a
     for (const [f, content] of b.seeds) assert.doesNotMatch(content, /\r/, `${side}: seed ${f}`);
     assert.equal(currentStamp(crlf, side).templates, currentStamp(lf, side).templates, `${side}: the templates hash ignores line endings`);
   }
-  assert.match(read(path.join(frameworkRoot, ".gitattributes")), /^templates\/\*\* text eol=lf$/m);
+  // the repo's .gitattributes names the templates from the workspace root (packages/core/templates/** in the monorepo)
+  const templatesGlob = expandFw("{fw}/templates/**", frameworkRel(workspaceRoot, frameworkRoot));
+  assert.ok(read(path.join(workspaceRoot, ".gitattributes")).split(/\r?\n/).includes(`${templatesGlob} text eol=lf`), templatesGlob);
 });
 
 test("drift: a hand-edited managed file fails check; package.json's dependency versions and package-lock.json are ignored, its scripts and dependency names are not", async () => {

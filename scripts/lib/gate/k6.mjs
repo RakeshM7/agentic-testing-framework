@@ -10,6 +10,7 @@ import { foundationContext, gateFoundationProblems } from "../foundation.mjs";
 import { k6CodeContext, k6CodeUnverified } from "../k6-code.mjs";
 import { workloadScenarios } from "../workload.mjs";
 import { finding, hygiene, walk } from "./common.mjs";
+import { expandFw } from "../roots.mjs";
 
 export function gateK6(ctx) {
   const { k6Project, productDir, module } = ctx;
@@ -18,16 +19,16 @@ export function gateK6(ctx) {
   if (!existsSync(workloadFile)) return [finding("blocker", "k6/workload.json", null, "workload", "workload.json is missing", "the workload step must finish first")];
   // script-built (scripts/workload.mjs): {scenarios[]}; exclusions live in workload-coverage.json, not in the file
   const scenarios = workloadScenarios(workloadFile);
-  if (!scenarios) return [finding("blocker", "k6/workload.json", null, "workload", "workload.json is not the script-built shape {scenarios: [...]}", `run node scripts/workload.mjs build ${ctx.product} ${module}`)];
+  if (!scenarios) return [finding("blocker", "k6/workload.json", null, "workload", "workload.json is not the script-built shape {scenarios: [...]}", expandFw(`run node {fw}/scripts/workload.mjs build ${ctx.product} ${module}`))];
   if (!existsSync(path.join(k6Project, "lib", "config.js"))) out.push(finding("blocker", "lib/config.js", null, "lib", "the shared lib is missing", "run k6-lib-writer"));
   // every script rule is k6-code.mjs check's: its stamp must cover what is on disk now
   const why = k6CodeUnverified(k6CodeContext({ root: ctx.root, product: ctx.product, module, run: ctx.run, productDir, k6Project }));
-  if (why) out.push(finding("blocker", `scripts/slots/${module}.js`, null, "k6-code", why, `run node scripts/k6-code.mjs build ${ctx.product} ${module}, then node scripts/k6-code.mjs check ${ctx.product} ${module}, and fix what it reports (in the slots or the workload)`));
+  if (why) out.push(finding("blocker", `scripts/slots/${module}.js`, null, "k6-code", why, expandFw(`run node {fw}/scripts/k6-code.mjs build ${ctx.product} ${module}, then node {fw}/scripts/k6-code.mjs check ${ctx.product} ${module}, and fix what it reports (in the slots or the workload)`)));
   const scripts = walk(k6Project, "scripts", new RegExp(`^${module}-.*\\.js$`));
   const slots = `scripts/slots/${module}.js`;
   out.push(...hygiene(k6Project, [...scripts, ...(existsSync(path.join(k6Project, slots)) ? [slots] : [])]));
   // The lib is rendered from templates/ (D-054): once the script rendered it, no lib file may drift from its render.
   const fctx = foundationContext({ root: ctx.root, product: ctx.product, run: ctx.run, cfg: ctx.cfg, productDir, pwProject: ctx.pwProject, k6Project });
-  for (const d of gateFoundationProblems(fctx, "k6")) out.push(finding("blocker", d.file, null, "foundation", d.problem, `re-render it: node scripts/foundation.mjs render ${ctx.product} --side k6 (a needed change goes into the k6 overlay or lib/ext/)`));
+  for (const d of gateFoundationProblems(fctx, "k6")) out.push(finding("blocker", d.file, null, "foundation", d.problem, expandFw(`re-render it: node {fw}/scripts/foundation.mjs render ${ctx.product} --side k6 (a needed change goes into the k6 overlay or lib/ext/)`)));
   return out;
 }

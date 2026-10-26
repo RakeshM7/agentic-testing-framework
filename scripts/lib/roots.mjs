@@ -1,8 +1,9 @@
 // The two roots (D-085). The framework root holds what the framework ships: scripts/, agents/, the default config/
 // (permissions, models, platforms, mcp, hooks), templates/, schemas/ and the agent-facing docs. The workspace root
 // holds a client's own work: the run-configs config/<product>.yaml, config/interview-answers.json, artifacts/,
-// playwright-tests/, k6-tests/, feedback/ and the generated host files. In this repository both are the same
-// directory, so every path resolves as it always has.
+// playwright-tests/, k6-tests/, feedback/ and the generated host files. When both are one directory, every path
+// resolves as it always has; in the monorepo the repo root is the workspace and the framework is packages/core
+// (docs/packaging.md §3.11).
 //
 //   frameworkRoot   these scripts' own location
 //   workspaceRoot   ATF_WORKSPACE; else the nearest directory, from the working directory up, that holds
@@ -11,6 +12,9 @@
 // Agent sources and config name a framework file as `{fw}/<path>` (`node {fw}/scripts/run.mjs`): the build and
 // `run.mjs init` expand the token to the framework's path relative to the workspace, which is empty when the two are
 // the same directory, so the text is exactly `node scripts/run.mjs`.
+//
+// The framework is read-only only when it is installed (isInstalled): its real path lies inside a node_modules folder.
+// A source checkout, such as the monorepo's packages/core, stays editable.
 //
 // Dependency-free (imported by the hook entries and the guard).
 import { existsSync, realpathSync, statSync } from "node:fs";
@@ -85,9 +89,29 @@ export function frameworkRel(workspace = workspaceRoot, framework = frameworkRoo
   return path.relative(path.resolve(workspace), path.resolve(framework)).replaceAll("\\", "/");
 }
 
+// The framework's path from this process's workspace, worked out once: what a printed hint or a generated header names.
+let ownRel;
+const ownFrameworkRel = () => (ownRel ??= frameworkRel());
+
 // `{fw}/x` -> `<rel>/x`, or `x` when the framework is the workspace. A `{fw}` with no `/` after it stands for the
-// directory itself (`.` when they are the same).
-export function expandFw(text, rel = frameworkRel()) {
+// directory itself (`.` when they are the same). Without `rel`: from this process's workspace (printed hints and
+// generated headers: `node {fw}/scripts/run.mjs …` prints today's text in one directory, `node packages/core/…` in the
+// monorepo).
+export function expandFw(text, rel = ownFrameworkRel()) {
   const s = String(text);
   return rel ? s.replaceAll(FW_TOKEN, rel) : s.replaceAll(`${FW_TOKEN}/`, "").replaceAll(FW_TOKEN, ".");
+}
+
+// Whether the framework is an installed package, which no agent writes (the guard's framework-readonly rule): its real
+// path, symlinks and junctions resolved, has a `node_modules` segment (any case, either separator). A source checkout
+// (the monorepo's packages/core, also when reached through the workspace's node_modules/@testagentic/atf link, which
+// resolves to it) is not. Fails closed: a path that can't be resolved counts as installed.
+export function isInstalled(framework = frameworkRoot) {
+  let real;
+  try {
+    real = realpathSync.native(path.resolve(framework));
+  } catch {
+    return true;
+  }
+  return String(real).split(/[\\/]+/).some((segment) => segment.toLowerCase() === "node_modules");
 }

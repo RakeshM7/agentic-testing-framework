@@ -18,6 +18,7 @@ import { SMOKE_FILE, SMOKE_TAG, uiCodeContext, uiCodeFindings } from "../ui-code
 import { apiCodeContext, apiCodeFindings, builtinPatchFindings, runnerImportFindings } from "../api-code.mjs";
 import { scanTs } from "../ts-scan.mjs";
 import { finding, hygiene, matches, read, run, testTitles, walk } from "./common.mjs";
+import { expandFw } from "../roots.mjs";
 
 // What the side must implement: {want: Map id -> {mutates}, unapproved: Set of case ids}, or null. The API side traces
 // the plan's scenarios; its titles and tags are generated and checked by scripts/lib/api-code.mjs (D-056).
@@ -209,7 +210,7 @@ export function listFindings(tests, { idRe, unapproved, what, root, dir, setupFi
     const file = listedFile(t, { base, dir });
     if (setupFile && file === setupFile) continue;
     if (exempt.includes(file)) {
-      if (exemptTag && !t.titlePath.at(-1)?.split(/\s+/).includes(exemptTag)) out.push(finding("major", file, t.line, "traceability", `Playwright lists "${title}" in the generated smoke without ${exemptTag}`, "re-render it: node scripts/ui-code.mjs build <product> <module>"));
+      if (exemptTag && !t.titlePath.at(-1)?.split(/\s+/).includes(exemptTag)) out.push(finding("major", file, t.line, "traceability", `Playwright lists "${title}" in the generated smoke without ${exemptTag}`, expandFw("re-render it: node {fw}/scripts/ui-code.mjs build <product> <module>")));
       continue;
     }
     const ids = [...new Set(title.match(new RegExp(idRe.source, "g")) ?? [])];
@@ -281,7 +282,7 @@ export function gatePlaywright(ctx) {
   const out = [];
 
   if (want === null) out.push(finding("blocker", side === "ui" ? "testcases/" : "api/plan.json", null, "traceability", `no ${what}s to trace to`, `the ${side === "ui" ? "testcase" : "plan"} stage must finish first`));
-  else if (side === "api" && !generated) out.push(finding("blocker", `tests/api/${module}/`, null, "traceability", `the module's API code was never generated for its ${want.size} plan scenarios`, `run node scripts/api-code.mjs build ${ctx.product} ${module}, then the writers fill its slots`));
+  else if (side === "api" && !generated) out.push(finding("blocker", `tests/api/${module}/`, null, "traceability", `the module's API code was never generated for its ${want.size} plan scenarios`, expandFw(`run node {fw}/scripts/api-code.mjs build ${ctx.product} ${module}, then the writers fill its slots`)));
   else if (want.size && !traced.length) out.push(finding("blocker", `tests/${side}/${module}/`, null, "traceability", `no specs for ${want.size} ${what}s`, `write one test per ${what}`));
 
   const implemented = new Set();
@@ -341,7 +342,7 @@ export function gatePlaywright(ctx) {
   // files) drifted from its render between renders, and the extension files keep the guard.
   const fctx = foundationContext({ root: ctx.root, product: ctx.product, run: ctx.run, cfg: ctx.cfg, productDir, pwProject, k6Project: ctx.k6Project });
   const rendered = existsSync(fctx.fp.manifest(side));
-  for (const d of gateFoundationProblems(fctx, side)) out.push(finding("blocker", d.file, null, "foundation", d.problem, `re-render it: node scripts/foundation.mjs render ${ctx.product} --side <side> (a needed change goes into that side's overlay)`));
+  for (const d of gateFoundationProblems(fctx, side)) out.push(finding("blocker", d.file, null, "foundation", d.problem, expandFw(`re-render it: node {fw}/scripts/foundation.mjs render ${ctx.product} --side <side> (a needed change goes into that side's overlay)`)));
 
   if (project) {
     const tsc = exec("npx", ["tsc", "--noEmit"], pwProject);
@@ -364,7 +365,7 @@ export function gatePlaywright(ctx) {
         const count = (xs) => xs.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map());
         const have = count(listedTitles);
         const wantTitles = count(plan.tests.map((t) => t.literal));
-        for (const [title, n] of wantTitles) if (have.get(title) !== n) out.push(finding("major", plan.files.spec, null, "skeleton", `Playwright lists "${title}" ${have.get(title) ?? 0} times; the plan has it once`, `run node scripts/ui-code.mjs build ${ctx.product} ${module}`));
+        for (const [title, n] of wantTitles) if (have.get(title) !== n) out.push(finding("major", plan.files.spec, null, "skeleton", `Playwright lists "${title}" ${have.get(title) ?? 0} times; the plan has it once`, expandFw(`run node {fw}/scripts/ui-code.mjs build ${ctx.product} ${module}`)));
         for (const [title] of have) if (!wantTitles.has(title)) out.push(finding("major", plan.files.spec, null, "skeleton", `Playwright lists "${title}", which is not a test of the plan`, "tests are generated, one per approved case; remove whatever declares it"));
       }
       // generated API code: per spec file, the tests Playwright lists are exactly the plan's, one each (D-056)
@@ -378,7 +379,7 @@ export function gatePlaywright(ctx) {
         for (const file of model.files.specs) {
           const have = count(tests.filter((t) => listedFile(t, { base, dir }) === file).map((t) => t.titlePath.at(-1)));
           const wantTitles = count(model.tests.filter((t) => t.file === file).map((t) => t.literal));
-          for (const [title, n] of wantTitles) if (have.get(title) !== n) out.push(finding("major", file, null, "missing-test", `Playwright lists "${title}" ${have.get(title) ?? 0} times; the plan has it once`, `run node scripts/api-code.mjs build ${ctx.product} ${module}`));
+          for (const [title, n] of wantTitles) if (have.get(title) !== n) out.push(finding("major", file, null, "missing-test", `Playwright lists "${title}" ${have.get(title) ?? 0} times; the plan has it once`, expandFw(`run node {fw}/scripts/api-code.mjs build ${ctx.product} ${module}`)));
           for (const [title] of have) if (!wantTitles.has(title)) out.push(finding("major", file, null, "extra-test", `Playwright lists "${title}", which is not a test of the plan`, "tests are generated, one per plan scenario; remove whatever declares it"));
         }
       }

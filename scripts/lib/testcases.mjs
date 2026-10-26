@@ -56,6 +56,7 @@ import { knowledgePaths } from "./knowledge.mjs";
 import { assignIds } from "./registry.mjs";
 import { STEPS, testcasesModeOf } from "./contract.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
+import { expandFw } from "./roots.mjs";
 
 export const EXT = { gherkin: "feature", csv: "csv", testrail: "csv", "markdown-table": "md" };
 export const FORMATS = Object.keys(EXT);
@@ -884,7 +885,7 @@ function renderSummary(ctx, cases, ledger, byTechnique, degraded, file) {
     "",
     `Total test cases: ${cases.length}`,
     "",
-    `Rendered by \`scripts/testcases.mjs build\` from \`testcases/cases.json\` into \`testcases/${path.basename(file)}\` (${ctx.format}). Do not edit.`,
+    `Rendered by \`${expandFw("{fw}/scripts/testcases.mjs")} build\` from \`testcases/cases.json\` into \`testcases/${path.basename(file)}\` (${ctx.format}). Do not edit.`,
     "",
     "## By type",
     "",
@@ -1103,7 +1104,7 @@ export async function approve(ctx, validateData, { interactive = terminal() } = 
   if (!recorded.length && !cleared.length) {
     if (!unchanged.length) return fail([...problems, "approval.csv has no decision to record: every Approved cell is blank or was refused"]);
   } else {
-    if (!interactive?.isTTY) return fail([...problems, "approve is human-only: run it yourself in an interactive terminal (in Git Bash's mintty: winpty node scripts/testcases.mjs approve ...); nothing was recorded"]);
+    if (!interactive?.isTTY) return fail([...problems, "approve is human-only: run it yourself in an interactive terminal (in Git Bash's mintty: winpty " + expandFw("node {fw}/scripts/testcases.mjs") + " approve ...); nothing was recorded"]);
     const answer = await interactive.ask(`Record ${recorded.length} decision(s) and clear ${cleared.length} for module '${module}'. Type the module slug to confirm: `);
     if (String(answer ?? "").trim() !== module) return fail([...problems, `not confirmed (expected '${module}'); nothing was recorded`]);
     const bad = await validateData("testcases-approvals", next);
@@ -1453,7 +1454,7 @@ export function importSource(ctx, { file, config }) {
 // -> {code, out}
 export async function importCases(ctx, validateData, { file, config, approved = false, interactive = terminal() } = {}) {
   const fail = (problems, extra = {}) => ({ code: 1, out: { imported: 0, ...extra, problems } });
-  if (approved && !interactive?.isTTY) return fail(["import --approved is human-only: run it yourself in an interactive terminal (in Git Bash's mintty: winpty node scripts/testcases.mjs import ... --approved); nothing was imported"]);
+  if (approved && !interactive?.isTTY) return fail(["import --approved is human-only: run it yourself in an interactive terminal (in Git Bash's mintty: winpty " + expandFw("node {fw}/scripts/testcases.mjs") + " import ... --approved); nothing was imported"]);
   const src = importSource(ctx, { file, config });
   if (src.error) return fail([src.error]);
   if (!existsSync(src.file) || !statSync(src.file).isFile()) return fail([`${rel(ctx.root, src.file)}: no such file`]);

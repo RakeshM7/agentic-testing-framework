@@ -35,8 +35,16 @@ function scratchFramework() {
   mkdirSync(path.join(root, "config"));
   for (const f of ["permissions.yaml", "mcp.yaml", "models.yaml"]) cpSync(path.join(REPO, "config", f), path.join(root, "config", f));
   cpSync(path.join(REPO, "package.json"), path.join(root, "package.json"));
-  symlinkSync(path.join(REPO, "node_modules"), path.join(root, "node_modules"), "junction");
+  symlinkSync(nodeModules(REPO), path.join(root, "node_modules"), "junction");
   return root;
+}
+
+// The framework's installed dependencies: its own node_modules, or the workspace's that npm workspaces hoist them into.
+function nodeModules(from) {
+  for (let dir = from; ; dir = path.dirname(dir)) {
+    if (existsSync(path.join(dir, "node_modules", "js-yaml", "package.json"))) return path.join(dir, "node_modules");
+    if (path.dirname(dir) === dir) throw new Error(`no node_modules with the framework's dependencies above ${from}: run npm install`);
+  }
 }
 
 function run(cmd, args, opts) {

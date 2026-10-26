@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { loadConfig } from "./config.mjs";
-import { sameDir } from "./roots.mjs";
+import { isInstalled, sameDir } from "./roots.mjs";
 
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 
@@ -35,10 +35,12 @@ const readConfig = (name, framework) => {
 // framework: the framework root the run is made with (D-085: its commit, config and templates).
 // -> {framework: {commit, dirty} | null, browserServer, models, templates, node}
 export function collectProvenance(framework) {
-  // only the framework's own checkout: an installed framework inside a workspace's repository has no commit of its own
+  // only a checkout of the framework itself (its own repository, or a source folder in one, as the monorepo's
+  // packages/core): an installed framework inside a workspace's repository has no commit of its own. Its changes are
+  // the ones under the framework's folder.
   const top = git(framework, ["rev-parse", "--show-toplevel"]);
-  const commit = top && sameDir(top, framework) ? git(framework, ["rev-parse", "HEAD"]) : null;
-  const status = commit ? git(framework, ["status", "--porcelain", "--untracked-files=no"]) : null;
+  const commit = top && (sameDir(top, framework) || !isInstalled(framework)) ? git(framework, ["rev-parse", "HEAD"]) : null;
+  const status = commit ? git(framework, ["status", "--porcelain", "--untracked-files=no", "--", "."]) : null;
   const mcp = readConfig("mcp.yaml", framework);
   const server = mcp.servers?.[mcp.browser_server];
   const models = readConfig("models.yaml", framework);

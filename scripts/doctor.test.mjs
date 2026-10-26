@@ -5,6 +5,10 @@ import { GROUPS, STAGE_NEEDS, browserBuilds, browsersDir, doctorStatus, failures
 import { autofixSteps, main, scope } from "./doctor.mjs";
 import { doctor, initRun, setStage } from "./run.mjs";
 import { put, startRun, tempRoot } from "./test-helpers.mjs";
+import { expandFw } from "./lib/roots.mjs";
+
+// a framework command as printed from this repo's workspace: `node scripts/...`, or `node packages/core/scripts/...`
+const FW = expandFw("{fw}/").replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 const BROWSERS = (rev = "1248") => JSON.stringify({ browsers: [{ name: "chromium", revision: rev }, { name: "chromium-headless-shell", revision: rev }, { name: "firefox", revision: "1543" }] });
 const NOW = Date.parse("2026-10-19T12:00:00Z");
@@ -71,6 +75,34 @@ test("base and login: Node version, pinned framework dependencies, and the login
   const only = (p) => ({ ...m.opts, exists: (x) => x === p });
   assert.equal(ids(await runChecks(cfg(), ["login"], only("/opt/google/chrome/chrome")))["login-browser"], "warn");
   assert.deepEqual(await runChecks(cfg(), ["login"], only("/opt/microsoft/msedge/msedge")), [{ group: "login", id: "login-browser", ok: true, level: undefined, detail: "the login opens Microsoft Edge" }]);
+});
+
+test("base in a monorepo: dependencies hoisted to the workspace's node_modules count, and the peer playwright must resolve from the workspace", async () => {
+  const m = machine();
+  // the workspace root holds the install (npm workspaces); the framework is a package folder under it
+  const fw = path.join(m.root, "packages", "core");
+  put(m.root, "packages/core/package.json", JSON.stringify({ name: "@testagentic/atf", dependencies: { "js-yaml": "^4.1.0" }, peerDependencies: { playwright: "1.64.1" } }));
+  put(m.root, "package.json", JSON.stringify({ workspaces: ["packages/*"], devDependencies: { playwright: "1.64.1" } }));
+  put(m.root, "node_modules/js-yaml/package.json", JSON.stringify({ version: "4.1.0" }));
+  m.core(".");
+  const opts = { ...m.opts, framework: fw, exists: () => false };
+  let checks = await runChecks(cfg(), ["base", "login"], opts);
+  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "framework-peers": "fail", "login-browser": "fail" });
+  const peers = checks.find((c) => c.id === "framework-peers");
+  assert.match(peers.detail, /playwright is not installed/);
+  assert.deepEqual(peers.autofix, { cmd: "npm", args: ["install"], cwd: m.root }, "the workspace lists it: npm install there");
+  put(m.root, "node_modules/playwright/package.json", JSON.stringify({ version: "1.63.0" }));
+  assert.match((await runChecks(cfg(), ["base"], opts)).find((c) => c.id === "framework-peers").detail, /playwright is 1\.63\.0, package\.json pins 1\.64\.1/);
+  put(m.root, "node_modules/playwright/package.json", JSON.stringify({ version: "1.64.1" }));
+  m.installed("chromium", "1248");
+  checks = await runChecks(cfg(), ["base", "login"], opts);
+  assert.deepEqual(ids(checks), { node: "ok", "framework-deps": "ok", "framework-peers": "ok", "login-browser": "warn" }, "the hoisted playwright-core's Chromium too");
+  // a workspace that does not list the peer is told what to add, never changed by --fix
+  put(m.root, "package.json", JSON.stringify({ workspaces: ["packages/*"] }));
+  put(m.root, "node_modules/playwright/package.json", JSON.stringify({ version: "1.63.0" }));
+  const unlisted = (await runChecks(cfg(), ["base"], opts)).find((c) => c.id === "framework-peers");
+  assert.equal(unlisted.fix, "npm install --save-dev playwright@1.64.1 (in the workspace)");
+  assert.equal(unlisted.autofix, undefined);
 });
 
 test("browser: the MCP server's channel must be installed, and it must run the framework's init page instead of a --storage-state (D-076)", async () => {
@@ -151,7 +183,7 @@ test("repo: not rendered, not installed, browsers missing, ready; the fix is fou
   put(m.root, "playwright-tests/acme/package.json", "{}");
   const c = await run();
   assert.match(c.detail, /no node_modules/);
-  assert.match(c.fix, /node scripts\/foundation\.mjs install acme/);
+  assert.match(c.fix, new RegExp(String.raw`node ${FW}scripts\/foundation\.mjs install acme`));
   assert.deepEqual(c.autofix.steps.map((s) => s.args[0]), ["install", "playwright"]);
   put(m.root, "playwright-tests/acme/node_modules/@playwright/test/package.json", "{}");
   m.core("playwright-tests/acme", "1250", "1.65.0");

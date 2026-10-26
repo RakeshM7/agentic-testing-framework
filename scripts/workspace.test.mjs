@@ -1,6 +1,7 @@
-// D-085: a workspace apart from its framework. The rest of the suite runs in one directory that is both (the layout of
-// this repo, scripts/test-helpers.mjs); this file builds a workspace in a temp folder beside the framework and proves
-// what resolves where, what `{fw}` becomes, and that no call writes the framework.
+// D-085: a workspace apart from its framework. The rest of the suite runs in one directory that is both
+// (scripts/test-helpers.mjs); this file builds a workspace in a temp folder beside the framework and proves what
+// resolves where, what `{fw}` becomes, and that no call writes an installed framework, while a source checkout apart
+// from the workspace (the monorepo's packages/core) stays editable.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -17,7 +18,7 @@ import { networkGuarded } from "./lib/browser-tools.mjs";
 import { append } from "./lib/ledger.mjs";
 import { resolvePermissions, shellAllowed } from "./lib/permissions.mjs";
 import { collectProvenance } from "./lib/provenance.mjs";
-import { expandFw, findWorkspace, frameworkRel, frameworkRoot, hookWorkspaceRoot, resolveWorkspaceRoot, sameDir, workspaceRoot } from "./lib/roots.mjs";
+import { expandFw, findWorkspace, frameworkRel, frameworkRoot, hookWorkspaceRoot, isInstalled, resolveWorkspaceRoot, sameDir, workspaceRoot } from "./lib/roots.mjs";
 import { normalize } from "./hooks/hosts/claude.mjs";
 import { initRun } from "./run.mjs";
 import { writeConfig } from "./test-helpers.mjs";
@@ -47,12 +48,14 @@ test("the workspace root: ATF_WORKSPACE, then the nearest atf/atf.json above the
   assert.equal(resolveWorkspaceRoot({ env: {}, cwd: other }), frameworkRoot, "no marker: the framework is its own workspace");
   assert.equal(resolveWorkspaceRoot({ env: { CLAUDE_PROJECT_DIR: other }, cwd: deep }), ws, "a script ignores CLAUDE_PROJECT_DIR");
   assert.equal(findWorkspace(other), null);
-  assert.ok(sameDir(workspaceRoot, frameworkRoot), "this repository is both");
+  // this repository: one directory that is both, or the monorepo, whose root is the workspace and packages/core the
+  // framework (docs/packaging.md §3.11)
+  assert.ok(sameDir(workspaceRoot, frameworkRoot) || frameworkRel(workspaceRoot, frameworkRoot) === "packages/core", workspaceRoot);
   // a hook: the host's root (CLAUDE_PROJECT_DIR or the payload's cwd) and its marker; this repo, or anywhere else, as is
   assert.equal(hookWorkspaceRoot(deep, { env: {} }), ws);
   assert.equal(hookWorkspaceRoot(deep, { env: { ATF_WORKSPACE: other } }), other);
   assert.equal(hookWorkspaceRoot(other, { env: {} }), other, "outside any workspace: the host's root, as before");
-  assert.equal(hookWorkspaceRoot(path.join(frameworkRoot, "scripts", "lib"), { env: {} }), frameworkRoot, "inside this repo: the repo");
+  assert.equal(hookWorkspaceRoot(path.join(frameworkRoot, "scripts", "lib"), { env: {} }), findWorkspace(frameworkRoot) ?? frameworkRoot, "inside this repo: the repo");
 });
 
 test("a split workspace: run state, the ledger and artifacts land in the workspace; templates, schemas and config come from the framework", async () => {
@@ -133,13 +136,15 @@ test("the agent-body lint: `{fw}/` is the only template token", () => {
   assert.deepEqual(lintFwToken("x", 'JSON: `{"a": {"b": 1}}`'), [], "a closing }} is JSON, not a template");
 });
 
-test("the build: one directory renders exactly the committed files; a split workspace gets the framework's path in every command", () => {
-  // same root: a scratch copy of the sources renders byte for byte what this repo commits
+test("the build: this repo's layout renders exactly the committed files; a split workspace gets the framework's path in every command", () => {
+  // this repo's layout (one directory, or the monorepo's packages/core under the workspace): a scratch copy of the
+  // sources, placed the same way, renders byte for byte what this repo commits
   const same = real(mkdtempSync(path.join(tmpdir(), "atf-same-")));
-  for (const d of ["config", "agents"]) cpSync(path.join(frameworkRoot, d), path.join(same, d), { recursive: true });
-  assert.deepEqual(build({ root: same }).errors, []);
+  const sameFw = path.join(same, frameworkRel(workspaceRoot, frameworkRoot));
+  for (const d of ["config", "agents"]) cpSync(path.join(frameworkRoot, d), path.join(sameFw, d), { recursive: true });
+  assert.deepEqual(build({ root: same, framework: sameFw }).errors, []);
   for (const rel of [".claude/agents/orchestrator-agent.md", ".github/agents/module-explorer.agent.md", ".mcp.json", ".vscode/mcp.json", ".github/hooks/framework-guard.json", ".vscode/hooks/framework-guard.json"])
-    assert.equal(readFileSync(path.join(same, rel), "utf8"), readFileSync(path.join(frameworkRoot, rel), "utf8"), rel);
+    assert.equal(readFileSync(path.join(same, rel), "utf8"), readFileSync(path.join(workspaceRoot, rel), "utf8"), rel);
   // split: the framework's sources, rendered into the workspace only
   const ws = workspace();
   const r = build({ root: ws, framework: frameworkRoot });
@@ -157,11 +162,12 @@ test("the build: one directory renders exactly the committed files; a split work
   assert.deepEqual(build({ root: ws, framework: frameworkRoot, check: true }).changed, [], "and --check sees no drift");
 });
 
-// ---- the framework is read-only ----------------------------------------------------------------------------------
+// ---- an installed framework is read-only -------------------------------------------------------------------------
 
-test("split layout: no call writes the framework -- file tools, shell writes, `..`, symlinks, case and separators (D-085)", () => {
+test("installed: no call writes the framework -- file tools, shell writes, `..`, symlinks, case and separators (D-085)", () => {
   const ws = workspace();
-  const fw = real(mkdtempSync(path.join(tmpdir(), "atf-fw-")));
+  // installed: the framework's real path is inside a node_modules folder (here a package store outside the workspace)
+  const fw = path.join(real(mkdtempSync(path.join(tmpdir(), "atf-fw-"))), "node_modules", "@testagentic", "atf");
   mkdirSync(path.join(fw, "scripts", "lib"), { recursive: true });
   writeFileSync(path.join(fw, "scripts", "lib", "guard.mjs"), "// the framework\n");
   const check = (c) => checkTool(c, ws, {}, { framework: fw });
@@ -198,6 +204,51 @@ test("split layout: no call writes the framework -- file tools, shell writes, `.
   mkdirSync(nested, { recursive: true });
   assert.equal(checkTool(write(undefined, path.join(nested, "scripts", "run.mjs")), ws, {}, { framework: nested }).rule, "framework-readonly");
   assert.equal(checkTool(write(undefined, path.join(ws, "config", "acme.yaml")), ws, {}, { framework: nested }).allowed, true);
+  // a refusal's hint names the framework's scripts from the workspace
+  assert.match(check(write(undefined, path.join(fw, "x.mjs"))).reason, new RegExp(`node ${relFw.replaceAll("\\", "/").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/scripts/framework-issues\\.mjs add`));
+});
+
+test("installed or not is decided on the framework's real path: a node_modules segment, any case; fails closed", () => {
+  const tmp = real(mkdtempSync(path.join(tmpdir(), "atf-inst-")));
+  const dir = (...p) => {
+    const d = path.join(tmp, ...p);
+    mkdirSync(d, { recursive: true });
+    return d;
+  };
+  assert.equal(isInstalled(dir("node_modules", "@testagentic", "atf")), true);
+  assert.equal(isInstalled(dir("a", "NODE_MODULES", "atf")), true, "any case");
+  assert.equal(isInstalled(`${dir("b", "node_modules", "atf").replaceAll("/", "\\")}`), true, "either separator (resolved or, when it can't be, fail closed)");
+  assert.equal(isInstalled(dir("src", "packages", "core")), false, "a source checkout");
+  assert.equal(isInstalled(dir("c", "node_modules_old", "atf")), false, "a whole segment, not a prefix");
+  assert.equal(isInstalled(path.join(tmp, "missing", "atf")), true, "can't be resolved: installed (fails closed)");
+  // a link from a node_modules folder to a source checkout is the source checkout (the npm workspace link) ...
+  const linked = path.join(dir("ws", "node_modules", "@testagentic"), "atf");
+  symlinkSync(path.join(tmp, "src", "packages", "core"), linked, process.platform === "win32" ? "junction" : "dir");
+  assert.equal(isInstalled(linked), false);
+  // ... and a link from elsewhere to an installed package is installed
+  const vendor = path.join(dir("ws", "vendor"), "atf");
+  symlinkSync(path.join(tmp, "node_modules", "@testagentic", "atf"), vendor, process.platform === "win32" ? "junction" : "dir");
+  assert.equal(isInstalled(vendor), true);
+});
+
+test("a source checkout apart from the workspace (the monorepo's packages/core) stays editable", () => {
+  const ws = workspace();
+  const src = path.join(real(mkdtempSync(path.join(tmpdir(), "atf-src-"))), "packages", "core");
+  mkdirSync(path.join(src, "scripts", "lib"), { recursive: true });
+  writeFileSync(path.join(src, "scripts", "lib", "guard.mjs"), "// the framework's source\n");
+  // reached as it is, or through the workspace's node_modules link, the way npm workspaces install it
+  const link = path.join(ws, "node_modules", "@testagentic", "atf");
+  mkdirSync(path.dirname(link), { recursive: true });
+  symlinkSync(src, link, process.platform === "win32" ? "junction" : "dir");
+  for (const framework of [src, link]) {
+    const v = (c) => checkTool(c, ws, {}, { framework });
+    assert.equal(v(write(undefined, path.join(src, "scripts", "lib", "guard.mjs"))).allowed, true, framework);
+    assert.equal(v(write("orchestrator-agent", path.join(link, "scripts", "new.mjs"))).allowed, true, "no run: no per-agent rules");
+    assert.equal(v(sh(undefined, `echo x > ${src}/scripts/lib/guard.mjs`)).allowed, true);
+    assert.equal(v({ ...write(undefined, "x"), paths: [] }).allowed, true, "an unknown target outside a run: as in one directory");
+  }
+  // the other rules still hold there: approval stays human-only
+  assert.equal(checkTool(sh(undefined, `node ${src}/scripts/testcases.mjs approve acme contacts`), ws, {}, { framework: src }).rule, "human-only");
 });
 
 test("one directory (this repo's layout): writes are exactly as before, the framework rule never applies", () => {
@@ -212,15 +263,21 @@ test("one directory (this repo's layout): writes are exactly as before, the fram
   assert.equal(checkTool(write(undefined, path.join(link, "scripts", "x.mjs")), link, {}, { framework: root }).allowed, true);
 });
 
-test("the hook entry judges the workspace and refuses a write into its own framework", () => {
+test("the hook entry judges the workspace and refuses a write into its own installed framework", () => {
   const ws = workspace();
-  const hook = (payload, env) => spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: JSON.stringify(payload), encoding: "utf8", env: { PATH: process.env.PATH, ...env } });
-  const into = hook({ cwd: path.join(ws, "config"), toolName: "create", toolArgs: { path: path.join(frameworkRoot, "scripts", "zz-never-written.mjs") } }, {});
+  // the package as a client installs it: the framework's scripts and config under the workspace's node_modules
+  const pkg = path.join(ws, "node_modules", "@testagentic", "atf");
+  for (const d of ["scripts", "config"]) cpSync(path.join(frameworkRoot, d), path.join(pkg, d), { recursive: true, filter: (src) => !src.includes(`${path.sep}node_modules`) && !/\.test\.mjs$/.test(src) });
+  const hook = (entry, payload, env) => spawnSync(process.execPath, [path.join(entry, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: JSON.stringify(payload), encoding: "utf8", env: { PATH: process.env.PATH, ...env } });
+  const into = hook(pkg, { cwd: path.join(ws, "config"), toolName: "create", toolArgs: { path: path.join(pkg, "scripts", "zz-never-written.mjs") } }, {});
   assert.equal(into.status, 2, into.stderr);
   assert.match(into.stderr, /framework-readonly/);
-  assert.ok(!existsSync(path.join(frameworkRoot, "scripts", "zz-never-written.mjs")));
-  const own = hook({ cwd: path.join(ws, "config"), toolName: "create", toolArgs: { path: path.join(ws, "notes.md") } }, {});
+  const own = hook(pkg, { cwd: path.join(ws, "config"), toolName: "create", toolArgs: { path: path.join(ws, "notes.md") } }, {});
   assert.equal(own.status, 0, own.stderr);
-  const viaEnv = hook({ cwd: tmpdir(), toolName: "create", toolArgs: { path: path.join(frameworkRoot, "agents", "x.md") } }, { ATF_WORKSPACE: ws });
+  const viaEnv = hook(pkg, { cwd: tmpdir(), toolName: "create", toolArgs: { path: path.join(pkg, "config", "x.yaml") } }, { ATF_WORKSPACE: ws });
   assert.equal(viaEnv.status, 2, "ATF_WORKSPACE names the workspace");
+  // this repo's own framework is a source checkout: editable from a workspace apart from it
+  const source = hook(frameworkRoot, { cwd: path.join(ws, "config"), toolName: "create", toolArgs: { path: path.join(frameworkRoot, "scripts", "zz-never-written.mjs") } }, {});
+  assert.equal(source.status, 0, source.stderr);
+  assert.ok(!existsSync(path.join(frameworkRoot, "scripts", "zz-never-written.mjs")), "the hook only judges");
 });
