@@ -1,6 +1,6 @@
 # Packaging the framework for clients
 
-**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. D-085 (phase 1) is in force; the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
+**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1, 2a and 2b are in force (D-085 as amended by D-086, and D-087); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
 
 ## 1. What was decided in the interview
 
@@ -214,6 +214,13 @@ package.json            npm workspaces (packages/*); packages/core is linked at 
 - **Printed hints and headers** go through `{fw}` in 2a.
 - **Playwright** is a peer dependency of `@testagentic/atf`, and `atf doctor` checks it.
 
+**Decided for phase 2b (user, 2026-10-26), recorded as D-087:**
+- **Arguments.** The product and module are positional, everything else a flag: `atf approve <product> <module>`, `atf resume <product> --stage k6 --module deals`, `--env <env>` for `ENV=`.
+- **Opening the session.** `--host claude|copilot` (default `claude`), overridden by `ATF_AGENT="<command>"`.
+- **Shipped docs** write framework commands as `node {fw}/scripts/…`.
+- **Developer commands.** Only `atf setup` and `atf e2e`; `npm run check`, `npm test` and `npm run build-agents` stay npm scripts until phase 3.
+- **The decisions that name `make`** (D-066, D-069, D-075, D-081, D-084) are extended, not superseded, so they keep governing their files.
+
 - `npm run check` in the monorepo builds the root's host files and fails on drift. In the monorepo, the generated files stay committed, so D-018's reasons still hold for our own cloud-agent maintenance.
 - The release workflow does four things:
   - runs `npm test`, including the migration fixtures and the offline pipeline test (D-084);
@@ -271,7 +278,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 |---|---|---|
 | P-1 · two roots | D-085 | 1 |
 | P-2 · private licensed package, monorepo | monorepo part: D-086; distribution part: phase 4 | 2a, 4 |
-| P-10 · `atf` CLI replaces the Makefile | phase 2b entry | 2b |
+| P-10 · `atf` CLI replaces the Makefile | D-087 (the `make` targets; the other commands land with phases 3 to 5) | 2b |
 | others | the next free ID when their phase lands | 3–7 |
 
 ### D-085 · The framework root and the workspace root are separate; the framework is installed read-only
@@ -378,7 +385,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 - **Confirmed by the user on:** — (extends D-071, D-072 and D-077 without weakening them)
 
 ### P-10 · A cross-platform `atf` CLI replaces the Makefile; macOS, Windows and Linux are supported
-- **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
+- **Status:** Accepted in part, recorded in decisions.md as D-087 (2026-10-26): the CLI covers every former `make` target, and CI runs on all three systems. `init`, `sync`, `check`, `eject`, `migrate` and `issues` come with phases 3 to 5, which extend D-087. D-087 extends D-066, D-069, D-075, D-081 and D-084 instead of superseding them (user, 2026-10-26) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **The CLI.** The `atf` bin provides `init`, `sync`, `check`, `doctor`, `eject`, `migrate`, `issues` and every former `make` target, with `--env` for `ENV=`.
   - **Portable.** The CLI and the hooks use only Node APIs, and CI runs the test suite on all three operating systems.

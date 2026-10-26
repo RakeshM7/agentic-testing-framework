@@ -1,4 +1,4 @@
-// A tiny product to test against (D-084): a contacts page and its REST API, in memory, no dependencies. `make e2e`
+// A tiny product to test against (D-084): a contacts page and its REST API, in memory, no dependencies. `atf e2e`
 // (scripts/e2e.mjs) starts it on a free local port. One contact exists before any test runs ("Pre Existing", id 1),
 // so a guard that lets a test delete pre-existing data is caught.
 //   GET  /contacts                the page: a table of contacts with a Delete button each, and a New contact form

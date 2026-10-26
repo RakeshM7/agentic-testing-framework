@@ -1,4 +1,4 @@
-// The human's login (D-069), behind `run.mjs login <config.yaml>` (make login, or the orchestrator after the human
+// The human's login (D-069), behind `run.mjs login <config.yaml>` (atf login, or the orchestrator after the human
 // confirms). It opens a real browser window on the target, Microsoft Edge when installed (else Google Chrome, else
 // Playwright's own Chromium), with a persistent profile in playwright-tests/<product>/.auth/browser-profile. The human
 // signs in there themselves (single sign-on, MFA and CAPTCHA included) within a fixed window; the window then closes by

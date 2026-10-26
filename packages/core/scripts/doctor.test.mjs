@@ -45,7 +45,7 @@ test("browsers folder follows Playwright's rules per platform and PLAYWRIGHT_BRO
   assert.equal(browsersDir("/p", { env: { PLAYWRIGHT_BROWSERS_PATH: "/b" } }), "/b");
 });
 
-test("a Playwright update whose browser build was never downloaded is caught (the make login failure)", () => {
+test("a Playwright update whose browser build was never downloaded is caught (the atf login failure)", () => {
   const m = machine();
   m.core(".", "1248");
   m.installed("chromium", "1243"); // the build of the previous version
@@ -159,7 +159,7 @@ test("session: present is enough (no target cookie only warns, for single sign-o
   let check = (await runChecks(cfg(auth), ["session"], m.opts))[0];
   assert.deepEqual([check.ok, check.level], [true, "warn"], "no cookie on the target's host passes with a warning");
   assert.match(check.detail, /no cookie for app\.acme\.test \(usual after a single sign-on login\): the login is confirmed when a stage opens the target/);
-  assert.match(check.fix, /if a stage meets a sign-in page, make login PRODUCT=acme/);
+  assert.match(check.fix, /if a stage meets a sign-in page, npx atf login acme/);
   save([{ name: "ESTSAUTH", domain: ".login.microsoftonline.com", expires: at(-1) }]);
   assert.match((await runChecks(cfg(auth), ["session"], m.opts))[0].detail, /every cookie in the saved session has expired/);
   save([{ name: "sid", domain: ".acme.test", expires: at(-1) }, { name: "ESTSAUTH", domain: ".login.microsoftonline.com", expires: at(100) }]);

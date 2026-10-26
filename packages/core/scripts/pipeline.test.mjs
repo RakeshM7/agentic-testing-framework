@@ -2,7 +2,7 @@
 // stand-in for each agent `next` names. A stand-in reads only the prompt it is given and does what its agent must,
 // through the same scripts (knowledge.mjs, explore.mjs, report-data.mjs, report.mjs), so the stage graph, the prompts,
 // every stage's output verification, the report and the end of the run are exercised together on every `npm test`,
-// with no model, browser or network. The live half is `make e2e` (scripts/e2e.mjs).
+// with no model, browser or network. The live half is `atf e2e` (scripts/e2e.mjs).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";

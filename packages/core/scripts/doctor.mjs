@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// Dependency check for a human's terminal (make doctor | login | run | resume | automate), over scripts/lib/doctor.mjs
+// Dependency check for a human's terminal (atf doctor | login | run | resume | automate), over scripts/lib/doctor.mjs
 // (D-064). Works before a run exists; inside a run the orchestrator uses `run.mjs doctor <product>` instead, which
 // records the result for `stage … start`.
 //
 //   doctor.mjs <config.yaml> [--stage all|<stage>[,<stage>…]] [--for login] [--fix] [--warn-only] [--json]
 //     --stage      the stages to check for (default: every stage the run-config's steps choose, see
-//                  lib/contract.mjs chosenStages); --for login checks what `make login` needs instead
+//                  lib/contract.mjs chosenStages); --for login checks what `atf login` needs instead
 //     --fix        run the installs first (npm install, npx playwright install chromium, in the framework or the
 //                  product's Playwright repo; k6 through winget on Windows or Homebrew on macOS), then check again.
 //                  Never edits a config, session or credential file.
-//     --warn-only  report problems but exit 0 (make run: the run's own stage gate stops exactly the stage that needs them)
+//     --warn-only  report problems but exit 0 (atf run: the run's own stage gate stops exactly the stage that needs them)
 // Exit: 0 ok, 1 a blocking problem (or an invalid run-config), 2 usage.
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -25,7 +25,7 @@ const USAGE = "usage: doctor.mjs <config.yaml> [--stage all|<stage>[,<stage>…]
 // cfg (a normalized run-config): without --stage, only the stages its steps choose are checked; a stage it does not choose
 // never reports a problem as blocking.
 export function scope(v, cfg) {
-  if (v.for === "login") return { label: "make login", groups: LOGIN_NEEDS, stages: [] };
+  if (v.for === "login") return { label: "atf login", groups: LOGIN_NEEDS, stages: [] };
   if (v.for) return { error: `unknown --for ${v.for} (only: login)` };
   const all = !v.stage || v.stage === "all";
   if (all && cfg?.steps) {

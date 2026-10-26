@@ -5,6 +5,9 @@
   "license": "UNLICENSED",
   "type": "module",
   "description": "The agentic testing framework: scripts (run state, contracts, guard, agent builder), agent sources, default config, templates, schemas and the agent-facing docs.",
+  "bin": {
+    "atf": "bin/atf.mjs"
+  },
   "scripts": {
     "test": "node --test \"scripts/**/*.test.mjs\""
   },

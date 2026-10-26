@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The live end-to-end check (D-084): `make e2e`. Everything the agents produce is replaced by fixtures, everything the
+// The live end-to-end check (D-084): `atf e2e`. Everything the agents produce is replaced by fixtures, everything the
 // scripts and templates produce is real, and it runs against a real product in a real browser:
 //   1. copies the framework into a scratch folder (its scripts then resolve every path there, so the repo's own
 //      artifacts/ are never touched) and starts the demo app (scripts/fixtures/demo-app) on a free local port;

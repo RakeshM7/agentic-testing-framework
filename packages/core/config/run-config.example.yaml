@@ -1,9 +1,9 @@
 # Agentic Testing Framework -- run configuration (layout v2)
 #
-# Copy this file (e.g. to config/<product>.yaml), fill it in, then:
-#   node scripts/run.mjs init config/<product>.yaml
-# Validate without starting a run:  node scripts/run-config.mjs validate config/<product>.yaml
-# Or skip this file: start the orchestrator-agent with no config (make interview) and answer its few questions; it
+# Create it with `npx atf config <product> --url <target url>` (or copy this file to config/<product>.yaml), fill it
+# in, then start the run:  npx atf run <product>
+# Validate without starting a run:  npx atf validate <product>
+# Or skip this file: start the orchestrator-agent with no config (npx atf interview) and answer its few questions; it
 # drafts config/<product>.yaml (readonly) from your answers. Edit the result by hand any time.
 #
 # Never put secret VALUES in this file -- only paths to files a human prepared.
@@ -15,11 +15,11 @@ product: acme-crm
 # Optional (D-081): the environment of the product this config targets, e.g. staging or uat (default: default). Each
 # environment has its own runs, lock, ledger and history under artifacts/<product>/envs/<env>/; knowledge, exploration,
 # clarifications, test cases, test code and results are shared by all of them. Run it with ATF_ENV set to the same name:
-#   make run PRODUCT=acme-crm ENV=staging          (reads config/acme-crm-staging.yaml)
+#   npx atf run acme-crm --env staging          (reads config/acme-crm-staging.yaml)
 # environment: staging
 
 # The steps this run executes, for every module (omitted = all six). The orchestrator shows this menu at every start,
-# pre-selected from here, and `node scripts/run-config.mjs set <config> --steps ...` rewrites only this line.
+# pre-selected from here, and `npx atf steps <product> <steps>` rewrites only this line.
 #   explore         module-explorer maps each module in the live browser
 #   clarifications  open questions answered by replaying them in the product
 #   testcases       test cases written from the exploration (a human approves each before it is automated)

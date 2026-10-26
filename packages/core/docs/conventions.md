@@ -129,7 +129,7 @@ Severity: **blocker** = a safety rule broken or a wrong expected behavior; **maj
 
 Problems with the framework — an agent prompt, a script, a doc — are recorded as **feedback files** and fixed by `feedback-implementor-agent`. Per-product issues in generated test code are not feedback: each domain's own reviewer and fixer handle those during the run.
 
-Agents have no write access to `feedback/`. During a run, an agent that meets a problem with the framework itself records it with `node scripts/framework-issues.mjs add` (every restricted shell may run it, `common_shell_allow` in `config/permissions.yaml`); `run.mjs end` writes the run's issues as feedback files, one per reporting agent, to `feedback/run-<run-id>/<date>-<agent>.md` in the schema below (D-083). A human may also file feedback by hand.
+Agents have no write access to `feedback/`. During a run, an agent that meets a problem with the framework itself records it with `node {fw}/scripts/framework-issues.mjs add` (every restricted shell may run it, `common_shell_allow` in `config/permissions.yaml`); `run.mjs end` writes the run's issues as feedback files, one per reporting agent, to `feedback/run-<run-id>/<date>-<agent>.md` in the schema below (D-083). A human may also file feedback by hand.
 
 ### Where feedback lives
 
@@ -162,7 +162,7 @@ severity: <blocking | high | medium | low>
 ### How it's consumed
 
 1. Pass the file **path** to `feedback-implementor-agent` (never the text).
-2. It runs `node scripts/feedback.mjs triage <file>` (the Accepted decisions whose **Affects** match the files a finding names or the agent plans to change), implements each finding within its allowed scope, with a new or updated `*.test.mjs` for every change under `scripts/`, runs `npm run build-agents` after an agent change and `npm run check`, and appends the Resolution to the same file (D-062):
+2. It runs `node {fw}/scripts/feedback.mjs triage <file>` (the Accepted decisions whose **Affects** match the files a finding names or the agent plans to change), implements each finding within its allowed scope, with a new or updated `*.test.mjs` for every change under `scripts/`, runs `npm run build-agents` after an agent change and `npm run check`, and appends the Resolution to the same file (D-062):
    ```markdown
    ## Resolution (<date>)
 
@@ -172,5 +172,5 @@ severity: <blocking | high | medium | low>
    - **Files changed:** <comma list or `- path` lines; `none` unless fixed>
    - **Decisions considered:** <D-NNN, ...; or `none`>
    ```
-   `node scripts/feedback.mjs check <file>` validates the frontmatter (all five fields) and the Resolution: one entry per `## Finding N`, a valid status, a reason, a `fixed` finding lists files and a `scripts/**.test.mjs` for any non-test script it changed, and names every Accepted decision that governs a file it changed; `deferred` and `declined` list no files. (`Fixed (unverified)` and `Skipped` no longer exist.)
+   `node {fw}/scripts/feedback.mjs check <file>` validates the frontmatter (all five fields) and the Resolution: one entry per `## Finding N`, a valid status, a reason, a `fixed` finding lists files and a `scripts/**.test.mjs` for any non-test script it changed, and names every Accepted decision that governs a file it changed; `deferred` and `declined` list no files. (`Fixed (unverified)` and `Skipped` no longer exist.)
 3. Changes to permissions, models, platforms, MCP servers, the guard, the hooks or settings are never made by an agent: such findings are `deferred` with the exact change for a human. A finding whose fix would conflict with a recorded decision is `deferred` with `Deferred — needs user confirmation (D-NNN)` (the check requires that decision to exist and be listed as considered). The agent never edits the checker (`scripts/feedback.mjs`, `scripts/lib/feedback.mjs`, `scripts/feedback.test.mjs`) either.

@@ -108,7 +108,7 @@ export function initRun(configFile, { resume = false, runId, root = workspaceRoo
     return { errors: [e.message] };
   }
   if (cfg.environment !== environment)
-    return { errors: [`${rel(root, path.resolve(configFile))} is for environment '${cfg.environment}', but this session's is '${environment}' (ATF_ENV): start the session with ATF_ENV=${cfg.environment} (make run PRODUCT=${cfg.product} ENV=${cfg.environment}), so every script and hook works in that environment`] };
+    return { errors: [`${rel(root, path.resolve(configFile))} is for environment '${cfg.environment}', but this session's is '${environment}' (ATF_ENV): start the session with ATF_ENV=${cfg.environment} (npx atf run ${cfg.product} --env ${cfg.environment}), so every script and hook works in that environment`] };
   const p = paths(cfg.product, root, environment);
 
   if (existsSync(p.lockFile)) {
@@ -565,7 +565,7 @@ export async function scenarios(product, { file, root = workspaceRoot } = {}) {
 }
 
 // The dependency check for every stage of the active run, recorded for `stage … start` (D-064). Fixing is the human's
-// (make doctor PRODUCT=<p>); the result names each fix and the stages that wait for it.
+// (npx atf doctor <p>); the result names each fix and the stages that wait for it.
 export async function doctor(product, { root = workspaceRoot, ...opts } = {}) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { errors: [`run ${ctx.runId} has ended; start a new run`] };
@@ -574,7 +574,7 @@ export async function doctor(product, { root = workspaceRoot, ...opts } = {}) {
   recordDoctor(product, root, { groups, checks });
   // a stage not chosen for this run (for any module) is never reported as blocked (B6)
   const blockedStages = Object.keys(STAGE_NEEDS).filter((s) => ctx.run.modules.some((m) => stageChosen(ctx.run, s, STAGES[s].scope === "product" ? null : m)) && failures(checks, STAGE_NEEDS[s]).length);
-  return { checks: checks.map(({ autofix, ...c }) => c), blockedStages, ...(blockedStages.length ? { fix: `tell the human each failing check and its fix; they run make doctor PRODUCT=${product} (it applies the safe installs), then run.mjs doctor ${product} again. Stages not listed can start now.` } : {}) };
+  return { checks: checks.map(({ autofix, ...c }) => c), blockedStages, ...(blockedStages.length ? { fix: `tell the human each failing check and its fix; they run npx atf doctor ${product} (it applies the safe installs), then run.mjs doctor ${product} again. Stages not listed can start now.` } : {}) };
 }
 
 // The human's login over the run-config at configFile (works before a run exists, and during one).

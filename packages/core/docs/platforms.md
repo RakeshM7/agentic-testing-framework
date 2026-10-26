@@ -21,7 +21,7 @@ A body can share a fragment: a line `<!-- include: _shared/<file>.md -->` is rep
 
 ## Starting a session
 
-Start the **orchestrator-agent** session with a run-config path, or with none: it then interviews you (a few questions in one message, including which steps to run) and drafts `config/<product>.yaml` as `readonly` (D-063). With a path, it shows the step menu pre-selected from the config's `steps` and, before the first stage, asks you once per missing prerequisite (explore, clarify, generate test cases, describe scenarios, use your own test case file, or skip the step), D-066. `make interview` and `make run` open that session on Claude Code. On other hosts, start it yourself and say you have no run-config yet. The interview needs a host where the agent can ask you questions. On one that can't, write the file by hand.
+Start the **orchestrator-agent** session with a run-config path, or with none: it then interviews you (a few questions in one message, including which steps to run) and drafts `config/<product>.yaml` as `readonly` (D-063). With a path, it shows the step menu pre-selected from the config's `steps` and, before the first stage, asks you once per missing prerequisite (explore, clarify, generate test cases, describe scenarios, use your own test case file, or skip the step), D-066. `npx atf interview` and `npx atf run <product>` open that session on Claude Code (`--host copilot`: Copilot CLI; `ATF_AGENT="<command>"`: any other CLI that takes the first prompt as its last argument). On other hosts, start it yourself and say you have no run-config yet. The interview needs a host where the agent can ask you questions. On one that can't, write the file by hand.
 
 ## Host matrix
 
@@ -69,7 +69,7 @@ npm run build-agents -- --post-hook off     # not registered: faster, but every 
    - auto-approves only repo-local, non-mutating commands.
 3. Start a **local agent** chat and pick **orchestrator-agent** in the agent picker. Workers are hidden (`user-invocable: false`); the orchestrators start them.
    - VS Code 1.141 can also run a chat on its **Copilot CLI engine**: the Copilot CLI runtime that VS Code bundles. That engine doesn't follow `.vscode/settings.json`. It uses `.github/agents/` and `.github/hooks/` like Copilot CLI and runs no custom-agent hooks, so the guard can't tell which agent is calling. A full-run there gives every call the run's combined ceiling (D-035).
-4. The orchestrator runs `node scripts/run.mjs guard-check <product>` first, and the guard must block it.
+4. The orchestrator runs `node {fw}/scripts/run.mjs guard-check <product>` first, and the guard must block it.
    - In VS Code's local agent, each custom agent's own hook names the agent to the guard. That is the Preview "custom agent hooks" feature.
    - If those hooks don't run, full-run is refused, and readonly still works.
 
@@ -97,12 +97,12 @@ npm run build-agents -- --post-hook off     # not registered: faster, but every 
 
 ## When the dependency check fails
 
-`run.mjs stage … start` refuses a stage whose needs are missing on this machine (D-064), with each failing check and its fix. Run `make doctor PRODUCT=<product>` in your terminal: it applies the safe installs (`npm install`, the Playwright browser builds) and lists the rest. Then the orchestrator runs `run.mjs doctor <product>` again.
+`run.mjs stage … start` refuses a stage whose needs are missing on this machine (D-064), with each failing check and its fix. Run `npx atf doctor <product>` in your terminal: it applies the safe installs (`npm install`, the Playwright browser builds) and lists the rest. Then the orchestrator runs `run.mjs doctor <product>` again.
 - **The browser server's init page** (`--init-page scripts/browser/init-page.cjs` in `config/mcp.yaml`, D-076) must be there, with no `--storage-state`: it loads the active run's `session_state_file` into every new browser and aborts every write to the product in a readonly run. After a change to `config/mcp.yaml`, run `npm run build-agents` and start a new session: the MCP server reads its arguments at start-up.
-- **A Playwright browser build is not downloaded**: a Playwright update without its browser. `make doctor` installs it.
-- **The saved session is missing, empty or expired**: `make login PRODUCT=<product>`, or let the orchestrator open the login window (it asks first). Microsoft Edge opens on the target with its own profile; sign in within 60 seconds and it closes by itself (D-069). A session with no cookie on the target's host (usual after a single sign-on login) is only a warning.
+- **A Playwright browser build is not downloaded**: a Playwright update without its browser. `atf doctor` installs it.
+- **The saved session is missing, empty or expired**: `npx atf login <product>`, or let the orchestrator open the login window (it asks first). Microsoft Edge opens on the target with its own profile; sign in within 60 seconds and it closes by itself (D-069). A session with no cookie on the target's host (usual after a single sign-on login) is only a warning.
 - **A stage meets a sign-in page right after a successful login**: the browser server still has a browser open with the old session. Start a new agent session and resume the run.
-- **k6 is not installed**: `make doctor` installs it with winget (Windows) or Homebrew (macOS); on Linux, follow the link it prints. Then open a new terminal, since an install updates PATH for new terminals only.
+- **k6 is not installed**: `atf doctor` installs it with winget (Windows) or Homebrew (macOS); on Linux, follow the link it prints. Then open a new terminal, since an install updates PATH for new terminals only.
 
 ## Verified facts (2026-10-11)
 

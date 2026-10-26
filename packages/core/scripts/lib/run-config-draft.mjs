@@ -122,7 +122,7 @@ export function buildDraft(answers, { root = process.cwd(), exists = (p) => exis
   for (const [k, f] of [["session_state_file", sessionFile], ["credentials_file", credFile]]) if (f && !existsSync(path.resolve(root, f))) warnings.push(`login.${k}: ${f} does not exist yet`);
   if (needsLogin && !sessionFile) {
     sessionFile = `playwright-tests/${product}/.auth/state.json`;
-    if (!existsSync(path.resolve(root, sessionFile))) next.push(`make login PRODUCT=${product}   # Microsoft Edge opens on the target: sign in yourself (SSO/MFA included) within 60 seconds; it closes by itself and saves the session`);
+    if (!existsSync(path.resolve(root, sessionFile))) next.push(`npx atf login ${product}   # Microsoft Edge opens on the target: sign in yourself (SSO/MFA included) within 60 seconds; it closes by itself and saves the session`);
   }
 
   const config = {

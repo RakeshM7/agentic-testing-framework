@@ -4,7 +4,7 @@ The single definition of where things live, how stages hand off, and how state a
 
 ## Layout: everything is product-level
 
-Every path below is relative to the **workspace root**, where a client's work lives: `ATF_WORKSPACE`, else the nearest directory above the working directory that holds `atf/atf.json`, else the framework root (D-085, `scripts/lib/roots.mjs`). The **framework root** holds what the framework ships: `scripts/`, `agents/`, the default `config/` (permissions, models, platforms, MCP, hooks, read through `scripts/lib/config.mjs`), `templates/`, `schemas/` and the agent-facing docs. In this repository the two are the same directory. Agent sources name framework files as `{fw}/…` (`node {fw}/scripts/run.mjs …`), which the build and `run.mjs init` expand to the framework's path from the workspace; when the framework is installed apart from the workspace, the guard refuses every write under it.
+Every path below is relative to the **workspace root**, where a client's work lives: `ATF_WORKSPACE`, else the nearest directory above the working directory that holds `atf/atf.json`, else the framework root (D-085, `scripts/lib/roots.mjs`). The **framework root** holds what the framework ships: `scripts/`, `agents/`, the default `config/` (permissions, models, platforms, MCP, hooks, read through `scripts/lib/config.mjs`), `templates/`, `schemas/` and the agent-facing docs. In the framework's own repository the workspace is the repo root and the framework is `packages/core` (D-086). Agent sources, and the commands in these docs, name framework files as `{fw}/…` (`node {fw}/scripts/run.mjs …`): `{fw}` is the framework's path from the workspace, `packages/core` there and `node_modules/@testagentic/atf` in a client's workspace, and the build and `run.mjs init` expand it in agent prompts. A human types `npx atf <command>` instead (D-087). When the framework is installed (its real path inside `node_modules`), the guard refuses every write under it.
 
 ```
 artifacts/hook-errors.jsonl           # every PreToolUse/PostToolUse hook error, with its stack (D-065; one .1 generation)
@@ -62,23 +62,23 @@ k6-tests/<product>/                   # lib/ (rendered), scripts/<m>-*.js (k6-co
 
 There is no `artifacts/<run-id>/` directory. Run ids are `<product>-<YYYYMMDD>-<HHmm>` (`<product>-<env>-<YYYYMMDD>-<HHmm>` in another environment; suffixed `-2`, `-3`… if reused).
 
-**Environments (D-081).** A run-config may name the product's `environment` (default `default`); the session works in the one its `ATF_ENV` names (`make … ENV=<env>`), and `run.mjs init` refuses a config for another. Each environment has its own `state/` — lock, run state, ledger, orchestration, history, guard and doctor records, telemetry — at `artifacts/<product>/envs/<env>/state/` (`default` keeps `artifacts/<product>/state/`), so one run per product and environment can be active, side by side with another environment's. Knowledge, modules, clarifications, test cases, the foundation, the product's test code and `results/` are shared; a module's exploration and endpoint catalogue hold the hosts of the environment that last built them. The guard scans every environment's lock and expands `${state}` with the calling run's own folder.
+**Environments (D-081).** A run-config may name the product's `environment` (default `default`); the session works in the one its `ATF_ENV` names (`atf … --env <env>`), and `run.mjs init` refuses a config for another. Each environment has its own `state/` — lock, run state, ledger, orchestration, history, guard and doctor records, telemetry — at `artifacts/<product>/envs/<env>/state/` (`default` keeps `artifacts/<product>/state/`), so one run per product and environment can be active, side by side with another environment's. Knowledge, modules, clarifications, test cases, the foundation, the product's test code and `results/` are shared; a module's exploration and endpoint catalogue hold the hosts of the environment that last built them. The guard scans every environment's lock and expands `${state}` with the calling run's own folder.
 
 ## Runs
 
 ```bash
-node scripts/run.mjs init config/<product>.yaml [--resume]   # validate config + permissions, take the lock, write state/
-node scripts/run.mjs guard-check <product>                   # liveness canary: a working guard BLOCKS this
-node scripts/run.mjs doctor <product>                        # what each stage needs on this machine; {checks, blockedStages}
-node scripts/run.mjs prereqs <product>                       # per module and chosen step: ok | missing (with the gap menu) | awaiting-approval
-node scripts/run.mjs steps <product> [--add a,b] [--remove c] [--import-mode m] [--reopen m]   # the gap menu's answer (an option's args)
-node scripts/run.mjs scenarios <product> [--file <answers>]  # state/scenario-answers.json -> modules/<m>/scenarios.json (SC ids)
-node scripts/run.mjs next <product>                          # {actions: [{stage, module, agent, prompt, attempt, retry}], concurrency, end?}
-node scripts/run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]
-node scripts/run.mjs status <product>                        # every stage with output verification
-node scripts/run.mjs end <product> [--abandon]               # history/<run-id>.json, results/<run>/manifest.json, release the lock
-node scripts/run.mjs diff <product> [<run-a> <run-b>]        # what changed between two ended runs (default: the last two), D-078
-node scripts/run.mjs validate <product>                      # schema-check state, ledger, sitemaps, CSVs
+node {fw}/scripts/run.mjs init config/<product>.yaml [--resume]   # validate config + permissions, take the lock, write state/
+node {fw}/scripts/run.mjs guard-check <product>                   # liveness canary: a working guard BLOCKS this
+node {fw}/scripts/run.mjs doctor <product>                        # what each stage needs on this machine; {checks, blockedStages}
+node {fw}/scripts/run.mjs prereqs <product>                       # per module and chosen step: ok | missing (with the gap menu) | awaiting-approval
+node {fw}/scripts/run.mjs steps <product> [--add a,b] [--remove c] [--import-mode m] [--reopen m]   # the gap menu's answer (an option's args)
+node {fw}/scripts/run.mjs scenarios <product> [--file <answers>]  # state/scenario-answers.json -> modules/<m>/scenarios.json (SC ids)
+node {fw}/scripts/run.mjs next <product>                          # {actions: [{stage, module, agent, prompt, attempt, retry}], concurrency, end?}
+node {fw}/scripts/run.mjs stage <product> <stage> start|done|fail [--module M] [--error MSG]
+node {fw}/scripts/run.mjs status <product>                        # every stage with output verification
+node {fw}/scripts/run.mjs end <product> [--abandon]               # history/<run-id>.json, results/<run>/manifest.json, release the lock
+node {fw}/scripts/run.mjs diff <product> [<run-a> <run-b>]        # what changed between two ended runs (default: the last two), D-078
+node {fw}/scripts/run.mjs validate <product>                      # schema-check state, ledger, sitemaps, CSVs
 ```
 
 - `init` refuses while another run holds the product's lock (`--resume` returns the active run; `end --abandon` releases it).
@@ -87,7 +87,7 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 - `config/permissions.yaml` is validated and frozen into `state/permissions.resolved.json` at `init`; edits take effect on the next run.
 - `init` records `startedOnHost`.
 - Guard liveness: `init` and `--resume` clear `state/guard-check/`; the orchestrator then runs `run.mjs guard-check <product>`, which every working hook blocks — the hook entry records the blocking host/agent there; if the command runs instead, it records `absent.json`. `stage … start` refuses until a record fits the mode. Any hook's record counts, with one exception: a full-run on VS Code's local agent needs a record from an agent's own hook.
-- Dependencies (D-064): `init` and `--resume` also clear `state/doctor.json`; the orchestrator then runs `run.mjs doctor <product>`. `stage … start` refuses a stage while a check it needs fails (`STAGE_NEEDS` in `scripts/lib/doctor.mjs`), or once the product repo was built after the check. A human fixes it (`make doctor PRODUCT=<product>` applies the safe installs), then the check runs again.
+- Dependencies (D-064): `init` and `--resume` also clear `state/doctor.json`; the orchestrator then runs `run.mjs doctor <product>`. `stage … start` refuses a stage while a check it needs fails (`STAGE_NEEDS` in `scripts/lib/doctor.mjs`), or once the product repo was built after the check. A human fixes it (`npx atf doctor <product>` applies the safe installs), then the check runs again.
 
 ### Stages (the main orchestrator's view — one per domain)
 
@@ -114,7 +114,7 @@ node scripts/run.mjs validate <product>                      # schema-check stat
 - **Imports.** `testcases.mjs import <p> <m> [--file]` parses the human's file (`modules[].testcases_file`, else the product-level `testcases.import` split by `@module:<slug>` or a Module column) in a framework format into `testcases/imported.json`; any other document is converted by testcase-writer's import mode into `cases.json` cases citing it verbatim. Imported cases enter `approval.csv` like generated ones; `import … --approved` is human-only (a terminal and the typed module slug; the guard denies it to every tool call).
 - **Import mode (`run.json` `testcasesMode`).** Without the `testcases` step, a module whose imported cases must be converted or linked runs its testcases stage in import mode, for that module only (`run.mjs steps --import-mode <m>`; the other modules have no testcases stage). The writer converts and links only; every coverage item no case covers is `deferred` with reason `import`; `check` verifies the imported cases (overlay, verbatim quotes, links; with `playwright-ui` chosen, every imported UI case linked, in either mode). With `testcases` chosen every module is `generate`: generated and imported cases.
 
-A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. Sub-steps inside a domain (build steps, gate → reviewer → fixer, runner-triager → fixer) belong to the domain orchestrator, not this table: it follows `node scripts/orchestration.mjs next <product> <domain> <module>`, which reads the domain's flow from `scripts/lib/domain-flows.mjs` and the files on disk, runs the script steps itself (the pre-review gate, the clarification summary), and spends the bounded review and heal rounds.
+A stage is complete only if `run.json` marks it `done` **and** every declared output exists, is non-empty and passes its schema or check; `done` is refused otherwise, and a stage whose outputs later disappear is offered again by `next`. Sub-steps inside a domain (build steps, gate → reviewer → fixer, runner-triager → fixer) belong to the domain orchestrator, not this table: it follows `node {fw}/scripts/orchestration.mjs next <product> <domain> <module>`, which reads the domain's flow from `scripts/lib/domain-flows.mjs` and the files on disk, runs the script steps itself (the pre-review gate, the clarification summary), and spends the bounded review and heal rounds.
 
 `next` returns, per stage, the agent and the exact prompt (run id, mode, test case format, module), marks reusable knowledge done itself (`reused`), and, with nothing left to start, `end`: `completed`, `awaiting-approval` (with `sheets`) or `incomplete` (`failed`, `blocked`, `running`). A refused `done` returns `retry: {agent, prompt}` the first time and fails the stage the second (`doneRefusals`; a clarifications refusal waits for a human instead). A domain whose review used up its rounds is failed at `done` (`reviewFailed`, `findings`) and blocks its dependants at once.
 
@@ -126,7 +126,7 @@ Each stage gets at most **two attempts** per run (`attempts` in `run.json`; an `
 
 `artifacts/<product>/knowledge/`, built by `knowledge-generator`: a **product pass** (stage `knowledge`) then one **module pass** per module (stage `module-knowledge`).
 
-- **Sources** — one product-wide registry, `sources.json` (`schemas/sources.schema.json`), written only by `node scripts/knowledge.mjs add-source`; the same (normalized) URL or path always gets the same id `S<n>`. `sources.md` files are rendered from it: the product one lists every source, a module one lists what that module cites.
+- **Sources** — one product-wide registry, `sources.json` (`schemas/sources.schema.json`), written only by `node {fw}/scripts/knowledge.mjs add-source`; the same (normalized) URL or path always gets the same id `S<n>`. `sources.md` files are rendered from it: the product one lists every source, a module one lists what that module cites.
 - **Citations** — every content line of overview/glossary/notes cites at least one registered source (`[S3]`, or `[S3 "exact words"]` with a quote); lines under `## Open points` are exempt (unconfirmed items, candidates for clarification). Enforced by `knowledge.mjs check` and on stage `done`.
 - **Verified quotes for rule facts (D-051)** — in a module's `notes.md`, these lines carry a citation with a quote of at least 3 words: every content line under `## Business rules and validations`, `## Roles and permissions` and `## Limits and constraints`, and every line under `## Key entities and fields` that names a constraint (`CONSTRAINT_RE` in `scripts/lib/knowledge.mjs`). `check` finds the quote in `sources/S<n>.txt`, ignoring whitespace, case and curly quotes. `knowledge.mjs snapshot <p> S<n>` fills that cache:
   - a URL: one plain GET with no credentials, never to a `target.url` or `target.api_urls` host or a subdomain of one, with hosts normalized (case, trailing dot; any port) and redirects checked too. An HTML page with fewer than 20 readable words, or binary content, is a failed fetch;
@@ -159,7 +159,7 @@ Each stage gets at most **two attempts** per run (`attempts` in `run.json`; an `
 
 Files in the older 7-column layout (no `Answer status`) are read as is and rewritten in the current layout on the next write.
 
-All agent writes go through `node scripts/clarifications.mjs` (`append`, `set-steps`, `record`, `list`, `status`, `summary`), which locks the file, de-duplicates new questions against existing ones, preserves human edits (Excel BOM/CRLF are fine) and reports clearly if the file is open in Excel. `summary` renders `clarifications-summary.md` from the CSV alone (totals, every row, a `## Needs a human` list built from each unanswered row's `Next step:`, and an `## Awaiting approval` list of agent-proposed answers), so the two never disagree.
+All agent writes go through `node {fw}/scripts/clarifications.mjs` (`append`, `set-steps`, `record`, `list`, `status`, `summary`), which locks the file, de-duplicates new questions against existing ones, preserves human edits (Excel BOM/CRLF are fine) and reports clearly if the file is open in Excel. `summary` renders `clarifications-summary.md` from the CSV alone (totals, every row, a `## Needs a human` list built from each unanswered row's `Next step:`, and an `## Awaiting approval` list of agent-proposed answers), so the two never disagree.
 
 The clarification-explorer records a row with `record <p> <m> <ID> --file clarification-evidence/<ID>/outcome.json` (format: `docs/agent-handoffs.md` §2). The script records nothing unless the outcome holds up against the evidence:
 - the verdict and reason fit (a reason from the verdict's list; no `needs-full-run` in a full-run);
@@ -179,24 +179,24 @@ Stage check: with `clarifications.unresolved_policy: stop` (default) every row n
 `state/ledger.jsonl`, append-only, one JSON line per event (`schemas/ledger-entry.schema.json`), each tagged with the run id taken from `state/run.json`. An entity is *live* while its `created` event has no later `deleted` event.
 
 ```bash
-node scripts/ledger.mjs add     <product> --type T --ref R --module M --stage S --agent A [--label --url --note]
+node {fw}/scripts/ledger.mjs add     <product> --type T --ref R --module M --stage S --agent A [--label --url --note]
                                 [--cleanup-endpoint EP-<m>-<n> --cleanup-param P]   # the delete that removes it (D-075)
-node scripts/ledger.mjs deleted <product> --type T --ref R --module M --stage S --agent A
-node scripts/ledger.mjs owns    <product> --type T --ref R      # exit 0 only if the CURRENT run created it and it is live
-node scripts/ledger.mjs owns    <product> --ref R [--ref R2 …]  # the same for any type and any of the refs (D-074)
-node scripts/ledger.mjs list    <product> [--live] [--all-runs]
-node scripts/ledger.mjs sweep   <product> [--run RUN] [--dry-run]   # HUMAN-ONLY, between runs (D-075)
+node {fw}/scripts/ledger.mjs deleted <product> --type T --ref R --module M --stage S --agent A
+node {fw}/scripts/ledger.mjs owns    <product> --type T --ref R      # exit 0 only if the CURRENT run created it and it is live
+node {fw}/scripts/ledger.mjs owns    <product> --ref R [--ref R2 …]  # the same for any type and any of the refs (D-074)
+node {fw}/scripts/ledger.mjs list    <product> [--live] [--all-runs]
+node {fw}/scripts/ledger.mjs sweep   <product> [--run RUN] [--dry-run]   # HUMAN-ONLY, between runs (D-075)
 ```
 
 Agents record immediately after creating anything, run `owns` before any delete/cancel/remove, and record `deleted` after. `ref` is the id the product itself uses for the entity, so the run-time guard can match it in a URL.
 
 **Run time (D-074).** In a full-run, the generated UI guard (`fixtures/ui/base.ts`, through `destructiveRefusal` in `utils/shared/ledger.ts`) aborts a destructive request to a product host — any DELETE, or another non-safe method whose path names a destructive action — unless one of its path segments or query values is a live entity of this run (`owns --ref`), and fails the test with `Delete blocked by the ledger guard (D-005)`; triage classifies that as a healable `test-bug` (rule `ledger-guard`). The API side needs no such guard: the generated sender refuses any change to an entity the test did not create, and `api-code.mjs check` keeps raw requests and deletes out of agent code (D-056).
 
-**Leftovers (D-075).** An entity an ended run left live (a crash, an abandoned run, a type without a delete) can't be deleted by a later run. Between runs, a human may run `ledger.mjs sweep` (`make sweep PRODUCT=<p>`) in their own terminal: with no active run, and with the run-config the last run started from in `full-run`, it deletes each live entity whose recorded cleanup recipe names a delete endpoint of the module's catalogue on a product host (with the run-config's credentials, no redirects; 2xx, 404 and 410 count as gone) and records `deleted` (`stage: sweep`, `agent: human-sweep`). Every other leftover is listed for manual cleanup. It needs an interactive terminal and the typed product slug, `--dry-run` sends nothing, and the guard denies it to every tool call.
+**Leftovers (D-075).** An entity an ended run left live (a crash, an abandoned run, a type without a delete) can't be deleted by a later run. Between runs, a human may run `ledger.mjs sweep` (`npx atf sweep <p>`) in their own terminal: with no active run, and with the run-config the last run started from in `full-run`, it deletes each live entity whose recorded cleanup recipe names a delete endpoint of the module's catalogue on a product host (with the run-config's credentials, no redirects; 2xx, 404 and 410 count as gone) and records `deleted` (`stage: sweep`, `agent: human-sweep`). Every other leftover is listed for manual cleanup. It needs an interactive terminal and the typed product slug, `--dry-run` sends nothing, and the guard denies it to every tool call.
 
 ## Module exploration
 
-`node scripts/explore.mjs state|frontier|ingest-network|build|check|paths <product> <module>` (`scripts/lib/explore.mjs`) owns `modules/<m>/explore/` except the module-explorer's `flows/`, `module-summary.md`, `new-questions.json`, `overlay.json` and `captures/`. The format is in [`agent-handoffs.md`](agent-handoffs.md) §1, and the design is decision D-052. The script never touches the product: the agent acts in the browser and saves its captures, and the script records them.
+`node {fw}/scripts/explore.mjs state|frontier|ingest-network|build|check|paths <product> <module>` (`scripts/lib/explore.mjs`) owns `modules/<m>/explore/` except the module-explorer's `flows/`, `module-summary.md`, `new-questions.json`, `overlay.json` and `captures/`. The format is in [`agent-handoffs.md`](agent-handoffs.md) §1, and the design is decision D-052. The script never touches the product: the agent acts in the browser and saves its captures, and the script records them.
 
 - **A state machine.** A state is a page template plus a structural fingerprint of its accessibility snapshot (roles and data-free names of controls, headings, dialogs, tabs, alerts; sort, filter, selected option and empty lists; values, counts, record names and refs ignored). `state --via <ST> --action …` records the transition too, including into a known state. Each state records how to reach it.
 - **Stable ids** from `explore/registry/` (`scripts/lib/registry.mjs`): `ST-`, `PG-`, `FR-` (frontier items) and `NI-<m>-<n>` (network inventory entries), never renumbered or reused.
@@ -207,7 +207,7 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 ## API endpoint catalogue
 
-`node scripts/endpoints.mjs find-spec|introspect|build|probe|check <product> <module>` (`scripts/lib/{endpoints,openapi,graphql,probe,api-discovery}.mjs`) owns `modules/<m>/api/` except `overlay.json`. The format is in [`agent-handoffs.md`](agent-handoffs.md) §4, and the design is decision D-045. The catalogue is built by its own module stage, `api-discovery` (`api-discoverer`, started by the orchestrator, D-067), whenever a chosen step needs it: `@api` or `@performance` test cases, the Playwright API tests or k6.
+`node {fw}/scripts/endpoints.mjs find-spec|introspect|build|probe|check <product> <module>` (`scripts/lib/{endpoints,openapi,graphql,probe,api-discovery}.mjs`) owns `modules/<m>/api/` except `overlay.json`. The format is in [`agent-handoffs.md`](agent-handoffs.md) §4, and the design is decision D-045. The catalogue is built by its own module stage, `api-discovery` (`api-discoverer`, started by the orchestrator, D-067), whenever a chosen step needs it: `@api` or `@performance` test cases, the Playwright API tests or k6.
 
 - **Stable ids.** Ids come from `registry.json`: one `EP-<m>-<n>` per endpoint key, never renumbered or reused. An inventory input is cited by its `NI-<m>-<n>` id (`explore/network-inventory.json#NI-…`); an older inventory without ids by its index.
 - **Coverage.** `build` fails unless every input appears exactly once in `coverage.json`, either mapped or excluded with a reason code. The inputs are spec operations, GraphQL root fields, inventory entries and docs endpoints.
@@ -224,7 +224,7 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 ## API test plan
 
-`node scripts/api-plan.mjs build|check <product> <module>` (`scripts/lib/api-plan.mjs`) owns the plan files in `modules/<m>/api/`: `plan.json`, `plan-coverage.json`, `plan-registry.json` and `api-test-plan.md`. The only exception is `plan-overlay.json`, which belongs to the api-test-planner. The format is in [`agent-handoffs.md`](agent-handoffs.md) §4, and the design is decision D-046. The script never sends a request to the product.
+`node {fw}/scripts/api-plan.mjs build|check <product> <module>` (`scripts/lib/api-plan.mjs`) owns the plan files in `modules/<m>/api/`: `plan.json`, `plan-coverage.json`, `plan-registry.json` and `api-test-plan.md`. The only exception is `plan-overlay.json`, which belongs to the api-test-planner. The format is in [`agent-handoffs.md`](agent-handoffs.md) §4, and the design is decision D-046. The script never sends a request to the product.
 
 - **Scenarios.** A fixed rule catalogue enumerates them from the catalogue:
   - partitions and 2-value boundaries per spec constraint, one fault per negative;
@@ -242,14 +242,14 @@ Agents record immediately after creating anything, run `owns` before any delete/
 
 ## Test cases
 
-`node scripts/testcases.mjs` (`scripts/lib/testcases.mjs`) owns `modules/<m>/testcases/` (format: [`agent-handoffs.md`](agent-handoffs.md) §3; decision D-053):
+`node {fw}/scripts/testcases.mjs` (`scripts/lib/testcases.mjs`) owns `modules/<m>/testcases/` (format: [`agent-handoffs.md`](agent-handoffs.md) §3; decision D-053):
 
 | File | Owner |
 |---|---|
 | `cases.json` | testcase-writer (its only file; in import mode it also holds the converted cases and the `links` of imported UI cases to exploration states) |
 | `imported.json` (schema `testcases-imported`) | the script: `testcases.mjs import` parses the human's own file in a framework format (D-066) |
 | `approval.csv` | **human only**: rendered by `build`, filled in Excel or an editor |
-| `approvals.json` | **human only**, through `node scripts/testcases.mjs approve <product> <module>` (or `import <product> <module> --approved` for a file already approved) in an interactive terminal (the slug typed to confirm) |
+| `approvals.json` | **human only**, through `node {fw}/scripts/testcases.mjs approve <product> <module>` (or `import <product> <module> --approved` for a file already approved) in an interactive terminal (the slug typed to confirm) |
 | `coverage.json`, `registry/{items,cases}.json`, `<m>-testcases.<ext>`, `testcases-summary.md`, `approval-findings.md` | the script |
 | `results/<run>/<m>/testcases/review.json` | testcase-reviewer; `review-findings.md` beside it is rendered by `review-check` (a managed file since D-059: no agent writes it) |
 
@@ -257,7 +257,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## Foundations
 
-`node scripts/foundation.mjs render|check|install|paths <product> [--side repo|ui|api|k6]` (`scripts/lib/foundation.mjs`) renders the fixed files of `playwright-tests/<product>/` (sides `repo`, `ui`, `api`) and `k6-tests/<product>/` (side `k6`) from the framework's `templates/`, with each side's cited overlay in `artifacts/<product>/foundation/`. The formats are in [`agent-handoffs.md`](agent-handoffs.md) §10, and the design is decision D-054.
+`node {fw}/scripts/foundation.mjs render|check|install|paths <product> [--side repo|ui|api|k6]` (`scripts/lib/foundation.mjs`) renders the fixed files of `playwright-tests/<product>/` (sides `repo`, `ui`, `api`) and `k6-tests/<product>/` (side `k6`) from the framework's `templates/`, with each side's cited overlay in `artifacts/<product>/foundation/`. The formats are in [`agent-handoffs.md`](agent-handoffs.md) §10, and the design is decision D-054.
 
 - **Managed files** carry a "Generated by scripts/foundation.mjs — do not edit" header; JSON files are listed in `.foundation-managed.json`. They are listed in `config/permissions.yaml` `managed_files`, and during a run the guard denies every caller, named or not, a direct write (any spelling of the path: case, trailing dots, streams, short names). Templates are LF-only, so a render is the same bytes on every OS. Rendering is deterministic.
 - **Dependencies** are named without a version; `install` runs `npm install`, and `package-lock.json` pins what it resolved. A re-render keeps the versions in `package.json` and never bumps one; the drift check ignores those versions and the lockfile.
@@ -266,7 +266,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## UI code
 
-`node scripts/ui-code.mjs build|check|paths <product> <module> [--pages] [--static]` (`scripts/lib/ui-code.mjs`) scaffolds a module's UI test code from the cases a human approved and the exploration's page templates (format: [`agent-handoffs.md`](agent-handoffs.md) §11; design: [`playwright-conventions.md`](playwright-conventions.md) and decision D-055). It never touches the product.
+`node {fw}/scripts/ui-code.mjs build|check|paths <product> <module> [--pages] [--static]` (`scripts/lib/ui-code.mjs`) scaffolds a module's UI test code from the cases a human approved and the exploration's page templates (format: [`agent-handoffs.md`](agent-handoffs.md) §11; design: [`playwright-conventions.md`](playwright-conventions.md) and decision D-055). It never touches the product.
 
 | File | Owner |
 |---|---|
@@ -283,7 +283,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## API code
 
-`node scripts/api-code.mjs build|check|paths <product> <module> [--clients] [--static]` (`scripts/lib/api-code.mjs`) generates a module's Playwright API code from the endpoint catalogue and the verified API plan (format: [`agent-handoffs.md`](agent-handoffs.md) §12; design: [`playwright-conventions.md`](playwright-conventions.md) and decision D-056). It never sends a request to the product.
+`node {fw}/scripts/api-code.mjs build|check|paths <product> <module> [--clients] [--static]` (`scripts/lib/api-code.mjs`) generates a module's Playwright API code from the endpoint catalogue and the verified API plan (format: [`agent-handoffs.md`](agent-handoffs.md) §12; design: [`playwright-conventions.md`](playwright-conventions.md) and decision D-056). It never sends a request to the product.
 
 | File | Owner |
 |---|---|
@@ -301,7 +301,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## k6 workload and scripts
 
-`node scripts/workload.mjs build|check|paths <product> <module> [--run <run-id>]` (`scripts/lib/workload.mjs`) builds a module's load workload from its human-approved `@performance` test cases only, one load unit per case, and `node scripts/k6-code.mjs build [--adopt]|check|paths <product> <module>` (`scripts/lib/k6-code.mjs`) generates its k6 scripts from the verified workload (formats: [`agent-handoffs.md`](agent-handoffs.md) §5; design: [`k6-conventions.md`](k6-conventions.md) and decision D-068). Neither sends a request to the product or runs load.
+`node {fw}/scripts/workload.mjs build|check|paths <product> <module> [--run <run-id>]` (`scripts/lib/workload.mjs`) builds a module's load workload from its human-approved `@performance` test cases only, one load unit per case, and `node {fw}/scripts/k6-code.mjs build [--adopt]|check|paths <product> <module>` (`scripts/lib/k6-code.mjs`) generates its k6 scripts from the verified workload (formats: [`agent-handoffs.md`](agent-handoffs.md) §5; design: [`k6-conventions.md`](k6-conventions.md) and decision D-068). Neither sends a request to the product or runs load.
 
 | File | Owner |
 |---|---|
@@ -320,7 +320,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## Review and fix
 
-`node scripts/review.mjs check|render|paths <product> <module> <domain>` and `node scripts/fix.mjs snapshot|check|paths <product> <module> <domain>` (`scripts/lib/review.mjs`, `scripts/lib/fix.mjs`, D-059; `<domain>` = `playwright-ui`, `playwright-api` or `k6`). The formats are in [`agent-handoffs.md`](agent-handoffs.md) §6, the rubric in [`conventions.md`](conventions.md).
+`node {fw}/scripts/review.mjs check|render|paths <product> <module> <domain>` and `node {fw}/scripts/fix.mjs snapshot|check|paths <product> <module> <domain>` (`scripts/lib/review.mjs`, `scripts/lib/fix.mjs`, D-059; `<domain>` = `playwright-ui`, `playwright-api` or `k6`). The formats are in [`agent-handoffs.md`](agent-handoffs.md) §6, the rubric in [`conventions.md`](conventions.md).
 
 | File (`results/<run>/<m>/<domain>/`) | Owner |
 |---|---|
@@ -335,7 +335,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## Triage
 
-`node scripts/triage.mjs prepare|build|check|paths <product> <module> --domain ui|api|k6` (`scripts/lib/triage.mjs`, D-058) triages a run's results. The format, the classes and the rules are in [`agent-handoffs.md`](agent-handoffs.md) §7.
+`node {fw}/scripts/triage.mjs prepare|build|check|paths <product> <module> --domain ui|api|k6` (`scripts/lib/triage.mjs`, D-058) triages a run's results. The format, the classes and the rules are in [`agent-handoffs.md`](agent-handoffs.md) §7.
 
 | File | Owner |
 |---|---|
@@ -351,7 +351,7 @@ The guard denies `testcases.mjs approve` and any write to `approval.csv` or `app
 
 ## Report
 
-`node scripts/report-data.mjs <product>` collects `results/<run>/report/report.json` (schema `report`, D-061): totals, per-module rows, bug drafts by cluster, the human queues (test cases awaiting approval with their sign-off sheet path, clarifications awaiting approval or an answer), coverage per ledger and technique with everything deferred or excluded, assumptions (assumed k6 thresholds, `@assumption` cases, agent-captured or stale rule facts, the D-052 known limits, k6 leftovers), failed, blocked and awaiting-approval stages, and `missing[]` for data that could not be collected. `node scripts/report.mjs render|check|paths <product>` (`scripts/lib/report.mjs`, templates in `templates/report/`) works from the run state alone.
+`node {fw}/scripts/report-data.mjs <product>` collects `results/<run>/report/report.json` (schema `report`, D-061): totals, per-module rows, bug drafts by cluster, the human queues (test cases awaiting approval with their sign-off sheet path, clarifications awaiting approval or an answer), coverage per ledger and technique with everything deferred or excluded, assumptions (assumed k6 thresholds, `@assumption` cases, agent-captured or stale rule facts, the D-052 known limits, k6 leftovers), failed, blocked and awaiting-approval stages, and `missing[]` for data that could not be collected. `node {fw}/scripts/report.mjs render|check|paths <product>` (`scripts/lib/report.mjs`, templates in `templates/report/`) works from the run state alone.
 - **Files.** `report.json` (report-data), `narrative.json` (the report-generator, its only output; schema `report-narrative`: `executiveSummary`, `risks` with a severity, `recommendations`, each statement `{text, cites[]}` with at least one cite), `index.html` and `report-check.json` (scripts). `report.json`, `index.html` and the stamp are managed files: no agent writes them.
 - **Render.** One self-contained, deterministic file (no network, no CDN; light and dark; inline SVG charts) from `templates/report/{deck.html,deck.css,deck.js}`: every number, table and chart comes from `report.json`.
 - **Check.** `narrative.json` is schema-valid, every cited path exists in `report.json`, every number in a statement equals a number at a cited path (or an array length), and `index.html` equals what `render` makes of the two. A pass stamps `report-check.json` over all three; a failure removes the stamp. The `report` stage's `done` refuses a missing or stale stamp (`reportUnverified`), so a failed or stale report is retried like any stage (D-011).

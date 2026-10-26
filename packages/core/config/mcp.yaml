@@ -9,7 +9,7 @@
 # no rebuild. The guard lets readonly agents type and select only while this init page is configured.
 #
 # `--browser chromium` runs Playwright's own Chromium, so no system Chrome is needed; the doctor checks that the build
-# this @playwright/mcp version needs is downloaded (`make doctor` installs it).
+# this @playwright/mcp version needs is downloaded (`atf doctor` installs it).
 #
 # `{fw}` is the framework's path from the workspace (D-085): the build expands it in every host's MCP config, so the
 # path is `scripts/browser/init-page.cjs` in this repo.

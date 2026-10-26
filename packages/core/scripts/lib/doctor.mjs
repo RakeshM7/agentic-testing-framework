@@ -1,6 +1,6 @@
 // Dependency checks (D-064): what each stage needs on this machine, checked before the stage starts instead of failing
 // halfway through it. Every check is a pure function of the file system, the environment and (for `target`) one HEAD
-// request, so the same list serves `make` (scripts/doctor.mjs, before a login or a session) and the run
+// request, so the same list serves `atf` (scripts/doctor.mjs, before a login or a session) and the run
 // (`run.mjs doctor <product>`, which records the result in state/doctor.json for `stage … start`).
 //
 // Groups, and the stages that need them (STAGE_NEEDS):
@@ -244,7 +244,7 @@ const cookieMatches = (domain, host) => {
 function session({ root, cfg, now, product }) {
   const out = [];
   const auth = cfg.authorizations ?? {};
-  const relogin = `make login PRODUCT=${product}`;
+  const relogin = `npx atf login ${product}`;
   if (auth.authenticated_crawl) {
     const file = path.resolve(root, auth.session_state_file ?? "");
     const state = auth.session_state_file ? tryReadJson(file) : null;

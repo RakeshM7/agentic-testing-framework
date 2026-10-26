@@ -112,7 +112,7 @@ test("interview answers become a valid, readonly run-config written once", () =>
   assert.ok(d.warnings.some((w) => /plan\.xlsx/.test(w)), "an Office file is flagged as unreadable");
   assert.equal(cfg.authorizations.authenticated_crawl, true);
   assert.equal(cfg.authorizations.session_state_file, "playwright-tests/acme-crm/.auth/state.json");
-  assert.ok(d.next.some((n) => n.startsWith("make login PRODUCT=acme-crm")));
+  assert.ok(d.next.some((n) => n.startsWith("npx atf login acme-crm")));
   // the login (lib/login.mjs) rewrites these two lines in place; their shape must stay.
   const text = readFile(path.join(root, d.file), "utf8");
   assert.match(text, /^  authenticated_crawl: true$/m);

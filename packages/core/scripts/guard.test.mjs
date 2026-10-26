@@ -816,6 +816,61 @@ test("make approve: a separator inside quotes is text, not a new command; an unq
     for (const agent of [undefined, "feedback-implementor-agent"]) assert.equal(allowed(FULL.root, sh(agent, c)), true, `${agent ?? "(no agent)"}: ${c}`);
 });
 
+test("the atf CLI's approve and import --approved are human-only for every caller, however atf is started (D-087)", () => {
+  const unnamed = (host, command) => toolCall({ host, kind: "shell", tool: "bash", command });
+  const callers = (c) => [
+    ...[RO, FULL].flatMap(({ root }) => ["orchestrator-agent", "testcase-writer", "feedback-implementor-agent", undefined].map((agent) => [`${agent ?? "(no agent)"}`, root, sh(agent, c)])),
+    ...["copilot-cli", "vscode", "copilot-cloud"].map((host) => [host, FULL.root, unnamed(host, c)]),
+  ];
+  for (const c of [
+    "atf approve acme contacts",
+    "npx atf approve acme contacts",
+    "npx --yes atf approve acme contacts",
+    "npx @testagentic/atf approve acme contacts",
+    "npm exec -- atf approve acme contacts",
+    "npm run atf -- approve acme contacts",
+    "pnpm exec atf approve acme contacts",
+    "yarn atf approve acme contacts",
+    "bunx atf approve acme contacts",
+    "node packages/core/bin/atf.mjs approve acme contacts",
+    "node node_modules/@testagentic/atf/bin/atf.mjs approve acme contacts",
+    "./node_modules/.bin/atf approve acme contacts",
+    ".\\node_modules\\.bin\\atf.cmd approve acme contacts",
+    "& \"C:\\work\\node_modules\\.bin\\atf.ps1\" approve acme contacts",
+    "ATF_ENV=staging atf approve acme contacts",
+    "env ATF_ENV=staging npx atf approve acme contacts",
+    "atf --env staging approve acme contacts",
+    "atf import acme contacts --approved",
+    "atf import acme contacts --file data/c.feature --approved",
+    "npx atf import acme contacts --file \"a;b.feature\" --approved",
+    "atf import acme contacts --appr''oved",
+    "atf import acme contacts '--approved'",
+    "atf appr''ove acme contacts",
+    "atf appr?ve acme contacts",
+    "atf appro${x}ve acme contacts",
+    "ls; atf approve acme contacts",
+    "ls && npx atf approve acme contacts",
+    "echo \"$(atf approve acme contacts)\"",
+    "bash -c \"atf approve acme contacts\"",
+    "sh -c 'ls; npx atf import acme contacts --approved'",
+    `echo ${Buffer.from("npx atf approve acme contacts").toString("base64")} | base64 -d | sh`,
+  ])
+    for (const [who, root, tc] of callers(c)) assert.equal(allowed(root, tc), false, `${who}: ${c}`);
+  // atf's other commands, prose about atf, and a file named atf.* are not approvals
+  for (const c of [
+    "atf status acme",
+    "npx atf import acme contacts --file data/approved-cases.feature",
+    "atf steps acme explore,testcases",
+    "echo \"x; atf approve acme contacts\"",
+    "git commit -m \"docs: only a human runs atf approve, in their own terminal\"",
+    "grep -n approve packages/core/bin/atf.mjs",
+    "cat atf/atf.json",
+    "node --test packages/core/scripts/cli.test.mjs",
+  ])
+    for (const agent of [undefined, "feedback-implementor-agent"]) assert.equal(allowed(FULL.root, sh(agent, c)), true, `${agent ?? "(no agent)"}: ${c}`);
+  assert.match(checkTool(sh(undefined, "npx atf approve acme contacts"), FULL.root).reason, /runs `npx atf approve <product> <module>`/);
+});
+
 test("worker requests (G10, D-060): only the askers run requests.mjs add; nobody writes requests.json; the repo owner reads every module's", () => {
   const cmdOk = (agent, cmd) => allowed(FULL.root, sh(agent, cmd));
   const R = "artifacts/acme/results/acme-run-1/contacts";
@@ -900,6 +955,8 @@ test("every framework script is writable by feedback-implementor-agent or delibe
     // D-085: roots and config decide where the guard looks and which permissions a run freezes; workspace.test covers
     // the read-only framework
     "scripts/workspace.test.mjs",
+    // D-087: the atf CLI is the human's command surface; the guard's human-only match relies on its strict parsing
+    "scripts/lib/cli.mjs", "scripts/cli.test.mjs",
   ]);
   const files = [];
   // node_modules is git-ignored and never the framework's own code, wherever an install put it; paths as the run's
@@ -917,7 +974,9 @@ test("every framework script is writable by feedback-implementor-agent or delibe
 
 test("the ledger sweep is human-only: denied to every agent and every unidentified call, in or out of a run (D-075)", () => {
   const agents = Object.keys(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents);
-  const cmds = ["node scripts/ledger.mjs sweep acme", "node scripts/ledger.mjs sweep acme --dry-run", "make sweep PRODUCT=acme", "cd x && node scripts/led''ger.mjs swe''ep acme"];
+  const cmds = ["node scripts/ledger.mjs sweep acme", "node scripts/ledger.mjs sweep acme --dry-run", "make sweep PRODUCT=acme", "cd x && node scripts/led''ger.mjs swe''ep acme",
+    // the atf CLI (D-087), however it is started
+    "atf sweep acme", "npx atf sweep acme --dry-run", "npx atf --env \"a;b\" sweep acme", "node packages/core/bin/atf.mjs sweep acme", ".\\node_modules\\.bin\\atf.cmd swe''ep acme", "bash -c \"atf sweep acme\""];
   for (const { root } of [RO, FULL])
     for (const agent of agents) for (const c of cmds) assert.equal(allowed(root, sh(agent, c)), false, `${agent}: ${c}`);
   const unnamed = (host, command) => toolCall({ host, kind: "shell", tool: "bash", command });

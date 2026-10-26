@@ -655,7 +655,7 @@ test("environments (D-081): each has its own lock, run state, ledger and history
   const stagingFile = path.join(root, "config", "acme-staging.yaml");
   writeFileSync(stagingFile, readFileSync(staging, "utf8"));
   const prodCfg = writeConfig(root, { product: "acme" });
-  assert.match(initRun(stagingFile, { root, framework: root, env: {} }).errors[0], /is for environment 'staging', but this session's is 'default' \(ATF_ENV\): start the session with ATF_ENV=staging \(make run PRODUCT=acme ENV=staging\)/);
+  assert.match(initRun(stagingFile, { root, framework: root, env: {} }).errors[0], /is for environment 'staging', but this session's is 'default' \(ATF_ENV\): start the session with ATF_ENV=staging \(npx atf run acme --env staging\)/);
   assert.match(initRun(stagingFile, { root, framework: root, env: { ATF_ENV: "Bad Env" } }).errors[0], /ATF_ENV 'Bad Env' must be/);
 
   const saved = process.env.ATF_ENV;

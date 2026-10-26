@@ -24,7 +24,7 @@ export { frameworkRoot, workspaceRoot };
 export const schemaDir = path.join(frameworkRoot, "schemas");
 export const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-// The environment a session works in (D-081): ATF_ENV, set where the session starts (make run PRODUCT=<p> ENV=<e>) and
+// The environment a session works in (D-081): ATF_ENV, set where the session starts (atf run <p> --env <e>) and
 // inherited by every shell, script and hook of it; unset is `default`. A product's runs, lock, ledger and history are
 // per environment; its knowledge, modules, foundation, test code and results are shared.
 export const DEFAULT_ENV = "default";

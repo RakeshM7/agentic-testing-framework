@@ -9,7 +9,8 @@
 //   - caller:       the call's `agent` (set by the adapter only from a trusted source) and `host`
 // The env var AUTHORIZATIONS_MODE=readonly can only downgrade. No active run => readonly, no per-agent rules.
 // Two rules hold for every call, in or out of a run, whoever calls: test case approval is human-only (humanOnly()), and
-// so is the ledger sweep that deletes what ended runs left in the target (humanOnlySweep(), D-075).
+// so is the ledger sweep that deletes what ended runs left in the target (humanOnlySweep(), D-075). Both cover the atf
+// CLI's forms: `atf approve`, `atf import … --approved` and `atf sweep` (D-087).
 // During a run, no caller (named or not, in any mode) writes a managed foundation file directly (managedPath(), D-054),
 // nor a file scripts/api-code.mjs generates (the API clients, types, schemas, registration and specs, D-056).
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
@@ -121,15 +122,15 @@ const DECODED_VERB = /\b(?:approve|approved|importCases)\b/gi;
 const humanOnlyCmd = (cmd) => /testcases/i.test(cmd) && HUMAN_ONLY_VERB.test(cmd);
 const HUMAN_ONLY_FILES = /approvals?\.(csv|json)|approv~\d|testcases[\\/]+approv/i;
 const HUMAN_ONLY_PATH = /(^|[\\/])(testcases[\\/]+approv[^\\/]*|approvals?\.(csv|json)|approv~\d[^\\/]*)$/i;
-const HUMAN_ONLY_REASON = "test case approval is human-only: a human edits testcases/approval.csv and runs `node {fw}/scripts/testcases.mjs approve` (or `import ... --approved` for a file already approved) in their own terminal";
+const HUMAN_ONLY_REASON = "test case approval is human-only: a human edits testcases/approval.csv and runs `npx atf approve <product> <module>` (or `npx atf import <product> <module> --approved` for a file already approved) in their own terminal";
 // Quotes, a backslash or cmd.exe's caret inside a word only split it for this match (`--appr''oved`, `appr\ove`,
 // `appr^ove` reach the program whole), so they are dropped after the concatenations are joined: stricter only.
 const WORD_SPLITTERS = /['"`]|\\(?=[a-z])|\^(?=[a-z])/gi;
-// The Makefile's human-only targets (V-3): `make approve`, and `make import … APPROVED=yes` (or APPROVED from the
-// environment, which make reads too). Only an actual make invocation counts -- make as a command's program word (after
-// a separator, `$(`, a backtick, env/sudo/npx or leading assignments) with an `approve` target or an `APPROVED=`
-// assignment; or an `APPROVED=` assignment (inline or exported) before any make -- never prose that says "make" and
-// "approve".
+// The former Makefile's human-only targets (V-3), still refused should a make of the client's own wrap them:
+// `make approve`, and `make import … APPROVED=yes` (or APPROVED from the environment, which make reads too). Only an
+// actual make invocation counts -- make as a command's program word (after a separator, `$(`, a backtick, env/sudo/npx or
+// leading assignments) with an `approve` target or an `APPROVED=` assignment; or an `APPROVED=` assignment (inline or
+// exported) before any make -- never prose that says "make" and "approve".
 const MAKE = String.raw`\b(?:g|n|mingw32-)?make(?:\.exe)?\b`;
 const makeRun = (starts) => String.raw`(?:^|[\n;&|(\x60${starts}])\s*(?:(?:npx|env|sudo|exec|command)\s+|\w+=\S*\s+)*(?:\S*[\\/])?${MAKE}`;
 const APPROVED_SET = String.raw`\bAPPROVED\s*[:?+]*=`;
@@ -138,6 +139,19 @@ const HUMAN_ONLY_MAKE = humanOnlyMake("");
 // On a line with a word that runs a string (STRING_RUNNER below: `bash -c "make approve"`, `eval 'make approve'`), a
 // quoted string can be a command, so an opening quote also starts one.
 const HUMAN_ONLY_MAKE_RUN = humanOnlyMake(`'"`);
+// The atf CLI's human-only commands (D-087): `atf approve`, `atf import … --approved` and `atf sweep`, matched like the
+// make targets: atf as the end of a command's program word -- after any path (also one whose `\` the word-splitter pass
+// dropped) and with a .mjs, .cmd, .ps1 or .exe suffix, after a separator, `$(`, a backtick, leading assignments,
+// env/sudo/exec/command or a runner that starts it (npx, node, bun, pnpm, yarn, npm exec or run) -- with the verb or
+// the flag later in that command. The CLI takes no alias, abbreviation or `--approved=<value>` (scripts/lib/cli.mjs),
+// so these are the spellings it runs. On a line with a word that runs a string, its quotes are not read
+// (quotedSeparatorsBlanked), so the rest of the line counts, separators included.
+const ATF = String.raw`atf(?:\.mjs|\.cmd|\.ps1|\.exe)?(?![\w.\\/-])`;
+const atfRun = (starts) => String.raw`(?:^|[\n;&|(\x60${starts}])\s*(?:(?:npx|env|sudo|exec|command|node|nodejs|bun|bunx|pnpm|yarn|npm\s+(?:exec|x|run|run-script))\s+(?:-\S+\s+)*|\w+=\S*\s+)*\S*${ATF}`;
+const humanOnlyAtf = (starts, rest) => new RegExp(`${atfRun(starts)}${rest}\\s(?:approve|--approved)\\b`, "i");
+const HUMAN_ONLY_ATF = humanOnlyAtf("", "[^;&|\\n]*");
+const HUMAN_ONLY_ATF_RUN = humanOnlyAtf(`'"`, "[\\s\\S]*");
+const ATF_PROGRAM = new RegExp(atfRun(""), "i");
 // A separator inside quotes is text, not a new command (`grep -n "a\|make approve" f`, `git commit -m 'x; make approve'`),
 // so HUMAN_ONLY_MAKE reads the line with every `; & | ( ` and line break inside quotes blanked. Quotes count only where
 // every shell reads them alike -- the allow-list's rules (shellSegments): no `$`, backtick or `\"` inside double quotes
@@ -185,8 +199,9 @@ const literalOf = (word, printf) => {
 // The program word a runner starts, after its options: `node $S`, `node scripts/test*.mjs`, `xargs node …`.
 const RUNNER_PROGRAM = /\b(?:node(?:\.exe)?|xargs|npx|bun)\s+(?:-\S+\s+)*["']?((?:\$\([^)]*\)|\$\{[^}]*\}|`[^`]*`|[^\s"';|&])+)/gi;
 const globPrograms = (cmd) => [...cmd.matchAll(RUNNER_PROGRAM)].map((m) => m[1]).filter((w) => GLOBBY.test(w));
-// The line names testcases.mjs, or a runner starts a program whose glob or expansion (`node $S …`) could be it.
-const namesScript = (cmd, printf) => /testcases/i.test(cmd) ||
+// The line names testcases.mjs or runs the atf CLI, or a runner starts a program whose glob or expansion (`node $S …`)
+// could be testcases.mjs.
+const namesScript = (cmd, printf) => /testcases/i.test(cmd) || ATF_PROGRAM.test(cmd) ||
   globPrograms(cmd).some((w) => [w, w.split(/[\\/]/).pop()].some((p) => ["testcases.mjs", "testcases"].some((s) => globRegex(p, printf).test(s))));
 function expandedHumanOnly(cmd) {
   const printf = /\bprintf\b/i.test(cmd);
@@ -209,20 +224,23 @@ function decodedForms(cmd) {
 }
 const decodedVerbs = (s) => s.match(DECODED_VERB)?.length ?? 0;
 // The ledger sweep (D-075) deletes in the target outside any run, so no tool call may start it: a line that names the
-// ledger script (or a make target) together with the sweep verb, read with quotes and word splitters dropped (stricter
-// only). The script itself also refuses without an interactive terminal and the typed product slug.
-const SWEEP_REASON = "the ledger sweep is human-only: a human runs `node {fw}/scripts/ledger.mjs sweep <product>` (or `make sweep PRODUCT=<product>`) in their own terminal, between runs";
+// ledger script (or a make target, or runs the atf CLI, D-087) together with the sweep verb, read with quotes and word
+// splitters dropped (stricter only). The script itself also refuses without an interactive terminal and the typed
+// product slug.
+const SWEEP_REASON = "the ledger sweep is human-only: a human runs `npx atf sweep <product>` in their own terminal, between runs";
 const SWEEP_MAKE = new RegExp(`${makeRun("")}[^;&|\\n]*\\ssweep\\b`, "i");
+const SWEEP_ATF = new RegExp(`${atfRun("")}[\\s\\S]*\\ssweep\\b`, "i");
+const SWEEP_ATF_RUN = new RegExp(`${atfRun(`'"`)}[\\s\\S]*\\ssweep\\b`, "i");
 function humanOnlySweep(call) {
   if (call.kind !== "shell") return false;
   const joined = String(call.command ?? "").replace(JOIN_CONCAT, "");
-  return [joined, joined.replace(WORD_SPLITTERS, "")].some((cmd) => (/\bsweep\b/i.test(cmd) && /ledger/i.test(cmd)) || SWEEP_MAKE.test(cmd));
+  return [joined, joined.replace(WORD_SPLITTERS, "")].some((cmd) => (/\bsweep\b/i.test(cmd) && /ledger/i.test(cmd)) || SWEEP_MAKE.test(cmd) || SWEEP_ATF.test(cmd) || (STRING_RUNNER.test(cmd) && SWEEP_ATF_RUN.test(cmd)));
 }
 function humanOnly(call) {
   if (call.kind === "shell") {
     const joined = String(call.command ?? "").replace(JOIN_CONCAT, "");
     const hit = (cmd) => humanOnlyCmd(cmd) || HUMAN_ONLY_FILES.test(cmd) || expandedHumanOnly(cmd);
-    const makeHit = (cmd) => HUMAN_ONLY_MAKE.test(cmd) || (STRING_RUNNER.test(cmd) && HUMAN_ONLY_MAKE_RUN.test(cmd));
+    const makeHit = (cmd) => HUMAN_ONLY_MAKE.test(cmd) || HUMAN_ONLY_ATF.test(cmd) || (STRING_RUNNER.test(cmd) && (HUMAN_ONLY_MAKE_RUN.test(cmd) || HUMAN_ONLY_ATF_RUN.test(cmd)));
     // a decoded form also counts the bare `approved`, but only one the decoding produced (a payload, not the prose)
     const scan = (line, test, verbs) => [line, line.replace(WORD_SPLITTERS, "")].some((cmd) => test(cmd) ||
       decodedForms(cmd).some((d) => test(d) || (verbs && decodedVerbs(d) > decodedVerbs(cmd) && namesScript(d, /\bprintf\b/i.test(d)))));
