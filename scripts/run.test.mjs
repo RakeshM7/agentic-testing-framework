@@ -5,7 +5,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { carryForward, diffRuns, endInfo, endRun, initRun, makeRunId, next, nextStep, setStage, stagePrompt, status, validateProduct } from "./run.mjs";
-import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { loadJson, paths, frameworkRoot } from "./lib/contract.mjs";
 import { GROUPS, recordDoctor } from "./lib/doctor.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
 import { collect } from "./report-data.mjs";
@@ -33,13 +33,13 @@ test("init writes product-level state, freezes permissions, takes the lock; no r
 test("one active run per product: second init refused, --resume returns it, end releases the lock", async () => {
   const { root } = startRun();
   const cfg = path.join(root, "config", "acme.yaml");
-  assert.match(initRun(cfg, { root }).errors[0], /is active/);
-  assert.equal(initRun(cfg, { root, resume: true }).run.runId, "acme-run-1");
+  assert.match(initRun(cfg, { root, framework: root }).errors[0], /is active/);
+  assert.equal(initRun(cfg, { root, framework: root, resume: true }).run.runId, "acme-run-1");
   const summary = await endRun("acme", { root });
   assert.equal(summary.outcome, "incomplete");
   assert.ok(existsSync(path.join(paths("acme", root).historyDir, "acme-run-1.json")));
   assert.ok(!existsSync(paths("acme", root).lockFile));
-  const again = initRun(cfg, { root, runId: "acme-run-1" });
+  const again = initRun(cfg, { root, framework: root, runId: "acme-run-1" });
   assert.equal(again.run.runId, "acme-run-1-2", "a reused run id gets a suffix instead of clobbering history");
 });
 
@@ -145,7 +145,7 @@ test("validate passes on a fresh run and flags a malformed CSV", async () => {
 test("init rejects an invalid permissions file", () => {
   const root = tempRoot();
   put(root, "config/permissions.yaml", "agents:\n  a: {layer: 2, spawns: [b]}\n");
-  assert.match(initRun(writeConfig(root), { root }).errors.join("\n"), /cannot spawn|unknown agent/);
+  assert.match(initRun(writeConfig(root), { root, framework: root }).errors.join("\n"), /cannot spawn|unknown agent/);
 });
 
 // ---- G10: run.mjs next returns agent + prompt; knowledge reuse, retry policy, report-and-end, review failure, carry-forward ----
@@ -176,7 +176,7 @@ test("next marks reusable knowledge done itself (reused) and offers only what mu
   writeModuleKnowledge(root, "contacts");
   await setStage("acme", "module-knowledge", "contacts", "done", undefined, { root });
   await endRun("acme", { root });
-  const again = initRun(path.join(root, "config", "acme.yaml"), { root, runId: "acme-run-2", env: { CLAUDECODE: "1" } });
+  const again = initRun(path.join(root, "config", "acme.yaml"), { root, framework: root, runId: "acme-run-2", env: { CLAUDECODE: "1" } });
   assert.equal(again.run.runId, "acme-run-2");
   const r = await nextStep("acme", { root });
   const stages = loadJson(paths("acme", root).runFile).stages;
@@ -275,13 +275,13 @@ test("a run after one that ended awaiting-approval adopts its verified product-l
   const hist = path.join(p.historyDir, "acme-run-1.json");
   const cfg = path.join(root, "config", "acme.yaml");
 
-  initRun(cfg, { root, runId: "acme-run-2", env: { CLAUDECODE: "1" } });
+  initRun(cfg, { root, framework: root, runId: "acme-run-2", env: { CLAUDECODE: "1" } });
   assert.deepEqual(await carryForward("acme", { root }), { carried: [] }, "the last run was incomplete");
   await endRun("acme", { root, abandon: true });
 
   const h = loadJson(hist);
   writeFileSync(hist, JSON.stringify({ ...h, outcome: "awaiting-approval", endedAt: "2999-01-01T00:00:00.000Z" }));
-  initRun(cfg, { root, runId: "acme-run-3", env: { CLAUDECODE: "1" } });
+  initRun(cfg, { root, framework: root, runId: "acme-run-3", env: { CLAUDECODE: "1" } });
   const c = await carryForward("acme", { root });
   assert.equal(c.from, "acme-run-1");
   assert.deepEqual(c.carried.sort(), ["_product/knowledge", "contacts/module-knowledge"]);
@@ -306,7 +306,7 @@ test("carry-forward does not adopt knowledge whose run-config inputs changed (pl
   const before = readFileSync(cfg, "utf8");
   assert.ok(before.includes("https://app.acme.test/contacts"));
   writeFileSync(cfg, before.replace("https://app.acme.test/contacts", "https://app.acme.test/contacts-v2"));
-  initRun(cfg, { root, runId: "acme-run-2", env: { CLAUDECODE: "1" } });
+  initRun(cfg, { root, framework: root, runId: "acme-run-2", env: { CLAUDECODE: "1" } });
   const c = await carryForward("acme", { root });
   assert.ok(!c.carried.includes("contacts/module-knowledge"), "changed module inputs: not carried");
   assert.equal(loadJson(p.runFile).stages["contacts/module-knowledge"], undefined);
@@ -342,7 +342,7 @@ test("init freezes the config's steps and their case types into run.json; absent
   const { root, run } = startRun({ extra: ["steps: [playwright-ui, explore]"] });
   assert.deepEqual([run.steps, run.caseTypes], [["explore", "playwright-ui"], ["ui"]]);
   assert.deepEqual(loadJson(paths("acme", root).runFile).steps, ["explore", "playwright-ui"]);
-  assert.match(initRun(writeConfig(tempRoot(), { extra: ["steps: [explore, load]"] }), { root }).errors.join("\n"), /steps: unknown step 'load'/);
+  assert.match(initRun(writeConfig(tempRoot(), { extra: ["steps: [explore, load]"] }), { root, framework: root }).errors.join("\n"), /steps: unknown step 'load'/);
 });
 
 test("stages not chosen are never offered or started, never failed or blocked, and never make the run incomplete", async () => {
@@ -553,7 +553,7 @@ test("resume after a crash: a stage left running becomes an interrupted failed a
   const { root } = startRun();
   const cfg = path.join(root, "config", "acme.yaml");
   const resume = () => {
-    const r = initRun(cfg, { root, resume: true });
+    const r = initRun(cfg, { root, framework: root, resume: true });
     recordCanary("acme", root, { host: "claude-code", agent: "orchestrator-agent" });
     recordDoctor("acme", root, { groups: GROUPS, checks: [] });
     return r;
@@ -578,7 +578,7 @@ test("resume after a crash: a stage left running becomes an interrupted failed a
 
 test("run.json updates from parallel processes are never lost: each holds the run lock (D-072)", async () => {
   const { root } = startRun();
-  const run = pathToFileURL(path.join(repoRoot, "scripts", "run.mjs")).href;
+  const run = pathToFileURL(path.join(frameworkRoot, "scripts", "run.mjs")).href;
   // six processes record a failure on six different stages at once; without the lock one write overwrites another
   const calls = [["explore", "contacts"], ["explore", "deals"], ["clarifications", "contacts"], ["clarifications", "deals"], ["testcases", "contacts"], ["testcases", "deals"]];
   const codes = await Promise.all(calls.map(([stage, module]) => new Promise((resolve, reject) => {
@@ -595,7 +595,7 @@ test("run.json updates from parallel processes are never lost: each holds the ru
 
 test("init records what the run is made with: framework commit, browser server, models, templates digest, Node.js (D-077)", async () => {
   const { collectProvenance } = await import("./lib/provenance.mjs");
-  const here = collectProvenance(repoRoot);
+  const here = collectProvenance(frameworkRoot);
   assert.match(here.framework.commit, /^[0-9a-f]{40}$/);
   assert.equal(typeof here.framework.dirty, "boolean");
   assert.match(here.browserServer, /^@playwright\/mcp@/);
@@ -627,7 +627,7 @@ test("end keeps a manifest of what the run left behind, and diff compares two en
   assert.deepEqual(Object.keys(m.files).filter((f) => !f.endsWith("clarifications.csv")).sort(), ["artifacts/acme/knowledge/overview.md", "artifacts/acme/modules/contacts/explore/model.json", "playwright-tests/acme/tests/ui/contacts/cases.spec.ts"], "no .auth, .env or node_modules file");
   assert.match(m.files["artifacts/acme/knowledge/overview.md"].sha256, /^[0-9a-f]{64}$/);
 
-  initRun(cfg, { root, runId: "acme-run-2" });
+  initRun(cfg, { root, framework: root, runId: "acme-run-2" });
   put(root, "artifacts/acme/modules/contacts/explore/model.json", "{\"v\":2}");
   put(root, "playwright-tests/acme/tests/ui/contacts/more.spec.ts", "// two");
   rmSync(path.join(root, "artifacts/acme/knowledge/overview.md"));
@@ -651,13 +651,13 @@ test("environments (D-081): each has its own lock, run state, ledger and history
   const stagingFile = path.join(root, "config", "acme-staging.yaml");
   writeFileSync(stagingFile, readFileSync(staging, "utf8"));
   const prodCfg = writeConfig(root, { product: "acme" });
-  assert.match(initRun(stagingFile, { root, env: {} }).errors[0], /is for environment 'staging', but this session's is 'default' \(ATF_ENV\): start the session with ATF_ENV=staging \(make run PRODUCT=acme ENV=staging\)/);
-  assert.match(initRun(stagingFile, { root, env: { ATF_ENV: "Bad Env" } }).errors[0], /ATF_ENV 'Bad Env' must be/);
+  assert.match(initRun(stagingFile, { root, framework: root, env: {} }).errors[0], /is for environment 'staging', but this session's is 'default' \(ATF_ENV\): start the session with ATF_ENV=staging \(make run PRODUCT=acme ENV=staging\)/);
+  assert.match(initRun(stagingFile, { root, framework: root, env: { ATF_ENV: "Bad Env" } }).errors[0], /ATF_ENV 'Bad Env' must be/);
 
   const saved = process.env.ATF_ENV;
   try {
     process.env.ATF_ENV = "staging";
-    const s = initRun(stagingFile, { root, env: process.env, runId: undefined });
+    const s = initRun(stagingFile, { root, framework: root, env: process.env, runId: undefined });
     assert.match(s.run.runId, /^acme-staging-\d{8}-\d{4}$/);
     assert.equal(s.run.environment, "staging");
     const ps = paths("acme", root);
@@ -667,7 +667,7 @@ test("environments (D-081): each has its own lock, run state, ledger and history
     append(ps.ledgerFile, { runId: s.run.runId, event: "created", type: "contact", ref: "1", module: "contacts", stage: "explore", agent: "module-explorer" });
 
     delete process.env.ATF_ENV;
-    const d = initRun(prodCfg, { root, env: {} });
+    const d = initRun(prodCfg, { root, framework: root, env: {} });
     assert.ok(!d.errors, "the default environment runs beside staging: its own lock");
     const pd = paths("acme", root);
     assert.equal(path.relative(root, pd.state).replaceAll("\\", "/"), "artifacts/acme/state", "default keeps the layout before D-081");
@@ -680,7 +680,7 @@ test("environments (D-081): each has its own lock, run state, ledger and history
     // the guard expands ${state} with each run's own folder: the orchestrator writes its notes in staging's state
     const { checkTool } = await import("./lib/guard.mjs");
     const { normalize } = await import("./hooks/hosts/claude.mjs");
-    const write = (rel) => checkTool(normalize({ agent_type: "orchestrator-agent", tool_name: "Write", tool_input: { file_path: path.join(root, rel) } }, { env: { CLAUDE_PROJECT_DIR: root }, host: "claude-code" }), root).allowed;
+    const write = (rel) => checkTool(normalize({ agent_type: "orchestrator-agent", tool_name: "Write", tool_input: { file_path: path.join(root, rel) } }, { env: { CLAUDE_PROJECT_DIR: root }, host: "claude-code" }), root, {}, { framework: root }).allowed;
     assert.equal(write("artifacts/acme/envs/staging/state/notes.md"), true);
     assert.equal(write("artifacts/acme/envs/staging/state/run.json"), false);
   } finally {

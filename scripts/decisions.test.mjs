@@ -5,17 +5,17 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { repoRoot } from "./lib/contract.mjs";
+import { frameworkRoot } from "./lib/contract.mjs";
 import { DECISIONS_FILE, checkDecisions, confirmedIn, entryText, parseDecisions, rememberConfirmed, shellWriteTargets } from "./lib/decisions.mjs";
 import { main as decisionsCli } from "./decisions.mjs";
 import { globToRegExp } from "./lib/permissions.mjs";
 import { toolCall } from "./lib/tool-call.mjs";
 import { tempRoot } from "./test-helpers.mjs";
 
-const text = readFileSync(path.join(repoRoot, DECISIONS_FILE), "utf8");
+const text = readFileSync(path.join(frameworkRoot, DECISIONS_FILE), "utf8");
 const decisions = parseDecisions(text);
 const index = new Map([...text.matchAll(/^\| (D-\d{3}) \| (.+?) \| (.+?) \| (\d{4}-\d{2}-\d{2}) \|$/gm)].map(([, id, title, status]) => [id, { title, status }]));
-const repoFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: repoRoot, encoding: "utf8" }).split("\n").filter(Boolean);
+const repoFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: frameworkRoot, encoding: "utf8" }).split("\n").filter(Boolean);
 
 test("decision IDs are unique and sequential", () => {
   assert.ok(decisions.length > 0);
@@ -102,7 +102,7 @@ test("the hook entry asks Claude Code to confirm a governed edit, and remembers 
   mkdirSync(path.join(root, "docs"), { recursive: true });
   writeFileSync(path.join(root, DECISIONS_FILE), LOG);
   const run = (script, payload) =>
-    execFileSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", script), "--host", "claude-code"], { input: JSON.stringify(payload), env: { PATH: process.env.PATH, CLAUDE_PROJECT_DIR: root }, encoding: "utf8" });
+    execFileSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", script), "--host", "claude-code"], { input: JSON.stringify(payload), env: { PATH: process.env.PATH, CLAUDE_PROJECT_DIR: root }, encoding: "utf8" });
   const payload = { session_id: `t-${process.pid}-${Date.now()}`, tool_name: "Edit", tool_input: { file_path: path.join(root, "config/permissions.yaml") } };
   assert.equal(JSON.parse(run("pretooluse.mjs", payload)).hookSpecificOutput.permissionDecision, "ask");
   run("posttooluse.mjs", payload);
@@ -110,7 +110,7 @@ test("the hook entry asks Claude Code to confirm a governed edit, and remembers 
 });
 
 test("the decision lookup (D-082): the decisions governing a file, the index, and full entries, from the log itself", () => {
-  const text = readFileSync(path.join(repoRoot, DECISIONS_FILE), "utf8");
+  const text = readFileSync(path.join(frameworkRoot, DECISIONS_FILE), "utf8");
   const all = parseDecisions(text);
   const forRun = decisionsCli(["for", "scripts/run.mjs", "docs/nothing-here.md"]);
   assert.equal(forRun.code, 0);

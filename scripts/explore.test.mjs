@@ -89,7 +89,7 @@ test("state: a known state is not duplicated, its transition is; ids are stable 
 
   // a new run: the same states and controls keep their ids
   await endRun("acme", { root: s.root, abandon: true });
-  const r2 = initRun(path.join(s.root, "config", "acme.yaml"), { root: s.root, runId: "acme-run-2", env: { CLAUDECODE: "1" } });
+  const r2 = initRun(path.join(s.root, "config", "acme.yaml"), { root: s.root, framework: s.root, runId: "acme-run-2", env: { CLAUDECODE: "1" } });
   assert.deepEqual(r2.errors, undefined);
   recordCanary("acme", s.root, { host: "claude-code", agent: "orchestrator-agent" });
   const d = await s.state("contacts-detail.md");

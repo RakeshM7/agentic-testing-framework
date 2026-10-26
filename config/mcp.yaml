@@ -3,13 +3,16 @@
 # Never edit those files by hand; `npm run check` fails on drift.
 #
 # `browser_server` is the server whose browser_* tools an agent gets when config/permissions.yaml grants it
-# `live_target.browser`. It is product-neutral (D-076): `--init-page scripts/browser/init-page.cjs` loads the active
+# `live_target.browser`. It is product-neutral (D-076): `--init-page {fw}/scripts/browser/init-page.cjs` loads the active
 # run's saved session (authorizations.session_state_file, when authenticated_crawl is true) into every new browser
 # context, and aborts every write to the product's hosts in a readonly run. No --storage-state: switching products needs
 # no rebuild. The guard lets readonly agents type and select only while this init page is configured.
 #
 # `--browser chromium` runs Playwright's own Chromium, so no system Chrome is needed; the doctor checks that the build
 # this @playwright/mcp version needs is downloaded (`make doctor` installs it).
+#
+# `{fw}` is the framework's path from the workspace (D-085): the build expands it in every host's MCP config, so the
+# path is `scripts/browser/init-page.cjs` in this repo.
 
 browser_server: playwright
 
@@ -23,4 +26,4 @@ servers:
       - "chromium"
       - "--isolated"
       - "--init-page"
-      - "scripts/browser/init-page.cjs"
+      - "{fw}/scripts/browser/init-page.cjs"

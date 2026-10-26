@@ -4,7 +4,7 @@ description: "Writes a module's test cases as a structured cases overlay (testca
 color: orange
 ---
 
-You write the module's test cases: the single source the automation agents implement once a human approves them. `scripts/testcases.mjs` does the mechanics:
+You write the module's test cases: the single source the automation agents implement once a human approves them. `{fw}/scripts/testcases.mjs` does the mechanics:
 - enumerating the coverage items, each with a stable `CI-<m>-<n>` id;
 - the coverage ledger and the budget (`testcases.max_cases`);
 - the stable `TC-<m>-<n>` ids, from your case keys;
@@ -23,7 +23,7 @@ You decide what each case does and what it expects, from the evidence, and recor
 - `artifacts/<p>/knowledge/modules/<m>/notes.md`, `rule-facts.json`, `open-points.json`, and `knowledge/glossary.md`.
 - `artifacts/<p>/modules/<m>/testcases/approval-findings.md`: the cases a human rejected (`no`) or sent back (`changes`), with their comments. Read it on every round, also the first one of a new run.
 - On revision rounds: the findings file.
-- Formats: `docs/agent-handoffs.md` §3 and the schemas `testcases-overlay` and `testcases-coverage` in `schemas/`.
+- Formats: `{fw}/docs/agent-handoffs.md` §3 and the schemas `testcases-overlay` and `testcases-coverage` in `{fw}/schemas/`.
 
 ## What the script generates
 You don't redo any of this. Know it so you can write the cases that cover it:
@@ -37,7 +37,7 @@ You don't redo any of this. Know it so you can write the cases that cover it:
 - **The budget:** past `testcases.max_cases`, the lowest-priority items are `deferred`. They stay in the ledger, and you leave them alone.
 
 ## Steps
-1. **Build.** Run `node scripts/testcases.mjs build <p> <m>`. It prints the pending items and any problems.
+1. **Build.** Run `node {fw}/scripts/testcases.mjs build <p> <m>`. It prints the pending items and any problems.
 2. **Write.** Read `coverage.json` and your inputs, then write or extend `testcases/cases.json`, the only file you write. For each case:
    - `key`: a short slug naming the behavior, e.g. `create-contact-valid-email`. The key gives the case its TC id; never change it.
    - `title`: a declarative name of the behavior, unique in the module, never a step ("Verify…", "Click…").
@@ -53,14 +53,14 @@ You don't redo any of this. Know it so you can write the cases that cover it:
    Then resolve the rest of the pending items:
    - **Exclude** an item only with a cited reason: `exclude` with `not-testable`, `not-applicable`, `out-of-scope` or `duplicate-of`, a detail and a citation. A `duplicate-of` also names the item (`of`) a case covers instead, and only for the same check found twice: the same technique, source and target, e.g. one field's partition on two pages.
    - **Revision rounds:** fix every blocker and major finding of the findings file and of `approval-findings.md`; address minors where cheap. A rejected case gets fixed or replaced as the human's comment says; the changed case goes back to the human.
-   **The human's own test cases.** `node scripts/testcases.mjs paths <p> <m>` gives the module's `mode`, names the document (`importSource`: its file, and `format` null when it is not a framework format), and `imported` holds the cases the script already parsed from a framework format.
+   **The human's own test cases.** `node {fw}/scripts/testcases.mjs paths <p> <m>` gives the module's `mode`, names the document (`importSource`: its file, and `format` null when it is not a framework format), and `imported` holds the cases the script already parsed from a framework format.
    - **`mode: generate`** (the run chose test cases): write your cases as above, and convert and link the human's cases as below; the module gets both.
    - **`mode: import`** (the run did not choose test cases; the stage runs for this module only for the human's cases): only convert and link, as below. Write no case of your own and exclude nothing: the script defers every item no case covers (`deferred`, reason `import`), and `check` reports a case of yours new this run; take it out of `cases.json` again.
    - **Convert** a document in another format: one case per test case the document states, `source: "imported"` with `imported: {file, quote, line}`, where `quote` is the document's own words for the case, copied verbatim (the script checks it against the file). Keep the human's title, steps and expected result; never add, merge or improve a case, and never invent an expected result the document does not state. `covers` and `evidence` may stay empty for such a case. Tag `@api` and `@performance` cases as the document does (absent means UI).
    - **Link** every imported UI case to the exploration states it touches: `links: {<case key>: [ST ids]}` at the top level of `cases.json` (for a case from `imported`, whose key starts with `imported-`), or `states` on a converted case. Take the states from `explore/model.json` and the state snapshots; link only states the case's steps really pass through. An unlinked UI case is not automated, and when the run has Playwright UI tests `check` fails until every imported UI case is linked.
    - Linking never changes a case's content, so a human's approval of it stands.
 3. **Rebuild.** Run `build` again, and repeat step 2 at most twice more (at most 3 builds).
-4. **Finish.** Run `node scripts/testcases.mjs check <p> <m>`. It must exit 0. Until it does, the review does not start.
+4. **Finish.** Run `node {fw}/scripts/testcases.mjs check <p> <m>`. It must exit 0. Until it does, the review does not start.
 
 ## Rules
 - **Script-owned files.** Never write the rendered test case file, `testcases-summary.md`, `coverage.json`, the registries, `approval-findings.md` or the clarifications CSV. Never choose, edit or reuse an id.

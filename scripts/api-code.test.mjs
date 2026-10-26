@@ -16,7 +16,7 @@ import { next, step } from "./orchestration.mjs";
 import { apiCodeContext, apiCodeFindings, apiCodeUnverified, builtinPatchFindings, nameIn, runnerImportFindings, parseSlots, renderCompositeSeed, renderFacade, renderGlue, renderPayloads, renderSender, renderSupport, specTests, titleLit, tsType, valueIn } from "./lib/api-code.mjs";
 import { PURE_GLOBALS, freeIdentifierFindings, propertyFindings } from "./lib/agent-scope.mjs";
 import { crudOf } from "./lib/endpoints.mjs";
-import { repoRoot as repoDir } from "./lib/contract.mjs";
+import { frameworkRoot as repoDir } from "./lib/contract.mjs";
 import { renderIndex } from "./lib/foundation.mjs";
 import { scanTs } from "./lib/ts-scan.mjs";
 import { planPaths } from "./lib/api-plan.mjs";
@@ -24,6 +24,7 @@ import { paths } from "./lib/contract.mjs";
 import { apiPaths, build as buildCatalogue, saveSource } from "./lib/endpoints.mjs";
 import { writeJson } from "./lib/files.mjs";
 import { checkTool } from "./lib/guard.mjs";
+import { expandFw } from "./lib/roots.mjs";
 import { normalize } from "./hooks/hosts/claude.mjs";
 import { listedTests, listFindings } from "./lib/gate/playwright.mjs";
 import { API_INDEX, listSpecTitles, markApproved, put, renderFoundation, scaffoldApiCode, startRun } from "./test-helpers.mjs";
@@ -656,7 +657,7 @@ test("guard: the generated files are managed, no caller writes one; each writer 
   const s = await setup();
   await s.ac("build");
   const call = (agent, tool_name, tool_input) => normalize({ agent_type: agent, tool_name, tool_input }, { env: { CLAUDE_PROJECT_DIR: "/repo" }, host: "claude-code" });
-  const w = (agent, rel) => checkTool(call(agent, "Write", { file_path: path.join(s.root, rel) }), s.root, {});
+  const w = (agent, rel) => checkTool(call(agent, "Write", { file_path: path.join(s.root, rel) }), s.root, {}, { framework: s.root });
   const generated = ["fixtures/api/index.ts", "clients/contacts/facade.ts", "clients/contacts/contacts.client.ts", "clients/contacts/types.ts", "clients/contacts/support.ts", "config/api/schemas/contacts/contacts.json", "fixtures/api/clients/contacts.ts", "tests/api/contacts/contacts.spec.ts", "tests/api/contacts/new.spec.ts", "clients/contacts/CONTAC~1.TS", "TESTS/API/contacts/Contacts.Spec.ts"];
   for (const agent of ["pw-api-client-writer", "pw-api-tests-writer", "pw-api-fixer", "pw-api-scaffolder", "pw-repo-owner", undefined])
     for (const rel of generated) {
@@ -670,7 +671,7 @@ test("guard: the generated files are managed, no caller writes one; each writer 
     for (const f of files) assert.equal(w(agent, f).allowed, true, `${agent} writes ${f}`);
     const other = Object.entries(own).find(([a]) => a !== agent)[1];
     for (const f of [...other, `${MOD}/api-code/plan.json`, `${MOD}/api-code/coverage.json`, `${PW}/helpers/api/schema.ts`, `${PW}/helpers/api/pagination.ts`]) assert.equal(w(agent, f).allowed, false, `${agent} may not write ${f}`);
-    const sh = (cmd) => checkTool(call(agent, "Bash", { command: cmd }), s.root, {}).allowed;
+    const sh = (cmd) => checkTool(call(agent, "Bash", { command: cmd }), s.root, {}, { framework: s.root }).allowed;
     for (const cmd of ["node scripts/api-code.mjs build acme contacts", "node scripts/api-code.mjs check acme contacts", "node scripts/api-code.mjs check acme contacts --clients", "node scripts/api-code.mjs paths acme contacts"]) assert.equal(sh(cmd), true, `${agent}: ${cmd}`);
     for (const cmd of ["npx tsc --noEmit", "npx playwright test --list", "node scripts/ui-code.mjs build acme contacts", "node scripts/api-code.mjs build acme contacts; node -e 1", "echo x > playwright-tests/acme/tests/api/contacts/contacts.spec.ts"]) assert.equal(sh(cmd), false, `${agent}: ${cmd}`);
   }
@@ -698,7 +699,8 @@ test("paths lists what the writers read and write", async () => {
 
 test("the two prompts: build, write, rebuild at most twice, check; only planned scenarios and approved cases are automated", () => {
   for (const [agent, check] of [["pw-api-client-writer", "check <p> <m> --clients"], ["pw-api-tests-writer", "check <p> <m>"]]) {
-    const prompt = readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..", "agents", `${agent}.md`), "utf8");
+    // as the build renders it in this repo: `{fw}/` (D-085) is empty when the framework is the workspace
+    const prompt = expandFw(readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..", "agents", `${agent}.md`), "utf8"), "");
     assert.deepEqual([...prompt.matchAll(/^## (.+)$/gm)].map((m) => m[1]), ["Invocation", "Inputs", "What the script generates", "Steps", "Rules", "Return"], agent);
     assert.match(prompt, /node scripts\/api-code\.mjs build <p> <m>/);
     assert.ok(prompt.includes(`node scripts/api-code.mjs ${check}`), agent);
@@ -968,10 +970,10 @@ test("M4: pw-api-fixer writes only the slot files, the composite helpers and the
   const s = await setup();
   await s.ac("build");
   const call = (agent, tool_name, tool_input) => normalize({ agent_type: agent, tool_name, tool_input }, { env: { CLAUDE_PROJECT_DIR: "/repo" }, host: "claude-code" });
-  const w = (rel) => checkTool(call("pw-api-fixer", "Write", { file_path: path.join(s.root, rel) }), s.root, {}).allowed;
+  const w = (rel) => checkTool(call("pw-api-fixer", "Write", { file_path: path.join(s.root, rel) }), s.root, {}, { framework: s.root }).allowed;
   for (const f of [`${PW}/helpers/api/contacts.payloads.ts`, `${PW}/helpers/api/contacts.glue.ts`, `${PW}/helpers/api/contacts.composite.ts`, `${PW}/helpers/api/pagination.ts`]) assert.equal(w(f), true, f);
   for (const f of [`${MOD}/api-code/client-overlay.json`, `${MOD}/api-code/tests-overlay.json`, `${PW}/fixtures/api/index.ts`, `${PW}/clients/contacts/contacts.client.ts`, `${PW}/tests/api/contacts/contacts.spec.ts`, `${PW}/helpers/api/schema.ts`]) assert.equal(w(f), false, f);
-  const prompt = readFileSync(path.join(repoDir, "agents", "pw-api-fixer.md"), "utf8");
+  const prompt = expandFw(readFileSync(path.join(repoDir, "agents", "pw-api-fixer.md"), "utf8"), "");
   assert.doesNotMatch(prompt, /fix the agents' own parts instead:[^\n]*overlays in/i);
   assert.match(prompt, /client-overlay\.json[^\n]*report/i);
 });

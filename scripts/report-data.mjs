@@ -24,7 +24,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { STEPS, loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { STEPS, loadJson, paths, workspaceRoot } from "./lib/contract.mjs";
 import { tryReadJson, writeJson } from "./lib/files.mjs";
 import { csvPath, readRows, isAnswered, isAuthoritative } from "./lib/clarifications.mjs";
 import { live as liveEntities } from "./lib/ledger.mjs";
@@ -161,7 +161,7 @@ function ledger(name, module, file, read, miss) {
 
 // ---------- collect ----------
 
-export async function collect(product, { root = repoRoot, now = new Date() } = {}) {
+export async function collect(product, { root = workspaceRoot, now = new Date() } = {}) {
   const p = paths(product, root);
   const run = loadJson(p.runFile);
   const rel = (f) => slash(path.relative(root, f));
@@ -376,8 +376,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const file = path.join(paths(product).results(data.runId), "report", "report.json");
     writeJson(file, data);
     // the product bugs as issue-ready files beside the report (D-080)
-    const bugs = exportBugs(product, { root: repoRoot });
-    console.log(JSON.stringify({ written: path.relative(repoRoot, file).replaceAll("\\", "/"), bugs: { dir: bugs.dir, files: bugs.bugs.filter((b) => b.file).length, withoutDraft: bugs.bugs.filter((b) => !b.draft).length }, totals: data.totals }, null, 2));
+    const bugs = exportBugs(product, { root: workspaceRoot });
+    console.log(JSON.stringify({ written: path.relative(workspaceRoot, file).replaceAll("\\", "/"), bugs: { dir: bugs.dir, files: bugs.bugs.filter((b) => b.file).length, withoutDraft: bugs.bugs.filter((b) => !b.draft).length }, totals: data.totals }, null, 2));
   } catch (e) {
     console.log(JSON.stringify({ errors: [e.message] }));
     process.exit(1);

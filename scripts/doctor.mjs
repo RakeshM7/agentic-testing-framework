@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import yaml from "js-yaml";
 import { validateRunConfig } from "./run-config.mjs";
-import { STAGES, chosenStages, deriveCaseTypes, repoRoot } from "./lib/contract.mjs";
+import { STAGES, chosenStages, deriveCaseTypes, frameworkRoot, workspaceRoot } from "./lib/contract.mjs";
 import { LOGIN_NEEDS, STAGE_NEEDS, failures, groupsFor, runChecks } from "./lib/doctor.mjs";
 
 const USAGE = "usage: doctor.mjs <config.yaml> [--stage all|<stage>[,<stage>…]] [--for login] [--fix] [--warn-only] [--json]";
@@ -66,7 +66,7 @@ export function render(checks, sc) {
   return lines.join("\n");
 }
 
-export async function main(argv, { root = repoRoot, exec, log = console.log, check = runChecks } = {}) {
+export async function main(argv, { root = workspaceRoot, framework = frameworkRoot, exec, log = console.log, check = runChecks } = {}) {
   let parsed;
   try {
     parsed = parseArgs({ args: argv, allowPositionals: true, options: { stage: { type: "string" }, for: { type: "string" }, fix: { type: "boolean" }, "warn-only": { type: "boolean" }, json: { type: "boolean" } } });
@@ -88,7 +88,7 @@ export async function main(argv, { root = repoRoot, exec, log = console.log, che
   }
   sc = scope(v, cfg);
 
-  let checks = await check(cfg, sc.groups, { root });
+  let checks = await check(cfg, sc.groups, { root, framework });
   const steps = v.fix ? autofixSteps(checks) : [];
   if (steps.length) {
     const run = exec ?? ((s) => spawnSync(s.cmd, s.args, { cwd: s.cwd, stdio: "inherit", shell: process.platform === "win32" }).status === 0);
@@ -97,7 +97,7 @@ export async function main(argv, { root = repoRoot, exec, log = console.log, che
       if (!run(s)) log(`  that command failed; see its output above`);
       else if (s.newTerminal) log("  installed: open a new terminal so its PATH includes it");
     }
-    checks = await check(cfg, sc.groups, { root });
+    checks = await check(cfg, sc.groups, { root, framework });
   }
   log(v.json ? JSON.stringify({ scope: sc.label, checks: checks.map(({ autofix, ...c }) => c), fixed: steps.map((s) => `${s.cmd} ${s.args.join(" ")}`) }, null, 2) : render(checks, sc));
   return failures(checks).length && !v["warn-only"] ? 1 : 0;

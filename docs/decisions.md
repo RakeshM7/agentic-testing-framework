@@ -140,6 +140,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-082 | The decision log is looked up, not read whole: decisions.mjs for, index and show | Accepted | 2026-10-24 |
 | D-083 | Agents record framework issues as they meet them; run.mjs end writes them to feedback/ for the implementor | Accepted | 2026-10-24 |
 | D-084 | Two end-to-end harnesses: an offline pipeline test in npm test, and make e2e against a local demo app in a real browser | Accepted | 2026-10-24 |
+| D-085 | The framework root and the workspace root are separate; the framework is installed read-only | Accepted | 2026-10-24 |
 
 ## Decisions
 
@@ -1595,3 +1596,19 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Why:** A run's failures are mostly at the joins between parts. The offline test keeps the stage graph honest on every change; the live check proves that what the templates generate actually guards, records and cleans up against a running product.
 - **Affects:** `scripts/pipeline.test.mjs`, `scripts/e2e.mjs`, `scripts/fixtures/demo-app/server.mjs`, `scripts/fixtures/e2e/ui.spec.ts`, `scripts/fixtures/e2e/api.spec.ts`, `scripts/test-helpers.mjs`, `Makefile`
 - **Confirmed by the user on:** 2026-10-24 (the offline pipeline test and the live demo app). This extends D-002 (deterministic work tested) without weakening it.
+
+### D-085 · The framework root and the workspace root are separate; the framework is installed read-only
+- **Status:** Accepted · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 (packaging for clients, `docs/packaging.md` §3.1, §3.2 and phase 1)
+- **Decision:**
+  - **Two roots.** `frameworkRoot` is the package's own location: scripts, agents, default config, templates, schemas and the agent-facing docs. `workspaceRoot` is resolved from `ATF_WORKSPACE`, then `CLAUDE_PROJECT_DIR` in hooks, then the nearest `atf/atf.json` above the working directory. It holds run-configs, `atf/`, `artifacts/`, `playwright-tests/`, `k6-tests/`, `feedback/` and the host files.
+  - **What resolves where.** `contract.paths()` and the guard's path variables resolve against the workspace; templates, schemas and default config against the framework.
+  - **Agent sources.** They use one token, `{fw}`, for framework paths (commands, docs, schemas). The render step expands it to the package's path relative to the workspace, inside `shell_allow` too.
+  - **Read-only framework.** The guard denies every agent write under `frameworkRoot`.
+  - **As implemented (phase 1, in place):**
+    - `scripts/lib/roots.mjs` resolves both roots. Without `ATF_WORKSPACE` or a marker, a script's workspace is the framework root, and a hook's is the host's root (`CLAUDE_PROJECT_DIR` or the payload's cwd), or the framework root when that root is inside it. So this repository is one directory that is both, and every path, command and generated file is exactly as before. `contract.mjs` exports `frameworkRoot` and `workspaceRoot`; `repoRoot` is gone.
+    - `scripts/lib/config.mjs` is the one reader of the framework's `config/{permissions,models,platforms,mcp,hooks}.yaml` (overlays and eject come later, in that one place). A run-config's default `permissions_file` names the framework's file; any other path is the workspace's.
+    - `{fw}/` is expanded by `build-agents.mjs` in agent bodies, the hook registrations, the Copilot identity hook and the MCP configs, and by `resolvePermissions` (at `run.mjs init` and in the build) in every `shell_allow` and `common_shell_allow`, which must use it. It becomes the framework's path from the workspace with `/` on every OS, and nothing when the two are one directory. The body lint accepts `{fw}/` before a path and rejects any other spelling of it and template-engine openings.
+    - When the roots differ, the guard (`frameworkWrite`) refuses, in or out of a run, for any caller and mode, a write tool whose path, and a shell write whose target (the hook's `shellWriteTargets`, also from any directory the line changes into), lies under the framework root as written or as resolved (`..`, device and UNC prefixes, symlinks and junctions, case, separators, trailing dots, stream suffixes), and a write tool whose target it can't tell. When they are the same directory, nothing changes.
+- **Why:** a client installs the framework and keeps their own work. With one root, neither upgrades nor a separate test repo are possible.
+- **Affects:** `scripts/lib/roots.mjs`, `scripts/lib/config.mjs`, `scripts/lib/contract.mjs`, `scripts/lib/guard.mjs`, `scripts/lib/permissions.mjs`, `scripts/hooks/pretooluse.mjs`, `scripts/lib/foundation.mjs`, `scripts/build-agents.mjs`, `scripts/lib/agents/lint.mjs`, `scripts/lib/hook-registrations.mjs`, `scripts/lib/mcp.mjs`, `scripts/workspace.test.mjs`
+- **Confirmed by the user on:** 2026-10-24. This extends D-002 and D-020 without weakening them.

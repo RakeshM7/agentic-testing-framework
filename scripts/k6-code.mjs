@@ -21,7 +21,7 @@
 // Exits: 0 ok, 1 problems, 2 usage.
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { build, check, computeModel, k6CodeContext, k6CodePaths } from "./lib/k6-code.mjs";
 
 const USAGE = "usage: k6-code.mjs build <product> <module> [--adopt] | check <product> <module> | paths <product> <module>";
@@ -35,7 +35,7 @@ function context(product, module, root) {
 }
 
 // inspect: (file, cwd) -> {out} | {error}, or a string (skipped, why); injected by tests.
-export async function main(argv, { root = repoRoot, inspect } = {}) {
+export async function main(argv, { root = workspaceRoot, inspect } = {}) {
   const [cmd, product, module, ...rest] = argv;
   const allowed = { build: ["--adopt"] }[cmd] ?? [];
   if (!cmd || !product || !module || rest.some((f) => !allowed.includes(f))) return { code: 2, out: { errors: [USAGE] } };

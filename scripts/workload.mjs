@@ -19,7 +19,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot, SLUG_RE, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, SLUG_RE, validateData } from "./lib/contract.mjs";
 import { approvalSummary } from "./lib/testcases.mjs";
 import { build, check, workloadPaths } from "./lib/workload.mjs";
 
@@ -47,7 +47,7 @@ function context(product, module, root, runOpt) {
 
 const rel = (root, f) => path.relative(root, f).replaceAll("\\", "/");
 
-export async function main(argv, { root = repoRoot } = {}) {
+export async function main(argv, { root = workspaceRoot } = {}) {
   const { values: v, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { run: { type: "string" } } });
   const [cmd, product, module] = positionals;
   if (!cmd || !product || !module) return { code: 2, out: { errors: ["usage: workload.mjs build|check|paths <product> <module> [--run <run-id>]"] } };

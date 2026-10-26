@@ -24,6 +24,8 @@
 # web_research    none | allowed -- may fetch pages from the public internet that are NOT the product under test
 # shell            none | restricted (only the commands listed in `shell_allow`) | project (any command that
 #                  passes the guard, e.g. npm/npx/node/k6 inspect)
+#                  A framework script is written `node {fw}/scripts/<x>.mjs ...`: `{fw}` is the framework's path from
+#                  the workspace (D-085), expanded when the file is resolved, so `node scripts/<x>.mjs ...` in this repo.
 # ask_user         none | allowed -- may ask the human questions (main session only; default none)
 # filesystem       read / write glob lists (variables below).
 #
@@ -160,8 +162,8 @@ managed_files:
   - "${results}/framework-issues.json"
 
 # Commands every agent with `shell: restricted` may run, added to its own shell_allow at resolution (D-083): recording a
-# problem with the framework itself, which run.mjs end turns into feedback files. `node scripts/...` commands only.
-common_shell_allow: ["node scripts/framework-issues.mjs add *"]
+# problem with the framework itself, which run.mjs end turns into feedback files. `node {fw}/scripts/...` commands only.
+common_shell_allow: ["node {fw}/scripts/framework-issues.mjs add *"]
 
 profiles:
   # Reusable bundles; an agent lists `profile:` and any per-agent overrides replace the profile's keys.
@@ -170,7 +172,7 @@ profiles:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/requests.mjs list *", "node scripts/run.mjs status *", "node scripts/ledger.mjs list *"]
+    shell_allow: ["node {fw}/scripts/orchestration.mjs *", "node {fw}/scripts/requests.mjs list *", "node {fw}/scripts/run.mjs status *", "node {fw}/scripts/ledger.mjs list *"]
   code_writer:            # writes generated test code only, no product access
     live_target: { browser: none, http: none, load: none }
     web_research: none
@@ -196,9 +198,9 @@ agents:
     shell: restricted
     # run-config.mjs set rewrites only the run-config's steps and test case file keys (D-066); testcases.mjs import
     # brings in the human's own test case file, never with --approved (human-only: the guard denies it to every call)
-    shell_allow: ["node scripts/run.mjs *", "node scripts/run-config.mjs *", "node scripts/ledger.mjs list *",
-                  "node scripts/knowledge.mjs *", "node scripts/clarifications.mjs status *",
-                  "node scripts/testcases.mjs import *"]
+    shell_allow: ["node {fw}/scripts/run.mjs *", "node {fw}/scripts/run-config.mjs *", "node {fw}/scripts/ledger.mjs list *",
+                  "node {fw}/scripts/knowledge.mjs *", "node {fw}/scripts/clarifications.mjs status *",
+                  "node {fw}/scripts/testcases.mjs import *"]
     ask_user: allowed
     tool_search: allowed       # runs as the main session, so it can ask the human
     filesystem:
@@ -213,10 +215,10 @@ agents:
     live_target: { browser: read, http: none, load: none }   # docs/web first; live product only when needed; full browser in full-run runs
     web_research: allowed
     shell: restricted           # sources, sources.md, glossary merge, inputs, the input ledger, the source cache and open-point ids are script-owned (D-051)
-    shell_allow: ["node scripts/knowledge.mjs add-source *", "node scripts/knowledge.mjs input *",
-                  "node scripts/knowledge.mjs snapshot *", "node scripts/knowledge.mjs render *",
-                  "node scripts/knowledge.mjs merge-glossary *", "node scripts/knowledge.mjs check *",
-                  "node scripts/knowledge.mjs paths *"]
+    shell_allow: ["node {fw}/scripts/knowledge.mjs add-source *", "node {fw}/scripts/knowledge.mjs input *",
+                  "node {fw}/scripts/knowledge.mjs snapshot *", "node {fw}/scripts/knowledge.mjs render *",
+                  "node {fw}/scripts/knowledge.mjs merge-glossary *", "node {fw}/scripts/knowledge.mjs check *",
+                  "node {fw}/scripts/knowledge.mjs paths *"]
     filesystem:
       read: ["config/**", "${state}/config.resolved.json", "${knowledge}/**", "<requirement docs and references listed in the run-config>"]
       write: ["${knowledge}/overview.md", "${knowledge}/glossary.md", "${knowledge}/captures/**",
@@ -229,10 +231,10 @@ agents:
     live_target: { browser: mutate, http: none, load: none }   # mutate (ledger-scoped; capped to read in readonly runs)
     web_research: none
     shell: restricted           # states, pages, the frontier, the network inventory, ids and the question audit are script-owned (D-052)
-    shell_allow: ["node scripts/explore.mjs *",
-                  "node scripts/clarifications.mjs append *", "node scripts/clarifications.mjs list *",
-                  "node scripts/clarifications.mjs set-steps *", "node scripts/clarifications.mjs record *",
-                  "node scripts/ledger.mjs add *", "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
+    shell_allow: ["node {fw}/scripts/explore.mjs *",
+                  "node {fw}/scripts/clarifications.mjs append *", "node {fw}/scripts/clarifications.mjs list *",
+                  "node {fw}/scripts/clarifications.mjs set-steps *", "node {fw}/scripts/clarifications.mjs record *",
+                  "node {fw}/scripts/ledger.mjs add *", "node {fw}/scripts/ledger.mjs deleted *", "node {fw}/scripts/ledger.mjs owns *"]
     filesystem:
       read: ["${knowledge}/**", "${modules}/**", "${state}/config.resolved.json"]
       # only the agent's own explore files; everything else in explore/ is written by scripts/explore.mjs
@@ -250,7 +252,7 @@ agents:
     live_target: { browser: none, http: read, load: none }   # fetch OpenAPI / GET endpoints; endpoints.mjs probes GET-only
     web_research: allowed     # vendor API docs
     shell: restricted
-    shell_allow: ["node scripts/endpoints.mjs *"]
+    shell_allow: ["node {fw}/scripts/endpoints.mjs *"]
     filesystem: { read: ["${knowledge}/**", "${modules}/**"], write: ["${modules}/api/overlay.json"] }
 
   # ======================= Clarification domain ===========================================================
@@ -258,7 +260,7 @@ agents:
     layer: 1
     profile: orchestrator
     spawns: [clarification-explorer]
-    shell_allow: ["node scripts/orchestration.mjs *", "node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs status *"]
+    shell_allow: ["node {fw}/scripts/orchestration.mjs *", "node {fw}/scripts/clarifications.mjs list *", "node {fw}/scripts/clarifications.mjs status *"]
     filesystem:
       read: ["${modules}/**"]
       write: ["${state}/orchestration/clarifications-${module}.json"]   # clarifications-summary.md is rendered by orchestration.mjs next
@@ -269,8 +271,8 @@ agents:
     browser_session: fresh      # closes its browser session after each row, so every row starts clean (D-047)
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/clarifications.mjs list *", "node scripts/clarifications.mjs record *",
-                  "node scripts/ledger.mjs add *", "node scripts/ledger.mjs deleted *", "node scripts/ledger.mjs owns *"]
+    shell_allow: ["node {fw}/scripts/clarifications.mjs list *", "node {fw}/scripts/clarifications.mjs record *",
+                  "node {fw}/scripts/ledger.mjs add *", "node {fw}/scripts/ledger.mjs deleted *", "node {fw}/scripts/ledger.mjs owns *"]
     filesystem:
       read: ["${modules}/**", "${knowledge}/**"]
       write: ["${modules}/clarification-evidence/**"]   # observation, captures, outcome.json; one folder per row ID
@@ -291,7 +293,7 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted           # never `testcases.mjs approve`: approval is human-only, and the guard denies it to every agent
-    shell_allow: ["node scripts/testcases.mjs build *", "node scripts/testcases.mjs check *", "node scripts/testcases.mjs paths *"]
+    shell_allow: ["node {fw}/scripts/testcases.mjs build *", "node {fw}/scripts/testcases.mjs check *", "node {fw}/scripts/testcases.mjs paths *"]
     # import mode (D-066) also reads the human's own test case document: whatever path the run-config names, found
     # through `testcases.mjs paths` (importSource.file), so it is not a fixed glob here
     filesystem:
@@ -303,7 +305,7 @@ agents:
     layer: 2
     profile: reviewer
     shell: restricted
-    shell_allow: ["node scripts/testcases.mjs review-check *"]
+    shell_allow: ["node {fw}/scripts/testcases.mjs review-check *"]
     filesystem: { read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/testcases/gate-findings.md"], write: ["${results}/${module}/testcases/review.json"] }
 
   # ======================= Shared Playwright repo owner (repo: ${pw_project}) =============================
@@ -312,8 +314,8 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: allowed       # framework best-practice research for the skeleton
     shell: restricted
-    shell_allow: ["node scripts/foundation.mjs render * --side repo", "node scripts/foundation.mjs check *",
-                  "node scripts/foundation.mjs paths *", "node scripts/foundation.mjs install *"]
+    shell_allow: ["node {fw}/scripts/foundation.mjs render * --side repo", "node {fw}/scripts/foundation.mjs check *",
+                  "node {fw}/scripts/foundation.mjs paths *", "node {fw}/scripts/foundation.mjs install *"]
     filesystem:
       read: ["${pw_project}/**", "${knowledge}/**", "${state}/orchestration/**", "${product_dir}/foundation/**",
              "${state}/config.resolved.json", "${results}/*/*/requests.json"]
@@ -332,8 +334,8 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: allowed
     shell: restricted
-    shell_allow: ["node scripts/foundation.mjs render * --side ui", "node scripts/foundation.mjs check *",
-                  "node scripts/foundation.mjs paths *", "node scripts/requests.mjs add *"]
+    shell_allow: ["node {fw}/scripts/foundation.mjs render * --side ui", "node {fw}/scripts/foundation.mjs check *",
+                  "node {fw}/scripts/foundation.mjs paths *", "node {fw}/scripts/requests.mjs add *"]
     filesystem:
       read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
       write: ["${product_dir}/foundation/ui-overlay.json", "${pw_project}/helpers/ui/**"]
@@ -341,20 +343,20 @@ agents:
     layer: 2
     profile: code_writer
     shell: restricted           # tsc and playwright --list run inside `ui-code.mjs check` (a restricted row can't vouch for npx in the product's repo)
-    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *", "node scripts/requests.mjs add *"]
+    shell_allow: ["node {fw}/scripts/ui-code.mjs build *", "node {fw}/scripts/ui-code.mjs check *", "node {fw}/scripts/ui-code.mjs paths *", "node {fw}/scripts/requests.mjs add *"]
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/pages/${module}/**"] }
   pw-ui-tests-writer:           # D-055: fills the step regions of the generated cases spec, plus the module's data builders
     layer: 2
     profile: code_writer
     shell: restricted
-    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *", "node scripts/requests.mjs add *"]
+    shell_allow: ["node {fw}/scripts/ui-code.mjs build *", "node {fw}/scripts/ui-code.mjs check *", "node {fw}/scripts/ui-code.mjs paths *", "node {fw}/scripts/requests.mjs add *"]
     # the generated smoke (tests/ui/<m>/_locators.smoke.spec.ts) and registration (fixtures/ui/pages/<m>.ts) are the script's
     filesystem: { read: ["${pw_project}/**", "${modules}/**"], write: ["${pw_project}/tests/ui/${module}/cases.spec.ts", "${pw_project}/helpers/ui/${module}.data.ts"] }
   pw-ui-reviewer:                  # D-059: writes only its per-test verdicts; review.mjs check derives the verdict and review-findings.md
     layer: 2
     profile: reviewer
     shell: restricted
-    shell_allow: ["node scripts/review.mjs check *"]
+    shell_allow: ["node {fw}/scripts/review.mjs check *"]
     filesystem: { read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-ui/gate-findings.md"], write: ["${results}/${module}/playwright-ui/review.json"] }
   pw-ui-fixer:                  # review findings or healable triage rows
     layer: 2
@@ -362,7 +364,7 @@ agents:
     # D-055: re-renders the smoke and re-checks after a fix (shell: project already allows it; listed for the record and
     # for the run's combined ceiling). D-059: answers every finding in fix-report.json and runs fix.mjs check (the
     # snapshot it checks against is taken by orchestration.mjs, not by the fixer).
-    shell_allow: ["node scripts/ui-code.mjs build *", "node scripts/ui-code.mjs check *", "node scripts/ui-code.mjs paths *", "node scripts/fix.mjs check *"]
+    shell_allow: ["node {fw}/scripts/ui-code.mjs build *", "node {fw}/scripts/ui-code.mjs check *", "node {fw}/scripts/ui-code.mjs paths *", "node {fw}/scripts/fix.mjs check *"]
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-ui/review-findings.md", "${results}/${module}/playwright-ui/review.json",
              "${results}/${module}/playwright-ui/gate-findings.md", "${results}/${module}/playwright-ui/triage.md", "${results}/${module}/playwright-ui/triage.json"]
@@ -372,7 +374,7 @@ agents:
     live_target: { browser: mutate, http: none, load: none }   # runs the ui project; mutating specs only in full-run, ledger-scoped
     web_research: none
     shell: project              # runs the suite; listed for the record and the run's combined ceiling
-    shell_allow: ["node scripts/triage.mjs prepare *", "node scripts/triage.mjs build *", "node scripts/triage.mjs check *", "node scripts/triage.mjs paths *"]
+    shell_allow: ["node {fw}/scripts/triage.mjs prepare *", "node {fw}/scripts/triage.mjs build *", "node {fw}/scripts/triage.mjs check *", "node {fw}/scripts/triage.mjs paths *"]
     filesystem: { read: ["${pw_project}/**", "${modules}/**", "${product_dir}/known-issues.json"], write: ["${results}/${module}/playwright-ui/triage-overlay.json", "${pw_project}/test-results/ui/**"] }
 
   # ======================= Playwright API domain (same repo: ${pw_project}) ===============================
@@ -389,15 +391,15 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/api-plan.mjs *"]
+    shell_allow: ["node {fw}/scripts/api-plan.mjs *"]
     filesystem: { read: ["${modules}/**", "${knowledge}/**"], write: ["${modules}/api/plan-overlay.json"] }
   pw-api-scaffolder:            # D-054: the API foundation is rendered from templates/ with its cited API overlay
     layer: 2
     live_target: { browser: none, http: none, load: none }
     web_research: allowed
     shell: restricted
-    shell_allow: ["node scripts/foundation.mjs render * --side api", "node scripts/foundation.mjs check *",
-                  "node scripts/foundation.mjs paths *", "node scripts/requests.mjs add *"]
+    shell_allow: ["node {fw}/scripts/foundation.mjs render * --side api", "node {fw}/scripts/foundation.mjs check *",
+                  "node {fw}/scripts/foundation.mjs paths *", "node {fw}/scripts/requests.mjs add *"]
     filesystem:
       read: ["${pw_project}/**", "${knowledge}/**", "${modules}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
       write: ["${product_dir}/foundation/api-overlay.json", "${pw_project}/helpers/api/**"]
@@ -405,7 +407,7 @@ agents:
     layer: 2
     profile: code_writer
     shell: restricted           # tsc runs inside `api-code.mjs check` (a restricted row can't vouch for npx in the product's repo)
-    shell_allow: ["node scripts/api-code.mjs build *", "node scripts/api-code.mjs check *", "node scripts/api-code.mjs paths *", "node scripts/requests.mjs add *"]
+    shell_allow: ["node {fw}/scripts/api-code.mjs build *", "node {fw}/scripts/api-code.mjs check *", "node {fw}/scripts/api-code.mjs paths *", "node {fw}/scripts/requests.mjs add *"]
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${knowledge}/**"]
       write: ["${modules}/api-code/client-overlay.json", "${pw_project}/helpers/api/${module}.composite.ts"]
@@ -413,7 +415,7 @@ agents:
     layer: 2
     profile: code_writer
     shell: restricted           # tsc and playwright --list run inside `api-code.mjs check`
-    shell_allow: ["node scripts/api-code.mjs build *", "node scripts/api-code.mjs check *", "node scripts/api-code.mjs paths *", "node scripts/requests.mjs add *"]
+    shell_allow: ["node {fw}/scripts/api-code.mjs build *", "node {fw}/scripts/api-code.mjs check *", "node {fw}/scripts/api-code.mjs paths *", "node {fw}/scripts/requests.mjs add *"]
     # the generated specs (tests/api/<m>/) are managed files: the slots live in the two helper files
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${knowledge}/**"]
@@ -422,7 +424,7 @@ agents:
     layer: 2
     profile: reviewer
     shell: restricted
-    shell_allow: ["node scripts/review.mjs check *"]
+    shell_allow: ["node {fw}/scripts/review.mjs check *"]
     filesystem: { read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-api/gate-findings.md"], write: ["${results}/${module}/playwright-api/review.json"] }
   pw-api-fixer:                 # review findings or healable triage rows
     layer: 2
@@ -430,7 +432,7 @@ agents:
     # D-056: re-generates and re-checks after a fix (shell: project already allows it; listed for the record and for the
     # run's combined ceiling). The generated files are managed: a fix goes in an overlay or a slot. D-059: answers every
     # finding in fix-report.json and runs fix.mjs check (the snapshot is taken by orchestration.mjs).
-    shell_allow: ["node scripts/api-code.mjs build *", "node scripts/api-code.mjs check *", "node scripts/api-code.mjs paths *", "node scripts/fix.mjs check *"]
+    shell_allow: ["node {fw}/scripts/api-code.mjs build *", "node {fw}/scripts/api-code.mjs check *", "node {fw}/scripts/api-code.mjs paths *", "node {fw}/scripts/fix.mjs check *"]
     filesystem:
       read: ["${pw_project}/**", "${modules}/**", "${results}/${module}/playwright-api/review-findings.md", "${results}/${module}/playwright-api/review.json",
              "${results}/${module}/playwright-api/gate-findings.md", "${results}/${module}/playwright-api/triage.md", "${results}/${module}/playwright-api/triage.json"]
@@ -442,7 +444,7 @@ agents:
     live_target: { browser: none, http: mutate, load: none }   # runs the api project; mutating tests only in full-run, ledger-scoped
     web_research: none
     shell: project
-    shell_allow: ["node scripts/triage.mjs prepare *", "node scripts/triage.mjs build *", "node scripts/triage.mjs check *", "node scripts/triage.mjs paths *"]
+    shell_allow: ["node {fw}/scripts/triage.mjs prepare *", "node {fw}/scripts/triage.mjs build *", "node {fw}/scripts/triage.mjs check *", "node {fw}/scripts/triage.mjs paths *"]
     filesystem: { read: ["${pw_project}/**", "${modules}/**", "${product_dir}/known-issues.json"], write: ["${results}/${module}/playwright-api/triage-overlay.json", "${pw_project}/test-results/api/**"] }
 
   # ======================= K6 domain (repo: ${k6_project}) ================================================
@@ -456,7 +458,7 @@ agents:
     live_target: { browser: none, http: none, load: none }   # never load during design
     web_research: none
     shell: restricted
-    shell_allow: ["node scripts/workload.mjs build *", "node scripts/workload.mjs check *", "node scripts/workload.mjs paths *"]
+    shell_allow: ["node {fw}/scripts/workload.mjs build *", "node {fw}/scripts/workload.mjs check *", "node {fw}/scripts/workload.mjs paths *"]
     filesystem:
       read: ["${modules}/**", "${knowledge}/**", "${results}/${module}/playwright-api/**", "${state}/config.resolved.json"]
       write: ["${modules}/k6/workload-overlay.json"]
@@ -465,8 +467,8 @@ agents:
     live_target: { browser: none, http: none, load: none }
     web_research: none
     shell: restricted           # check --side k6 runs k6 inspect through its own temp file
-    shell_allow: ["node scripts/foundation.mjs render * --side k6", "node scripts/foundation.mjs check *",
-                  "node scripts/foundation.mjs paths *"]
+    shell_allow: ["node {fw}/scripts/foundation.mjs render * --side k6", "node {fw}/scripts/foundation.mjs check *",
+                  "node {fw}/scripts/foundation.mjs paths *"]
     filesystem:
       read: ["${k6_project}/**", "${modules}/**", "${knowledge}/**", "${state}/config.resolved.json", "${product_dir}/foundation/**"]
       write: ["${product_dir}/foundation/k6-overlay.json", "${k6_project}/lib/ext/**"]
@@ -474,13 +476,13 @@ agents:
     layer: 2
     profile: code_writer
     shell: restricted           # k6 inspect runs inside `k6-code.mjs check`
-    shell_allow: ["node scripts/k6-code.mjs build *", "node scripts/k6-code.mjs check *", "node scripts/k6-code.mjs paths *", "node scripts/requests.mjs add *"]
+    shell_allow: ["node {fw}/scripts/k6-code.mjs build *", "node {fw}/scripts/k6-code.mjs check *", "node {fw}/scripts/k6-code.mjs paths *", "node {fw}/scripts/requests.mjs add *"]
     filesystem: { read: ["${k6_project}/**", "${modules}/**"], write: ["${k6_project}/scripts/slots/${module}.js"] }
   k6-reviewer:                  # D-059: writes only its per-test verdicts; review.mjs check derives the verdict and review-findings.md
     layer: 2
     profile: reviewer
     shell: restricted
-    shell_allow: ["node scripts/review.mjs check *"]
+    shell_allow: ["node {fw}/scripts/review.mjs check *"]
     filesystem: { read: ["${k6_project}/**", "${modules}/**", "${results}/${module}/k6/gate-findings.md"], write: ["${results}/${module}/k6/review.json"] }
   k6-fixer:                     # review findings or healable triage rows
     layer: 2
@@ -489,7 +491,7 @@ agents:
     # S7-F1: shell restricted to the writer's commands, so no shell command can write a generated script. D-059: plus
     # fix.mjs check; it answers every finding in fix-report.json (the snapshot is taken by orchestration.mjs).
     shell: restricted
-    shell_allow: ["node scripts/k6-code.mjs build *", "node scripts/k6-code.mjs check *", "node scripts/k6-code.mjs paths *", "node scripts/fix.mjs check *"]
+    shell_allow: ["node {fw}/scripts/k6-code.mjs build *", "node {fw}/scripts/k6-code.mjs check *", "node {fw}/scripts/k6-code.mjs paths *", "node {fw}/scripts/fix.mjs check *"]
     filesystem:
       read: ["${k6_project}/**", "${modules}/**", "${results}/${module}/k6/review-findings.md", "${results}/${module}/k6/review.json", "${results}/${module}/k6/gate-findings.md",
              "${results}/${module}/k6/triage.md", "${results}/${module}/k6/triage.json"]
@@ -499,7 +501,7 @@ agents:
     live_target: { browser: none, http: none, load: run }   # live load only in full-run; BASE_URL must be on K6_ALLOWED_HOSTS
     web_research: none
     shell: project
-    shell_allow: ["node scripts/triage.mjs prepare *", "node scripts/triage.mjs build *", "node scripts/triage.mjs check *", "node scripts/triage.mjs paths *"]
+    shell_allow: ["node {fw}/scripts/triage.mjs prepare *", "node {fw}/scripts/triage.mjs build *", "node {fw}/scripts/triage.mjs check *", "node {fw}/scripts/triage.mjs paths *"]
     filesystem: { read: ["${k6_project}/**", "${modules}/**", "${product_dir}/known-issues.json"], write: ["${results}/${module}/k6/triage-overlay.json", "${k6_project}/results/**"] }
 
   # ======================= Reporting and framework maintenance ===========================================
@@ -511,7 +513,7 @@ agents:
     shell: restricted
     # G11 (D-061): writes only its cited narrative overlay; report-data.mjs collects report.json, report.mjs renders the
     # deck and checks the narrative (report.json, index.html and the report-check.json stamp are managed files)
-    shell_allow: ["node scripts/report-data.mjs *", "node scripts/report.mjs render *", "node scripts/report.mjs check *", "node scripts/report.mjs paths *"]
+    shell_allow: ["node {fw}/scripts/report-data.mjs *", "node {fw}/scripts/report.mjs render *", "node {fw}/scripts/report.mjs check *", "node {fw}/scripts/report.mjs paths *"]
     filesystem: { read: ["${product_dir}/**"], write: ["${results}/report/narrative.json"] }
 
   feedback-implementor-agent:   # existing: fixes agent prompts / framework from feedback/ files (not generated test code)

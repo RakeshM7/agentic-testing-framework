@@ -3,8 +3,8 @@
 // Names are the tool's short name, without the platform's prefix (mcp__playwright__browser_<name>, playwright/browser_<name>).
 // Dependency-free: the guard imports it on every hook call.
 
-import { readFileSync } from "node:fs";
-import path from "node:path";
+import { configText } from "./config.mjs";
+import { frameworkRoot } from "./roots.mjs";
 
 // Navigate and observe. `click` is here on purpose: navigation needs it.
 export const BROWSER_READ = ["navigate", "navigate_back", "snapshot", "click", "hover", "take_screenshot", "wait_for", "tabs", "resize", "console_messages", "network_requests"];
@@ -28,14 +28,15 @@ const MUTATING = new Set([...BROWSER_MUTATE, ...NEVER_GRANTED]);
 export const isMutatingBrowserTool = (name) => MUTATING.has(name);
 export const isInputBrowserTool = (name) => BROWSER_INPUT.includes(name);
 
-// The init page the browser server must run for readonly input (scripts/browser/init-page.cjs), and whether
-// config/mcp.yaml -- the one source of every host's MCP config (D-028) -- passes it. Read as text: the guard stays
-// dependency-free. Any failure reads as "not guarded" (fails closed).
+// The init page the browser server must run for readonly input (scripts/browser/init-page.cjs), and whether the
+// framework's config/mcp.yaml -- the one source of every host's MCP config (D-028) -- passes it, by its path from the
+// workspace (`{fw}/`, D-085) or as written in a same-root repo. Read as text (scripts/lib/config.mjs): the guard stays
+// dependency-free. Any failure reads as "not guarded" (fails closed). `framework`: the framework root.
 export const INIT_PAGE = "scripts/browser/init-page.cjs";
-const INIT_PAGE_ARG = /^[ \t]*-[ \t]*["']?--init-page(?:["']?[ \t]*\r?\n[ \t]*-[ \t]*|=)["']?scripts\/browser\/init-page\.cjs["']?[ \t]*\r?$/m;
-export function networkGuarded(root) {
+const INIT_PAGE_ARG = /^[ \t]*-[ \t]*["']?--init-page(?:["']?[ \t]*\r?\n[ \t]*-[ \t]*|=)["']?(?:\{fw\}\/)?scripts\/browser\/init-page\.cjs["']?[ \t]*\r?$/m;
+export function networkGuarded(framework = frameworkRoot) {
   try {
-    return INIT_PAGE_ARG.test(readFileSync(path.join(root, "config", "mcp.yaml"), "utf8"));
+    return INIT_PAGE_ARG.test(configText("mcp.yaml", { framework }));
   } catch {
     return false;
   }

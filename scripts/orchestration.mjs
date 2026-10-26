@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { gate } from "./gate.mjs";
 import { csvPath, isAnswered, isAuthoritative, readRecord, readRows, record, renderSummary } from "./lib/clarifications.mjs";
-import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot } from "./lib/contract.mjs";
 import { withFileLock, writeAtomic } from "./lib/files.mjs";
 import { FLOWS, healableRows, runTriage, unresolvedFindings } from "./lib/domain-flows.mjs";
 import { fixCheck, fixSnapshot } from "./lib/fix.mjs";
@@ -53,12 +53,12 @@ function load(file, run, domain, module) {
   return s.runId === run.runId ? s : fresh;
 }
 
-export function show(product, domain, module, { root = repoRoot } = {}) {
+export function show(product, domain, module, { root = workspaceRoot } = {}) {
   const c = context(product, domain, module, root);
   return load(c.file, c.run, domain, module);
 }
 
-export function step(product, domain, module, name, action, note, { root = repoRoot } = {}) {
+export function step(product, domain, module, name, action, note, { root = workspaceRoot } = {}) {
   if (!["start", "done", "fail", "skip"].includes(action)) throw new Error("action must be start|done|fail|skip");
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name ?? "")) throw new Error("step name must be kebab-case");
   const c = context(product, domain, module, root);
@@ -76,7 +76,7 @@ export function step(product, domain, module, name, action, note, { root = repoR
   });
 }
 
-export function round(product, domain, module, kind, { root = repoRoot } = {}) {
+export function round(product, domain, module, kind, { root = workspaceRoot } = {}) {
   if (!LIMIT_KEY[kind]) throw new Error("kind must be review|heal");
   const c = context(product, domain, module, root);
   const limit = c.cfg.limits?.[LIMIT_KEY[kind]] ?? 3;
@@ -93,7 +93,7 @@ const SETTLED = ["done", "failed", "skipped"];
 const CLARIFICATION_ATTEMPTS = 2; // per row: the first try and one retry, then the script records it blocked (D-011)
 const prompt = (args) => Object.entries(args).map(([k, v]) => `${k}=${v}`).join(" ");
 
-export function next(product, domain, module, { root = repoRoot, max = 1, compile = true } = {}) {
+export function next(product, domain, module, { root = workspaceRoot, max = 1, compile = true } = {}) {
   const c = context(product, domain, module, root);
   const p = paths(product, root);
   const { runId, mode } = c.run;

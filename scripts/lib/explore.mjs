@@ -115,12 +115,12 @@ export function explorePaths(productDir, module) {
 }
 
 // ctx for every command: {root, product, module, runId, mode, cfg, productDir, xp, kp, ledgerFile, budgets}
-export function exploreContext({ root, product, module, run, cfg, productDir, ledgerFile, env = {} }) {
+export function exploreContext({ root, framework, product, module, run, cfg, productDir, ledgerFile, env = {} }) {
   const mode = env.AUTHORIZATIONS_MODE === "readonly" ? "readonly" : run.mode; // the environment can only downgrade
   return {
     root, product, module, runId: run.runId, mode, cfg, productDir, ledgerFile,
     // readonly typing and selecting: allowed exactly when the guard allows them (scripts/lib/browser-tools.mjs, D-076)
-    readonlyInput: networkGuarded(root),
+    readonlyInput: networkGuarded(framework), // the framework's browser config (D-085); the framework root by default
     xp: explorePaths(productDir, module),
     kp: knowledgePaths(productDir),
     budgets: { ...DEFAULT_BUDGETS, ...(cfg.explore ?? {}) },

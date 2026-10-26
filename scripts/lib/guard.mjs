@@ -15,6 +15,8 @@
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
 // On a host that cannot name the calling agent (scripts/lib/hosts.mjs), a full-run call gets what at least one of the
 // run's agents may do (runCeiling, D-035): every call there comes from one of the run's agents.
+// When the framework is installed apart from the workspace (D-085, scripts/lib/roots.mjs), no call writes under the
+// framework root: in or out of a run, any caller and mode (frameworkWrite()). In one directory, nothing changes.
 //
 // Dependency-free (imported by a PreToolUse hook on every guarded tool call).
 
@@ -22,9 +24,11 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { hostname } from "node:os";
 import path from "node:path";
 import { isInputBrowserTool, isMutatingBrowserTool, networkGuarded } from "./browser-tools.mjs";
+import { shellWriteTargets } from "./decisions.mjs";
 import { canIdentify, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
-import { atLeast, canWrite, effectiveLiveTarget, isManaged, runCeiling, shellAllowed, shellSegments } from "./permissions.mjs";
+import { atLeast, canWrite, effectiveLiveTarget, isManaged, normalizeWritePath, runCeiling, shellAllowed, shellSegments } from "./permissions.mjs";
+import { frameworkRoot, sameDir } from "./roots.mjs";
 
 const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 
@@ -42,7 +46,8 @@ export function stateDirs(root) {
   return out;
 }
 
-export function findActiveRuns(root, env = process.env) {
+// framework: the framework root, whose config/mcp.yaml says whether the browser server runs the network guard.
+export function findActiveRuns(root, env = process.env, framework = frameworkRoot) {
   const runs = [];
   for (const { product, environment, state } of stateDirs(root)) {
     if (!existsSync(path.join(state, "lock.json"))) continue;
@@ -51,6 +56,7 @@ export function findActiveRuns(root, env = process.env) {
       const permFile = path.join(state, "permissions.resolved.json");
       runs.push({
         root,
+        framework,
         product,
         environment,
         stateDir: state,
@@ -63,7 +69,7 @@ export function findActiveRuns(root, env = process.env) {
       });
     } catch {
       // A held lock with an unreadable run.json is treated as an active readonly run with no permissions.
-      runs.push({ root, product, environment, stateDir: state, runId: null, mode: "readonly", targetHosts: [], ledgerFile: null, permissions: null, broken: true });
+      runs.push({ root, framework, product, environment, stateDir: state, runId: null, mode: "readonly", targetHosts: [], ledgerFile: null, permissions: null, broken: true });
     }
   }
   return runs;
@@ -306,6 +312,36 @@ function managedPath(file, run) {
   return null;
 }
 
+// D-085: the spelling of a framework file the call would write, else null; only when the framework root is not the
+// workspace root. A written path and every shell write target the hook can read (scripts/lib/decisions.mjs
+// shellWriteTargets: redirects, tee, cp, mv, rm, sed -i, git restore, ...; a relative one from the workspace and from
+// every directory the line changes into) are compared as written (a device or UNC prefix and `..` resolved; case,
+// separators, a trailing dot or space and a stream suffix folded) and as the file system resolves them (symlinks,
+// junctions, 8.3 names), with the framework root both as given and as resolved. Fails closed: a write tool whose
+// target can't be told is refused. A write the hook can't read (`node -e`, a package manager) is the known limit of
+// D-031's shell heuristic.
+const UNKNOWN_TARGET = Symbol("unknown write target");
+const CD_DIRS = /(?:^|[;&|(]\s*)(?:cd|pushd|Set-Location)(?:\s+\/d|\s+-(?:Literal)?Path)?\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|'"()]+))/gi;
+function frameworkWrite(call, root, framework) {
+  if (!framework || sameDir(root, framework)) return null;
+  if (call.kind === "write" && !(call.paths ?? []).length) return UNKNOWN_TARGET;
+  const command = String(call.command ?? "");
+  const files = call.kind === "write" ? call.paths : call.kind === "shell" ? shellWriteTargets(command) : [];
+  const bases = [root, ...(call.kind === "shell" ? [...command.matchAll(CD_DIRS)].map((m) => path.resolve(root, devicePath(m[1] ?? m[2] ?? m[3]))) : [])];
+  const fwRoots = [...new Set([path.resolve(framework), realOf(path.resolve(framework))].filter(Boolean).map(normalizeWritePath))];
+  for (const f of files)
+    for (const base of bases) {
+      const abs = path.resolve(base, devicePath(f));
+      // a UNC path to another host is never the framework; don't touch the network to resolve it
+      const real = /^[\\/]{2}/.test(abs) ? null : realOf(abs);
+      for (const target of [abs, real].filter(Boolean)) {
+        const t = normalizeWritePath(target);
+        if (fwRoots.some((d) => t === d || t.startsWith(`${d}/`))) return path.relative(root, abs).replaceAll("\\", "/") || String(f);
+      }
+    }
+  return null;
+}
+
 function checkWrite(file, run, row) {
   const abs = path.resolve(run.root, file);
   const rel = path.relative(run.root, abs).replaceAll("\\", "/");
@@ -344,7 +380,7 @@ function evaluateKind(call, run, row) {
       if (level === "none") return deny("browser-none", "this agent has no browser access");
       // readonly input (D-076): typing, selecting and key presses change nothing while the browser server's init page
       // aborts every write to the product; without it they are mutating like the rest
-      if (level === "read" && isMutatingBrowserTool(call.browserAction) && !(isInputBrowserTool(call.browserAction) && networkGuarded(run.root)))
+      if (level === "read" && isMutatingBrowserTool(call.browserAction) && !(isInputBrowserTool(call.browserAction) && networkGuarded(run.framework)))
         return deny("browser-read", `browser_${call.browserAction} can change data; this agent is read-only here (mode ${run.mode})${isInputBrowserTool(call.browserAction) ? ", and the browser server does not run the framework's network guard (--init-page scripts/browser/init-page.cjs in config/mcp.yaml)" : ""}`);
       return ALLOW;
     }
@@ -367,13 +403,18 @@ function evaluate(call, run) {
 
 // -> { allowed, rule?, reason?, canary? }. With several active runs (different products): a write is allowed if ANY
 // run's rules allow it (paths are product-specific); everything else must be allowed by EVERY active run.
-export function checkTool(call, root, env = process.env) {
+// root: the workspace root; framework: the framework root (scripts/lib/roots.mjs; the same directory in this repo).
+export function checkTool(call, root, env = process.env, { framework = frameworkRoot } = {}) {
   const canary = call.kind === "shell" ? CANARY.exec(call.command ?? "") : null;
   if (canary)
     return { allowed: false, rule: "canary", reason: `guard is active on ${labelOf(call.host)} (caller: ${call.agent ?? "unidentified"}); this block is expected`, canary: { product: canary[1] } };
   if (humanOnly(call)) return deny("human-only", HUMAN_ONLY_REASON);
   if (humanOnlySweep(call)) return deny("human-only", SWEEP_REASON);
-  const runs = findActiveRuns(root, env);
+  const fwFile = frameworkWrite(call, root, framework);
+  if (fwFile === UNKNOWN_TARGET) return deny("framework-readonly", `could not tell which file ${call.tool} writes, and the framework (${framework}) is installed read-only (D-085); refusing`);
+  if (fwFile)
+    return deny("framework-readonly", `${fwFile} is part of the installed framework (${framework}), which no agent changes (D-085): change the workspace's own files instead, or report it (scripts/framework-issues.mjs add)`);
+  const runs = findActiveRuns(root, env, framework);
   if (!runs.length) return call.kind === "shell" ? checkShell(call.command ?? "", { mode: "readonly", ledgerFile: null, runId: null, targetHosts: [] }, null) : ALLOW;
   // Managed foundation files (D-054) are rendered by scripts/foundation.mjs through node, never by a hooked write: no
   // caller writes one directly, named or not, in any mode, whichever active run's product it belongs to.

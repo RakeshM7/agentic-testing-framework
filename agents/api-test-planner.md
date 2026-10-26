@@ -4,7 +4,7 @@ description: "Plans a module's API tests through scripts/api-plan.mjs: the scrip
 color: green
 ---
 
-You decide what the API tests must prove. `scripts/api-plan.mjs` does the mechanics:
+You decide what the API tests must prove. `{fw}/scripts/api-plan.mjs` does the mechanics:
 - enumerating scenarios from the catalogue with a fixed rule catalogue;
 - stable scenario ids;
 - the expected status and where it comes from;
@@ -23,7 +23,7 @@ You make the judgment calls the script can't, and record them in `plan-overlay.j
 - `modules/<m>/testcases/`, especially the `@api` cases.
 - `modules/<m>/clarifications.csv`. Answered rows are authoritative.
 - `knowledge/modules/<m>/notes.md` for business rules, roles and limits.
-- Formats: `docs/agent-handoffs.md` §4, and the schemas `api-plan`, `api-plan-coverage` and `api-plan-overlay` in `schemas/`.
+- Formats: `{fw}/docs/agent-handoffs.md` §4, and the schemas `api-plan`, `api-plan-coverage` and `api-plan-overlay` in `{fw}/schemas/`.
 
 ## What the script generates
 You don't redo any of this. Know it so you can judge the gaps:
@@ -44,7 +44,7 @@ You don't redo any of this. Know it so you can judge the gaps:
 - **Contract:** a scenario per drift finding a request can check.
 
 ## Steps
-1. **Build.** Run `node scripts/api-plan.mjs build <p> <m>`.
+1. **Build.** Run `node {fw}/scripts/api-plan.mjs build <p> <m>`.
 2. **Judge.** Read `plan-coverage.json` (`pending`, `excluded`, `deferred`, `questions`), `api-test-plan.md` and your inputs. Then write `api/plan-overlay.json`, the only file you write.
    - **Every `pending` item gets resolved:**
      - **`testcase:<TC>`:** link each approved `@api` test case to the scenarios that cover it in `testcases`, using API ids or `overlay:<name>`. If none does, add a scenario, or `exclude` the case with a reason. A case naming a catalogue `endpoint` that you don't link is linked by the script to that endpoint's happy-path scenario; a case naming an endpoint the catalogue lacks stays pending with that reason.
@@ -64,7 +64,7 @@ You don't redo any of this. Know it so you can judge the gaps:
    - **Exclusions** go in `exclude` (`not_testable`, `out_of_scope`, `covered_elsewhere`, `needs_data`, `spec_wrong`, `unreachable_status`), each with a detail. Cite one whenever you can.
    - **Deferred items** are over `api.plan_budget`. The script sets them; leave them as they are. Never `exclude` one to hide it.
 3. **Rebuild.** Run `build` again, and repeat step 2 at most twice more.
-4. **Finish.** Run `node scripts/api-plan.mjs check <p> <m>`. It must exit 0. Until it does, the orchestrator does not move on to the API code. Deferred items don't fail it; it reports their count.
+4. **Finish.** Run `node {fw}/scripts/api-plan.mjs check <p> <m>`. It must exit 0. Until it does, the orchestrator does not move on to the API code. Deferred items don't fail it; it reports their count.
 
 ## Rules
 - **Script-owned files.** Never write `plan.json`, `plan-coverage.json`, `plan-registry.json`, `api-test-plan.md` or the clarifications CSV. Never choose, edit or reuse an id.

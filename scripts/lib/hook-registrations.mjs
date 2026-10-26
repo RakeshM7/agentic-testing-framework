@@ -7,7 +7,9 @@
 //          there it stays synchronous
 //   sync   every host waits for it
 //   off    not registered: every governed edit asks again, the session never remembers a confirmation
+// Every command runs the framework's hook script by its path from the workspace (`{fw}`, D-085: nothing in this repo).
 // Dependency-free.
+import { expandFw } from "./roots.mjs";
 
 export const HOOKS_CONFIG = "config/hooks.yaml";
 export const POST_MODES = ["async", "sync", "off"];
@@ -21,8 +23,8 @@ const CLAUDE_POST_MATCHER = "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|A
 // variable, the path became /scripts/hooks/... and node crashed before the guard ran, so the host denied every matched
 // call as "hook errored". `${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}` means the same in bash (Claude Code, which sets
 // the variable) and is empty in PowerShell, leaving the cwd-relative path those hosts run from the repo root.
-const claudeCommand = (entry) => `node "\${CLAUDE_PROJECT_DIR:+\$CLAUDE_PROJECT_DIR/}scripts/hooks/${entry}.mjs" --host claude-code`;
-const command = (entry, host) => `node scripts/hooks/${entry}.mjs --host ${host}`;
+const claudeCommand = (entry, fw) => expandFw(`node "\${CLAUDE_PROJECT_DIR:+\$CLAUDE_PROJECT_DIR/}{fw}/scripts/hooks/${entry}.mjs" --host claude-code`, fw);
+const command = (entry, host, fw) => expandFw(`node {fw}/scripts/hooks/${entry}.mjs --host ${host}`, fw);
 
 // config/hooks.yaml (parsed) -> { mode } | { error }
 export function postModeOf(doc) {
@@ -44,31 +46,31 @@ export function formatJson(value, indent = "") {
   return JSON.stringify(value);
 }
 
-function claudeHooks(mode) {
-  const hooks = { PreToolUse: [{ matcher: CLAUDE_PRE_MATCHER, hooks: [{ type: "command", command: claudeCommand("pretooluse") }] }] };
+function claudeHooks(mode, fw) {
+  const hooks = { PreToolUse: [{ matcher: CLAUDE_PRE_MATCHER, hooks: [{ type: "command", command: claudeCommand("pretooluse", fw) }] }] };
   if (mode !== "off")
-    hooks.PostToolUse = [{ matcher: CLAUDE_POST_MATCHER, hooks: [{ type: "command", ...(mode === "async" ? { async: true } : {}), command: claudeCommand("posttooluse") }] }];
+    hooks.PostToolUse = [{ matcher: CLAUDE_POST_MATCHER, hooks: [{ type: "command", ...(mode === "async" ? { async: true } : {}), command: claudeCommand("posttooluse", fw) }] }];
   return hooks;
 }
 
-function copilotHooks(mode) {
-  const entry = (name) => ({ type: "command", command: command(name, "copilot"), cwd: ".", timeoutSec: 30 });
+function copilotHooks(mode, fw) {
+  const entry = (name) => ({ type: "command", command: command(name, "copilot", fw), cwd: ".", timeoutSec: 30 });
   return { version: 1, hooks: { PreToolUse: [entry("pretooluse")], ...(mode !== "off" ? { PostToolUse: [entry("posttooluse")] } : {}) } };
 }
 
-function vscodeHooks(mode) {
-  const entry = (name) => ({ type: "command", command: command(name, "vscode"), cwd: ".", timeout: 30 });
+function vscodeHooks(mode, fw) {
+  const entry = (name) => ({ type: "command", command: command(name, "vscode", fw), cwd: ".", timeout: 30 });
   return { hooks: { PreToolUse: [entry("pretooluse")], ...(mode !== "off" ? { PostToolUse: [entry("posttooluse")] } : {}) } };
 }
 
-// -> Map(repo-relative path -> file content). `claudeSettings` is the current .claude/settings.json text (or undefined);
-// its keys other than `hooks` are kept, in their order.
-export function renderHookRegistrations(mode, claudeSettings) {
+// -> Map(workspace-relative path -> file content). `claudeSettings` is the current .claude/settings.json text (or
+// undefined); its keys other than `hooks` are kept, in their order. `fw`: the framework's path from the workspace.
+export function renderHookRegistrations(mode, claudeSettings, fw = "") {
   const settings = claudeSettings ? JSON.parse(claudeSettings) : {};
   return new Map([
-    [CLAUDE_SETTINGS, formatJson({ ...settings, hooks: claudeHooks(mode) }) + "\n"],
-    [".github/hooks/framework-guard.json", formatJson(copilotHooks(mode)) + "\n"],
-    [".vscode/hooks/framework-guard.json", formatJson(vscodeHooks(mode)) + "\n"],
+    [CLAUDE_SETTINGS, formatJson({ ...settings, hooks: claudeHooks(mode, fw) }) + "\n"],
+    [".github/hooks/framework-guard.json", formatJson(copilotHooks(mode, fw)) + "\n"],
+    [".vscode/hooks/framework-guard.json", formatJson(vscodeHooks(mode, fw)) + "\n"],
   ]);
 }
 

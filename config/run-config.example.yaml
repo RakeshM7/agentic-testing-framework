@@ -109,7 +109,8 @@ authorizations:
                                 # - {name: viewer, role: read-only, credentials_file: playwright-tests/<product>/.env.viewer}
                                 # Without them those scenarios are planned as "needs an identity" and not run.
 
-permissions_file: config/permissions.yaml   # per-agent ceilings; frozen into state/ at `run.mjs init`
+permissions_file: config/permissions.yaml   # per-agent ceilings; frozen into state/ at `run.mjs init`. This default is the
+                                            # framework's own file; any other path is read from the workspace root (D-085)
 
 testcases:
   output_format: gherkin        # markdown-table | gherkin | csv | testrail

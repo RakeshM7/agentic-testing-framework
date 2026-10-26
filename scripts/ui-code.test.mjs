@@ -15,6 +15,7 @@ import { paths } from "./lib/contract.mjs";
 import { parseCsv, serializeCsv } from "./lib/csv.mjs";
 import { explorePaths } from "./lib/explore.mjs";
 import { checkTool } from "./lib/guard.mjs";
+import { expandFw } from "./lib/roots.mjs";
 import { normalize } from "./hooks/hosts/claude.mjs";
 import { FLOWS } from "./lib/domain-flows.mjs";
 import { lit, locatorProblem, noUiCases, parseLocators, parseRegions, renderSpec, scanTs, smokeClickProblem, snapshotFacts, uiCodeContext, uiCodeUnverified } from "./lib/ui-code.mjs";
@@ -622,7 +623,7 @@ test("CLI: usage and paths", async () => {
 
 const call = (agent, tool_name, tool_input) => normalize({ agent_type: agent, tool_name, tool_input }, { env: { CLAUDE_PROJECT_DIR: "/repo" }, host: "claude-code" });
 const FULL = startRun({ mode: "full-run" });
-const allowed = (input) => checkTool(input, FULL.root, {}).allowed;
+const allowed = (input) => checkTool(input, FULL.root, {}, { framework: FULL.root }).allowed;
 const sh = (agent, command) => allowed(call(agent, "Bash", { command }));
 const w = (agent, rel) => allowed(call(agent, "Write", { file_path: path.join(FULL.root, rel) }));
 
@@ -1047,8 +1048,9 @@ test("the smoke exemption: only the exact path of a scaffolded module, only test
 test("pw-ui-fixer: re-renders and re-checks with ui-code.mjs, and edits only inside the regions", () => {
   assert.equal(sh("pw-ui-fixer", "node scripts/ui-code.mjs build acme contacts"), true);
   const perms = readFileSync(path.join(FULL.root, "config", "permissions.yaml"), "utf8");
-  assert.match(perms, /pw-ui-fixer:[\s\S]*?shell_allow: \["node scripts\/ui-code\.mjs build \*", "node scripts\/ui-code\.mjs check \*"/);
-  const prompt = readFileSync(path.join(path.dirname(FIX), "..", "..", "agents", "pw-ui-fixer.md"), "utf8");
+  // the config names the framework's scripts as {fw}/scripts/... (D-085); the prompt is read as the build renders it here
+  assert.match(perms, /pw-ui-fixer:[\s\S]*?shell_allow: \["node \{fw\}\/scripts\/ui-code\.mjs build \*", "node \{fw\}\/scripts\/ui-code\.mjs check \*"/);
+  const prompt = expandFw(readFileSync(path.join(path.dirname(FIX), "..", "..", "agents", "pw-ui-fixer.md"), "utf8"), "");
   assert.match(prompt, /edit only inside the `\/\/ ui-code:begin` … `\/\/ ui-code:end` regions/);
   assert.match(prompt, /run `node scripts\/ui-code\.mjs build <p> <m>`[^\n]*then `node scripts\/ui-code\.mjs check <p> <m>`/);
 });

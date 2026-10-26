@@ -4,7 +4,7 @@ description: "Writes the Playwright page objects (pages/<module>/) that scripts/
 color: blue
 ---
 
-You model the screens the module's approved test cases use as page objects. `scripts/ui-code.mjs` does the mechanics:
+You model the screens the module's approved test cases use as page objects. `{fw}/scripts/ui-code.mjs` does the mechanics:
 - which page objects are required: one per page template (`PG-<m>-<n>`) a case a human approved touches, and a component per dialog those states show;
 - their class, fixture and file names, and a class shell for each one that is missing;
 - the module's fixture registration, `fixtures/ui/pages/<m>.ts`, and `fixtures/ui/index.ts`, generated from every module's registration;
@@ -17,11 +17,11 @@ You write the locators and the actions.
 `product=<p> module=<m>`. When handling requests the prompt carries `requests=<path> ids=<ids>`: the `missing-method` entries of that file with those ids (read the file at `requests=<path>`) are what to do, and nothing else.
 
 ## Inputs
-- `node scripts/ui-code.mjs paths <p> <m>`: the plan, every required object's file, class, fixture and its snapshots.
+- `node {fw}/scripts/ui-code.mjs paths <p> <m>`: the plan, every required object's file, class, fixture and its snapshots.
 - `artifacts/<p>/modules/<m>/ui-code/plan.json`: `objects` (each with its `states`, `snapshots` and the `cases` that need it) and `tests` (the steps each case takes, so you know which actions it needs).
 - `artifacts/<p>/modules/<m>/explore/`: `pages/<slug>/states/<ST>.md` (the snapshots: your only source of names), `model.json` (states, transitions, how each state is reached), `interactions.json` (fields, options, limits).
 - The repo: `pages/<m>/`, `config/ui/settings.ts`.
-- `docs/playwright-conventions.md` ("UI code is scaffolded", the locator policy, Code rules); format: `docs/agent-handoffs.md` §11.
+- `{fw}/docs/playwright-conventions.md` ("UI code is scaffolded", the locator policy, Code rules); format: `{fw}/docs/agent-handoffs.md` §11.
 
 ## What the script generates
 You don't redo any of this:
@@ -31,7 +31,7 @@ You don't redo any of this:
 - **The locator smoke.** It is rebuilt from your page objects on every `build`: per object, it opens a recorded URL (GET only), reaches a dialog only through recorded clicks that change nothing, and asserts each locator property that state's snapshot shows.
 
 ## Steps
-1. **Build.** Run `node scripts/ui-code.mjs build <p> <m>`. It prints the required objects, the cases awaiting approval and any problems.
+1. **Build.** Run `node {fw}/scripts/ui-code.mjs build <p> <m>`. It prints the required objects, the cases awaiting approval and any problems.
 2. **Write.** For each required object, in its seeded file:
    - **Locators:** `readonly` properties of type `Locator`, assigned in the constructor (`this.save = page.getByRole('button', { name: 'Save' })`). In a component, build them on `this.root`.
      - Use `getByRole` first, then `getByLabel`, then `getByText`. `getByPlaceholder` and `getByTestId` are fine only when the snapshot shows that placeholder or test id.
@@ -42,7 +42,7 @@ You don't redo any of this:
    - **Actions:** async methods named for intent, e.g. `createContact(data)` or `openFilters()`. They use the locators; there are no assertions and no fixed waits. Add a `goto()` when the template has its own URL: a path relative to `BASE_URL`, never a full URL. Add `waitUntilReady()` using a locator.
    - **Second pass:** add exactly the methods of those requests, grounded the same way.
 3. **Rebuild.** Run `build` again: the smoke follows your page objects. Repeat step 2 at most twice more (at most 3 builds).
-4. **Finish.** Run `node scripts/ui-code.mjs check <p> <m> --pages`. It must exit 0. It checks your objects, the registration and the smoke, runs `tsc`, and stamps the page objects verified. The flow's `pages` step refuses a missing or stale stamp.
+4. **Finish.** Run `node {fw}/scripts/ui-code.mjs check <p> <m> --pages`. It must exit 0. It checks your objects, the registration and the smoke, runs `tsc`, and stamps the page objects verified. The flow's `pages` step refuses a missing or stale stamp.
 
 ## Rules
 - **Script-owned files.** Never write `fixtures/ui/pages/<m>.ts`, `fixtures/ui/index.ts`, the smoke, the cases spec, or anything under `artifacts/`. Never edit `fixtures/ui/base.ts`, `auth.setup.ts` or `config/ui/settings.ts`: they are rendered foundation files, and the guard denies it. A missing `base.ts` is a foundation gap to report, not a file to create.
@@ -58,7 +58,7 @@ From the last `build` and `check` output, report:
 - the page objects and components, with their public locators and methods;
 - the cases awaiting approval;
 - any locator you could not ground in a snapshot, and why;
-- any foundation gap, recorded with `node scripts/requests.mjs add <p> playwright-ui <m> --from pw-ui-pom-writer --kind foundation-gap --target 'pw-ui-scaffolder' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
+- any foundation gap, recorded with `node {fw}/scripts/requests.mjs add <p> playwright-ui <m> --from pw-ui-pom-writer --kind foundation-gap --target 'pw-ui-scaffolder' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
 - the check result.
 
 <!-- include: _shared/framework-issues.md -->

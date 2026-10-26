@@ -48,7 +48,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import yaml from "js-yaml";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { approvalSummary, approve, build, importCases, importFormat, importSource, listItems, reviewFiles, reviewResult, runCheck, testcaseContext, testcaseTotals } from "./lib/testcases.mjs";
 
 const USAGE = "usage: testcases.mjs items|build|check|approve|review-check|status|paths|import <product> <module> [--round N] [--file <path>] [--approved]";
@@ -70,7 +70,7 @@ export function context(product, module, root, { active = true } = {}) {
 }
 
 // interactive: {isTTY, ask(question) -> answer} for approve; the process's own terminal unless a test injects one.
-export async function main(argv, { root = repoRoot, interactive } = {}) {
+export async function main(argv, { root = workspaceRoot, interactive } = {}) {
   const [cmd, product, module, ...rest] = argv;
   if (cmd === "import") {
     if (!product || !module) return { code: 2, out: { errors: [USAGE] } };

@@ -15,7 +15,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { findSpecs, introspect, runProbes } from "./lib/api-discovery.mjs";
 import { apiPaths, build, check } from "./lib/endpoints.mjs";
 import { createClient, loadAuth } from "./lib/probe.mjs";
@@ -32,7 +32,7 @@ function context(product, module, root) {
 
 const rel = (root, f) => path.relative(root, f).replaceAll("\\", "/");
 
-export async function main(argv, { root = repoRoot, fetchImpl, sleep } = {}) {
+export async function main(argv, { root = workspaceRoot, fetchImpl, sleep } = {}) {
   const [cmd, product, module, ...rest] = argv;
   const { values: v } = parseArgs({ args: rest, options: { spec: { type: "string", multiple: true }, budget: { type: "string" } } });
   if (!cmd || !product || !module) return { code: 2, out: { errors: ["usage: endpoints.mjs find-spec|introspect|build|probe|check|paths <product> <module> [options]"] } };

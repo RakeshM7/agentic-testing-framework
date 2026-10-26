@@ -6,24 +6,25 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
-import { repoRoot } from "./lib/contract.mjs";
+import { frameworkRoot } from "./lib/contract.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
 
-const read = (rel) => readFileSync(path.join(repoRoot, rel), "utf8");
+const read = (rel) => readFileSync(path.join(frameworkRoot, rel), "utf8");
 const { errors, resolved } = resolvePermissions(yaml.load(read("config/permissions.yaml")));
 const agents = new Set(Object.keys(resolved.agents));
 
 const COUNTED = ["AGENTS.md", "README.md", "architecture.md", "docs/agent-architecture.md"];
 const ROLE = /-(writer|healer|implementor|reviewer|orchestrator|triager|explorer|scaffolder|discoverer|planner|designer|owner|generator|agent|fixer)$/;
-// Agent-shaped words that are not agent names.
-const NOT_AGENTS = new Set(["per-agent", "agent-to-agent", "custom-agent", "calling-agent"]);
+// Agent-shaped words that are not agent names. framework-implementor-agent is planned, not yet an agent: the dev-only
+// maintainer agent of docs/packaging.md (draft D-091), named there before it exists.
+const NOT_AGENTS = new Set(["per-agent", "agent-to-agent", "custom-agent", "calling-agent", "cloud-agent", "framework-implementor-agent"]);
 // Prose may shorten a name to its role ("every runner-triager"), so a hyphen-bounded suffix of a real agent counts.
 const isAgent = (name) => agents.has(name) || [...agents].some((a) => a.endsWith(`-${name}`));
 
 function files(dir, keep) {
-  return readdirSync(path.join(repoRoot, dir)).flatMap((f) => {
+  return readdirSync(path.join(frameworkRoot, dir)).flatMap((f) => {
     const rel = path.posix.join(dir, f);
-    return statSync(path.join(repoRoot, rel)).isDirectory() ? files(rel, keep) : keep(rel) ? [rel] : [];
+    return statSync(path.join(frameworkRoot, rel)).isDirectory() ? files(rel, keep) : keep(rel) ? [rel] : [];
   });
 }
 const scanned = [

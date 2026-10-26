@@ -7,7 +7,7 @@ import path from "node:path";
 import { checkTool } from "./lib/guard.mjs";
 import { guardStatus, markAbsent, recordCanary } from "./lib/guard-check.mjs";
 import { logHookError } from "./lib/hook-log.mjs";
-import { repoRoot } from "./lib/contract.mjs";
+import { frameworkRoot } from "./lib/contract.mjs";
 import { initRun, setStage, status } from "./run.mjs";
 import * as claude from "./hooks/hosts/claude.mjs";
 import * as copilot from "./hooks/hosts/copilot.mjs";
@@ -16,7 +16,7 @@ import { startRun, tempRoot, writeConfig } from "./test-helpers.mjs";
 const FULL = startRun({ mode: "full-run" });
 const cli = (payload) => copilot.normalize(payload, { env: {}, host: "copilot" });
 const vscode = (agent, payload) => copilot.normalize(payload, { env: {}, host: "vscode", agent });
-const allowed = (root, c) => checkTool(c, root, {}).allowed;
+const allowed = (root, c) => checkTool(c, root, {}, { framework: root }).allowed;
 
 test("the Copilot adapter reads both payload casings and every host's tool names", () => {
   assert.deepEqual(
@@ -49,20 +49,20 @@ test("full-run on a host that cannot identify the caller: the run's combined per
   const write = (rel) => cli({ toolName: "create", toolArgs: { path: path.join(FULL.root, rel) } });
   assert.equal(allowed(FULL.root, bash(post)), true, "some agent of the run may mutate over HTTP");
   assert.equal(allowed(FULL.root, write("playwright-tests/acme/pages/contacts.page.ts")), true);
-  const outside = checkTool(write("config/permissions.yaml"), FULL.root, {});
+  const outside = checkTool(write("config/permissions.yaml"), FULL.root, {}, { framework: FULL.root });
   assert.equal(outside.rule, "fs-write", "no agent of the run may write the framework's own files");
   assert.match(outside.reason, /Copilot CLI cannot tell the guard which agent is calling, so it allows what at least one of this run's agents may do/);
-  assert.equal(checkTool(bash("curl -X DELETE https://app.acme.test/api/contacts/1"), FULL.root, {}).rule, "delete-not-owned", "deletes stay ledger-scoped");
+  assert.equal(checkTool(bash("curl -X DELETE https://app.acme.test/api/contacts/1"), FULL.root, {}, { framework: FULL.root }).rule, "delete-not-owned", "deletes stay ledger-scoped");
   const spawn = (agent_type) => allowed(FULL.root, cli({ toolName: "task", toolArgs: { agent_type, prompt: "x" } }));
   assert.deepEqual([spawn("orchestrator-agent"), spawn("pw-ui-fixer"), spawn("feedback-implementor-agent")], [true, true, false], "the chat may start the entry agent; agents outside a run stay out");
-  assert.equal(checkTool(cli({ toolName: "write_bash", toolArgs: { shellId: "1", input: post } }), FULL.root, {}).rule, "unmapped-tool");
+  assert.equal(checkTool(cli({ toolName: "write_bash", toolArgs: { shellId: "1", input: post } }), FULL.root, {}, { framework: FULL.root }).rule, "unmapped-tool");
   assert.equal(allowed(FULL.root, cli({ toolName: "read_bash", toolArgs: { shellId: "1" } })), true);
   assert.equal(allowed(FULL.root, cli({ tool_name: "tool_search_tool", tool_input: { query: "playwright browser_navigate" } })), true, "loading tool definitions runs nothing");
   // Copilot CLI's apply_patch: tool_name Edit, the bare patch text as tool_input (seen 2026-10-19).
   const patch = (rel) => cli({ tool_name: "Edit", tool_input: `*** Begin Patch\n*** Add File: ${rel}\n+{}\n*** End Patch` });
   assert.deepEqual(patch("playwright-tests/acme/pages/contacts.page.ts").paths, ["playwright-tests/acme/pages/contacts.page.ts"]);
   assert.equal(allowed(FULL.root, patch("playwright-tests/acme/pages/contacts.page.ts")), true);
-  assert.equal(checkTool(patch("config/permissions.yaml"), FULL.root, {}).rule, "fs-write", "the patch's own path is checked");
+  assert.equal(checkTool(patch("config/permissions.yaml"), FULL.root, {}, { framework: FULL.root }).rule, "fs-write", "the patch's own path is checked");
   assert.equal(cli({ toolName: "bash", toolArgs: "ls -la" }).command, "ls -la", "a bare non-patch string is still a command");
   assert.equal(allowed(FULL.root, copilot.normalize({ toolName: "bash", toolArgs: { command: post } }, { env: { GITHUB_ACTIONS: "true" }, host: "copilot" })), true, "the cloud agent too");
   assert.equal(allowed(FULL.root, claude.normalize({ tool_name: "Bash", tool_input: { command: post } }, { env: {}, host: "claude-code" })), true, "Copilot reading .claude/settings.json (unknown host)");
@@ -84,7 +84,7 @@ test("VS Code chat on its Copilot CLI engine is recognised and treated like Copi
   const engine = (payload) => copilot.normalize(payload, { env, host: "copilot" });
   const write = engine({ tool_name: "create", tool_input: { path: path.join(FULL.root, "config/permissions.yaml") }, agent_type: "orchestrator-agent" });
   assert.equal(write.agent, undefined, "its payload cannot name the agent");
-  assert.match(checkTool(write, FULL.root, {}).reason, /VS Code chat on its Copilot CLI engine cannot tell the guard which agent is calling/);
+  assert.match(checkTool(write, FULL.root, {}, { framework: FULL.root }).reason, /VS Code chat on its Copilot CLI engine cannot tell the guard which agent is calling/);
 
   const { root: r2 } = startRun({ mode: "full-run", verified: false });
   recordCanary("acme", r2, { host: "vscode-agent-host" });
@@ -104,11 +104,11 @@ test("per-agent rules apply on VS Code through the agent's own hook", () => {
 
 test("an unmapped tool fails closed for a managed agent during a run, and only then", () => {
   const unknown = (agent) => vscode(agent, { tool_name: "brand_new_tool", tool_input: {} });
-  assert.equal(checkTool(unknown("pw-ui-fixer"), FULL.root, {}).rule, "unmapped-tool");
+  assert.equal(checkTool(unknown("pw-ui-fixer"), FULL.root, {}, { framework: FULL.root }).rule, "unmapped-tool");
   assert.equal(allowed(FULL.root, unknown(undefined)), true);
   assert.equal(allowed(tempRoot(), unknown("pw-ui-fixer")), true, "no active run");
   const noPath = vscode("pw-ui-fixer", { tool_name: "create_file", tool_input: {} });
-  assert.equal(checkTool(noPath, FULL.root, {}).rule, "fs-write", "a write whose target is unknown is refused");
+  assert.equal(checkTool(noPath, FULL.root, {}, { framework: FULL.root }).rule, "fs-write", "a write whose target is unknown is refused");
 });
 
 test("task_complete (autopilot's end-of-turn signal) is allowed during a full-run; unknown tools still fail closed", () => {
@@ -124,14 +124,14 @@ test("task_complete (autopilot's end-of-turn signal) is allowed during a full-ru
     assert.equal(allowed(FULL.root, c), true, "under the combined ceiling");
   }
   assert.equal(allowed(startRun().root, cli(shapes[0])), true, "readonly run");
-  assert.equal(checkTool(cli({ toolName: "brand_new_tool", toolArgs: {} }), FULL.root, {}).rule, "unmapped-tool");
-  assert.equal(checkTool(cli({ toolName: "task_complete_v2", toolArgs: {} }), FULL.root, {}).rule, "unmapped-tool", "an exact name, not a prefix");
+  assert.equal(checkTool(cli({ toolName: "brand_new_tool", toolArgs: {} }), FULL.root, {}, { framework: FULL.root }).rule, "unmapped-tool");
+  assert.equal(checkTool(cli({ toolName: "task_complete_v2", toolArgs: {} }), FULL.root, {}, { framework: FULL.root }).rule, "unmapped-tool", "an exact name, not a prefix");
 });
 
 test("a Copilot block of the canary (exit 2, shown by the host as 'hook errored') shows as guard.ready in run.mjs status", async () => {
   const { root } = startRun({ verified: false });
   assert.equal((await status("acme", { root })).guard.ready, false, "nothing recorded yet");
-  const r = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: JSON.stringify({ cwd: root, toolName: "powershell", toolArgs: { command: "node scripts/run.mjs guard-check acme" } }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
+  const r = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: JSON.stringify({ cwd: root, toolName: "powershell", toolArgs: { command: "node scripts/run.mjs guard-check acme" } }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
   assert.equal(r.status, 2);
   assert.match(r.stderr, /\(canary\)/);
   assert.deepEqual((await status("acme", { root })).guard, { ready: true });
@@ -140,8 +140,8 @@ test("a Copilot block of the canary (exit 2, shown by the host as 'hook errored'
 test("liveness canary: always blocked; the session is verified per mode; init and resume reset it", () => {
   const { root } = startRun({ mode: "full-run", verified: false });
   const canary = claude.normalize({ tool_name: "Bash", tool_input: { command: "node scripts/run.mjs guard-check acme" } }, { env: { CLAUDE_PROJECT_DIR: root }, host: "claude-code" });
-  assert.deepEqual([checkTool(canary, root, {}).rule, checkTool(canary, root, {}).canary], ["canary", { product: "acme" }]);
-  const shell = (command) => checkTool(cli({ tool_name: "bash", tool_input: { command } }), root, {});
+  assert.deepEqual([checkTool(canary, root, {}, { framework: root }).rule, checkTool(canary, root, {}, { framework: root }).canary], ["canary", { product: "acme" }]);
+  const shell = (command) => checkTool(cli({ tool_name: "bash", tool_input: { command } }), root, {}, { framework: root });
   for (const c of [`cd ${root} && node scripts/run.mjs guard-check acme`, `node ${root}/scripts/run.mjs guard-check acme 2>&1`, "true; node scripts/run.mjs guard-check acme"])
     assert.deepEqual(shell(c).canary, { product: "acme" }, `as agents actually write it: ${c}`);
   assert.equal(shell("echo node scripts/run.mjs guard-check acme").canary, undefined, "only as a command, not as an argument");
@@ -159,7 +159,7 @@ test("liveness canary: always blocked; the session is verified per mode; init an
   assert.equal(guardStatus("acme", "readonly", root).ready, false, "a session where the canary ran is never verified");
   recordCanary("acme", root, { host: "claude-code" });
   assert.equal(guardStatus("acme", "full-run", root).ready, true, "a later block clears the absent record");
-  initRun(path.join(root, "config", "acme.yaml"), { root, resume: true, env: {} });
+  initRun(path.join(root, "config", "acme.yaml"), { root, framework: root, resume: true, env: {} });
   assert.equal(guardStatus("acme", "readonly", root).ready, false, "resume starts unverified");
 });
 
@@ -173,14 +173,14 @@ test("a stage cannot start until the session's guard is verified", async () => {
 
 test("run.mjs init accepts full-run on every host and records where it started", () => {
   const root = tempRoot();
-  const r = initRun(writeConfig(root, { mode: "full-run" }), { root, env: { GITHUB_ACTIONS: "true" } });
+  const r = initRun(writeConfig(root, { mode: "full-run" }), { root, framework: root, env: { GITHUB_ACTIONS: "true" } });
   assert.equal(r.errors, undefined);
   assert.deepEqual([r.run.mode, r.run.startedOnHost], ["full-run", "copilot-cloud"]);
 });
 
 // ---- the hook entry, as each host runs it ----------------------------------------------------------------------
 const hook = (args, payload, env = {}) =>
-  spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), ...args], { input: typeof payload === "string" ? payload : JSON.stringify(payload), encoding: "utf8", env: { PATH: process.env.PATH, ...env } });
+  spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), ...args], { input: typeof payload === "string" ? payload : JSON.stringify(payload), encoding: "utf8", env: { PATH: process.env.PATH, ...env } });
 
 test("hook entry: Claude Code blocks with exit 2 and records the canary", () => {
   const r = hook(["--host", "claude-code"], { tool_name: "Bash", tool_input: { command: "curl -X POST https://x/api" } }, { CLAUDE_PROJECT_DIR: FULL.root, AUTHORIZATIONS_MODE: "readonly" });
@@ -226,12 +226,12 @@ test("hook entry: VS Code blocks with a deny decision and exit 0, never by exit 
 });
 
 test("hook entry fails closed on garbage while a run is active, and stays out of the way otherwise", () => {
-  const idle = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: tempRoot(), encoding: "utf8", env: { PATH: process.env.PATH } });
+  const idle = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: tempRoot(), encoding: "utf8", env: { PATH: process.env.PATH } });
   assert.equal(idle.status, 0, "no run: cwd has no artifacts/ lock");
-  const r = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: FULL.root, encoding: "utf8" });
+  const r = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: FULL.root, encoding: "utf8" });
   assert.equal(r.status, 2);
   assert.match(r.stderr, /failing closed/);
-  const v = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "vscode"], { input: "not json", cwd: FULL.root, encoding: "utf8" });
+  const v = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "vscode"], { input: "not json", cwd: FULL.root, encoding: "utf8" });
   assert.deepEqual([v.status, JSON.parse(v.stdout).hookSpecificOutput.permissionDecision], [0, "deny"], "VS Code: in its own format");
   assert.equal(hook(["--host", "nonsense"], { cwd: FULL.root, tool_name: "Bash", tool_input: {} }, { CLAUDE_PROJECT_DIR: FULL.root }).status, 2);
 });
@@ -239,7 +239,7 @@ test("hook entry fails closed on garbage while a run is active, and stays out of
 test("hook errors are logged with their stack and context, blocked or not, PreToolUse and PostToolUse (D-065)", () => {
   const entries = (root) => readFileSync(path.join(root, "artifacts", "hook-errors.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   const { root } = startRun();
-  const r = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
+  const r = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
   assert.equal(r.status, 2);
   assert.match(r.stderr, /details in .*hook-errors\.jsonl/);
   const [blocked] = entries(root);
@@ -247,12 +247,12 @@ test("hook errors are logged with their stack and context, blocked or not, PreTo
   assert.match(blocked.stack, /SyntaxError/);
 
   const idle = tempRoot();
-  const i = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: idle, encoding: "utf8", env: { PATH: process.env.PATH } });
+  const i = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: "not json", cwd: idle, encoding: "utf8", env: { PATH: process.env.PATH } });
   assert.equal(i.status, 0);
   assert.match(i.stderr, /no run is active, so the call is allowed; details in/);
   assert.equal(entries(idle)[0].outcome, "allowed: no active run");
 
-  const post = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "nonsense"], { input: "{}", cwd: idle, encoding: "utf8", env: { PATH: process.env.PATH } });
+  const post = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "nonsense"], { input: "{}", cwd: idle, encoding: "utf8", env: { PATH: process.env.PATH } });
   assert.equal(post.status, 0, "PostToolUse never blocks");
   const logged = entries(idle)[1];
   assert.deepEqual([logged.hook, logged.host, logged.outcome], ["posttooluse", "nonsense", "ignored: confirmation not remembered"]);
@@ -268,7 +268,7 @@ test("hook entry fails closed even when no adapter loads, in a form the asserted
   const dir = path.join(tempRoot(), "scripts", "hooks");
   mkdirSync(dir, { recursive: true });
   const entry = path.join(dir, "pretooluse.mjs");
-  copyFileSync(path.join(repoRoot, "scripts", "hooks", "pretooluse.mjs"), entry); // no hosts/ beside it
+  copyFileSync(path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), entry); // no hosts/ beside it
   const run = (...args) => spawnSync(process.execPath, [entry, ...args], { input: "{}", cwd: FULL.root, encoding: "utf8", env: { PATH: process.env.PATH } });
   const v = run("--host", "vscode", "--agent", "orchestrator-agent");
   assert.equal(v.status, 0);
@@ -278,22 +278,22 @@ test("hook entry fails closed even when no adapter loads, in a form the asserted
 });
 
 test("hook registrations: every host runs the same entry with a valid --host", () => {
-  const settings = JSON.parse(readFileSync(path.join(repoRoot, ".claude", "settings.json"), "utf8"));
+  const settings = JSON.parse(readFileSync(path.join(frameworkRoot, ".claude", "settings.json"), "utf8"));
   const commands = [
     ...Object.values(settings.hooks).flatMap((xs) => xs.flatMap((x) => x.hooks.map((h) => h.command))),
     ...[".github/hooks/framework-guard.json", ".vscode/hooks/framework-guard.json"].flatMap((f) =>
-      Object.values(JSON.parse(readFileSync(path.join(repoRoot, f), "utf8")).hooks).flatMap((xs) => xs.map((h) => h.command))
+      Object.values(JSON.parse(readFileSync(path.join(frameworkRoot, f), "utf8")).hooks).flatMap((xs) => xs.map((h) => h.command))
     ),
   ];
   assert.ok(commands.length >= 6);
   for (const c of commands) assert.match(c, /scripts\/hooks\/(pre|post)tooluse\.mjs"? --host (claude-code|vscode|copilot)$/, c);
-  assert.ok(!existsSync(path.join(repoRoot, ".claude", "hooks")), "the old Claude-only hook is gone");
+  assert.ok(!existsSync(path.join(frameworkRoot, ".claude", "hooks")), "the old Claude-only hook is gone");
 });
 
 test("hook registrations: the .claude/settings.json command reaches the entry from bash and from PowerShell", () => {
   // Copilot CLI and VS Code's Copilot CLI engine also run it ("repo settings"), through PowerShell on Windows, from the
   // repo root and without CLAUDE_PROJECT_DIR. A bash-only path there crashed node before the guard ran ("hook errored").
-  const { hooks } = JSON.parse(readFileSync(path.join(repoRoot, ".claude", "settings.json"), "utf8"));
+  const { hooks } = JSON.parse(readFileSync(path.join(frameworkRoot, ".claude", "settings.json"), "utf8"));
   const command = hooks.PreToolUse[0].hooks[0].command;
   const input = JSON.stringify({ tool_name: "Read", tool_input: { file_path: "README.md" } });
   const { CLAUDE_PROJECT_DIR, ...env } = process.env;
@@ -303,9 +303,9 @@ test("hook registrations: the .claude/settings.json command reaches the entry fr
   };
   const gitBash = path.join(process.env.ProgramFiles ?? "C:\\Program Files", "Git", "bin", "bash.exe");
   const bash = process.platform === "win32" ? (existsSync(gitBash) ? gitBash : undefined) : "bash";
-  if (bash) reached(spawnSync(bash, ["-c", command], { cwd: tempRoot(), input, encoding: "utf8", env: { ...env, CLAUDE_PROJECT_DIR: repoRoot } }), "bash");
+  if (bash) reached(spawnSync(bash, ["-c", command], { cwd: tempRoot(), input, encoding: "utf8", env: { ...env, CLAUDE_PROJECT_DIR: frameworkRoot } }), "bash");
   if (process.platform === "win32")
-    reached(spawnSync("powershell.exe", ["-NoProfile", "-Command", command], { cwd: repoRoot, input, encoding: "utf8", env }), "powershell");
+    reached(spawnSync("powershell.exe", ["-NoProfile", "-Command", command], { cwd: frameworkRoot, input, encoding: "utf8", env }), "powershell");
 });
 
 test("hook entries read a payload that starts with a BOM (Windows PowerShell 5.1 relays stdin with one)", () => {
@@ -314,14 +314,14 @@ test("hook entries read a payload that starts with a BOM (Windows PowerShell 5.1
   assert.equal(r.status, 2);
   assert.match(r.stderr, /http-mutate/, "judged by the guard, not failed closed");
   const root = tempRoot();
-  const post = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "copilot"], { input: bom({ cwd: root, toolName: "bash", toolArgs: {} }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
+  const post = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "copilot"], { input: bom({ cwd: root, toolName: "bash", toolArgs: {} }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
   assert.equal(post.status, 0);
   assert.ok(!existsSync(path.join(root, "artifacts", "hook-errors.jsonl")), post.stderr);
 });
 
 test("the PostToolUse hook records an agent spawn of the active run with what the host reports, and nothing else (D-079)", () => {
   const { root, run } = startRun({ mode: "readonly" });
-  const post = (payload) => spawnSync(process.execPath, [path.join(repoRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "claude-code"], { input: JSON.stringify({ cwd: root, session_id: "s1", ...payload }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH, CLAUDE_PROJECT_DIR: root } });
+  const post = (payload) => spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "claude-code"], { input: JSON.stringify({ cwd: root, session_id: "s1", ...payload }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH, CLAUDE_PROJECT_DIR: root } });
   assert.equal(post({ agent_type: "orchestrator-agent", tool_name: "Agent", tool_input: { subagent_type: "module-explorer", prompt: "product=acme module=contacts" }, tool_response: { totalDurationMs: 1200, totalTokens: 3400, totalToolUseCount: 7, content: [] } }).status, 0);
   assert.equal(post({ agent_type: "orchestrator-agent", tool_name: "Task", tool_input: { subagent_type: "report-generator" }, tool_response: "done" }).status, 0);
   assert.equal(post({ tool_name: "Bash", tool_input: { command: "ls" } }).status, 0);

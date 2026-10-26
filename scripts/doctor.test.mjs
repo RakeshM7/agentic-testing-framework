@@ -9,11 +9,12 @@ import { put, startRun, tempRoot } from "./test-helpers.mjs";
 const BROWSERS = (rev = "1248") => JSON.stringify({ browsers: [{ name: "chromium", revision: rev }, { name: "chromium-headless-shell", revision: rev }, { name: "firefox", revision: "1543" }] });
 const NOW = Date.parse("2026-10-19T12:00:00Z");
 
-// A throwaway root with its own Playwright browsers folder; `opts` go to runChecks.
+// A throwaway root with its own Playwright browsers folder; `opts` go to runChecks. The root is also the framework root
+// (D-085: one directory, as in this repo), so its package.json, node_modules and config/mcp.yaml are the ones checked.
 function machine() {
   const root = tempRoot();
   const env = { PLAYWRIGHT_BROWSERS_PATH: path.join(root, "browsers") };
-  const opts = { root, env, platform: "linux", home: root, nodeVersion: "22.1.0", now: NOW, which: () => true, exists: () => true, fetchImpl: async () => ({ status: 200 }) };
+  const opts = { root, framework: root, env, platform: "linux", home: root, nodeVersion: "22.1.0", now: NOW, which: () => true, exists: () => true, fetchImpl: async () => ({ status: 200 }) };
   const installed = (name, rev) => put(root, `browsers/${name.replaceAll("-", "_")}-${rev}/INSTALLATION_COMPLETE`, "");
   const core = (dir, rev = "1248", version = "1.64.1") => {
     put(root, `${dir}/node_modules/playwright-core/browsers.json`, BROWSERS(rev));
@@ -211,7 +212,7 @@ test("run: stage start needs this session's dependency record; run.mjs doctor re
   assert.match(start.errors[0], /dependencies not ready: .*run\.mjs doctor acme/);
   put(root, "config/mcp.yaml", mcpYaml(["--init-page", "scripts/browser/init-page.cjs"]));
 
-  const r = await doctor(product, { root, env: { PLAYWRIGHT_BROWSERS_PATH: path.join(root, "b") }, platform: "linux", home: root, which: () => false, exists: () => true, fetchImpl: async () => ({ status: 200 }) });
+  const r = await doctor(product, { root, framework: root, env: { PLAYWRIGHT_BROWSERS_PATH: path.join(root, "b") }, platform: "linux", home: root, which: () => false, exists: () => true, fetchImpl: async () => ({ status: 200 }) });
   assert.ok(r.checks.length);
   assert.ok(r.checks.every((c) => !("autofix" in c)));
   assert.deepEqual(r.blockedStages, ["k6"]); // no k6; the product repo is not built yet, which the run itself does
@@ -259,7 +260,7 @@ test("a stage not chosen for the run is never reported as blocked: run.mjs docto
   assert.deepEqual(STAGE_NEEDS["api-discovery"], ["base", "session", "target"], "the catalogue's guarded GET probes");
   const { root, product } = startRun({ doctored: false, extra: ["steps: [explore, testcases]"] });
   put(root, "config/mcp.yaml", mcpYaml(["--init-page", "scripts/browser/init-page.cjs"]));
-  const r = await doctor(product, { root, env: { PLAYWRIGHT_BROWSERS_PATH: path.join(root, "b") }, platform: "linux", home: root, which: () => false, exists: () => true, fetchImpl: async () => ({ status: 200 }) });
+  const r = await doctor(product, { root, framework: root, env: { PLAYWRIGHT_BROWSERS_PATH: path.join(root, "b") }, platform: "linux", home: root, which: () => false, exists: () => true, fetchImpl: async () => ({ status: 200 }) });
   assert.ok(r.checks.some((c) => c.group === "k6" && !c.ok), "k6 is missing on this machine");
   assert.deepEqual(r.blockedStages, [], "but k6 is not chosen, so nothing is blocked");
 

@@ -16,12 +16,12 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { DOMAINS, build, check, prepare, triagePaths } from "./lib/triage.mjs";
 
 const rel = (root, f) => path.relative(root, f).replaceAll("\\", "/");
 
-export async function main(argv, { root = repoRoot } = {}) {
+export async function main(argv, { root = workspaceRoot } = {}) {
   const { values: v, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { domain: { type: "string" } } });
   const [cmd, product, module] = positionals;
   if (!["build", "check", "paths", "prepare"].includes(cmd) || !product || !module || !Object.hasOwn(DOMAINS, v.domain ?? "")) return { code: 2, out: { errors: ["usage: triage.mjs build|check|paths|prepare <product> <module> --domain ui|api|k6"] } };

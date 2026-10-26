@@ -7,7 +7,7 @@ import path from "node:path";
 import { main } from "./foundation.mjs";
 import { gate } from "./gate.mjs";
 import { status } from "./run.mjs";
-import { paths, repoRoot } from "./lib/contract.mjs";
+import { paths, frameworkRoot } from "./lib/contract.mjs";
 import { SIDES, currentStamp, foundationContext, foundationUnverified, managedTargets, renderSide } from "./lib/foundation.mjs";
 import { listFindings } from "./lib/gate/playwright.mjs";
 import { buildCases, put, renderFoundation, startRun } from "./test-helpers.mjs";
@@ -84,7 +84,7 @@ test("templates checked out with CRLF (core.autocrlf) render the same LF bytes a
   const { cpSync, mkdtempSync, readdirSync, statSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const crlfRoot = mkdtempSync(path.join(tmpdir(), "atf-crlf-"));
-  cpSync(path.join(repoRoot, "templates"), path.join(crlfRoot, "templates"), { recursive: true });
+  cpSync(path.join(frameworkRoot, "templates"), path.join(crlfRoot, "templates"), { recursive: true });
   const toCrlf = (dir) => {
     for (const f of readdirSync(dir)) {
       const abs = path.join(dir, f);
@@ -106,7 +106,7 @@ test("templates checked out with CRLF (core.autocrlf) render the same LF bytes a
     for (const [f, content] of b.seeds) assert.doesNotMatch(content, /\r/, `${side}: seed ${f}`);
     assert.equal(currentStamp(crlf, side).templates, currentStamp(lf, side).templates, `${side}: the templates hash ignores line endings`);
   }
-  assert.match(read(path.join(repoRoot, ".gitattributes")), /^templates\/\*\* text eol=lf$/m);
+  assert.match(read(path.join(frameworkRoot, ".gitattributes")), /^templates\/\*\* text eol=lf$/m);
 });
 
 test("drift: a hand-edited managed file fails check; package.json's dependency versions and package-lock.json are ignored, its scripts and dependency names are not", async () => {

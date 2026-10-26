@@ -14,7 +14,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { REVIEW_DOMAINS, reviewCheck, reviewPaths, reviewRender } from "./lib/review.mjs";
 import { main as testcasesMain } from "./testcases.mjs";
 
@@ -30,7 +30,7 @@ function context(product, module, root) {
   return { root, product, module, run, runId: run.runId, productDir: p.productDir, pwProject: p.pwProject, k6Project: p.k6Project };
 }
 
-export async function main(argv, { root = repoRoot } = {}) {
+export async function main(argv, { root = workspaceRoot } = {}) {
   const [cmd, product, module, domain, ...rest] = argv;
   const round = cmd === "check" && rest.length === 2 && rest[0] === "--round" && /^[1-9]\d*$/.test(rest[1]) ? Number(rest[1]) : null;
   const bad = !["check", "render", "paths"].includes(cmd) || !product || !module || !DOMAINS.includes(domain) || (cmd === "check" ? round === null : rest.length > 0);

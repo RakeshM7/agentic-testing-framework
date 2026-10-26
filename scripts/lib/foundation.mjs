@@ -23,7 +23,7 @@ import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileS
 import path from "node:path";
 import { citationProblem } from "./citations.mjs";
 import { csvPath, readRows } from "./clarifications.mjs";
-import { repoRoot } from "./contract.mjs";
+import { frameworkRoot, workspaceRoot } from "./contract.mjs";
 import { tryReadJson, writeAtomic } from "./files.mjs";
 import { firstPartyHosts } from "./probe.mjs";
 import { parseSnapshot } from "./explore.mjs";
@@ -163,8 +163,8 @@ export function foundationPaths(productDir) {
 }
 
 // ctx: {root, product, run, cfg, productDir, pwProject, k6Project, fp, templatesRoot}. The templates are the
-// framework's own (templatesRoot: this repo), whatever root the run lives under.
-export function foundationContext({ root = repoRoot, product, run, cfg, productDir, pwProject, k6Project, templatesRoot = repoRoot }) {
+// framework's own (templatesRoot: the framework root, D-085), whatever workspace the run lives in.
+export function foundationContext({ root = workspaceRoot, product, run, cfg, productDir, pwProject, k6Project, templatesRoot = frameworkRoot }) {
   return {
     root, product, run, cfg: cfg ?? {}, productDir, templatesRoot,
     pwProject: pwProject ?? path.join(root, "playwright-tests", product),
@@ -196,7 +196,7 @@ const targetOf = (t) =>
     .join("/");
 
 // -> {managed: [{template, target}], seeds: [{template, target}], parts: {name: text}}
-export function templatesOf(side, root = repoRoot) {
+export function templatesOf(side, root = frameworkRoot) {
   const dir = path.join(root, TEMPLATE_DIRS[side]);
   const files = walk(dir);
   const at = (t) => ({ template: `${TEMPLATE_DIRS[side]}/${t}`, target: targetOf(t) });
@@ -208,7 +208,7 @@ export function templatesOf(side, root = repoRoot) {
 }
 
 // Every managed path of a side (relative to its project), and the sidecar for the repo side.
-export function managedTargets(side, root = repoRoot) {
+export function managedTargets(side, root = frameworkRoot) {
   return [...templatesOf(side, root).managed.map((m) => m.target), ...(side === "repo" ? [SIDECAR] : [])];
 }
 

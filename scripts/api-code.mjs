@@ -25,7 +25,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { apiCodeContext, apiCodeFindings, apiCodePathsOut, build, buildProblems, clearStamp, recordSlots, stampCheck } from "./lib/api-code.mjs";
 import { finding, run as runCommand, walk } from "./lib/gate/common.mjs";
 import { codeFindings, gatePlaywright } from "./lib/gate/playwright.mjs";
@@ -44,7 +44,7 @@ function context(product, module, root) {
 const line = (f) => `${f.file}${f.line ? `:${f.line}` : ""} [${f.rule}] ${f.problem} -- ${f.fix}`;
 
 // exec(cmd, args, cwd) -> null | error, listTests(cwd, side, module) -> {report} | {error}: the compile commands, injected by tests.
-export async function main(argv, { root = repoRoot, exec, listTests } = {}) {
+export async function main(argv, { root = workspaceRoot, exec, listTests } = {}) {
   const [cmd, product, module, ...rest] = argv;
   const flags = new Set(rest);
   const allowed = { check: ["--clients", "--static"], build: ["--adopt"] }[cmd] ?? [];

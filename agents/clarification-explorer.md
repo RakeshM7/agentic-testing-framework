@@ -10,7 +10,7 @@ You find out, by doing, how the product behaves for one clarification question, 
 `product=<p> module=<m> id=<ID> mode=<readonly|full-run> [attempt=2]` from clarification-orchestrator. `attempt=2` means your previous attempt left no valid record. Start again from step 1, and keep the evidence folder's existing files only if they are still accurate.
 
 ## Inputs
-- The row: `node scripts/clarifications.mjs list <p> <m>` (the entry whose `id` is `<ID>`).
+- The row: `node {fw}/scripts/clarifications.mjs list <p> <m>` (the entry whose `id` is `<ID>`).
 - Context: `artifacts/<p>/modules/<m>/explore/` (flows, DOM snapshots) and `artifacts/<p>/knowledge/` (cited sources, `sources.json`).
 
 Everything below is written to `E = artifacts/<p>/modules/<m>/clarification-evidence/<ID>/`.
@@ -29,12 +29,12 @@ Everything below is written to `E = artifacts/<p>/modules/<m>/clarification-evid
 5. **Mode.**
    - **readonly:** you may type, select and press keys (a search, a filter, a field's validation message), but every write to the product is aborted by the browser, so a submission never takes effect. If only changing data can answer the question, stop there: verdict `unconfirmed`, reason `needs-full-run`.
    - **full-run:** you may create and change data.
-     - Right after creating anything, run `node scripts/ledger.mjs add <p> --type <kind> --ref <id or unique name> --module <m> --stage clarifications --agent clarification-explorer --label "<what>"`, and list it in the outcome's `created`.
-     - Delete only what you created. Run `node scripts/ledger.mjs owns <p> --type <kind> --ref <ref>` and continue only when it exits 0, then delete, then run `ledger.mjs deleted …`. Never touch pre-existing data.
+     - Right after creating anything, run `node {fw}/scripts/ledger.mjs add <p> --type <kind> --ref <id or unique name> --module <m> --stage clarifications --agent clarification-explorer --label "<what>"`, and list it in the outcome's `created`.
+     - Delete only what you created. Run `node {fw}/scripts/ledger.mjs owns <p> --type <kind> --ref <ref>` and continue only when it exits 0, then delete, then run `ledger.mjs deleted …`. Never touch pre-existing data.
      - Use obviously synthetic data, e.g. `ATF <ID> <timestamp>`, and never real personal data.
      - For a validation or limit question, probe just below, at and just above the boundary. Each probe is part of the evidence.
 6. **End clean.** Close the browser session.
-7. **Write `observation.md`** in the format of `docs/agent-handoffs.md` §2:
+7. **Write `observation.md`** in the format of `{fw}/docs/agent-handoffs.md` §2:
    - key points, each mapped to the capture that shows it or marked "not observed";
    - the step log;
    - what the product did, with messages quoted verbatim;
@@ -42,7 +42,7 @@ Everything below is written to `E = artifacts/<p>/modules/<m>/clarification-evid
    - why it was not confirmed;
    - entities created;
    - follow-up questions.
-8. **Write `E/outcome.json`** (format: `docs/agent-handoffs.md` §2) and record it with `node scripts/clarifications.mjs record <p> <m> <ID> --file <E>/outcome.json`.
+8. **Write `E/outcome.json`** (format: `{fw}/docs/agent-handoffs.md` §2) and record it with `node {fw}/scripts/clarifications.mjs record <p> <m> <ID> --file <E>/outcome.json`.
    - The script refuses an outcome whose evidence does not hold up:
      - a missing file;
      - a quote that appears in no capture;

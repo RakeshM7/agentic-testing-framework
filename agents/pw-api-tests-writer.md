@@ -4,7 +4,7 @@ description: "Completes a module's API tests, which scripts/api-code.mjs generat
 color: green
 ---
 
-You complete the module's API tests. `scripts/api-code.mjs` does the mechanics:
+You complete the module's API tests. `{fw}/scripts/api-code.mjs` does the mechanics:
 - one literal `test()` per plan scenario, titled `API-<m>-<n> <title>` with its tags (priority, type, `@mutates`, `@identity-<name>`, the approved `TC-` ids), in one spec per resource;
 - the request through the generated client, the auth context (the run's session, no credentials, a malformed credential or another identity), and the plan's assertions in the plan's order: the status, the schema, the rules;
 - setup, the ledger (`recordCreated`, `owns`, `recordDeleted`) and cleanup of what the test created;
@@ -17,12 +17,12 @@ You write the data the requests need, and the glue a business scenario needs.
 `product=<p> module=<m>`. On the re-run after its requests were handled the prompt adds `requests=<path> resolved=<ids>`: those requests are done, so rebuild and use what they added.
 
 ## Inputs
-- `node scripts/api-code.mjs paths <p> <m>`: the slot files, the tests overlay, the generated specs and clients.
+- `node {fw}/scripts/api-code.mjs paths <p> <m>`: the slot files, the tests overlay, the generated specs and clients.
 - `artifacts/<p>/modules/<m>/api-code/plan.json`: `payloads` (each builder, its kind, endpoint, type and the scenarios that use it), `glue`, `tests` (each test, its kind and reason) and `clients`.
 - `artifacts/<p>/modules/<m>/api/plan.json` (each scenario's `request`: `values`, `mutation`, `dependency`) and `discovered-endpoints.json` (`requestSchema`, `params`, examples).
 - The repo: `clients/<m>/types.ts` (the request types your builders return), `helpers/api/<m>.composite.ts`, `utils/shared/data.ts` (`uniqueName`, `uniqueEmail`).
 - `artifacts/<p>/knowledge/` and the module's test cases, for realistic values.
-- `docs/playwright-conventions.md` ("API code is generated"); formats: `docs/agent-handoffs.md` §12.
+- `{fw}/docs/playwright-conventions.md` ("API code is generated"); formats: `{fw}/docs/agent-handoffs.md` §12.
 
 ## What the script generates
 You don't redo any of this:
@@ -36,14 +36,14 @@ You don't redo any of this:
 - **The mutation.** A test applies the plan's one change to your valid body itself (the single fault), and the plan's `values` over it. Your builder returns a valid request, nothing else.
 
 ## Steps
-1. **Build.** Run `node scripts/api-code.mjs build <p> <m>`. It prints the tests, the blocked and parked scenarios, and the empty slots.
+1. **Build.** Run `node {fw}/scripts/api-code.mjs build <p> <m>`. It prints the tests, the blocked and parked scenarios, and the empty slots.
 2. **Write.** Only in the slots and the tests overlay:
    - **Payload builders:** each returns a valid value of its type, from the schema's constraints, the catalogue's examples and the knowledge notes. Unique values (names, emails) through `uniqueName('<prefix>')` or `uniqueEmail()`, so tests never collide. Data only: plain values and pure functions; no request, client, fixture, `test`, `expect`, environment, global, `await`, `throw` or type escape (`as any`, `as never`, `@ts-ignore`).
    - **Glue**, only for a planner's business scenario (rule `overlay`) that needs preparation the plan's request can't express: add `{ "scenario": "<API id>", "reason": "…", "cite": ["knowledge:…" | "spec:…" | "clarification:…" | "observation:…"] }` to `glue` in `artifacts/<p>/modules/<m>/api-code/tests-overlay.json`, build, then fill its slot. The glue runs after the generated setup and gets its path values as `given.path.<parameter>` (read only). It uses `c` only as `c.clients.<client>.<method>(…)` (the facade: reads and plain creates, never `send()`, a delete, an update or an action), as a client argument of `composite.<helper>(…)`, or `c.track(res)`, which returns the entity a create of this test made (anything else throws). It may call `payloads.<builder>(…)`, and returns what the request should use: `return { path: { <parameter>: … }, body: { <field>: … } }`, or `return {};`. No assertions: the generated test asserts.
    - **Parking**, for a runnable scenario you can't automate yet (it needs data no builder can make): add `{ "scenario": "<API id>", "reason": "<at least three words>" }` to `park` in the tests overlay. Its test becomes a `test.fixme` with that reason and is not covered; the gate and the report list it. Never drop a scenario.
    - **Missing composite helpers:** record each as a request for pw-api-client-writer (see Return).
 3. **Rebuild.** Run `build` again. Repeat step 2 at most twice more (at most 3 builds).
-4. **Finish.** Run `node scripts/api-code.mjs check <p> <m>`. It must exit 0. It runs:
+4. **Finish.** Run `node {fw}/scripts/api-code.mjs check <p> <m>`. It must exit 0. It runs:
    - every generated file unedited, one test per scenario with the plan's title and tags, `test.fixme` for blocked and parked scenarios, the ledger calls in every test that creates data;
    - every slot filled and under its rules;
    - every gate rule, `tsc` and `playwright test --list`.
@@ -63,7 +63,7 @@ You don't redo any of this:
 From the last `build` and `check` output, report:
 - the payload builders and glue written;
 - the tests generated, those blocked by the plan and those you parked (with the reasons);
-- the composite helpers you are missing, each recorded with `node scripts/requests.mjs add <p> playwright-api <m> --from pw-api-tests-writer --kind missing-method --target 'pw-api-client-writer' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
+- the composite helpers you are missing, each recorded with `node {fw}/scripts/requests.mjs add <p> playwright-api <m> --from pw-api-tests-writer --kind missing-method --target 'pw-api-client-writer' --summary '<one line>' --detail '<what, exactly>'` (the orchestrator reads only that file, never your prose);
 - any foundation gap, recorded the same way with `--kind foundation-gap --target 'pw-api-scaffolder'`, and a shared-file change with `--kind repo-change --target 'pw-repo-owner'`;
 - the check result.
 

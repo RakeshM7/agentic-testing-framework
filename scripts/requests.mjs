@@ -12,10 +12,10 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot, validateFile } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateFile } from "./lib/contract.mjs";
 import { HANDLERS, addRequests, readRequests, requestsPath } from "./lib/requests.mjs";
 
-export async function main(argv, { root = repoRoot } = {}) {
+export async function main(argv, { root = workspaceRoot } = {}) {
   const [cmd, product, domain, module, ...rest] = argv;
   const { values: v } = parseArgs({ args: rest, options: { from: { type: "string" }, kind: { type: "string" }, target: { type: "string" }, summary: { type: "string" }, detail: { type: "string" }, files: { type: "string" }, file: { type: "string" } } });
   if (!["add", "list", "check"].includes(cmd) || !product || !domain || !module) return { code: 2, out: { errors: ["usage: requests.mjs add|list|check <product> <domain> <module> ... (see header comment)"] } };

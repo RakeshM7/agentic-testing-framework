@@ -21,21 +21,22 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { frameworkRoot, loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { build, exploreContext, ingestNetwork, openFrontier, recordState, runCheck } from "./lib/explore.mjs";
 
 const USAGE = "usage: explore.mjs state|frontier|ingest-network|build|check|paths <product> <module> [options]";
 const rel = (root, f) => path.relative(root, f).replaceAll("\\", "/");
 
-export function context(product, module, root, env = process.env) {
+// root: the workspace; framework: the framework root, whose browser config decides readonly input (D-076, D-085)
+export function context(product, module, root, env = process.env, framework = frameworkRoot) {
   const p = paths(product, root);
   if (!existsSync(p.lockFile)) throw new Error(`no active run for product '${product}'`);
   const run = loadJson(p.runFile);
   if (!run.modules.includes(module)) throw new Error(`module must be one of [${run.modules.join(", ")}]`);
-  return exploreContext({ root, product, module, run, cfg: loadJson(p.configFile), productDir: p.productDir, ledgerFile: p.ledgerFile, env });
+  return exploreContext({ root, framework, product, module, run, cfg: loadJson(p.configFile), productDir: p.productDir, ledgerFile: p.ledgerFile, env });
 }
 
-export async function main(argv, { root = repoRoot, env = process.env } = {}) {
+export async function main(argv, { root = workspaceRoot, framework = frameworkRoot, env = process.env } = {}) {
   const [cmd, product, module, ...rest] = argv;
   if (!cmd || !product || !module) return { code: 2, out: { errors: [USAGE] } };
   const { values: v } = parseArgs({
@@ -46,7 +47,7 @@ export async function main(argv, { root = repoRoot, env = process.env } = {}) {
       file: { type: "string" }, state: { type: "string" }, keep: { type: "boolean" }, limit: { type: "string" },
     },
   });
-  const ctx = context(product, module, root, env);
+  const ctx = context(product, module, root, env, framework);
   if (cmd === "state") {
     if (!v.snapshot) return { code: 2, out: { errors: ["state needs --snapshot captures/<file>"] } };
     return { code: 0, out: recordState(ctx, { snapshot: v.snapshot, url: v.url, title: v.title, via: v.via, actions: [...(v.action ?? []), ...(v.item ?? [])] }) };

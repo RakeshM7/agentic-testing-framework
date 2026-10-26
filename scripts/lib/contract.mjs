@@ -14,12 +14,14 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { frameworkRoot, workspaceRoot } from "./roots.mjs";
 
 export const LAYOUT_VERSION = 2;
 export const PRODUCT_SCOPE = "_product";
-export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-export const schemaDir = path.join(repoRoot, "schemas");
+// Two roots (D-085, scripts/lib/roots.mjs): every path below hangs off the workspace; the schemas (and the templates and
+// default config, elsewhere) come from the framework. In this repository they are the same directory.
+export { frameworkRoot, workspaceRoot };
+export const schemaDir = path.join(frameworkRoot, "schemas");
 export const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 // The environment a session works in (D-081): ATF_ENV, set where the session starts (make run PRODUCT=<p> ENV=<e>) and
@@ -35,7 +37,7 @@ export function envName(env = process.env) {
 // envs/<env>/state/.
 export const stateDirOf = (productDir, environment) => (environment === DEFAULT_ENV ? path.join(productDir, "state") : path.join(productDir, "envs", environment, "state"));
 
-export function paths(product, root = repoRoot, environment = envName()) {
+export function paths(product, root = workspaceRoot, environment = envName()) {
   const productDir = path.join(root, "artifacts", product);
   const state = stateDirOf(productDir, environment);
   return {
@@ -107,7 +109,7 @@ export function testcasesModes(run, importModules = []) {
 // A stage's hard needs in this run: `needs` plus each `needsWhen` entry whose condition holds for the run.
 export const stageNeeds = (stage, run) => [...STAGES[stage].needs, ...Object.entries(STAGES[stage].needsWhen ?? {}).filter(([, when]) => when(run)).map(([dep]) => dep)];
 
-// outputs: paths relative to the repo root. Tokens: {product} {m} (module) {run} (run id).
+// outputs: paths relative to the workspace root. Tokens: {product} {m} (module) {run} (run id).
 // needs: hard needs, complete in this run or (a stage not chosen for it) verified from an earlier one; needsWhen: needs
 // that hold only for some runs; after: soft order, waited for only while chosen for this run, never blocking.
 export const STAGES = {
@@ -260,7 +262,7 @@ export async function validateFile(schema, file) {
 // The knowledge checks include the verified stamp a passing `knowledge.mjs check` writes (D-051).
 const knowledgeLib = async (ctx) => {
   const k = await import("./knowledge.mjs");
-  const p = paths(ctx.product, ctx.root ?? repoRoot);
+  const p = paths(ctx.product, ctx.root ?? workspaceRoot);
   return { k, kp: k.knowledgePaths(p.productDir), cfg: loadJson(p.configFile) };
 };
 const CHECKS = {
@@ -276,24 +278,24 @@ const CHECKS = {
   },
   "foundation-repo": async (_file, ctx) => {
     const f = await import("./foundation.mjs");
-    const p = paths(ctx.product, ctx.root ?? repoRoot);
-    const why = f.foundationUnverified(f.foundationContext({ root: ctx.root ?? repoRoot, product: ctx.product, run: loadJson(p.runFile), cfg: loadJson(p.configFile), productDir: p.productDir, pwProject: p.pwProject, k6Project: p.k6Project }), "repo");
+    const p = paths(ctx.product, ctx.root ?? workspaceRoot);
+    const why = f.foundationUnverified(f.foundationContext({ root: ctx.root ?? workspaceRoot, product: ctx.product, run: loadJson(p.runFile), cfg: loadJson(p.configFile), productDir: p.productDir, pwProject: p.pwProject, k6Project: p.k6Project }), "repo");
     return why ? [why] : [];
   },
   report: async (_file, ctx) => {
     const r = await import("./report.mjs");
-    const why = r.reportUnverified(r.reportPaths(paths(ctx.product, ctx.root ?? repoRoot).productDir, ctx.runId));
+    const why = r.reportUnverified(r.reportPaths(paths(ctx.product, ctx.root ?? workspaceRoot).productDir, ctx.runId));
     return why ? [why] : [];
   },
   // the catalogue checks endpoints.mjs check runs (schemas, ids against the registry, links, coverage targets)
   "api-discovery": async (_file, ctx) => {
     const e = await import("./endpoints.mjs");
-    return e.check(e.apiPaths(paths(ctx.product, ctx.root ?? repoRoot).productDir, ctx.module), validateData);
+    return e.check(e.apiPaths(paths(ctx.product, ctx.root ?? workspaceRoot).productDir, ctx.module), validateData);
   },
   explore: async (_file, ctx) => {
     const x = await import("./explore.mjs");
-    const p = paths(ctx.product, ctx.root ?? repoRoot);
-    return x.stageProblems(x.exploreContext({ root: ctx.root ?? repoRoot, product: ctx.product, module: ctx.module, run: loadJson(p.runFile), cfg: loadJson(p.configFile), productDir: p.productDir, ledgerFile: p.ledgerFile }));
+    const p = paths(ctx.product, ctx.root ?? workspaceRoot);
+    return x.stageProblems(x.exploreContext({ root: ctx.root ?? workspaceRoot, product: ctx.product, module: ctx.module, run: loadJson(p.runFile), cfg: loadJson(p.configFile), productDir: p.productDir, ledgerFile: p.ledgerFile }));
   },
 };
 
@@ -301,7 +303,7 @@ export async function verifyOutputs(ctx, stage, module) {
   const problems = [];
   for (const out of STAGES[stage].outputs) {
     const rel = resolveOutput(out.path, { product: ctx.product, module, runId: ctx.runId });
-    const abs = path.join(ctx.root ?? repoRoot, rel);
+    const abs = path.join(ctx.root ?? workspaceRoot, rel);
     if (!existsSync(abs) || statSync(abs).size === 0) {
       problems.push(`${rel}: missing or empty`);
       continue;

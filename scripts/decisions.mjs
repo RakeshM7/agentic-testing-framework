@@ -11,13 +11,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { repoRoot } from "./lib/contract.mjs";
+import { workspaceRoot } from "./lib/contract.mjs";
 import { DECISIONS_FILE, entryText, governing, loadDecisions } from "./lib/decisions.mjs";
 
 const rel = (root, p) => path.relative(root, path.resolve(root, p)).replaceAll("\\", "/");
 
 // -> {code, out} with out an object (JSON) or a string (Markdown)
-export function main(argv, { root = repoRoot } = {}) {
+export function main(argv, { root = workspaceRoot } = {}) {
   const [cmd, ...rest] = argv;
   const { decisions, error } = loadDecisions(root);
   if (error) return { code: 1, out: { errors: [error] } };

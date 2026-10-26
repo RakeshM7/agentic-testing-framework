@@ -4,6 +4,8 @@ The single definition of where things live, how stages hand off, and how state a
 
 ## Layout: everything is product-level
 
+Every path below is relative to the **workspace root**, where a client's work lives: `ATF_WORKSPACE`, else the nearest directory above the working directory that holds `atf/atf.json`, else the framework root (D-085, `scripts/lib/roots.mjs`). The **framework root** holds what the framework ships: `scripts/`, `agents/`, the default `config/` (permissions, models, platforms, MCP, hooks, read through `scripts/lib/config.mjs`), `templates/`, `schemas/` and the agent-facing docs. In this repository the two are the same directory. Agent sources name framework files as `{fw}/…` (`node {fw}/scripts/run.mjs …`), which the build and `run.mjs init` expand to the framework's path from the workspace; when the framework is installed apart from the workspace, the guard refuses every write under it.
+
 ```
 artifacts/hook-errors.jsonl           # every PreToolUse/PostToolUse hook error, with its stack (D-065; one .1 generation)
 artifacts/<product>/                  # git-ignored; accumulates across runs

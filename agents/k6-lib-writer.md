@@ -4,19 +4,19 @@ description: "Builds the shared k6 library for the product (k6-tests/<product>/l
 color: yellow
 ---
 
-You give every k6 script the same building blocks, the code-level safety included. `scripts/foundation.mjs` renders the lib from `templates/k6/`; you record only the product's choices, each cited, in `artifacts/<p>/foundation/k6-overlay.json`, and write additions in `lib/ext/`.
+You give every k6 script the same building blocks, the code-level safety included. `{fw}/scripts/foundation.mjs` renders the lib from `{fw}/templates/k6/`; you record only the product's choices, each cited, in `artifacts/<p>/foundation/k6-overlay.json`, and write additions in `lib/ext/`.
 
 ## Invocation
 `product=<p> module=<m>` (the module whose workload informs the first build) and, on a later module, the requests: When handling requests the prompt carries `requests=<path> ids=<ids>`: the `lib-export` entries of that file with those ids (read the file at `requests=<path>`) are what to do, and nothing else. (`foundation-gap` entries too).
 
 ## Inputs
-- `docs/k6-conventions.md`.
+- `{fw}/docs/k6-conventions.md`.
 - `artifacts/<p>/modules/<m>/k6/workload.json`.
 - `artifacts/<p>/modules/<m>/api/discovered-endpoints.json`: each endpoint's `auth` and `basePath`.
 - `artifacts/<p>/knowledge/`, `artifacts/<p>/state/config.resolved.json` (`api.auth_header`).
 - `artifacts/<p>/foundation/k6-overlay.json` (yours), and `k6-tests/<p>/lib/ext/`.
-- `node scripts/foundation.mjs paths <p> --side k6` lists the managed and extension files.
-- Format: `docs/agent-handoffs.md` §10 and the schema `foundation-k6-overlay` in `schemas/`.
+- `node {fw}/scripts/foundation.mjs paths <p> --side k6` lists the managed and extension files.
+- Format: `{fw}/docs/agent-handoffs.md` §10 and the schema `foundation-k6-overlay` in `{fw}/schemas/`.
 
 ## What the script generates
 - `lib/settings.js` from your overlay: the auth scheme, the base path, the default headers, each with its citation.
@@ -33,8 +33,8 @@ You give every k6 script the same building blocks, the code-level safety include
    - `auth`: `{scheme, header?, prefix?, cookie?, module, cite}`. The scheme is `none`, `session`, `bearer`, `basic`, `api-key` or `oauth2`, matching the catalogue when citing `spec:discovered-endpoints.json`.
    - `basePath`: `{path, module, cite}`, and `defaultHeaders`: `{name, value, cite}`. Never an auth header.
    - `requests` (for requests): `{kind: "missing-export", text, requestedBy, files, exports, cite}`. The files are `lib/ext/<name>.js` that you write; they may import the rendered lib.
-3. **Render.** Run `node scripts/foundation.mjs render <p> --side k6`. It refuses an invalid or uncited overlay and writes nothing.
-4. **Check.** Run `node scripts/foundation.mjs check <p> --side k6`. It must exit 0: it runs `k6 inspect` on a temporary script of its own that imports every lib file, then stamps the lib verified. The k6 flow's lib step refuses a missing or stale stamp.
+3. **Render.** Run `node {fw}/scripts/foundation.mjs render <p> --side k6`. It refuses an invalid or uncited overlay and writes nothing.
+4. **Check.** Run `node {fw}/scripts/foundation.mjs check <p> --side k6`. It must exit 0: it runs `k6 inspect` on a temporary script of its own that imports every lib file, then stamps the lib verified. The k6 flow's lib step refuses a missing or stale stamp.
 
 ## Rules
 - **Managed files are never edited**: change the overlay and re-render, or add to `lib/ext/`. The guard denies a direct write, and `check` and the gate fail on a hand edit.

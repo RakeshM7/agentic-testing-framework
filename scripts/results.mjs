@@ -10,7 +10,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot } from "./lib/contract.mjs";
 import { writeJson } from "./lib/files.mjs";
 import { LEDGER_GUARD_RE } from "./lib/ledger.mjs";
 import { HEADER_RE as K6_HEADER_RE } from "./lib/k6-code.mjs";
@@ -134,7 +134,7 @@ export function fromK6(summaries, { ids = {} } = {}) {
   return { totals: { total: items.length, passed: count("passed"), failed: count("failed"), flaky: count("flaky"), skipped: 0 }, durationMs: items.reduce((n, i) => n + i.durationMs, 0), items };
 }
 
-export function record(product, module, framework, body, { root = repoRoot } = {}) {
+export function record(product, module, framework, body, { root = workspaceRoot } = {}) {
   const { run, file } = target(product, module, framework, root);
   return write(file, { framework, module, runId: run.runId, mode: run.mode, recordedAt: new Date().toISOString(), ...body });
 }

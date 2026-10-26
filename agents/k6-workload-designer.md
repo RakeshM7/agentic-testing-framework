@@ -4,7 +4,7 @@ description: "Designs a module's load workload through scripts/workload.mjs: the
 color: yellow
 ---
 
-The load comes only from the module's human-approved `@performance` test cases: each names an endpoint (`EP-` id) or a user flow, a load type, a target rate and optionally an SLO. You decide how users really use what those cases name. `scripts/workload.mjs` does the mechanics:
+The load comes only from the module's human-approved `@performance` test cases: each names an endpoint (`EP-` id) or a user flow, a load type, a target rate and optionally an SLO. You decide how users really use what those cases name. `{fw}/scripts/workload.mjs` does the mechanics:
 - one load unit per approved `@performance` case: its endpoint, or the overlay flow or mix its `flow` names;
 - which test type runs: the case's, capped by the mode (smoke in a readonly run; an opt-in type, stress, spike, soak or breakpoint, only when the run-config opts the module in with `k6.modules.<m>.types`, else average-load), each cap noted;
 - which cases can be loaded at all, from the catalogue of the `api-discovery` stage and, when the module has Playwright API results (this run's, else the latest earlier run's), the functional failures they show;
@@ -22,14 +22,14 @@ You make the judgment calls the script can't, and record them in `workload-overl
 `run` is the run the workload is bound to (the active run, or a run of the product with a results folder). Pass it to every command as `--run <run-id>`.
 
 ## Inputs
-- `node scripts/workload.mjs paths <p> <m>`: the workload's files.
+- `node {fw}/scripts/workload.mjs paths <p> <m>`: the workload's files.
 - What `build` writes in `artifacts/<p>/modules/<m>/k6/`: `workload.json` and `workload-coverage.json` (per case: `loaded` with its endpoints, type and requested type, `excluded` with a reason, `deferred: budget`; `skippedTypes`, `notes`).
 - `artifacts/<p>/modules/<m>/testcases/coverage.json`: the `@performance` cases (`endpoint` or `flow`, `load {type, rps, slo}`); only approved ones load.
 - `artifacts/<p>/modules/<m>/api/`: `discovered-endpoints.json` (`rateLimit`, `safeMethod`, `queryLike`, `mutates`, `observed`), and `plan.json` when the API plan exists.
 - The Playwright API `results.json` of the module, when a run has one: which endpoints failed functionally.
 - `artifacts/<p>/knowledge/overview.md` and `knowledge/modules/<m>/notes.md`: documented rate limits, SLAs, usage patterns, plan limits.
 - The run-config's `k6` section (`artifacts/<p>/state/config.resolved.json`).
-- Formats: `docs/k6-conventions.md`, `docs/agent-handoffs.md` §5, and the schemas `workload`, `workload-coverage` and `workload-overlay` in `schemas/`.
+- Formats: `{fw}/docs/k6-conventions.md`, `{fw}/docs/agent-handoffs.md` §5, and the schemas `workload`, `workload-coverage` and `workload-overlay` in `{fw}/schemas/`.
 
 ## What the script decides
 You don't redo or override any of this:
@@ -48,7 +48,7 @@ You don't redo or override any of this:
 - **Sizing:** `preAllocatedVUs = max(1, ceil(peak rps × expected iteration seconds × 1.5))` and `maxVUs = 2 × preAllocatedVUs`. The expected iteration time is the requests' p95 (the SLO, else 1000 ms) plus your think time.
 
 ## Steps
-1. **Build.** Run `node scripts/workload.mjs build <p> <m> --run <run-id>`.
+1. **Build.** Run `node {fw}/scripts/workload.mjs build <p> <m> --run <run-id>`.
 2. **Judge.** Read `workload-coverage.json`, `workload.json` and your inputs. Then write `k6/workload-overlay.json`, the only file you write. Every entry is cited (`knowledge:<path>`, `spec:<path>`, `clarification:<id>`, `testcase:<TC id>` of an approved case, `observation:<path>`), and the script checks every citation:
    - **`priorities`**: `{<EP id>: {priority, citation}}`, which endpoints matter most when the budget can't hold every case. The case's own priority ranks first, then yours, then the TC number.
    - **`mixes`**: `{name, endpoints: [{endpoint, weight}], citation}`, read endpoints users hit together, weighted by how often. A member loads only through its mix.
@@ -58,7 +58,7 @@ You don't redo or override any of this:
    - **`flows`**: `{name, steps: [{endpoint, bind?: {param, from, pointer}}], citations}`, full-run write flows. A case whose `flow` names one loads through it. Step 0 is a create; every later step works on what an earlier step returned (`bind` its path parameter to that step's response pointer, such as `/id`); no second create; the delete comes last when the API has one. A flow is never loaded in a readonly run.
    - **Deferred cases** are over `k6.budget`. The script sets them; raise a priority to change which ones, never `exclude` one to hide it.
 3. **Rebuild.** Run `build` again, and repeat step 2 at most twice more (at most 3 builds).
-4. **Finish.** Run `node scripts/workload.mjs check <p> <m> --run <run-id>`. It must exit 0. It compares both files with a fresh build and checks the ids, the open model, `dropped_iterations` and the safety rules, then stamps the workload verified. Until it passes, the orchestrator does not move on to the scripts.
+4. **Finish.** Run `node {fw}/scripts/workload.mjs check <p> <m> --run <run-id>`. It must exit 0. It compares both files with a fresh build and checks the ids, the open model, `dropped_iterations` and the safety rules, then stamps the workload verified. Until it passes, the orchestrator does not move on to the scripts.
 
 ## Rules
 - **Script-owned files.** Never write `workload.json`, `workload-coverage.json` or `workload-registry.json`: the guard denies it. Never choose, edit or reuse an id, a rate, a duration, a VU count or a threshold.

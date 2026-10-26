@@ -9,10 +9,11 @@ import yaml from "js-yaml";
 import { build } from "./build-agents.mjs";
 import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { splitFrontmatter } from "./lib/agents/source.mjs";
-import { repoRoot } from "./lib/contract.mjs";
+import { frameworkRoot } from "./lib/contract.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
+import { expandFw } from "./lib/roots.mjs";
 
-const load = (rel) => yaml.load(readFileSync(path.join(repoRoot, rel), "utf8"));
+const load = (rel) => yaml.load(readFileSync(path.join(frameworkRoot, rel), "utf8"));
 const perms = resolvePermissions(load("config/permissions.yaml")).resolved;
 const { platforms } = load("config/platforms.yaml");
 const { browser_server: server } = load("config/mcp.yaml");
@@ -22,12 +23,12 @@ const scriptOnly = resolvePermissions({
   agents: { probe: { layer: 2, shell: "restricted", shell_allow: ["node scripts/clarifications.mjs list *"], filesystem: { read: ["x/**"], write: [] } } },
 }).resolved.agents.probe;
 const probeTools = (platform) => toolNames(capabilitiesFor(scriptOnly), platforms[platform], server);
-const generated = (rel) => splitFrontmatter(readFileSync(path.join(repoRoot, rel), "utf8"), rel).meta;
+const generated = (rel) => splitFrontmatter(readFileSync(path.join(frameworkRoot, rel), "utf8"), rel).meta;
 
 // A throwaway repo root with the real config/ and agents/, so tests can break things safely.
 function scratch() {
   const root = mkdtempSync(path.join(tmpdir(), "atf-build-"));
-  for (const d of ["config", "agents"]) cpSync(path.join(repoRoot, d), path.join(root, d), { recursive: true });
+  for (const d of ["config", "agents"]) cpSync(path.join(frameworkRoot, d), path.join(root, d), { recursive: true });
   return root;
 }
 
@@ -120,10 +121,12 @@ test("a body over the Copilot prompt limit fails the build", () => {
 });
 
 test("MCP servers are defined once and rendered for each platform", () => {
-  const claude = JSON.parse(readFileSync(path.join(repoRoot, ".mcp.json"), "utf8"));
-  const vscode = JSON.parse(readFileSync(path.join(repoRoot, ".vscode", "mcp.json"), "utf8"));
+  const claude = JSON.parse(readFileSync(path.join(frameworkRoot, ".mcp.json"), "utf8"));
+  const vscode = JSON.parse(readFileSync(path.join(frameworkRoot, ".vscode", "mcp.json"), "utf8"));
   assert.deepEqual(claude.mcpServers, vscode.servers);
-  assert.deepEqual(claude.mcpServers, load("config/mcp.yaml").servers);
+  // as config/mcp.yaml defines them, with its `{fw}/` expanded to the framework's path from the workspace (none here)
+  assert.deepEqual(claude.mcpServers, JSON.parse(expandFw(JSON.stringify(load("config/mcp.yaml").servers), "")));
+  assert.ok(JSON.stringify(load("config/mcp.yaml").servers).includes('"{fw}/scripts/browser/init-page.cjs"'), "the source names the init page by its framework path");
 });
 
 test("hook registrations: --post-hook sets the PostToolUse mode for every host; the guard is always registered (D-042)", () => {
@@ -216,13 +219,14 @@ test("the fragment directory is not an agent: no stray-source error, no generate
 });
 
 // ---- G10 (D-060): orchestrators are pure loops over script decisions; workers record requests through the script ----
-const body = (rel) => splitFrontmatter(readFileSync(path.join(repoRoot, rel), "utf8"), rel).body;
+const body = (rel) => splitFrontmatter(readFileSync(path.join(frameworkRoot, rel), "utf8"), rel).body;
 const DOMAIN_ORCHESTRATORS = { "playwright-ui-orchestrator": "playwright-ui", "playwright-api-orchestrator": "playwright-api", "k6-orchestrator": "k6", "testcase-orchestrator": "testcases", "clarification-orchestrator": "clarifications" };
 
 test("the five domain orchestrators are the shared loop body plus a short domain section, in every platform's file", () => {
-  const shared = readFileSync(path.join(repoRoot, "agents", "_shared", "domain-loop.md"), "utf8").replace(/\r\n/g, "\n").replace(/\n+$/, "");
+  // as rendered here: `{fw}/` (D-085) is empty when the framework is the workspace
+  const shared = expandFw(readFileSync(path.join(frameworkRoot, "agents", "_shared", "domain-loop.md"), "utf8"), "").replace(/\r\n/g, "\n").replace(/\n+$/, "");
   for (const [name, domain] of Object.entries(DOMAIN_ORCHESTRATORS)) {
-    const src = readFileSync(path.join(repoRoot, "agents", `${name}.md`), "utf8");
+    const src = readFileSync(path.join(frameworkRoot, "agents", `${name}.md`), "utf8");
     assert.match(src, /<!-- include: _shared\/domain-loop.md -->/, `${name} includes the shared body`);
     assert.ok(src.split("\n").length < 24, `${name}: a short domain section`);
     assert.ok(src.includes(`\`<domain>\` is \`${domain}\``), `${name} names its domain`);
@@ -238,7 +242,7 @@ test("the five domain orchestrators are the shared loop body plus a short domain
 });
 
 test("orchestrator-agent is a loop over run.mjs next: exact prompts, one retry on a refused done, report-and-end when awaiting approval", () => {
-  const text = readFileSync(path.join(repoRoot, "agents", "orchestrator-agent.md"), "utf8");
+  const text = readFileSync(path.join(frameworkRoot, "agents", "orchestrator-agent.md"), "utf8");
   for (const needle of ["run.mjs next <p>", "{actions, concurrency, end?}", "retry: {agent, prompt}", "`failed: true`", "`end.outcome`", "`awaiting-approval`", "`end.sheets`", "`incomplete`", "carriedFrom", "reviewFailed", "exactly as given"])
     assert.ok(text.includes(needle), `orchestrator-agent mentions ${needle}`);
   assert.ok(!/knowledge\.mjs plan/.test(text), "knowledge reuse is decided in code");
@@ -249,12 +253,12 @@ test("every worker that can ask records its request through requests.mjs add, an
   const ASKERS = { "pw-ui-tests-writer": "playwright-ui", "pw-ui-pom-writer": "playwright-ui", "pw-ui-scaffolder": "playwright-ui", "pw-api-tests-writer": "playwright-api", "pw-api-client-writer": "playwright-api", "pw-api-scaffolder": "playwright-api", "k6-script-writer": "k6" };
   for (const [name, domain] of Object.entries(ASKERS)) {
     assert.ok(perms.agents[name].shell_allow.includes("node scripts/requests.mjs add *"), `${name}: may run requests.mjs add`);
-    const text = readFileSync(path.join(repoRoot, "agents", `${name}.md`), "utf8");
+    const text = readFileSync(path.join(frameworkRoot, "agents", `${name}.md`), "utf8");
     assert.ok(text.includes(`requests.mjs add <p> ${domain} <m> --from ${name}`), `${name} records with the right domain and --from`);
   }
   for (const [name, a] of Object.entries(perms.agents)) if (!(name in ASKERS)) assert.ok(!a.shell_allow?.includes("node scripts/requests.mjs add *"), `${name} may not add requests`);
   for (const name of ["pw-repo-owner", "pw-ui-pom-writer", "pw-api-client-writer", "pw-ui-scaffolder", "pw-api-scaffolder", "k6-lib-writer"]) {
-    const text = readFileSync(path.join(repoRoot, "agents", `${name}.md`), "utf8");
+    const text = readFileSync(path.join(frameworkRoot, "agents", `${name}.md`), "utf8");
     assert.match(text, /requests=<path> ids=<ids>/, `${name} takes requests=<path> ids=<ids>`);
     assert.ok(!/missing="|gap="|request="/.test(text), `${name}: the old free-text parameters are gone`);
   }

@@ -12,6 +12,8 @@
 // dynamically inside the try, so even a broken module cannot make the hook fail open; if not even the adapter loads,
 // the block is still written in a form the asserted host honours. Every error, blocked or not, is logged with its
 // stack to artifacts/hook-errors.jsonl (scripts/lib/hook-log.mjs, D-065); a failing log changes nothing.
+// The root judged is the workspace (scripts/lib/roots.mjs hookWorkspaceRoot, D-085): ATF_WORKSPACE, else the host's
+// project root or the nearest atf/atf.json above it; this file's own framework is never writable when it differs.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
@@ -26,6 +28,15 @@ function runActive(root) {
     if (existsSync(envs) && readdirSync(envs).some((e) => existsSync(path.join(envs, e, "state", "lock.json")))) return true;
   }
   return false;
+}
+
+// The workspace before anything loads (D-085), inline for the same reason: the nearest directory from the host's root
+// up that holds atf/atf.json, else the host's root. Refined by roots.mjs once it loads.
+function workspaceOf(start) {
+  for (let dir = path.resolve(start); ; dir = path.dirname(dir)) {
+    if (existsSync(path.join(dir, "atf", "atf.json"))) return dir;
+    if (path.dirname(dir) === dir) return start;
+  }
 }
 
 // VS Code blocks only on a deny decision with exit 0 (D-040, hosts/vscode.mjs). Read from the raw arguments, since
@@ -44,7 +55,7 @@ async function logError(e, outcome) {
 let payload;
 let raw;
 let args = {};
-let root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+let root = process.env.ATF_WORKSPACE || workspaceOf(process.env.CLAUDE_PROJECT_DIR || process.cwd());
 let adapter;
 try {
   const { adapterFor, hookArgs } = await import("./hosts/index.mjs");
@@ -52,7 +63,8 @@ try {
   adapter = await adapterFor(args.host);
   raw = readFileSync(0, "utf8");
   payload = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw); // Windows PowerShell 5.1 prefixes a BOM when it relays stdin
-  root = adapter.rootOf(payload);
+  const { hookWorkspaceRoot } = await import("../lib/roots.mjs");
+  root = hookWorkspaceRoot(adapter.rootOf(payload));
   const call = adapter.normalize(payload, { env: process.env, host: args.host, agent: args.agent });
 
   const { checkTool } = await import("../lib/guard.mjs");

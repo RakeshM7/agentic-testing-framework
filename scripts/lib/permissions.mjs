@@ -2,6 +2,7 @@
 // `run.mjs init`. The guard reads only the frozen JSON (no YAML dependency in the hook, and a run's permissions
 // cannot change under it). The run's authorizations.mode caps everything: see effectiveLiveTarget().
 // Dependency-free except resolvePermissions' input, which callers parse with js-yaml.
+import { expandFw } from "./roots.mjs";
 
 const ENUMS = {
   browser: ["none", "read", "mutate"],
@@ -14,13 +15,17 @@ const ENUMS = {
 };
 const RANK = { none: 0, read: 1, mutate: 2, run: 1 };
 
-export function resolvePermissions(doc) {
+// fw: the framework's path from the workspace (scripts/lib/roots.mjs frameworkRel; "" when they are the same directory).
+// A shell allow-list names a framework script as `node {fw}/scripts/...` (D-085); the resolved rows hold it expanded,
+// so a run's frozen permissions match the exact commands its agents run.
+export function resolvePermissions(doc, { fw = "" } = {}) {
   const errors = [];
   if (!doc || typeof doc !== "object" || typeof doc.agents !== "object") return { errors: ["permissions: needs an 'agents' mapping"] };
   const profiles = doc.profiles ?? {};
   // commands every agent with a restricted shell may run, whatever its own list (D-083: recording a framework issue)
-  const common = doc.common_shell_allow ?? [];
-  if (!Array.isArray(common) || common.some((c) => typeof c !== "string" || !c.startsWith("node scripts/"))) errors.push("common_shell_allow: must be a list of `node scripts/...` commands");
+  const raw = doc.common_shell_allow ?? [];
+  if (!Array.isArray(raw) || raw.some((c) => typeof c !== "string" || !c.startsWith("node {fw}/scripts/"))) errors.push("common_shell_allow: must be a list of `node {fw}/scripts/...` commands");
+  const common = Array.isArray(raw) ? raw.map((c) => expandFw(c, fw)) : raw;
   const agents = {};
   for (const [name, raw] of Object.entries(doc.agents)) {
     if (raw.profile && !profiles[raw.profile]) errors.push(`${name}: unknown profile '${raw.profile}'`);
@@ -33,7 +38,7 @@ export function resolvePermissions(doc) {
       live_target: { browser: lt.browser ?? "none", http: lt.http ?? "none", load: lt.load ?? "none" },
       web_research: a.web_research ?? "none",
       shell: a.shell ?? "none",
-      shell_allow: [...(a.shell_allow ?? []), ...(a.shell === "restricted" && Array.isArray(common) ? common : [])],
+      shell_allow: [...(a.shell_allow ?? []).map((c) => expandFw(c, fw)), ...(a.shell === "restricted" && Array.isArray(common) ? common : [])],
       filesystem: { read: a.filesystem?.read ?? [], write: a.filesystem?.write ?? [] },
       ask_user: a.ask_user ?? "none",
       browser_session: a.browser_session ?? "shared", // fresh: may close its own browser session (D-047)

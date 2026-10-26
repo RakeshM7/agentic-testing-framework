@@ -23,7 +23,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { SIDES, check, foundationContext, foundationPathsOut, install, render } from "./lib/foundation.mjs";
 
 const USAGE = "usage: foundation.mjs render <product> --side repo|ui|api|k6 | check <product> [--side S] [--static] | install <product> | paths <product> [--side S]";
@@ -36,7 +36,7 @@ export function context(product, root) {
 }
 
 // exec: (cmd, args, cwd) -> null | error text, for the compile checks and install; tests inject one.
-export async function main(argv, { root = repoRoot, exec } = {}) {
+export async function main(argv, { root = workspaceRoot, exec } = {}) {
   const [cmd, product, ...rest] = argv;
   if (!cmd || !product || product.startsWith("-")) return usage();
   let v;

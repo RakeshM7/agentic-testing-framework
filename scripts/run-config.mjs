@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual, parseArgs } from "node:util";
 import yaml from "js-yaml";
-import { CASE_TYPES, DEFAULT_ENV, SLUG_RE, STEPS, repoRoot } from "./lib/contract.mjs";
+import { CASE_TYPES, DEFAULT_ENV, SLUG_RE, STEPS, workspaceRoot } from "./lib/contract.mjs";
 import { UNRESOLVED_POLICIES } from "./lib/clarifications.mjs";
 import { VISIBILITIES, applyChanges, buildDraft, rewriteKeys } from "./lib/run-config-draft.mjs";
 
@@ -23,6 +23,9 @@ const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
 const KNOWN = ["product", "environment", "about", "steps", "target", "feature", "knowledge", "explore", "modules", "api", "authorizations", "permissions_file", "testcases", "clarifications", "limits", "concurrency", "feedback_loop", "git", "k6"];
 const posInt = (v) => Number.isInteger(v) && v > 0;
 export const MAX_MODULE_CONCURRENCY = 1;
+// The default permissions_file: the framework's own config/permissions.yaml (run.mjs init reads it from the framework
+// root, D-085); any other path is resolved from the workspace root.
+export const DEFAULT_PERMISSIONS = "config/permissions.yaml";
 const strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
 const httpUrl = (v) => {
   try {
@@ -104,7 +107,7 @@ function fileError(v, where, root) {
 }
 
 // root: what relative file paths (test case files) resolve against.
-export function validateRunConfig(cfg, { root = repoRoot } = {}) {
+export function validateRunConfig(cfg, { root = workspaceRoot } = {}) {
   const errors = [];
   const warnings = [];
   if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return { errors: ["config is not a YAML mapping"] };
@@ -258,7 +261,7 @@ export function validateRunConfig(cfg, { root = repoRoot } = {}) {
       knowledge: { references: [], max_extra_sources: 20, ...cfg.knowledge },
       explore: { ...EXPLORE_DEFAULTS, ...cfg.explore },
       authorizations: { authenticated_crawl: false, credentials_file: null, session_state_file: null, identities: [], ...auth, mode: auth.mode ?? "readonly" },
-      permissions_file: cfg.permissions_file ?? "config/permissions.yaml",
+      permissions_file: cfg.permissions_file ?? DEFAULT_PERMISSIONS,
       testcases: { ...TESTCASES_DEFAULTS, ...cfg.testcases },
       clarifications: { unresolved_policy: "stop", ...cfg.clarifications },
       limits: { review_rounds: 3, heal_rounds: 3, ...cfg.limits },
@@ -292,7 +295,7 @@ export function draftRunConfig(answers, { root = process.cwd() } = {}) {
 // The step menu's answer and the human's test case files, written into an existing config: the changed config is
 // validated first, then only those keys are rewritten in the text (every other byte, comments included, stays), and the
 // result must parse to exactly the validated config. changes: see applyChanges. -> {errors, file?, changed?, steps?}
-export function setRunConfig(file, changes, { root = repoRoot } = {}) {
+export function setRunConfig(file, changes, { root = workspaceRoot } = {}) {
   let text;
   try {
     text = readFileSync(file, "utf8");

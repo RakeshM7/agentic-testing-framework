@@ -23,13 +23,13 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot } from "./lib/contract.mjs";
 import { knowledgePaths, markInput, mergeGlossary, plan, registerSource, render, runCheck, snapshot } from "./lib/knowledge.mjs";
 
 const USAGE = "usage: knowledge.mjs plan|add-source|input|snapshot|render|merge-glossary|check|paths <product> [options]";
 const rel = (root, f) => path.relative(root, f).replaceAll("\\", "/");
 
-export async function main(argv, { root = repoRoot, fetchImpl } = {}) {
+export async function main(argv, { root = workspaceRoot, fetchImpl } = {}) {
   const [cmd, product, ...rest] = argv;
   if (!cmd || !product) return { code: 2, out: { errors: [USAGE] } };
   const { values: v, positionals } = parseArgs({

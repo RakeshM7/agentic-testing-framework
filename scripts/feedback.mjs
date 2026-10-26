@@ -12,11 +12,11 @@
 // Exits: 0 ok, 1 problems, 2 usage.
 import { fileURLToPath } from "node:url";
 import { check, feedbackPaths, triage } from "./lib/feedback.mjs";
-import { repoRoot } from "./lib/contract.mjs";
+import { workspaceRoot } from "./lib/contract.mjs";
 
 const USAGE = "usage: feedback.mjs triage <file> [--plan <path> ...] | check <file> | paths <file>";
 
-export function main(argv, { root = repoRoot } = {}) {
+export function main(argv, { root = workspaceRoot } = {}) {
   const [cmd, file, ...rest] = argv;
   if (!["triage", "check", "paths"].includes(cmd) || !file) return { code: 2, out: { errors: [USAGE] } };
   if (cmd === "triage") {

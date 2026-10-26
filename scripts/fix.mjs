@@ -16,14 +16,14 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { FIX_SOURCES, fixCheck, fixPaths, fixSnapshot } from "./lib/fix.mjs";
 import { REVIEW_DOMAINS } from "./lib/review.mjs";
 
 const USAGE = `usage: fix.mjs snapshot|check <product> <module> <${REVIEW_DOMAINS.join("|")}> --round N [--source ${FIX_SOURCES.join("|")}] | paths <product> <module> <domain>`;
 const rel = (root, f) => path.relative(root, f).replaceAll("\\", "/");
 
-export function fixContext(product, module, root = repoRoot) {
+export function fixContext(product, module, root = workspaceRoot) {
   const p = paths(product, root);
   if (!existsSync(p.lockFile)) throw new Error(`no active run for product '${product}'`);
   const run = loadJson(p.runFile);
@@ -34,7 +34,7 @@ export function fixContext(product, module, root = repoRoot) {
   };
 }
 
-export async function main(argv, { root = repoRoot } = {}) {
+export async function main(argv, { root = workspaceRoot } = {}) {
   const [cmd, product, module, domain, ...rest] = argv;
   let round = null;
   let source = "review";

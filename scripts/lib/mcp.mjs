@@ -1,5 +1,7 @@
 // config/mcp.yaml -> one platform's MCP config file (`mcp_config` in config/platforms.yaml): the same servers under
-// the key that platform expects (.mcp.json: mcpServers, .vscode/mcp.json: servers).
+// the key that platform expects (.mcp.json: mcpServers, .vscode/mcp.json: servers), with every `{fw}` in a command or
+// argument expanded to the framework's path from the workspace (D-085).
+import { expandFw } from "./roots.mjs";
 
 export function validateMcp(mcp) {
   const errors = [];
@@ -8,4 +10,5 @@ export function validateMcp(mcp) {
   return errors;
 }
 
-export const renderMcpConfig = (mcp, key) => JSON.stringify({ [key]: mcp.servers }, null, 2) + "\n";
+export const renderMcpConfig = (mcp, key, fw = "") =>
+  JSON.stringify({ [key]: mcp.servers }, (k, v) => (typeof v === "string" ? expandFw(v, fw) : v), 2) + "\n";

@@ -8,14 +8,15 @@ import { readFileSync } from "node:fs";
 let payload;
 let raw;
 let args = {};
-let root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+let root = process.env.ATF_WORKSPACE || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 try {
   const { adapterFor, hookArgs } = await import("./hosts/index.mjs");
   args = hookArgs();
   const adapter = await adapterFor(args.host);
   raw = readFileSync(0, "utf8");
   payload = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw); // Windows PowerShell 5.1 prefixes a BOM when it relays stdin
-  root = adapter.rootOf(payload);
+  const { hookWorkspaceRoot } = await import("../lib/roots.mjs");
+  root = hookWorkspaceRoot(adapter.rootOf(payload)); // the workspace, as for the PreToolUse hook (D-085)
   const call = adapter.normalize(payload, { env: process.env, host: args.host, agent: args.agent });
   // an agent spawn of the active run, with what the host reports about it (D-079); a failure here is logged like any
   // other and never stops the decision memo below

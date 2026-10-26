@@ -71,12 +71,14 @@ import { parseArgs } from "node:util";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
-import { validateRunConfig } from "./run-config.mjs";
-import { DEFAULT_ENV, LAYOUT_VERSION, PRODUCT_SCOPE, SLUG_RE, STAGES, STEPS, chosenStages, deriveCaseTypes, envName, loadJson, paths, repoRoot, stageChosen, stageKey, stageNeeds, testcasesModeOf, testcasesModes, validateData, validateFile, verifyOutputs } from "./lib/contract.mjs";
+import { DEFAULT_PERMISSIONS, validateRunConfig } from "./run-config.mjs";
+import { DEFAULT_ENV, LAYOUT_VERSION, PRODUCT_SCOPE, SLUG_RE, STAGES, STEPS, chosenStages, deriveCaseTypes, envName, loadJson, paths, workspaceRoot, stageChosen, stageKey, stageNeeds, testcasesModeOf, testcasesModes, validateData, validateFile, verifyOutputs } from "./lib/contract.mjs";
 import { withFileLock, withFileLockAsync, writeJson } from "./lib/files.mjs";
 import { read as readLedger } from "./lib/ledger.mjs";
 import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
+import { configPath } from "./lib/config.mjs";
+import { expandFw, frameworkRoot, frameworkRel } from "./lib/roots.mjs";
 import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs";
 import { GROUPS, STAGE_NEEDS, clearDoctor, doctorStatus, failures, recordDoctor, runChecks } from "./lib/doctor.mjs";
 import { login as openLogin } from "./lib/login.mjs";
@@ -93,7 +95,9 @@ const rel = (root, p) => path.relative(root, p).replaceAll("\\", "/");
 export const makeRunId = (product, date = new Date(), environment = DEFAULT_ENV) =>
   `${product}${environment === DEFAULT_ENV ? "" : `-${environment}`}-${date.toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-")}`; // eventhub-20261007-1230, eventhub-staging-20261007-1230
 
-export function initRun(configFile, { resume = false, runId, root = repoRoot, env = process.env } = {}) {
+// root: the workspace the run lives in; framework: the framework root its permissions, provenance and commands come from
+// (D-085; the same directory in this repository).
+export function initRun(configFile, { resume = false, runId, root = workspaceRoot, framework = frameworkRoot, env = process.env } = {}) {
   const { errors, warnings = [], normalized: cfg } = validateRunConfig(yaml.load(readFileSync(configFile, "utf8")), { root });
   if (errors?.length) return { errors };
   // the session's environment (D-081) must be the config's: every script and hook of the session works in it
@@ -119,9 +123,12 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
   }
   if (resume) return { errors: [`no active run for product '${cfg.product}' to resume`] };
 
-  const permPath = path.resolve(root, cfg.permissions_file);
+  // the default names the framework's own permissions (read through scripts/lib/config.mjs); any other path is the
+  // workspace's. `{fw}` in a shell allow-list becomes the framework's path from the workspace, so the frozen copy holds
+  // the exact commands the agents run.
+  const permPath = cfg.permissions_file === DEFAULT_PERMISSIONS ? configPath("permissions.yaml", { framework }) : path.resolve(root, cfg.permissions_file);
   if (!existsSync(permPath)) return { errors: [`permissions_file ${cfg.permissions_file} not found`] };
-  const perms = resolvePermissions(yaml.load(readFileSync(permPath, "utf8")));
+  const perms = resolvePermissions(yaml.load(readFileSync(permPath, "utf8")), { fw: frameworkRel(root, framework) });
   if (perms.errors.length) return { errors: perms.errors.map((e) => `permissions: ${e}`) };
 
   let id = runId ?? makeRunId(cfg.product, undefined, environment);
@@ -147,7 +154,7 @@ export function initRun(configFile, { resume = false, runId, root = repoRoot, en
     testcasesMode: testcasesModes({ steps: STEPS.filter((s) => cfg.steps.includes(s)), modules: cfg.modules.map((m) => m.slug) }),
     startedOnHost: detectShellHost(env),
     // what the run is made with (D-077): framework commit, browser server, models, templates, Node.js
-    provenance: collectProvenance(root),
+    provenance: collectProvenance(framework),
     stages: {},
   };
   clearGuardChecks(cfg.product, root);
@@ -233,7 +240,7 @@ async function satisfiedEarlier(ctx, stage, module) {
   }
 }
 
-export async function status(product, { root = repoRoot } = {}) {
+export async function status(product, { root = workspaceRoot } = {}) {
   const ctx = ctxFor(product, root);
   const rows = [];
   for (const stage of Object.keys(STAGES))
@@ -313,7 +320,7 @@ function reviewFailure(ctx, stage, module) {
   return s.reviewFailure ?? { rounds: null, file: null, total: 0, findings: [] };
 }
 
-export async function next(product, { root = repoRoot } = {}) {
+export async function next(product, { root = workspaceRoot } = {}) {
   const st = await status(product, { root });
   if (!st.active) return [];
   const ctx = ctxFor(product, root);
@@ -349,7 +356,7 @@ export function endInfo(st, ctx) {
 
 // The orchestrator-agent's loop (G10): what to start now (agent + exact prompt), with reusable knowledge marked done here, or
 // how the run ends. `end` is present only when there is nothing to start.
-export async function nextStep(product, { root = repoRoot } = {}) {
+export async function nextStep(product, { root = workspaceRoot } = {}) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { actions: [], end: { outcome: "no-active-run" } };
   for (let round = 0; round < 100; round++) {
@@ -428,7 +435,7 @@ const builtCaseTypes = (productDir, m) => {
 // import mode: D-066) produces them, unless it already completed this run without a type the run added since.
 // Every option that changes the run carries `args` for `run.mjs steps <p> <args>`.
 // -> {product, runId, steps, caseTypes, testcasesMode, ok, gaps, modules: {<m>: [{step, status, missing?, awaiting?}]}}
-export async function prereqs(product, { root = repoRoot } = {}) {
+export async function prereqs(product, { root = workspaceRoot } = {}) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { errors: [`run ${ctx.runId} has ended; start a new run`] };
   const st = await status(product, { root });
@@ -490,7 +497,7 @@ export async function prereqs(product, { root = repoRoot } = {}) {
 // pinned to the case content). configSteps: the run-config's own steps plus the added ones (a skip never removes one),
 // configChanged: whether the config needs them written. -> {steps, caseTypes, testcasesMode, stages, reopened,
 // configSteps, configChanged} or {errors}
-export function changeSteps(product, { add = [], remove = [], importMode = [], reopen = [], root = repoRoot } = {}) {
+export function changeSteps(product, { add = [], remove = [], importMode = [], reopen = [], root = workspaceRoot } = {}) {
   return lockedRun(product, root, () => applySteps(product, { add, remove, importMode, reopen, root }));
 }
 
@@ -539,7 +546,7 @@ function applySteps(product, { add, remove, importMode, reopen, root }) {
 
 // Scenario mode (decision 15): the interview's answers file -> each listed module's scenarios.json. Nothing is written
 // while a problem remains. -> {written, removed, answers} | {problems} | {errors}
-export async function scenarios(product, { file, root = repoRoot } = {}) {
+export async function scenarios(product, { file, root = workspaceRoot } = {}) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { errors: [`run ${ctx.runId} has ended; start a new run`] };
   const f = file ? path.resolve(root, file) : path.join(ctx.p.state, SCENARIO_ANSWERS);
@@ -559,7 +566,7 @@ export async function scenarios(product, { file, root = repoRoot } = {}) {
 
 // The dependency check for every stage of the active run, recorded for `stage … start` (D-064). Fixing is the human's
 // (make doctor PRODUCT=<p>); the result names each fix and the stages that wait for it.
-export async function doctor(product, { root = repoRoot, ...opts } = {}) {
+export async function doctor(product, { root = workspaceRoot, ...opts } = {}) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { errors: [`run ${ctx.runId} has ended; start a new run`] };
   const groups = GROUPS.filter((g) => g !== "login");
@@ -571,7 +578,7 @@ export async function doctor(product, { root = repoRoot, ...opts } = {}) {
 }
 
 // The human's login over the run-config at configFile (works before a run exists, and during one).
-export async function login(configFile, { root = repoRoot, ...opts } = {}) {
+export async function login(configFile, { root = workspaceRoot, ...opts } = {}) {
   let text;
   try {
     text = readFileSync(configFile, "utf8");
@@ -584,7 +591,7 @@ export async function login(configFile, { root = repoRoot, ...opts } = {}) {
   return openLogin({ cfg, configFile, text, root, validate: (t) => check(t).errors ?? [], ...opts });
 }
 
-export async function setStage(product, stage, module, action, error, { root = repoRoot, reused = false } = {}) {
+export async function setStage(product, stage, module, action, error, { root = workspaceRoot, reused = false } = {}) {
   if (!STAGES[stage]) return { errors: [`unknown stage '${stage}' (one of ${Object.keys(STAGES).join(", ")})`] };
   return lockedRunAsync(product, root, () => applyStage(product, stage, module, action, error, { root, reused }));
 }
@@ -652,7 +659,7 @@ async function applyStage(product, stage, module, action, error, { root, reused 
   return { key, ...ctx.run.stages[key] };
 }
 
-export async function endRun(product, { abandon = false, root = repoRoot } = {}) {
+export async function endRun(product, { abandon = false, root = workspaceRoot } = {}) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { errors: [`no active run for product '${product}'`] };
   const st = await status(product, { root });
@@ -685,7 +692,7 @@ function endedRuns(ctx) {
 }
 
 // What changed between two ended runs (D-078); without ids, the last two. -> diffManifests() | {errors}
-export function diffRuns(product, runA, runB, { root = repoRoot } = {}) {
+export function diffRuns(product, runA, runB, { root = workspaceRoot } = {}) {
   const ctx = ctxFor(product, root);
   let [a, b] = [runA, runB];
   if (!a !== !b) return { errors: ["give two run ids, or none for the last two ended runs"] };
@@ -701,7 +708,7 @@ export function diffRuns(product, runA, runB, { root = repoRoot } = {}) {
   return diffManifests(ma, mb, product);
 }
 
-export async function carryForward(product, { root = repoRoot } = {}) {
+export async function carryForward(product, { root = workspaceRoot } = {}) {
   return lockedRunAsync(product, root, () => adoptCompleted(product, root));
 }
 
@@ -735,7 +742,7 @@ async function adoptCompleted(product, root) {
   return { carried, from: last.runId };
 }
 
-export async function validateProduct(product, { root = repoRoot } = {}) {
+export async function validateProduct(product, { root = workspaceRoot } = {}) {
   const ctx = ctxFor(product, root);
   const problems = [];
   const check = (label, errs) => errs.forEach((e) => problems.push(`${label}: ${e}`));
@@ -781,11 +788,11 @@ async function main() {
     if (cmd === "init") {
       const r = initRun(a, { resume: v.resume, runId: v["run-id"] });
       const carried = r.errors || r.resumed ? null : await carryForward(r.product);
-      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, steps: r.run.steps ?? STEPS, caseTypes: r.run.caseTypes, resumed: !!r.resumed, ...(r.warnings ? { warnings: r.warnings } : {}), ...(r.interrupted ? { interrupted: r.interrupted } : {}), ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: [`node scripts/run.mjs guard-check ${r.product}`, `node scripts/run.mjs doctor ${r.product}`, `node scripts/run.mjs prereqs ${r.product}`] }, r.errors ? 1 : 0);
+      out(r.errors ? r : { product: r.product, runId: r.run.runId, mode: r.run.mode, modules: r.run.modules, steps: r.run.steps ?? STEPS, caseTypes: r.run.caseTypes, resumed: !!r.resumed, ...(r.warnings ? { warnings: r.warnings } : {}), ...(r.interrupted ? { interrupted: r.interrupted } : {}), ...(carried?.carried.length ? { carriedFrom: carried.from, carried: carried.carried } : {}), next: ["guard-check", "doctor", "prereqs"].map((c) => expandFw(`node {fw}/scripts/run.mjs ${c} ${r.product}`, frameworkRel())) }, r.errors ? 1 : 0);
     } else if (cmd === "guard-check") {
       // Reaching this line means no hook blocked the command: the guard is not active in this session.
       if (!SLUG_RE.test(a) || !existsSync(paths(a).state)) out({ errors: [`no run state for product '${a}'`] }, 1);
-      markAbsent(a, repoRoot);
+      markAbsent(a, workspaceRoot);
       out({ errors: ["the framework guard did NOT block guard-check: hooks are not active in this session, so nothing enforces the run's mode or permissions. Stop and fix the host's hook setup (docs/platforms.md), then run `node scripts/run.mjs guard-check <product>` again."] }, 1);
     } else if (cmd === "doctor") {
       const r = await doctor(a);

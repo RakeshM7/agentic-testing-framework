@@ -14,7 +14,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { build, check, planPaths } from "./lib/api-plan.mjs";
 import { parseCases } from "./lib/gate/testcases.mjs";
 import { approvalSummary, testcasesFile } from "./lib/testcases.mjs";
@@ -40,7 +40,7 @@ function context(product, module, root) {
 
 const rel = (root, f) => path.relative(root, f).replaceAll("\\", "/");
 
-export async function main(argv, { root = repoRoot } = {}) {
+export async function main(argv, { root = workspaceRoot } = {}) {
   const [cmd, product, module] = argv;
   if (!cmd || !product || !module) return { code: 2, out: { errors: ["usage: api-plan.mjs build|check|paths <product> <module>"] } };
   const { run, cfg, pp, cases } = context(product, module, root);

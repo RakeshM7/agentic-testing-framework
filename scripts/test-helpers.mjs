@@ -1,4 +1,8 @@
-// Shared fixtures for the node:test suites: a throwaway repo root with the real config/permissions.yaml.
+// Shared fixtures for the node:test suites. A throwaway root stands for this repository as it is laid out today, one
+// directory that is both the workspace and the framework (D-085): it holds a copy of config/permissions.yaml, and the
+// helpers pass it as the framework root wherever a script reads framework config (startRun, exploreSession), so a run's
+// commands are `node scripts/...` and the browser config is the root's own. Templates and schemas still come from the
+// real framework. scripts/workspace.test.mjs covers a workspace apart from its framework.
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { main as exploreMain } from "./explore.mjs";
 import { HEADERS, append as appendCsv, csvPath } from "./lib/clarifications.mjs";
 import { explorePaths } from "./lib/explore.mjs";
-import { paths, repoRoot } from "./lib/contract.mjs";
+import { frameworkRoot, paths } from "./lib/contract.mjs";
 import { parseCsv, serializeCsv } from "./lib/csv.mjs";
 import { knowledgePaths, mergeGlossary, registerSource, render, runCheck, storeSnapshot } from "./lib/knowledge.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
@@ -18,7 +22,7 @@ import { initRun } from "./run.mjs";
 export function tempRoot() {
   const root = mkdtempSync(path.join(tmpdir(), "atf-"));
   mkdirSync(path.join(root, "config"));
-  copyFileSync(path.join(repoRoot, "config", "permissions.yaml"), path.join(root, "config", "permissions.yaml"));
+  copyFileSync(path.join(frameworkRoot, "config", "permissions.yaml"), path.join(root, "config", "permissions.yaml"));
   return root;
 }
 
@@ -48,7 +52,7 @@ export function writeConfig(root, { mode = "readonly", policy, product = "acme",
 // `verified: false` (no guard record) or `doctored: false` (no dependency record).
 export function startRun(opts = {}) {
   const root = tempRoot();
-  const r = initRun(writeConfig(root, opts), { root, runId: opts.runId ?? "acme-run-1", env: { CLAUDECODE: "1" } });
+  const r = initRun(writeConfig(root, opts), { root, framework: root, runId: opts.runId ?? "acme-run-1", env: { CLAUDECODE: "1" } });
   if (r.errors) throw new Error(r.errors.join("\n"));
   if (opts.verified !== false) recordCanary(r.product, root, { host: "claude-code", agent: "orchestrator-agent" });
   if (opts.doctored !== false) recordDoctor(r.product, root, { groups: GROUPS, checks: [] });
@@ -318,7 +322,7 @@ const EXPLORE_FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)),
 // snapshots through explore.mjs as the agent would. -> {root, xp, ex, cap, state, model, item, write}
 export function exploreSession(root) {
   const xp = explorePaths(paths("acme", root).productDir, "contacts");
-  const ex = (...args) => exploreMain(args, { root, env: {} });
+  const ex = (...args) => exploreMain(args, { root, framework: root, env: {} });
   let n = 0;
   // the agent saves a capture under explore/captures/ and passes its path
   const cap = (name) => {

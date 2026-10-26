@@ -16,13 +16,13 @@
 // blocks; a warning is reported and never blocks. `autofix` is an install that scripts/doctor.mjs --fix may run in a
 // human's terminal (never run by an agent): npm install, a Playwright browser download, or k6 through the OS's package
 // manager (K6_INSTALL).
-import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import yaml from "js-yaml";
 import { INIT_PAGE } from "./browser-tools.mjs";
-import { STAGES, paths } from "./contract.mjs";
+import { loadConfig } from "./config.mjs";
+import { STAGES, frameworkRoot, paths } from "./contract.mjs";
 import { tryReadJson, writeJson } from "./files.mjs";
 
 export const GROUPS = ["base", "login", "browser", "session", "repo", "k6", "target"];
@@ -80,37 +80,38 @@ const describeMissing = (missing) => missing.map((m) => `${m.name} build ${m.rev
 
 // ---- the checks, one function per group --------------------------------------------------------------------------
 
-function base({ root, nodeVersion }) {
+// The framework's own dependencies: its package.json and node_modules, under the framework root (D-085).
+function base({ framework, nodeVersion }) {
   const out = [];
   const major = Number(String(nodeVersion).split(".")[0]);
   out.push(major >= MIN_NODE
     ? { id: "node", ok: true, detail: `Node.js ${nodeVersion}` }
     : { id: "node", ok: false, level: "fail", detail: `Node.js ${nodeVersion} is older than ${MIN_NODE}`, fix: `install Node.js ${MIN_NODE} or later (https://nodejs.org)` });
-  const pkg = tryReadJson(path.join(root, "package.json"));
+  const pkg = tryReadJson(path.join(framework, "package.json"));
   if (!pkg) return out;
   const wanted = { ...pkg.dependencies, ...pkg.devDependencies };
   const problems = [];
   for (const [name, spec] of Object.entries(wanted)) {
-    const got = tryReadJson(path.join(root, "node_modules", name, "package.json"));
+    const got = tryReadJson(path.join(framework, "node_modules", name, "package.json"));
     if (!got) problems.push(`${name} is not installed`);
     else if (/^\d+\.\d+\.\d+$/.test(spec) && got.version !== spec) problems.push(`${name} is ${got.version}, package.json pins ${spec}`);
   }
   out.push(problems.length
-    ? { id: "framework-deps", ok: false, level: "fail", detail: problems.join("; "), fix: "npm install (in the repo root)", autofix: { cmd: "npm", args: ["install"], cwd: root } }
+    ? { id: "framework-deps", ok: false, level: "fail", detail: problems.join("; "), fix: "npm install (in the repo root)", autofix: { cmd: "npm", args: ["install"], cwd: framework } }
     : { id: "framework-deps", ok: true, detail: `${Object.keys(wanted).length} framework dependencies installed` });
   return out;
 }
 
 // The login needs a real browser window: some single sign-on providers refuse Playwright's own Chromium, so the login
 // prefers an installed Microsoft Edge, then Google Chrome (lib/login.mjs picks the same way).
-function login({ root, sys, exists }) {
+function login({ framework, sys, exists }) {
   const channel = loginChannel({ sys, exists });
   if (channel === "msedge") return [{ id: "login-browser", ok: true, detail: "the login opens Microsoft Edge" }];
   if (channel === "chrome") return [{ id: "login-browser", ok: true, level: "warn", detail: "Microsoft Edge is not installed: the login opens Google Chrome", fix: "install Microsoft Edge if your identity provider blocks Chrome" }];
-  const b = browserBuilds(path.join(root, "node_modules", "playwright-core"), ["chromium"], sys);
-  if (!b) return [{ id: "login-browser", ok: false, level: "fail", detail: "neither Microsoft Edge nor Google Chrome is installed, and the framework's Playwright is not installed", fix: "install Microsoft Edge, or npm install (in the repo root)", autofix: { cmd: "npm", args: ["install"], cwd: root } }];
+  const b = browserBuilds(path.join(framework, "node_modules", "playwright-core"), ["chromium"], sys);
+  if (!b) return [{ id: "login-browser", ok: false, level: "fail", detail: "neither Microsoft Edge nor Google Chrome is installed, and the framework's Playwright is not installed", fix: "install Microsoft Edge, or npm install (in the repo root)", autofix: { cmd: "npm", args: ["install"], cwd: framework } }];
   if (b.missing.length)
-    return [{ id: "login-browser", ok: false, level: "fail", detail: `neither Microsoft Edge nor Google Chrome is installed, and Playwright ${b.version} needs ${describeMissing(b.missing)}, which is not downloaded`, fix: "install Microsoft Edge, or npx playwright install chromium (in the repo root)", autofix: { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: root } }];
+    return [{ id: "login-browser", ok: false, level: "fail", detail: `neither Microsoft Edge nor Google Chrome is installed, and Playwright ${b.version} needs ${describeMissing(b.missing)}, which is not downloaded`, fix: "install Microsoft Edge, or npx playwright install chromium (in the repo root)", autofix: { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: framework } }];
   return [{ id: "login-browser", ok: true, level: "warn", detail: `neither Microsoft Edge nor Google Chrome is installed: the login opens Playwright ${b.version}'s Chromium, which some single sign-on providers block`, fix: "install Microsoft Edge" }];
 }
 
@@ -149,11 +150,11 @@ export function npxCore(pkgName, version, { env = process.env, platform = proces
   return null;
 }
 
-function browser({ root, cfg, sys, exists }) {
+function browser({ root, framework, cfg, sys, exists }) {
   const out = [];
   let mcp = null;
   try {
-    mcp = yaml.load(readFileSync(path.join(root, "config", "mcp.yaml"), "utf8"));
+    mcp = loadConfig("mcp.yaml", { framework });
   } catch {}
   const server = mcp?.servers?.[mcp?.browser_server];
   if (!server) return [{ id: "mcp-browser", ok: false, level: "fail", detail: "config/mcp.yaml names no browser_server", fix: "define the browser server in config/mcp.yaml, then npm run build-agents" }];
@@ -181,8 +182,9 @@ function browser({ root, cfg, sys, exists }) {
   // one product's session for every product
   const auth = cfg.authorizations ?? {};
   const fixMcp = "in config/mcp.yaml, then run npm run build-agents and restart the agent session";
+  // as config/mcp.yaml writes it: `{fw}/` before the framework's path (D-085), or the bare path in a same-root repo
   const initPage = argValue(args, "--init-page") ?? args.find((a) => a.startsWith("--init-page="))?.slice("--init-page=".length);
-  if (slash(initPage) !== INIT_PAGE)
+  if (slash(initPage)?.replace(/^\{fw\}\//, "") !== INIT_PAGE)
     out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server does not run the framework's init page (--init-page ${INIT_PAGE}), which loads the run's session and aborts every write in a readonly run`, fix: `add "--init-page", "${INIT_PAGE}" to the browser server's args ${fixMcp}` });
   else if (argValue(args, "--storage-state"))
     out.push({ id: "mcp-session", ok: false, level: "fail", detail: `the browser server also starts from --storage-state ${slash(argValue(args, "--storage-state"))}, one product's session for every product`, fix: `remove --storage-state (the init page loads this run's session) ${fixMcp}` });
@@ -311,9 +313,10 @@ const defaultWhich = (cmd, args = ["--version"]) => {
   }
 };
 
-// cfg: a validated run-config (normalized). -> [{group, id, ok, level?, detail, fix?, autofix?}]
-export async function runChecks(cfg, groups, { root, env = process.env, platform = process.platform, home = os.homedir(), nodeVersion = process.versions.node, now = Date.now(), fetchImpl = fetch, which = defaultWhich, exists = existsSync } = {}) {
-  const ctx = { root, cfg, product: cfg.product, nodeVersion, now, fetchImpl, which, exists, sys: { env, platform, home } };
+// cfg: a validated run-config (normalized). root: the workspace; framework: the framework root (D-085), whose
+// dependencies and browser config are checked. -> [{group, id, ok, level?, detail, fix?, autofix?}]
+export async function runChecks(cfg, groups, { root, framework = frameworkRoot, env = process.env, platform = process.platform, home = os.homedir(), nodeVersion = process.versions.node, now = Date.now(), fetchImpl = fetch, which = defaultWhich, exists = existsSync } = {}) {
+  const ctx = { root, framework, cfg, product: cfg.product, nodeVersion, now, fetchImpl, which, exists, sys: { env, platform, home } };
   const out = [];
   for (const g of GROUPS.filter((x) => groups.includes(x))) for (const c of await CHECKS[g](ctx)) out.push({ group: g, level: c.ok ? undefined : "fail", ...c });
   return out;

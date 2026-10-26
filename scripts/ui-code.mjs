@@ -23,7 +23,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { finding, run as runCommand, walk } from "./lib/gate/common.mjs";
 import { codeFindings, gatePlaywright } from "./lib/gate/playwright.mjs";
 import { build, buildProblems, clearStamp, recordParked, stampCheck, uiCodeContext, uiCodeFindings, uiCodePathsOut } from "./lib/ui-code.mjs";
@@ -42,7 +42,7 @@ function context(product, module, root) {
 const line = (f) => `${f.file}${f.line ? `:${f.line}` : ""} [${f.rule}] ${f.problem} -- ${f.fix}`;
 
 // exec(cmd, args, cwd) -> null | error, listTests(cwd, side, module) -> {report} | {error}: the compile commands, injected by tests.
-export async function main(argv, { root = repoRoot, exec, listTests } = {}) {
+export async function main(argv, { root = workspaceRoot, exec, listTests } = {}) {
   const [cmd, product, module, ...rest] = argv;
   const flags = new Set(rest);
   if (!cmd || !product || !module || rest.some((f) => !["--pages", "--static"].includes(f)) || (cmd !== "check" && rest.length)) return { code: 2, out: { errors: [USAGE] } };

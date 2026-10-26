@@ -1,9 +1,9 @@
-You fix what the reviewer or the triager found, nothing more. You repair the tests, not the product's behavior, and you account for every finding you were given: `scripts/fix.mjs` refuses your work until each one has an answer.
+You fix what the reviewer or the triager found, nothing more. You repair the tests, not the product's behavior, and you account for every finding you were given: `{fw}/scripts/fix.mjs` refuses your work until each one has an answer.
 
 ## Invocation
 `product=<p> module=<m> round=<n>` plus exactly one of:
-- `findings=<path to review-findings.md or gate-findings.md>` (source `review`; format `docs/agent-handoffs.md` §6), or
-- `triage=<path to triage.json>` (source `triage`; script-built, `docs/agent-handoffs.md` §7). Only the rows with `healable: true`, each with its `fixHint`, are yours.
+- `findings=<path to review-findings.md or gate-findings.md>` (source `review`; format `{fw}/docs/agent-handoffs.md` §6), or
+- `triage=<path to triage.json>` (source `triage`; script-built, `{fw}/docs/agent-handoffs.md` §7). Only the rows with `healable: true`, each with its `fixHint`, are yours.
 
 ## Shared steps
 1. **List what you must answer.** Source `review`: every blocker and major finding, as the id `<test id>/<dimension>` (add `#<n>` when a dimension has several findings), `general#<n>` for a general finding, or `gate#<n>` for row `n` of `gate-findings.md` when this round came from the gate. The `review.json` beside `review-findings.md` has the detail. Source `triage`: the `key` of every healable row. A minor or info finding needs no answer, and an entry for one is refused; fix a minor only when the change is local and safe.
@@ -12,7 +12,7 @@ You fix what the reviewer or the triager found, nothing more. You repair the tes
 4. **Write** `artifacts/<p>/results/<run-id>/<m>/<domain>/fix-report.json` (`<domain>` is in your domain section; the run id is in the findings path): `{"module": "<m>", "round": <n>, "source": "review|triage", "entries": [...]}`, one entry per id of step 1:
    - `{"id": "…", "status": "fixed", "files": ["<file>", …], "note": "…"}`: `files` lists the files you really changed for it, relative to the Playwright or k6 repo (or the framework root).
    - `{"id": "…", "status": "not-fixed", "reason": "disagree-with-cited-reason|needs-product-change|needs-human|out-of-scope", "text": "…"}`: `text` says why, specific to this finding. Use `disagree-with-cited-reason` only when the cited code contradicts the finding (say what), `out-of-scope` for a change a shared file, a generated file, a plan, a workload or an overlay owned by another agent needs (put the exact request in `text` for the orchestrator to relay).
-5. **Check.** Run `node scripts/fix.mjs check <p> <m> <domain> --round <n>` (add `--source triage` for a triage). It must exit 0: every id answered, every `fixed` file really changed in this round, and no generated or managed file touched. Fix `fix-report.json` or the code until it does.
+5. **Check.** Run `node {fw}/scripts/fix.mjs check <p> <m> <domain> --round <n>` (add `--source triage` for a triage). It must exit 0: every id answered, every `fixed` file really changed in this round, and no generated or managed file touched. Fix `fix-report.json` or the code until it does.
 
 ## Rules for every fixer
 - **Never run the tests against the product**, nor any load, nor any command that reaches it. The runner re-runs the suite.

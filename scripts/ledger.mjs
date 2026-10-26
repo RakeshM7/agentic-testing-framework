@@ -12,7 +12,7 @@
 import { existsSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot } from "./lib/contract.mjs";
 import { append, live, owns, ownsAny, read } from "./lib/ledger.mjs";
 
 const [cmd, product, ...rest] = process.argv.slice(2);
@@ -65,7 +65,7 @@ try {
     console.log(JSON.stringify(v.live ? live(p.ledgerFile, scope) : read(p.ledgerFile).filter((e) => !scope || e.runId === scope), null, 2));
   } else if (cmd === "sweep") {
     const { sweep } = await import("./lib/sweep.mjs");
-    const r = await sweep(product, { root: repoRoot, run: v.run, dryRun: !!v["dry-run"], interactive: { isTTY: !!process.stdin.isTTY, ask } });
+    const r = await sweep(product, { root: workspaceRoot, run: v.run, dryRun: !!v["dry-run"], interactive: { isTTY: !!process.stdin.isTTY, ask } });
     console.log(JSON.stringify(r, null, 2));
     process.exit(r.errors || r.failed?.length ? 1 : 0);
   } else {

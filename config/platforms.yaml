@@ -47,8 +47,9 @@ platforms:
       ask: ["vscode/askQuestions", ask_user]   # VS Code / Copilot CLI; the cloud agent has no ask tool
     # VS Code runs a custom agent's own `hooks` (Preview) only while that agent is active, so the build bakes the
     # agent's name into its hook command: that is how the guard learns who is calling (Copilot payloads carry no
-    # agent identity). Rendered into every Copilot agent; {name} = the agent.
+    # agent identity). Rendered into every Copilot agent; {name} = the agent, {fw} = the framework's path from the
+    # workspace (D-085; nothing in this repo).
     identity_hook:
       event: PreToolUse
-      command: "node scripts/hooks/pretooluse.mjs --host vscode --agent {name}"
+      command: "node {fw}/scripts/hooks/pretooluse.mjs --host vscode --agent {name}"
     forbidden_in_body: ["vscode/askQuestions", ask_user, "playwright/browser_", runSubagent, run_in_terminal]

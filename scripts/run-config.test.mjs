@@ -146,7 +146,7 @@ test("about is validated and defaults to a public product", () => {
 // ---- selectable steps and the human's own test case files ----
 import { setRunConfig, parseSetArgs } from "./run-config.mjs";
 import { applyChanges, rewriteKeys } from "./lib/run-config-draft.mjs";
-import { repoRoot } from "./lib/contract.mjs";
+import { frameworkRoot } from "./lib/contract.mjs";
 
 test("steps: absent = all six; a subset of the six slugs, no duplicates; an unknown slug names the allowed set", () => {
   assert.deepEqual(validateRunConfig(base).normalized.steps, ["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"]);
@@ -192,12 +192,12 @@ const exampleRoot = () => {
   writeFile(path.join(root, "docs", "all cases.csv"), "id,module");
   const file = path.join(root, "config", "acme-crm.yaml");
   mkdir(path.dirname(file), { recursive: true });
-  writeFile(file, readFile(path.join(repoRoot, "config", "run-config.example.yaml"), "utf8"));
+  writeFile(file, readFile(path.join(frameworkRoot, "config", "run-config.example.yaml"), "utf8"));
   return { root, file };
 };
 
 test("the example config documents every new key and validates", () => {
-  const text = readFile(path.join(repoRoot, "config", "run-config.example.yaml"), "utf8");
+  const text = readFile(path.join(frameworkRoot, "config", "run-config.example.yaml"), "utf8");
   for (const re of [/^steps: \[explore, clarifications, testcases, playwright-ui, playwright-api, k6\]$/m, /^    testcases_file: null +# /m, /^  import: null +# /m, /^  # types: \[ui, api, performance\]/m]) assert.match(text, re);
   assert.deepEqual(validateRunConfig(yaml.load(text)).errors, []);
 });

@@ -14,7 +14,7 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadJson, paths, repoRoot, validateData } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { writeAtomic, writeJson } from "./lib/files.mjs";
 import { narrativeProblems, renderDeck, reportPaths, stampReport } from "./lib/report.mjs";
 
@@ -32,7 +32,7 @@ function readInput(file, schema, label) {
   return validateData(schema, data).then((errs) => (errs.length ? { problems: errs.map((e) => `${label}: ${e}`) } : { data, problems: [] }));
 }
 
-export async function main(argv, { root = repoRoot } = {}) {
+export async function main(argv, { root = workspaceRoot } = {}) {
   const [cmd, product, ...rest] = argv;
   if (!["render", "check", "paths"].includes(cmd) || !product || rest.length) return { code: 2, out: { errors: [USAGE] } };
   const p = paths(product, root);

@@ -8,10 +8,10 @@
 import { existsSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
-import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot } from "./lib/contract.mjs";
 import { addIssue, issuesPath, readIssues } from "./lib/framework-issues.mjs";
 
-export function main(argv, { root = repoRoot } = {}) {
+export function main(argv, { root = workspaceRoot } = {}) {
   const [cmd, product, ...rest] = argv;
   const { values: v } = parseArgs({
     args: rest,

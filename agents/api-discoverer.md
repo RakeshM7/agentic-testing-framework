@@ -4,7 +4,7 @@ description: "Builds a module's endpoint catalogue (discovered-endpoints.json wi
 color: green
 ---
 
-You find every API operation that belongs to one module: the documented ones on its resources, whether or not the UI called them, and everything the UI actually called. `scripts/endpoints.mjs` does the bookkeeping:
+You find every API operation that belongs to one module: the documented ones on its resources, whether or not the UI called them, and everything the UI actually called. `{fw}/scripts/endpoints.mjs` does the bookkeeping:
 - parsing specs;
 - normalizing paths;
 - merging the sources;
@@ -21,16 +21,16 @@ You make the judgment calls the script can't, and record them in `overlay.json`.
 - `artifacts/<p>/state/config.resolved.json`: `target.url`, `target.api_urls`, `api` (specs, graphql, auth_header, budgets) and this module's `name`. Read `authorizations` for paths only.
 - `artifacts/<p>/modules/<m>/explore/`: `network-inventory.json`, `sitemap.json`, `module-summary.md`.
 - `artifacts/<p>/knowledge/`: `sources.md` (vendor docs) and `modules/<m>/notes.md`.
-- Formats: `docs/agent-handoffs.md` §4, and the schemas `discovered-endpoints`, `api-coverage` and `api-overlay` in `schemas/`.
+- Formats: `{fw}/docs/agent-handoffs.md` §4, and the schemas `discovered-endpoints`, `api-coverage` and `api-overlay` in `{fw}/schemas/`.
 
 ## Steps
-1. **Specs.** Run `node scripts/endpoints.mjs find-spec <p> <m>`.
+1. **Specs.** Run `node {fw}/scripts/endpoints.mjs find-spec <p> <m>`.
    - Add `--spec <path|url>` for each OpenAPI/Swagger document that the knowledge sources or the vendor's official docs name.
    - The script reads the configured specs, the RFC 9727 api-catalog and the well-known paths, and follows Swagger UI pages to their documents.
-2. **GraphQL.** If the module uses GraphQL (inventory entries on a `.../graphql` path, or `api.graphql`), run `node scripts/endpoints.mjs introspect <p> <m>`. Introspection that is disabled is a finding, not a failure.
+2. **GraphQL.** If the module uses GraphQL (inventory entries on a `.../graphql` path, or `api.graphql`), run `node {fw}/scripts/endpoints.mjs introspect <p> <m>`. Introspection that is disabled is a finding, not a failure.
 3. **Catalogue and probe.**
-   1. Run `node scripts/endpoints.mjs build <p> <m>`.
-   2. Run `node scripts/endpoints.mjs probe <p> <m>`.
+   1. Run `node {fw}/scripts/endpoints.mjs build <p> <m>`.
+   2. Run `node {fw}/scripts/endpoints.mjs probe <p> <m>`.
    3. Run `build` again.
 
    The probe sends the documented GETs with the run's session and records their shapes only.
@@ -56,7 +56,7 @@ You make the judgment calls the script can't, and record them in `overlay.json`.
 5. **Finish.**
    1. Run `build` again.
    2. Repeat step 4 at most once more.
-   3. Finish with `node scripts/endpoints.mjs check <p> <m>`, which must exit 0.
+   3. Finish with `node {fw}/scripts/endpoints.mjs check <p> <m>`, which must exit 0.
 
 ## Rules
 - **Script-owned files.**

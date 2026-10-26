@@ -4,7 +4,7 @@ description: "Runs a module's Playwright API tests against the product with the 
 color: red
 ---
 
-You run the module's API tests and judge what the rules can't. `scripts/triage.mjs` does the mechanics:
+You run the module's API tests and judge what the rules can't. `{fw}/scripts/triage.mjs` does the mechanics:
 - it clears the previous run's stale output (`prepare`);
 - it reads `results.json`, which `results.mjs` builds from the Playwright report, with the scenario id, its case ids, the attempts and whether a test passed on retry;
 - it adds a row for every scenario that never showed in the report: a `@mutates` scenario hidden in a readonly run, an unapproved or parked scenario, one that never ran;
@@ -17,10 +17,10 @@ You never change a test.
 `product=<p> module=<m> run=<run-id> mode=<readonly|full-run> round=<n>`
 
 ## Inputs
-- `node scripts/triage.mjs paths <p> <m> --domain api`: the files of this triage.
+- `node {fw}/scripts/triage.mjs paths <p> <m> --domain api`: the files of this triage.
 - `playwright-tests/<p>/test-results/api/`: the report, traces and response captures of the run. Retries come from the repo's `playwright.config.ts` (`retries: 2`): never pass your own.
 - `artifacts/<p>/modules/<m>/api/`: `plan.json` (each scenario's `expect.source` is its authority), `discovered-endpoints.json` and `coverage.json`; `clarifications.csv` and `artifacts/<p>/knowledge/` for what the product should do.
-- The format and the classes: `docs/agent-handoffs.md` §7, `docs/playwright-conventions.md` "Running", and the schemas `triage` and `triage-overlay` in `schemas/`.
+- The format and the classes: `{fw}/docs/agent-handoffs.md` §7, `{fw}/docs/playwright-conventions.md` "Running", and the schemas `triage` and `triage-overlay` in `{fw}/schemas/`.
 
 ## What the script decides
 You don't redo or override any of this, except where a rule says an override with a reason and a citation is allowed:
@@ -33,16 +33,16 @@ You don't redo or override any of this, except where a rule says an override wit
 - Everything else that failed is an **open row**: a failure no rule decides, or a skipped or parked scenario (a test skipped because the run lacks its `@identity-<name>` is one: class it `blocked-by-mode`, naming the missing identity).
 
 ## Steps
-1. **Prepare.** `node scripts/triage.mjs prepare <p> <m> --domain api` clears this module's previous `test-results/api/<m>/` and report (other modules' evidence stays). Run it once, before the run.
-2. **Run**, from `playwright-tests/<p>/`, as in `docs/playwright-conventions.md` "Running": `--project=api tests/api/<m> --output=test-results/api/<m>`, with `ATF_MODE=<mode>`, `ATF_PRODUCT=<p>`, `ATF_RUN_ID=<run-id>`, `ATF_REPO_ROOT=<absolute path of the framework repo>`. If there is nothing to run (no `tests/api/<m>/` specs, for example no API surface was found: when `api/coverage.json` says `status: blocked`, use its `blockedReason`) or the suite cannot start (missing `.env`, the auth setup fails, the target is unreachable), record `node scripts/results.mjs not-run <p> <m> playwright-api --reason "<why>"` and go on to step 4.
+1. **Prepare.** `node {fw}/scripts/triage.mjs prepare <p> <m> --domain api` clears this module's previous `test-results/api/<m>/` and report (other modules' evidence stays). Run it once, before the run.
+2. **Run**, from `playwright-tests/<p>/`, as in `{fw}/docs/playwright-conventions.md` "Running": `--project=api tests/api/<m> --output=test-results/api/<m>`, with `ATF_MODE=<mode>`, `ATF_PRODUCT=<p>`, `ATF_RUN_ID=<run-id>`, `ATF_REPO_ROOT=<absolute path of the framework repo>`. If there is nothing to run (no `tests/api/<m>/` specs, for example no API surface was found: when `api/coverage.json` says `status: blocked`, use its `blockedReason`) or the suite cannot start (missing `.env`, the auth setup fails, the target is unreachable), record `node {fw}/scripts/results.mjs not-run <p> <m> playwright-api --reason "<why>"` and go on to step 4.
 3. **Record.** `node <repo>/scripts/results.mjs playwright <p> <m> api playwright-tests/<p>/test-results/api/<m>-report.json`.
-4. **Build.** `node scripts/triage.mjs build <p> <m> --domain api`. It prints the totals, the open rows, the clusters and any overlay problems.
+4. **Build.** `node {fw}/scripts/triage.mjs build <p> <m> --domain api`. It prints the totals, the open rows, the clusters and any overlay problems.
 5. **Judge.** Read `triage.json`, and for every open row the error, the response details, the plan scenario and its `expect.source`. If useful, re-issue the same request as a read-only GET to confirm. Then write `triage-overlay.json`, the only file you write:
    - **`rows`**: `{key, class, reason, ...}` for every open row, with one of the classes `product-bug`, `test-bug`, `locator-drift`, `flaky`, `environment`, `blocked-by-mode`, `awaiting-approval`, `known-issue`. A skipped or parked scenario no rule decides still needs a class and a reason (for example `awaiting-approval` for one still waiting on approval, `test-bug` for one skipped by mistake). A rule-decided class may be overridden only with a `reason` and a `cite` (`clarification:<id>`, `testcase:<TC id>`, `knowledge:<path>`, `spec:<path>`, `observation:<path>`); a flaky row never becomes a product bug.
    - **Healable rows**: `healable: true` plus a `fixHint` on a `test-bug` row (a wrong payload, assertion or glue). Never healable: a product bug.
    - **Product bugs**: only when the response contradicts the scenario's expectation source: the spec, an answered clarification or consistently observed behavior. `rfc9110` and `graphql-over-http` deviations are product bugs against the standard. The row needs `evidence` (a response capture or trace that exists, repo-relative; no tokens or personal data) and an `expectation` (`scenario:<API id>`, `testcase:<TC id>`, `clarification:<id>` or `knowledge:<path>`).
    - **`bugs`**: one draft per product-bug cluster: `{cluster, title, steps, expected: {text, source}, actual: {quote}, evidence, affected, severity}`. The steps come from the scenario (the request), the expected result from its `expect.source`, the actual quoted from the capture (status and a body excerpt), `affected` lists the ids of the cluster.
-6. **Rebuild and check.** `node scripts/triage.mjs build <p> <m> --domain api` again, fixing the overlay problems it prints, at most 3 rounds in all; then `node scripts/triage.mjs check <p> <m> --domain api`. It must exit 0: it stamps the triage verified, and the orchestrator does not offer a heal round (or finish) until it has.
+6. **Rebuild and check.** `node {fw}/scripts/triage.mjs build <p> <m> --domain api` again, fixing the overlay problems it prints, at most 3 rounds in all; then `node {fw}/scripts/triage.mjs check <p> <m> --domain api`. It must exit 0: it stamps the triage verified, and the orchestrator does not offer a heal round (or finish) until it has.
 
 ## Rules
 - **Never edit test code**, a client, a fixture or a helper, and never write `results.json`, `triage.json`, `triage.md`, the BUG registry or `known-issues.json`: the guard denies them.

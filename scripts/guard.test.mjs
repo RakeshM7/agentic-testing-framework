@@ -14,7 +14,7 @@ import { startRun, tempRoot } from "./test-helpers.mjs";
 // Calls as Claude Code's hook sends them, through the Claude adapter (the guard itself only sees canonical calls).
 const call = (agent, tool_name, tool_input) => normalize({ agent_type: agent, tool_name, tool_input }, { env: { CLAUDE_PROJECT_DIR: "/repo" }, host: "claude-code" });
 const sh = (agent, command) => call(agent, "Bash", { command });
-const allowed = (root, input, env = {}) => checkTool(input, root, env).allowed;
+const allowed = (root, input, env = {}) => checkTool(input, root, env, { framework: root }).allowed;
 
 const RO = startRun({ mode: "readonly" });
 const FULL = startRun({ mode: "full-run" });
@@ -295,7 +295,7 @@ test("no agent can write a managed foundation file directly, whatever its write 
   for (const root of [FULL.root, RO.root])
     for (const agent of agents)
       for (const f of managed) {
-        const v = checkTool(call(agent, "Write", { file_path: path.join(root, f) }), root, {});
+        const v = checkTool(call(agent, "Write", { file_path: path.join(root, f) }), root, {}, { framework: root });
         assert.equal(v.allowed, false, `${agent} may not write ${f}`);
       }
   // the fixers and writers keep their own folders, only the managed files are carved out
@@ -305,21 +305,21 @@ test("no agent can write a managed foundation file directly, whatever its write 
   // fixtures/<side>/index.ts is generated on both sides (D-056): no agent writes it, whatever its write list says
   for (const agent of agents)
     for (const f of ["playwright-tests/acme/fixtures/ui/index.ts", "playwright-tests/acme/fixtures/api/index.ts", "playwright-tests/acme/fixtures/ui/pages/contacts.ts", "playwright-tests/acme/fixtures/api/clients/contacts.ts"]) {
-      const v = checkTool(call(agent, "Write", { file_path: path.join(FULL.root, f) }), FULL.root, {});
+      const v = checkTool(call(agent, "Write", { file_path: path.join(FULL.root, f) }), FULL.root, {}, { framework: FULL.root });
       assert.equal(v.allowed, false, `${agent} may not write ${f}`);
       assert.equal(v.rule, "managed-file", f);
     }
   assert.equal(ok("pw-api-tests-writer", "playwright-tests/acme/helpers/api/contacts.payloads.ts"), true);
   assert.equal(ok("k6-fixer", "k6-tests/acme/scripts/slots/contacts.js"), true);
   assert.equal(ok("k6-fixer", "k6-tests/acme/lib/ext/dates.js"), true);
-  assert.equal(checkTool(call("pw-ui-fixer", "Write", { file_path: path.join(FULL.root, "playwright-tests/acme/fixtures/ui/base.ts") }), FULL.root, {}).rule, "managed-file");
+  assert.equal(checkTool(call("pw-ui-fixer", "Write", { file_path: path.join(FULL.root, "playwright-tests/acme/fixtures/ui/base.ts") }), FULL.root, {}, { framework: FULL.root }).rule, "managed-file");
   // a host that can't name the caller gets the run's combined ceiling (D-035): still no managed file
   const copilot = { ...call("pw-ui-fixer", "Write", { file_path: path.join(FULL.root, "playwright-tests/acme/fixtures/ui/base.ts") }), agent: undefined, host: "copilot-cli" };
-  assert.equal(checkTool(copilot, FULL.root, {}).allowed, false);
+  assert.equal(checkTool(copilot, FULL.root, {}, { framework: FULL.root }).allowed, false);
 });
 
 test("managed foundation files: another spelling of the same file is still managed (case, trailing dots and spaces, NTFS streams, ./.., 8.3 names)", () => {
-  const w = (agent, rel) => checkTool(call(agent, "Write", { file_path: path.join(FULL.root, rel) }), FULL.root, {});
+  const w = (agent, rel) => checkTool(call(agent, "Write", { file_path: path.join(FULL.root, rel) }), FULL.root, {}, { framework: FULL.root });
   for (const [agent, rel] of [
     ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/Base.ts"],
     ["pw-ui-fixer", "playwright-tests/acme/fixtures/ui/base.ts."],
@@ -360,7 +360,7 @@ test("managed foundation files: a junction or symlink inside a writable folder c
     return;
   }
   for (const agent of ["pw-ui-fixer", "pw-ui-tests-writer", "pw-ui-scaffolder", undefined]) {
-    const v = checkTool({ ...call(agent, "Write", { file_path: pw("helpers/ui/link/base.ts") }), ...(agent ? {} : { agent: undefined, host: "copilot-cli" }) }, FULL.root, {});
+    const v = checkTool({ ...call(agent, "Write", { file_path: pw("helpers/ui/link/base.ts") }), ...(agent ? {} : { agent: undefined, host: "copilot-cli" }) }, FULL.root, {}, { framework: FULL.root });
     assert.equal(v.allowed, false, `${agent ?? "unnamed"} through the link`);
     assert.equal(v.rule, "managed-file");
   }
@@ -368,8 +368,8 @@ test("managed foundation files: a junction or symlink inside a writable folder c
 });
 
 test("managed foundation files: directory short names, \\\\?\\ and \\\\.\\ prefixes and UNC paths to this machine reach no managed file", () => {
-  const unnamed = (file, r = RO) => checkTool({ ...call(undefined, "Write", { file_path: file }), agent: undefined, host: "copilot-cli" }, r.root, {});
-  const named = (file) => checkTool(call("pw-ui-fixer", "Write", { file_path: file }), FULL.root, {});
+  const unnamed = (file, r = RO) => checkTool({ ...call(undefined, "Write", { file_path: file }), agent: undefined, host: "copilot-cli" }, r.root, {}, { framework: r.root });
+  const named = (file) => checkTool(call("pw-ui-fixer", "Write", { file_path: file }), FULL.root, {}, { framework: FULL.root });
   for (const rel of ["PLAYWR~1/acme/fixtures/ui/base.ts", "playwright-tests/acme/FIXTUR~1/ui/base.ts", "playwright-tests/acme/fixtures/ui/BASE~1.TS", "PLAYWR~2/ACME/FIXTUR~1/UI/AUTHSE~1.TS", "K6-TES~1/acme/lib/config.js", "playwright-tests/acme/utils/SHARED~1/env.ts"]) {
     assert.equal(unnamed(path.join(RO.root, rel)).rule, "managed-file", rel);
     assert.equal(named(path.join(FULL.root, rel)).allowed, false, rel);
@@ -391,19 +391,19 @@ test("managed foundation files: unnamed callers can't write them either, in ever
   const unnamed = (root, host) => ({ ...call(undefined, "Write", { file_path: file(root) }), agent: undefined, host });
   for (const r of [RO, FULL])
     for (const host of ["copilot-cli", "claude-code", "vscode-agent-host"]) {
-      const v = checkTool(unnamed(r.root, host), r.root, {});
+      const v = checkTool(unnamed(r.root, host), r.root, {}, { framework: r.root });
       assert.equal(v.allowed, false, `${host} in ${r === RO ? "readonly" : "full-run"}`);
       assert.equal(v.rule, "managed-file");
     }
-  assert.equal(checkTool(unnamed(RO.root, "copilot-cli"), RO.root, {}).allowed, false);
-  assert.equal(checkTool({ ...unnamed(RO.root, "copilot-cli"), paths: [path.join(RO.root, "playwright-tests/acme/helpers/ui/dates.ts")] }, RO.root, {}).allowed, true, "an extension file keeps the mode rules");
+  assert.equal(checkTool(unnamed(RO.root, "copilot-cli"), RO.root, {}, { framework: RO.root }).allowed, false);
+  assert.equal(checkTool({ ...unnamed(RO.root, "copilot-cli"), paths: [path.join(RO.root, "playwright-tests/acme/helpers/ui/dates.ts")] }, RO.root, {}, { framework: RO.root }).allowed, true, "an extension file keeps the mode rules");
   // with two active runs, the other product's run can't let it through
   const two = startRun();
   const { initRun } = await import("./run.mjs");
   const { writeConfig } = await import("./test-helpers.mjs");
-  const beta = initRun(writeConfig(two.root, { product: "beta" }), { root: two.root, runId: "beta-run-1", env: { CLAUDECODE: "1" } });
+  const beta = initRun(writeConfig(two.root, { product: "beta" }), { root: two.root, framework: two.root, runId: "beta-run-1", env: { CLAUDECODE: "1" } });
   assert.deepEqual(beta.errors ?? [], []);
-  assert.equal(checkTool(unnamed(two.root, "copilot-cli"), two.root, {}).allowed, false);
+  assert.equal(checkTool(unnamed(two.root, "copilot-cli"), two.root, {}, { framework: two.root }).allowed, false);
 });
 
 test("k6-workload-designer runs workload.mjs build/check/paths only and writes only its workload overlay (D-057)", () => {
@@ -447,11 +447,11 @@ test("nobody writes the k6 workload or the generated k6 code directly, in any mo
   for (const { root } of [FULL, RO])
     for (const agent of [...agents, undefined])
       for (const f of managed) {
-        const v = checkTool(call(agent, "Write", { file_path: path.join(root, f) }), root, {});
+        const v = checkTool(call(agent, "Write", { file_path: path.join(root, f) }), root, {}, { framework: root });
         assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${f}`);
         assert.equal(v.rule, "managed-file", `${agent}: ${f}`);
       }
-  const msg = (f) => checkTool(call("k6-fixer", "Write", { file_path: path.join(FULL.root, f) }), FULL.root, {}).reason;
+  const msg = (f) => checkTool(call("k6-fixer", "Write", { file_path: path.join(FULL.root, f) }), FULL.root, {}, { framework: FULL.root }).reason;
   assert.match(msg("k6-tests/acme/scripts/contacts-smoke-1.js"), /generated by scripts\/k6-code\.mjs/);
   assert.match(msg("artifacts/acme/modules/contacts/k6/workload.json"), /written by scripts\/workload\.mjs/);
   // the agents' own files stay writable
@@ -471,7 +471,7 @@ test("the runner-triagers write only their triage overlay; results, triage, the 
   for (const { root } of [FULL, RO])
     for (const agent of [...agents, undefined])
       for (const f of managed) {
-        const v = checkTool(call(agent, "Write", { file_path: path.join(root, f) }), root, {});
+        const v = checkTool(call(agent, "Write", { file_path: path.join(root, f) }), root, {}, { framework: root });
         assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${f}`);
         assert.equal(v.rule, "managed-file", `${agent}: ${f}`);
       }
@@ -527,7 +527,7 @@ test("the code reviewers run only review.mjs check and write only their review.j
     for (const agent of [...agents, undefined])
       for (const dom of ["testcases", "playwright-ui", "playwright-api", "k6"])
         for (const f of ["review-check.json", "fix-snapshot.json", "review-findings.md"]) {
-          const v = checkTool(call(agent, "Write", { file_path: path.join(run.root, `${R}/${dom}/${f}`) }), run.root, {});
+          const v = checkTool(call(agent, "Write", { file_path: path.join(run.root, `${R}/${dom}/${f}`) }), run.root, {}, { framework: run.root });
           assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${dom}/${f}`);
           assert.equal(v.rule, "managed-file", `${agent}: ${dom}/${f}`);
         }
@@ -834,7 +834,7 @@ test("worker requests (G10, D-060): only the askers run requests.mjs add; nobody
   // nobody, named or not, writes the file: the scripts do
   for (const agent of [...Object.keys(perms), undefined])
     for (const dom of ["playwright-ui", "playwright-api", "k6"]) {
-      const v = checkTool(call(agent, "Write", { file_path: path.join(FULL.root, `${R}/${dom}/requests.json`) }), FULL.root, {});
+      const v = checkTool(call(agent, "Write", { file_path: path.join(FULL.root, `${R}/${dom}/requests.json`) }), FULL.root, {}, { framework: FULL.root });
       assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${dom}/requests.json`);
       assert.equal(v.rule, "managed-file");
     }
@@ -858,7 +858,7 @@ test("report-generator writes only report/narrative.json and runs only report-da
   for (const run of [FULL, RO])
     for (const agent of [...Object.keys(perms), undefined])
       for (const f of ["report.json", "index.html", "report-check.json"]) {
-        const v = checkTool(call(agent, "Write", { file_path: path.join(run.root, `${D}/${f}`) }), run.root, {});
+        const v = checkTool(call(agent, "Write", { file_path: path.join(run.root, `${D}/${f}`) }), run.root, {}, { framework: run.root });
         assert.equal(v.allowed, false, `${agent ?? "unnamed"} may not write ${f}`);
         assert.equal(v.rule, "managed-file", `${agent}: ${f}`);
       }
@@ -896,7 +896,10 @@ test("feedback-implementor-agent writes the G0-G11 framework files and never a s
 test("every framework script is writable by feedback-implementor-agent or deliberately carved out, so a new file forces a decision (D-062)", () => {
   const carved = new Set([
     "scripts/feedback.mjs", "scripts/ledger.mjs", "scripts/feedback.test.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs", "scripts/ledger.test.mjs", "scripts/decisions.mjs",
-    ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "hook-log", "agent-scope", "feedback", "sweep", "telemetry"].map((n) => `scripts/lib/${n}.mjs`),
+    ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "hook-log", "agent-scope", "feedback", "sweep", "telemetry", "roots", "config"].map((n) => `scripts/lib/${n}.mjs`),
+    // D-085: roots and config decide where the guard looks and which permissions a run freezes; workspace.test covers
+    // the read-only framework
+    "scripts/workspace.test.mjs",
   ]);
   const files = [];
   // node_modules is git-ignored and never the framework's own code, wherever an install put it
@@ -929,7 +932,7 @@ test("readonly input (D-076): typing, selecting and key presses pass only while 
   const ro = startRun({ mode: "readonly" });
   const b = (agent, tool) => allowed(ro.root, call(agent, `mcp__playwright__browser_${tool}`, {}));
   assert.equal(b("module-explorer", "type"), false, "no init page in config/mcp.yaml: input is mutating, as before");
-  assert.match(checkTool(call("module-explorer", "mcp__playwright__browser_type", {}), ro.root).reason, /does not run the framework's network guard/);
+  assert.match(checkTool(call("module-explorer", "mcp__playwright__browser_type", {}), ro.root, {}, { framework: ro.root }).reason, /does not run the framework's network guard/);
   writeFileSync(path.join(ro.root, "config", "mcp.yaml"), `browser_server: playwright\nservers:\n  playwright:\n    command: npx\n    args:\n      - "--isolated"\n      - "--init-page"\n      - "scripts/browser/init-page.cjs"\n`);
   for (const t of ["type", "fill_form", "select_option", "press_key", "click", "hover"]) assert.equal(b("module-explorer", t), true, `readonly ${t}`);
   for (const t of ["file_upload", "drag", "drop", "handle_dialog", "evaluate", "run_code_unsafe"]) assert.equal(b("module-explorer", t), false, `readonly ${t} stays blocked`);

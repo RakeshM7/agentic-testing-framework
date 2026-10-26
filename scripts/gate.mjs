@@ -11,7 +11,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { loadJson, paths, repoRoot } from "./lib/contract.mjs";
+import { loadJson, paths, workspaceRoot } from "./lib/contract.mjs";
 import { writeAtomic } from "./lib/files.mjs";
 import { SEVERITIES, renderFindings } from "./lib/gate/common.mjs";
 import { gateK6 } from "./lib/gate/k6.mjs";
@@ -20,7 +20,7 @@ import { gateTestcases } from "./lib/gate/testcases.mjs";
 
 export const GATED = ["testcases", "playwright-ui", "playwright-api", "k6"];
 
-export function gate(product, module, domain, { root = repoRoot, compile = true } = {}) {
+export function gate(product, module, domain, { root = workspaceRoot, compile = true } = {}) {
   if (!GATED.includes(domain)) throw new Error(`domain must be one of [${GATED}]`);
   const p = paths(product, root);
   if (!existsSync(p.lockFile)) throw new Error(`no active run for product '${product}'`);

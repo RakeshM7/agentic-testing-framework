@@ -6,7 +6,8 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import yaml from "js-yaml";
+import { loadConfig } from "./config.mjs";
+import { sameDir } from "./roots.mjs";
 
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 
@@ -23,22 +24,25 @@ function walk(dir, base = dir) {
   });
 }
 
-const readYaml = (f) => {
+const readConfig = (name, framework) => {
   try {
-    return yaml.load(readFileSync(f, "utf8")) ?? {};
+    return loadConfig(name, { framework }) ?? {};
   } catch {
     return {};
   }
 };
 
+// framework: the framework root the run is made with (D-085: its commit, config and templates).
 // -> {framework: {commit, dirty} | null, browserServer, models, templates, node}
-export function collectProvenance(root) {
-  const commit = git(root, ["rev-parse", "HEAD"]);
-  const status = commit ? git(root, ["status", "--porcelain", "--untracked-files=no"]) : null;
-  const mcp = readYaml(path.join(root, "config", "mcp.yaml"));
+export function collectProvenance(framework) {
+  // only the framework's own checkout: an installed framework inside a workspace's repository has no commit of its own
+  const top = git(framework, ["rev-parse", "--show-toplevel"]);
+  const commit = top && sameDir(top, framework) ? git(framework, ["rev-parse", "HEAD"]) : null;
+  const status = commit ? git(framework, ["status", "--porcelain", "--untracked-files=no"]) : null;
+  const mcp = readConfig("mcp.yaml", framework);
   const server = mcp.servers?.[mcp.browser_server];
-  const models = readYaml(path.join(root, "config", "models.yaml"));
-  const templates = path.join(root, "templates");
+  const models = readConfig("models.yaml", framework);
+  const templates = path.join(framework, "templates");
   return {
     framework: commit ? { commit, dirty: !!status } : null,
     browserServer: (server?.args ?? []).map(String).find((a) => /^@playwright\/mcp(@|$)/.test(a)) ?? null,

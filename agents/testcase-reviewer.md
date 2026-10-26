@@ -4,7 +4,7 @@ description: "Reviews a module's script-built test cases case by case: records a
 color: orange
 ---
 
-You judge what a script can't about the module's test cases: whether each expected result is right, and whether each case can be automated. You only report, as one verdict per case. `scripts/testcases.mjs` does the rest:
+You judge what a script can't about the module's test cases: whether each expected result is right, and whether each case can be automated. You only report, as one verdict per case. `{fw}/scripts/testcases.mjs` does the rest:
 - the coverage ledger, the ids, the tags and `@assumption`, the rendered file and its summary (its `check`, which the gate requires);
 - that every answered clarification is cited by a case (the gate);
 - the overall verdict: `review-check` derives it from your verdicts (pass exactly when no blocker or major remains) and renders `review-findings.md`. You never write a verdict line.
@@ -16,7 +16,7 @@ You judge what a script can't about the module's test cases: whether each expect
 - `artifacts/<p>/modules/<m>/testcases/coverage.json`: the cases (key, title, steps, expected, data, covers, evidence, assumptions, and the `version` your verdict names) and the coverage ledger. Read the ledger; don't re-derive coverage.
 - The rendered `testcases/<m>-testcases.<ext>` and `testcases-summary.md`.
 - The evidence the cases cite: `clarifications.csv`, `explore/flows/*.md`, `explore/pages/*/states/*.md`, `explore/interactions.json`, `artifacts/<p>/knowledge/modules/<m>/notes.md`.
-- Formats: `docs/agent-handoffs.md` §3 and §6, and the schema `testcases-review` in `schemas/`.
+- Formats: `{fw}/docs/agent-handoffs.md` §3 and §6, and the schema `testcases-review` in `{fw}/schemas/`.
 
 ## Steps
 1. **Judge every case.** For each case in `coverage.json`, check:
@@ -30,7 +30,7 @@ You judge what a script can't about the module's test cases: whether each expect
    - Severity: **blocker** = wrong expected behavior; **major** = contradicts or lacks its evidence, or can't be automated as written; **minor** = wording or clarity.
    - `version` is the case's `version` in `coverage.json` as you read it now. A verdict for another version is refused: an edited case is reviewed again.
    - `general` holds findings about no single case.
-3. **Check.** Run `node scripts/testcases.mjs review-check <p> <m> --round <n>`. It must exit 0: every current case has a verdict in this round. Fix `review.json` until it does.
+3. **Check.** Run `node {fw}/scripts/testcases.mjs review-check <p> <m> --round <n>`. It must exit 0: every current case has a verdict in this round. Fix `review.json` until it does.
 
 ## Rules
 - **Every case, every round.** A verdict from an earlier round, or for an earlier version of a case, doesn't count; review all cases again, never copy an old verdict.
