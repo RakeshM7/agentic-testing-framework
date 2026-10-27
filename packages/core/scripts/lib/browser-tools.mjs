@@ -1,6 +1,8 @@
 // The Playwright MCP browser tools, by what they can do to the product under test. One list, used by the agent build
 // (which tools an agent with `live_target.browser: read | mutate` gets) and by the guard (which calls are mutating).
-// Names are the tool's short name, without the platform's prefix (mcp__playwright__browser_<name>, playwright/browser_<name>).
+// Names are the tool's short name, without the platform's prefix (mcp__playwright__browser_<name>,
+// playwright/browser_<name>, and mcp__plugin_atf_playwright__browser_<name> from the framework's Claude Code plugin,
+// read by scripts/hooks/hosts/claude.mjs).
 // Dependency-free: the guard imports it on every hook call.
 
 import { configText } from "./config.mjs";

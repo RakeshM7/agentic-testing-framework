@@ -6,8 +6,8 @@
 // has, and what to leave alone. applyInit() writes exactly that, and refuses a file that changed since it was read, so a
 // re-run on an existing workspace is safe and reports every file as present. A file the plan can't read safely (a
 // package.json that isn't a JSON object, a malformed init block in .gitignore, an atf/atf.json the decision hook
-// can't read, with a "cloud_agent" that isn't a boolean or a "contract" that isn't a whole number) stops the whole init
-// before anything is written.
+// can't read, with a "cloud_agent" that isn't a boolean, a "claude_plugin" that isn't one or comes without a valid
+// "plugin_marketplace", or a "contract" that isn't a whole number) stops the whole init before anything is written.
 //
 // The committed files (AGENTS.md, atf/decisions.md, config/README.md, .vscode/settings.json) name the framework as
 // node_modules/<package>, where npm installs it, whatever runs init: the package from npx's cache, a copy already
@@ -37,7 +37,8 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import path from "node:path";
 import { CONTRACT_VERSION, workspaceContract } from "./contract.mjs";
 import { decisionsFile } from "./decisions.mjs";
-import { FW_TOKEN, WORKSPACE_MARKER, expandFw, findWorkspace, isInstalled, isWithin } from "./roots.mjs";
+import { claudePluginOf } from "./provenance.mjs";
+import { FW_TOKEN, WORKSPACE_MARKER, expandFw, findWorkspace, isInstalled, isWithin, readMarker } from "./roots.mjs";
 import { SETUP_TEMPLATE, SETUP_WORKFLOW, TOKEN_ENV, cloudAgent } from "./sync.mjs";
 
 export const TEMPLATES = ["templates", "workspace"];
@@ -203,6 +204,11 @@ export function initPlan({ dir, framework }) {
     if (opt.error) {
       if (opt.error !== log.error) errors.push(`${opt.error}; fix it, then run atf init again`);
     } else if (opt.on) create(SETUP_WORKFLOW, read(path.join(framework, ...SETUP_TEMPLATE.split("/"))), [`the Copilot cloud agent's setup steps, yours from now on; merge it to the default branch and add the Agents secret ${TOKEN_ENV}`]);
+    // the Claude Code plugin opt-in, judged as the installed package the workspace gets will judge it (a source checkout
+    // running init makes a client workspace too); its sync writes the plugin keys
+    const marker = readMarker(root);
+    const plugin = marker.error ? {} : claudePluginOf(marker.cfg, { installed: true });
+    if (plugin.error) errors.push(`${plugin.error}; fix it, then run atf init again`);
   }
   return { actions, errors, depsAdded, fwRel, name: fwPkg.name };
 }

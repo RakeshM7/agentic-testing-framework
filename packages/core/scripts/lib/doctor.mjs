@@ -6,8 +6,9 @@
 // Groups, and the stages that need them (STAGE_NEEDS):
 //   base     Node.js, the framework's own dependencies, and its peer dependency (playwright) in the workspace; the
 //            workspace's artifact contract (atf/atf.json "contract") against this code's; for
-//            an installed framework, the host files in sync with it (atf check), and with the cloud-agent opt-in its
-//            setup workflow and the committed files git must not ignore
+//            an installed framework, the host files in sync with it (atf check), with the cloud-agent opt-in its
+//            setup workflow and the committed files git must not ignore, and with the Claude Code plugin opt-in the
+//            plugin's version against the package's and its entry in .claude/settings.json
 //   login    the browser the login opens (lib/login.mjs, D-069): Microsoft Edge, else Google Chrome, else the
 //            Chromium build of the framework's Playwright
 //   browser  the Playwright MCP server's browser, and its init page (which loads the run's session, D-076)
@@ -27,6 +28,7 @@ import { INIT_PAGE } from "./browser-tools.mjs";
 import { configLocation, ejectedRel, loadConfig, overlayRel } from "./config.mjs";
 import { CONTRACT_VERSION, STAGES, UNRECORDED_CONTRACT, contractProblem, frameworkRoot, paths, workspaceContract } from "./contract.mjs";
 import { tryReadJson, writeJson } from "./files.mjs";
+import { PLUGIN_ID, claudeMode, pluginVersionCheck } from "./provenance.mjs";
 import { expandFw, isInstalled } from "./roots.mjs";
 
 export const GROUPS = ["base", "login", "browser", "session", "repo", "k6", "target"];
@@ -99,8 +101,31 @@ export function packageDir(name, from) {
 async function base(ctx) {
   const out = deps(ctx);
   if (ctx.root) out.push(contractCheck(ctx));
-  if (ctx.root && isInstalled(ctx.framework)) out.push(...(await hostFiles(ctx)));
+  if (ctx.root && isInstalled(ctx.framework)) out.push(...(await hostFiles(ctx)), ...plugin(ctx));
   return out;
+}
+
+// The Claude Code plugin (atf/atf.json "claude_plugin", docs/packaging.md §3.12, draft P-11), in plugin mode only:
+//   plugin-version   the version the plugin recorded (artifacts/.atf-plugin.json, written by its SessionStart hook) must
+//                    be the installed package's: another fails, as run.mjs init refuses it; none yet only warns, since
+//                    no Claude Code session has started here (provenance.mjs pluginVersionCheck)
+//   plugin-enabled   .claude/settings.json enables the plugin for the project (sync writes the entry): a warning, as
+//                    a user may enable it in their own settings instead, and host-files already fails on a stale sync
+// A bad opt-in is host-files' failure (the sync refuses it), so nothing is said here.
+function plugin({ root, framework }) {
+  let mode;
+  try {
+    mode = claudeMode({ workspace: root, framework });
+  } catch {
+    return [];
+  }
+  if (!mode.on) return [];
+  const version = { id: "plugin-version", ...pluginVersionCheck({ workspace: root, framework }) };
+  const settings = tryReadJson(path.join(root, ".claude", "settings.json"));
+  const enabled = settings?.enabledPlugins?.[PLUGIN_ID] === true
+    ? { id: "plugin-enabled", ok: true, detail: `.claude/settings.json enables the ${PLUGIN_ID} plugin for the project` }
+    : { id: "plugin-enabled", ok: true, level: "warn", detail: `.claude/settings.json does not enable the ${PLUGIN_ID} plugin (enabledPlugins["${PLUGIN_ID}"]), so a Claude Code session here may start without the framework's agents`, fix: "npx atf sync (in the workspace) writes it" };
+  return [version, enabled];
 }
 
 // The workspace's artifact contract against this code's (docs/packaging.md §3.10), as run.mjs init refuses it: a

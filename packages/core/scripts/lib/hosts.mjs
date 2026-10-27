@@ -2,7 +2,8 @@
 // (config/permissions.yaml) can only be enforced where the guard learns who is calling. On hosts whose identity source
 // is `none`, a full-run call gets what at least one of the run's agents may do instead (scripts/lib/guard.mjs, D-035).
 //
-//   payload     the hook payload names the agent (Claude Code: `agent_type`)
+//   payload     the hook payload names the agent (Claude Code: `agent_type`); a name the adapter can't attribute to a
+//               framework agent (another plugin's agent) is marked `unattributed` and treated like `none` (D-035)
 //   agent-hook  each generated agent file carries its own hook with `--agent <name>` baked in by the build
 //               (VS Code's local agent: custom-agent `hooks`, Preview); calls outside a custom agent arrive unidentified
 //   none        the host's hook payload has no agent identity (Copilot CLI, VS Code chat on its Copilot CLI engine,
@@ -24,6 +25,13 @@ export const HOSTS = {
   "copilot-cloud": { identity: "none", label: "Copilot cloud coding agent" },
   unknown: { identity: "none", label: "an unrecognized host" },
 };
+
+// The framework's Claude Code plugin (packaging §3.12). Its name scopes what Claude Code reports for it: its agents
+// arrive as agent_type `atf:<name>`, and its MCP servers' tools are named `mcp__plugin_atf_<server>__<tool>`. The Claude
+// adapter (scripts/hooks/hosts/claude.mjs) reads both back as the framework's own; the plugin build names the plugin
+// from here, so the two can't drift apart.
+export const PLUGIN_NAME = "atf";
+export const PLUGIN_MCP_PREFIX = `mcp__plugin_${PLUGIN_NAME}_`;
 
 // Set by VS Code for the Copilot CLI runtime it hosts (VS Code agenthost.log: "Set CLI env").
 const vscodeCopilotEngine = (env) => env.GITHUB_COPILOT_INTEGRATION_ID === "vscode-chat";

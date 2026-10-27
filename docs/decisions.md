@@ -153,6 +153,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-095 | Semver with an artifact-contract version and tested migrations; a run never resumes across a breaking line | Accepted | 2026-10-26 |
 | D-096 | feedback-implementor-agent fixes a run's outputs; the framework is maintained by a dev-only framework-implementor-agent | Accepted | 2026-10-27 |
 | D-097 | Framework issues leave a client workspace only as a redacted, previewed export bundle | Accepted | 2026-10-27 |
+| D-098 | Claude Code also gets a private plugin carrying the agents and MCP servers, never the guard, version-locked to the npm package | Accepted | 2026-10-27 |
 
 ## Decisions
 
@@ -1946,3 +1947,47 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Why:** framework issues are the maintainers' to fix, and client product data must not leave without the client seeing exactly what goes. Placeholders keep the issues readable for the maintainers without the client's values.
 - **Affects:** `packages/core/scripts/run.mjs`, `packages/core/scripts/framework-issues.mjs`, `packages/core/scripts/lib/framework-issues.mjs`, `packages/core/scripts/lib/issues-bundle.mjs`, `packages/core/scripts/issues-bundle.test.mjs`, `packages/core/scripts/lib/zip.mjs`, `packages/core/scripts/zip.test.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/lib/init.mjs`
 - **Supersedes:** — · **Confirmed by the user on:** 2026-10-24 (draft P-8, Q6) and 2026-10-26 (a `.zip`; the client name from `atf.json` else the package name; preview and a typed `yes`). This narrows D-083's end-of-run feedback files to the framework's own repository, and extends D-088 and D-091 without weakening them.
+
+### D-098 · Claude Code also gets a private plugin carrying the agents and MCP servers, never the guard, version-locked to the npm package
+- **Status:** Accepted · **Date:** 2026-10-27 · **Source:** conversation with the user, 2026-10-24 and 2026-10-27 (packaging for clients, `docs/packaging.md` §3.12 and phase 6: draft P-11). Built from Claude Code's documentation as of 2026-10-27; experimental until `docs/claude-plugin-verification.md` is run in a real session.
+- **Decision:**
+  - **The plugin `atf`** (`scripts/build-plugin.mjs` → `packages/claude-plugin/dist/`) holds:
+    - `.claude-plugin/plugin.json` with `version` equal to the `@testagentic/atf` version;
+    - every framework agent, addressed as `atf:<name>` (bare frontmatter `name`). Each is rendered as `atf sync` renders it for an installed workspace, with subagent allow-lists naming `atf:<name>` (one marked switch, `NAMESPACED_SUBAGENTS`, until verified live) and browser tools as `mcp__plugin_atf_<server>__…`;
+    - `.mcp.json` with the framework's MCP servers, whose paths reach the npm package through `${CLAUDE_PROJECT_DIR}/node_modules/@testagentic/atf`, never `${CLAUDE_PLUGIN_ROOT}`;
+    - `hooks/hooks.json` with only a SessionStart hook (`scripts/hooks/plugin-session.mjs`). It records the plugin's version in `artifacts/.atf-plugin.json`, prints nothing, and always exits 0.
+
+    The dev-only agent (D-096) is never in the plugin.
+  - **The guard is never in the plugin (user, 2026-10-27).** PreToolUse and PostToolUse stay registered in the project's `.claude/settings.json` by `atf sync`, in every mode (D-020, D-092). Disabling the plugin, an untrusted user-enabled plugin under `allowManagedHooksOnly`, or a plugin name clash can therefore never remove it.
+  - **The marketplace (user): a separate private repository.** `build-plugin.mjs --marketplace <dir>` writes `marketplace.json` (`testagentic`, plugin `atf` from `./plugins/atf`; the version only in `plugin.json`). The release builds the plugin before `npm publish`. A separate job then pushes it to the repository named by `vars.PLUGIN_MARKETPLACE_REPO`, with `secrets.PLUGIN_MARKETPLACE_TOKEN`, and tags it `atf-v<version>`. That job is skipped on a dry run or when either is missing.
+  - **The opt-in.** `atf/atf.json` `"claude_plugin": true` with a required `"plugin_marketplace"` (`owner/repo` or a git URL), in an installed workspace only.
+    - **Settings:** sync writes `extraKnownMarketplaces.testagentic` and `enabledPlugins["atf@testagentic"]` into `.claude/settings.json`, and removes exactly those when the opt-in is off.
+  - **Plugin agents, with sync overrides (user).** The opt-in has two modes:
+    - **Plugin mode:** with no Claude-affecting customization (a fragment, or an overlaid or ejected `permissions`, `models`, `platforms` or `mcp` config), sync renders no `.claude/agents/` (it removes its own earlier files and keeps the client's) and no `.mcp.json`, and `atf run` opens `claude --agent atf:orchestrator-agent`.
+    - **Project mode:** with a customization, sync renders the full project set as before, so the customized agents run, and the plugin's agents stay installed but unused.
+
+    Sync names the mode and the customizations that decided it.
+  - **Version lock.** The plugin and the package must be the same version.
+    - **Doctor:** its `plugin-version` check fails on a mismatch, and warns when no version has been recorded yet.
+    - **Run start:** `run.mjs init` and resume refuse a mismatch.
+    - **Provenance:** `provenance.plugin` is `{ name: "atf", version }` (D-095).
+  - **The guard and plugin identity** (`scripts/hooks/hosts/claude.mjs`, `PLUGIN_NAME` in `scripts/lib/hosts.mjs`).
+    - **Callers:** an `agent_type` of exactly `atf:<agent-slug>` is that agent, as a caller and as a spawn target. Any other scoped `agent_type` (another plugin's agent, more segments, empty parts) is an unattributed caller. During a run it gets the run's combined ceiling and the `atf/` settings rule (D-035, D-088), never the "unmanaged" treatment.
+    - **Tools:** the plugin's own `mcp__plugin_atf_<server>__…` tools are classified like `mcp__<server>__…`. Every other plugin MCP tool is unknown, so it fails closed during a run (D-036).
+    - **Parsing is linear,** replacing a backtracking regex.
+- **Why:**
+  - Plugin install and update is the native path for Claude Code users.
+  - Keeping the guard in project settings means no plugin state can turn it off.
+  - Clients who customize agents keep their customizations, since a per-release plugin can't carry them.
+  - Locking the versions keeps one source of truth for the scripts the agents call.
+- **Known limits, to verify live:**
+  - the exact `agent_type` and spawn names Claude Code sends for plugin agents, and whether bare spawn names from the scripts reach `atf:` agents;
+  - `${CLAUDE_PROJECT_DIR}` substitution in plugin hooks and MCP args;
+  - whether both browser servers load in project mode;
+  - private-marketplace access with a client's git credentials.
+
+  Not addressed here:
+  - Claude Code's PreToolUse matcher sends only Playwright-named MCP tools to the hook, so the fail-closed rule for other MCP tools holds in code, not live, on that host.
+  - The Copilot adapter's browser-tool regex is quadratic on very long names.
+- **Affects:** `packages/core/scripts/build-plugin.mjs`, `packages/core/scripts/build-plugin.test.mjs`, `packages/core/scripts/hooks/plugin-session.mjs`, `packages/claude-plugin/package.json`, `.github/workflows/release.yml`, `packages/core/scripts/hooks/hosts/claude.mjs`, `packages/core/scripts/lib/hosts.mjs`, `packages/core/scripts/lib/tool-call.mjs`, `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/lib/provenance.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/sync.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/scripts/run.mjs`, `packages/core/schemas/run.schema.json`, `docs/claude-plugin-verification.md`
+- **Confirmed by the user on:** 2026-10-24 (draft P-11) and 2026-10-27 (the guard stays in project settings; a separate private marketplace repository; other plugins' agents as unattributed callers; plugin agents with sync overrides; build now, verify live after). This extends D-020, D-021, D-035, D-036, D-089, D-092, D-094 and D-095 without weakening them.

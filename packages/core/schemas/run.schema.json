@@ -46,7 +46,7 @@
       "properties": {
         "framework": { "type": ["object", "null"], "additionalProperties": false, "required": ["commit", "dirty"], "properties": { "commit": { "type": "string" }, "dirty": { "type": "boolean" } } },
         "package": { "type": ["object", "null"], "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } }, "description": "The framework package the run was started with, from its own package.json (scripts/lib/provenance.mjs packageOf, docs/packaging.md §3.10); null when it couldn't be read. init --resume refuses a run whose package is on another breaking line (releaseLine). Absent in runs that predate it, which resume as compatible." },
-        "plugin": { "type": "null", "description": "The Claude Code plugin's version (docs/packaging.md §3.12): null until phase 6 records it. Absent in runs that predate it." },
+        "plugin": { "type": ["object", "null"], "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "const": "atf" }, "version": { "type": "string", "minLength": 1 } }, "description": "The Claude Code plugin the run's session used (docs/packaging.md §3.12, scripts/lib/provenance.mjs pluginProvenance): in plugin mode (atf/atf.json claude_plugin), the version it recorded in artifacts/.atf-plugin.json, which init requires to be the package's; null outside plugin mode or with none recorded. Absent in runs that predate it." },
         "browserServer": { "type": ["string", "null"] },
         "models": { "type": "object" },
         "templates": { "type": "string" },

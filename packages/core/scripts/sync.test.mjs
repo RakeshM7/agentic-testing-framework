@@ -6,11 +6,13 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { USAGE, main, plan, postinstall, run } from "./lib/cli.mjs";
+import { USAGE, main, plan, postinstall, run, versionInfo, versionText } from "./lib/cli.mjs";
 import { runChecks } from "./lib/doctor.mjs";
 import { frameworkRoot, workspaceRoot } from "./lib/roots.mjs";
 import yaml from "js-yaml";
-import { BLOCK_END, BLOCK_START, CLIENT_IGNORED, SETUP_TEMPLATE, SETUP_WORKFLOW, cloudAgentFiles, cloudAgentOf, generatedAgentFiles, gitignoreBlock, ignoredEntries, setupWorkflowProblem, sync, withGitignoreBlock } from "./lib/sync.mjs";
+import { BLOCK_END, BLOCK_START, CLIENT_IGNORED, SETUP_TEMPLATE, SETUP_WORKFLOW, claudeModeLine, cloudAgentFiles, cloudAgentOf, generatedAgentFiles, gitignoreBlock, ignoredEntries, pluginSuppliedFiles, setupWorkflowProblem, sync, withGitignoreBlock } from "./lib/sync.mjs";
+import { build, pluginSettings } from "./build-agents.mjs";
+import { PLUGIN_RECORD, claudeCustomizations, claudeMode, claudePluginOf, marketplaceSource } from "./lib/provenance.mjs";
 import { INSTALLED_PACKAGE, installedWorkspace, put, tempRoot } from "./test-helpers.mjs";
 
 const HOOKS = `${INSTALLED_PACKAGE}/scripts/hooks/`;
@@ -488,4 +490,238 @@ test("a source checkout never gets the setup workflow, whatever atf.json says (D
   assert.equal(existsSync(path.join(root, SETUP_WORKFLOW)), false);
   assert.equal(existsSync(path.join(root, ".gitignore")), false);
   assert.equal(atf(["check"], ws).code, 0);
+});
+
+// ---- the Claude Code plugin opt-in (atf/atf.json "claude_plugin": true, docs/packaging.md §3.12) -------------------
+
+const MARKET = "acme-corp/atf-marketplace";
+const MARKET_SOURCE = { source: "github", repo: MARKET };
+const pluginOptIn = (root, extra = {}) => put(root, "atf/atf.json", `${JSON.stringify({ claude_plugin: true, plugin_marketplace: MARKET, ...extra })}\n`);
+// a client workspace with no Claude-affecting customization: the fixture's atf/models.yaml overlay is one
+const plainWorkspace = () => {
+  const ws = installedWorkspace();
+  rmSync(path.join(ws.root, "atf", "models.yaml"));
+  return ws;
+};
+const settingsOf = (root) => JSON.parse(read(root, ".claude/settings.json"));
+const PLUGIN_LINE = 'Claude Code plugin mode (atf/atf.json "claude_plugin"): the atf@testagentic plugin supplies the Claude Code agents and MCP servers, so .claude/agents/ and .mcp.json are not rendered; sessions open atf:orchestrator-agent. The guard\'s hooks stay in .claude/settings.json.';
+// the session `atf run` opens: the host CLI and its agent
+const launch = (ws, ...flags) => {
+  const s = plan(["run", "acme", ...flags], { workspace: ws.root, framework: ws.framework, env: {} }).steps.at(-1);
+  return [s.cmd, ...s.args.slice(0, -1)];
+};
+
+test("plugin mode without a customization: no .claude/agents/ or .mcp.json (an earlier sync's removed, the client's own agent kept), the hooks and Copilot files as ever, the plugin keys in settings, the block without them", () => {
+  const ws = plainWorkspace();
+  put(ws.root, ".claude/settings.json", `${JSON.stringify({ permissions: { allow: ["Bash(ls)"] }, enabledPlugins: { "other@elsewhere": true } }, null, 2)}\n`);
+  const mine = "---\nname: my-helper\ndescription: ours\n---\nHelp.\n";
+  put(ws.root, ".claude/agents/my-helper.md", mine);
+  assert.equal(atf(["sync"], ws).code, 0);
+  const copilot = listed(ws.root, ".github/agents");
+  assert.equal(listed(ws.root, ".claude/agents").length, copilot.length + 1, "without the opt-in: every agent, and the client's");
+  assert.deepEqual(launch(ws), ["claude", "--agent", "orchestrator-agent"]);
+
+  pluginOptIn(ws.root);
+  const check = atf(["check"], ws);
+  assert.equal(check.code, 1);
+  assert.equal(check.lines[0], `atf check: ${PLUGIN_LINE}`);
+  for (const f of [".claude/agents/orchestrator-agent.md", ".mcp.json", ".claude/settings.json", ".gitignore"]) assert.ok(check.lines.includes(`atf check: out of date: ${f}`), f);
+  assert.ok(existsSync(path.join(ws.root, ".mcp.json")), "check writes nothing");
+
+  const r = atf(["sync"], ws);
+  assert.equal(r.code, 0, r.lines.join("\n"));
+  assert.equal(r.lines[0], `atf sync: ${PLUGIN_LINE}`, "the mode, and why");
+  assert.deepEqual(listed(ws.root, ".claude/agents"), ["my-helper.md"], "ours removed, the client's own kept");
+  assert.equal(read(ws.root, ".claude/agents/my-helper.md"), mine);
+  assert.equal(existsSync(path.join(ws.root, ".mcp.json")), false, "the plugin supplies the MCP servers");
+  // what Copilot and VS Code use is rendered as ever
+  assert.deepEqual(listed(ws.root, ".github/agents"), copilot);
+  for (const f of [".vscode/mcp.json", ".github/hooks/framework-guard.json", ".vscode/hooks/framework-guard.json"]) assert.ok(existsSync(path.join(ws.root, f)), f);
+  // the guard stays the project's: both hooks registered; the team's plugin keys added, every other key kept
+  const settings = settingsOf(ws.root);
+  assert.match(settings.hooks.PreToolUse[0].hooks[0].command, /node_modules\/@testagentic\/atf\/scripts\/hooks\/pretooluse\.mjs/);
+  assert.match(settings.hooks.PostToolUse[0].hooks[0].command, /posttooluse\.mjs/);
+  assert.deepEqual(settings.permissions, { allow: ["Bash(ls)"] });
+  assert.deepEqual(settings.enabledPlugins, { "other@elsewhere": true, "atf@testagentic": true });
+  assert.deepEqual(settings.extraKnownMarketplaces, { testagentic: { source: MARKET_SOURCE } });
+  // the block follows what is rendered: no Claude Code agent and no .mcp.json, the rest as ever
+  const block = read(ws.root, ".gitignore").trimEnd().split("\n");
+  const supplied = pluginSuppliedFiles({ workspace: ws.root, framework: ws.framework });
+  assert.equal(supplied.length, copilot.length + 1);
+  assert.ok(supplied.includes(".mcp.json") && supplied.includes(".claude/agents/orchestrator-agent.md"));
+  assert.deepEqual(block, gitignoreBlock(ignoredEntries(agentFilesOf(ws), { supplied })));
+  assert.ok(!block.some((l) => l.startsWith("/.claude/") || l === "/.mcp.json"), block.join("\n"));
+  for (const kept of ["/.github/agents/orchestrator-agent.agent.md", "/.vscode/mcp.json", "/.github/hooks/framework-guard.json"]) assert.ok(block.includes(kept), kept);
+  assert.equal(block.length + supplied.length, blockOf(ws).length);
+  // in sync, and said so every time
+  assert.deepEqual(atf(["check"], ws), { code: 0, lines: [`atf check: ${PLUGIN_LINE}`, "atf check: the host files are in sync with the framework."] });
+  assert.deepEqual(atf(["sync"], ws).lines, [`atf sync: ${PLUGIN_LINE}`, "atf sync: the host files are up to date."]);
+  // the session opens the plugin's agent on Claude Code; Copilot and ATF_AGENT as ever
+  assert.deepEqual(launch(ws), ["claude", "--agent", "atf:orchestrator-agent"]);
+  assert.deepEqual(launch(ws, "--host", "copilot"), ["copilot", "--agent", "orchestrator-agent", "-i"]);
+  const custom = plan(["run", "acme"], { workspace: ws.root, framework: ws.framework, env: { ATF_AGENT: "my-cli --agent x" } }).steps.at(-1);
+  assert.deepEqual([custom.cmd, ...custom.args.slice(0, -1)], ["my-cli", "--agent", "x"]);
+  // a server the client put back in .mcp.json by hand is the usual error (D-092), pointing at the overlay
+  put(ws.root, ".mcp.json", `${JSON.stringify({ mcpServers: { mine: { command: "x" } } })}\n`);
+  const foreign = atf(["sync"], ws);
+  assert.equal(foreign.code, 1);
+  assert.match(foreign.lines.join("\n"), /\.mcp\.json.*mine.*atf\/mcp\.yaml/s);
+  rmSync(path.join(ws.root, ".mcp.json"));
+
+  // off again: everything rendered as without the plugin, and exactly the two plugin entries gone
+  put(ws.root, "atf/atf.json", "{}\n");
+  const off = atf(["sync"], ws);
+  assert.equal(off.code, 0);
+  assert.ok(!off.lines.some((l) => /plugin mode/.test(l)), "no mode line without the opt-in");
+  assert.equal(listed(ws.root, ".claude/agents").length, copilot.length + 1);
+  assert.ok(existsSync(path.join(ws.root, ".mcp.json")));
+  const after = settingsOf(ws.root);
+  assert.deepEqual(after.enabledPlugins, { "other@elsewhere": true });
+  assert.equal(Object.hasOwn(after, "extraKnownMarketplaces"), false, "an object only the plugin's entry filled goes with it");
+  assert.deepEqual(after.permissions, { allow: ["Bash(ls)"] });
+  assert.equal(read(ws.root, ".gitignore"), `${blockOf(ws).join("\n")}\n`);
+  assert.deepEqual(launch(ws), ["claude", "--agent", "orchestrator-agent"]);
+});
+
+test("plugin mode with a Claude-affecting customization: the project's agents and .mcp.json are rendered (bare names), sync names the customization, the plugin keys are still written", () => {
+  const ws = installedWorkspace(); // its atf/models.yaml overlay is one
+  pluginOptIn(ws.root);
+  put(ws.root, "atf/agents/report-generator.extra.md", "Use the house style.\n");
+  const r = atf(["sync"], ws);
+  assert.equal(r.code, 0, r.lines.join("\n"));
+  assert.equal(
+    r.lines[0],
+    'atf sync: Claude Code plugin mode (atf/atf.json "claude_plugin"), with the project\'s agents: this workspace customizes the Claude Code agents (atf/models.yaml (an overlay), atf/agents/report-generator.extra.md (an add-on fragment)), which the atf plugin can\'t carry, so .claude/agents/ and .mcp.json are rendered as without the plugin and sessions open orchestrator-agent; the plugin\'s atf: agents stay installed but unused.'
+  );
+  assert.equal(listed(ws.root, ".claude/agents").length, listed(ws.root, ".github/agents").length);
+  assert.match(read(ws.root, ".claude/agents/report-generator.md"), /^name: report-generator$/m);
+  assert.match(read(ws.root, ".claude/agents/report-generator.md"), /Use the house style\./);
+  assert.ok(existsSync(path.join(ws.root, ".mcp.json")));
+  assert.equal(read(ws.root, ".gitignore"), `${blockOf(ws).join("\n")}\n`, "the full block");
+  assert.deepEqual(settingsOf(ws.root).enabledPlugins, { "atf@testagentic": true });
+  assert.deepEqual(launch(ws), ["claude", "--agent", "orchestrator-agent"]);
+  // the customizations gone: plugin mode, and the project's agents removed
+  rmSync(path.join(ws.root, "atf", "models.yaml"));
+  rmSync(path.join(ws.root, "atf", "agents"), { recursive: true });
+  assert.equal(atf(["sync"], ws).lines[0], `atf sync: ${PLUGIN_LINE}`);
+  assert.deepEqual(listed(ws.root, ".claude/agents"), []);
+  assert.equal(existsSync(path.join(ws.root, ".mcp.json")), false);
+  // which overrides count: every config file a Claude Code agent is rendered from, ejected or overlaid; not hooks.yaml
+  const opts = { workspace: ws.root, framework: ws.framework };
+  put(ws.root, "atf/hooks.yaml", "post_tool_use: sync\n");
+  assert.deepEqual(claudeCustomizations(opts), []);
+  put(ws.root, "atf/config/mcp.yaml", readFileSync(path.join(ws.framework, "config", "mcp.yaml"), "utf8"));
+  put(ws.root, "atf/permissions.yaml", "agents: {}\n");
+  put(ws.root, "atf/platforms.yaml", "{}\n");
+  assert.deepEqual(claudeCustomizations(opts), ["atf/permissions.yaml (an overlay)", "atf/platforms.yaml (an overlay)", "atf/config/mcp.yaml (ejected)"]);
+  assert.equal(claudeMode(opts).agents, "project");
+  assert.deepEqual(launch(ws), ["claude", "--agent", "orchestrator-agent"]);
+});
+
+test("the plugin opt-in is validated: a non-boolean, a missing or bad plugin_marketplace, or a source checkout stop sync and check, naming atf/atf.json, and nothing is written", () => {
+  const ws = plainWorkspace();
+  const cases = [
+    ...["yes", "true", 1, null, {}].map((bad) => [{ claude_plugin: bad, plugin_marketplace: MARKET }, `atf/atf.json "claude_plugin" must be true or false, not ${JSON.stringify(bad)}`]),
+    [{ claude_plugin: true }, 'atf/atf.json "plugin_marketplace" is required with "claude_plugin": true: the plugin marketplace\'s repository you were given access to, as a git URL or GitHub\'s owner/repo'],
+    ...["acme", "", "acme/x y", "ftp://host/x", 42].map((bad) => [{ claude_plugin: true, plugin_marketplace: bad }, `atf/atf.json "plugin_marketplace" must be a git URL (https://…, ssh://…, git@host:path) or GitHub's owner/repo, not ${JSON.stringify(bad)}`]),
+  ];
+  for (const [cfg, message] of cases) {
+    put(ws.root, "atf/atf.json", JSON.stringify(cfg));
+    for (const verb of ["sync", "check"]) {
+      const r = atf([verb], ws);
+      assert.equal(r.code, 1, `${verb} ${JSON.stringify(cfg)}`);
+      assert.equal(r.lines[0], `stderr: atf ${verb}: error: ${message}`);
+    }
+    assert.match(plan(["run", "acme"], { workspace: ws.root, framework: ws.framework, env: {} }).error, new RegExp(`^${message.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\. Fix it, then run npx atf sync$`));
+  }
+  for (const f of [".claude", ".github", ".vscode", ".mcp.json", ".gitignore"]) assert.equal(existsSync(path.join(ws.root, f)), false, f);
+  // off, or absent: no plugin; the marketplace is read only with the opt-in
+  assert.deepEqual([claudePluginOf(null), claudePluginOf({}), claudePluginOf({ claude_plugin: false, plugin_marketplace: 7 })], [{ on: false }, { on: false }, { on: false }]);
+  assert.deepEqual(claudePluginOf({ claude_plugin: true, plugin_marketplace: ` ${MARKET} ` }), { on: true, marketplace: MARKET_SOURCE });
+  for (const [v, source] of [
+    ["acme-corp/atf-marketplace", MARKET_SOURCE],
+    ["https://git.example.com/qa/atf-marketplace.git", { source: "git", url: "https://git.example.com/qa/atf-marketplace.git" }],
+    ["git@github.com:acme-corp/atf-marketplace.git", { source: "git", url: "git@github.com:acme-corp/atf-marketplace.git" }],
+    ["ssh://git@git.example.com/qa/m.git", { source: "git", url: "ssh://git@git.example.com/qa/m.git" }],
+  ])
+    assert.deepEqual(marketplaceSource(v), source, v);
+  for (const v of ["", "acme", "/abs/path", "acme/x/y", "https://", "ftp://h/x", null, ["a/b"]]) assert.equal(marketplaceSource(v), null, String(v));
+  // a source checkout: the opt-in is an error, for sync and for the framework's own build alike
+  const root = tempRoot();
+  pluginOptIn(root);
+  const src = { root, framework: frameworkRoot };
+  const message = 'atf/atf.json "claude_plugin": the Claude Code plugin serves a workspace with @testagentic/atf installed, while this is the framework\'s source checkout, whose Claude Code agents are its committed files (D-018); remove the key';
+  assert.deepEqual(atf(["sync"], src).lines[0], `stderr: atf sync: error: ${message}`);
+  assert.deepEqual(build({ root, framework: frameworkRoot, check: true }), { errors: [message], changed: [] });
+  assert.equal(existsSync(path.join(root, ".claude")), false);
+  put(root, "atf/atf.json", '{ "claude_plugin": false }\n');
+  assert.equal(atf(["check"], src).code, 1, "off: the scratch checkout just has no host files yet");
+  assert.doesNotMatch(atf(["check"], src).lines.join("\n"), /claude_plugin/);
+});
+
+test("pluginSettings: the opt-in adds the marketplace and the enabled plugin, keeping every other key and entry; off removes exactly those two", () => {
+  const on = { on: true, marketplace: MARKET_SOURCE };
+  const added = { extraKnownMarketplaces: { testagentic: { source: MARKET_SOURCE } }, enabledPlugins: { "atf@testagentic": true } };
+  assert.deepEqual(pluginSettings({}, on), added);
+  assert.deepEqual(pluginSettings({ model: "x" }, on), { model: "x", ...added });
+  // an entry's own fields (autoUpdate) are the client's; the source is replaced by atf.json's
+  const old = { extraKnownMarketplaces: { testagentic: { autoUpdate: true, source: { source: "git", url: "https://old/x.git" } }, other: { source: { source: "github", repo: "o/r" } } }, enabledPlugins: { "atf@testagentic": false, "x@other": true } };
+  const merged = pluginSettings(old, on);
+  assert.deepEqual(merged, { extraKnownMarketplaces: { testagentic: { autoUpdate: true, source: MARKET_SOURCE }, other: old.extraKnownMarketplaces.other }, enabledPlugins: { "atf@testagentic": true, "x@other": true } });
+  assert.deepEqual(old.enabledPlugins["atf@testagentic"], false, "a new object: the input is untouched");
+  assert.deepEqual(pluginSettings(merged, { on: false }), { extraKnownMarketplaces: { other: old.extraKnownMarketplaces.other }, enabledPlugins: { "x@other": true } });
+  assert.deepEqual(pluginSettings({ model: "x", ...added }, { on: false }), { model: "x" });
+  assert.deepEqual(pluginSettings({ model: "x" }, { on: false }), { model: "x" });
+  for (const bad of [[], "x", 1]) {
+    assert.throws(() => pluginSettings({ enabledPlugins: bad }, on), /'enabledPlugins' must be an object/);
+    assert.throws(() => pluginSettings({ extraKnownMarketplaces: bad }, { on: false }), /'extraKnownMarketplaces' must be an object/);
+  }
+  // in the build: a malformed key names the file, and nothing is written
+  const ws = plainWorkspace();
+  pluginOptIn(ws.root);
+  put(ws.root, ".claude/settings.json", '{ "enabledPlugins": [] }\n');
+  const r = atf(["sync"], ws);
+  assert.equal(r.code, 1);
+  assert.ok(r.lines.some((l) => /\.claude\/settings\.json: 'enabledPlugins' must be an object/.test(l)), r.lines.join("\n"));
+  assert.equal(existsSync(path.join(ws.root, ".github")), false);
+});
+
+test("doctor, in plugin mode: the plugin's recorded version must be the package's (missing warns), and .claude/settings.json should enable it", async () => {
+  const ws = plainWorkspace();
+  const version = JSON.parse(read(ws.framework, "package.json")).version;
+  const pluginChecks = async () => Object.fromEntries((await runChecks({ product: "acme" }, ["base"], { root: ws.root, framework: ws.framework })).filter((c) => c.id.startsWith("plugin-")).map((c) => [c.id, c]));
+  assert.equal(atf(["sync"], ws).code, 0);
+  assert.deepEqual(await pluginChecks(), {}, "no opt-in: nothing to say");
+  pluginOptIn(ws.root);
+  // before the sync: no plugin entry in settings, and no session has recorded a version
+  let c = await pluginChecks();
+  assert.deepEqual([c["plugin-enabled"].ok, c["plugin-enabled"].level, c["plugin-enabled"].fix], [true, "warn", "npx atf sync (in the workspace) writes it"]);
+  assert.match(c["plugin-enabled"].detail, /does not enable the atf@testagentic plugin \(enabledPlugins\["atf@testagentic"\]\)/);
+  assert.deepEqual([c["plugin-version"].ok, c["plugin-version"].level, c["plugin-version"].group], [true, "warn", "base"]);
+  assert.equal(c["plugin-version"].detail, `the atf@testagentic plugin has recorded no version in this workspace yet (${PLUGIN_RECORD}): no Claude Code session has started here with it enabled`);
+  assert.match(c["plugin-version"].fix, /^start a Claude Code session in the workspace .*; if Claude Code says the plugin is not installed, claude plugin install atf@testagentic --scope project$/);
+  assert.equal(atf(["sync"], ws).code, 0);
+  // the same version: passes
+  const record = (v, at = "2026-10-27T09:00:00.000Z") => put(ws.root, PLUGIN_RECORD, `${JSON.stringify({ plugin: "atf", version: v, at })}\n`);
+  record(version);
+  c = await pluginChecks();
+  assert.deepEqual(c["plugin-enabled"], { group: "base", id: "plugin-enabled", ok: true, level: undefined, detail: ".claude/settings.json enables the atf@testagentic plugin for the project" });
+  assert.deepEqual(c["plugin-version"], { group: "base", id: "plugin-version", ok: true, level: undefined, detail: `the atf@testagentic plugin is ${version}, the installed @testagentic/atf's version` });
+  // atf version reports it
+  const info = versionInfo({ workspace: ws.root, framework: ws.framework });
+  assert.deepEqual(info.plugin, { name: "atf", version });
+  assert.match(versionText(info), new RegExp(`\nplugin: atf ${version.replace(/\./g, "\\.")}$`));
+  // another version: fails, with both ways out
+  record("9.9.9");
+  c = await pluginChecks();
+  assert.deepEqual([c["plugin-version"].ok, c["plugin-version"].level], [false, "fail"]);
+  assert.equal(c["plugin-version"].detail, `the atf@testagentic plugin is 9.9.9 (${PLUGIN_RECORD}, recorded 2026-10-27T09:00:00.000Z) and the installed @testagentic/atf is ${version}: the two are released together and must be the same version`);
+  assert.equal(c["plugin-version"].fix, "update whichever is behind: claude plugin update atf@testagentic, then start a new Claude Code session (it records the plugin's version); or npm install --save-dev @testagentic/atf@9.9.9 (in the workspace)");
+  // a record the plugin didn't write: fails too
+  for (const bad of ["{ nope", '{ "plugin": "other", "version": "1.0.0" }', '{ "plugin": "atf" }', "[]"]) {
+    put(ws.root, PLUGIN_RECORD, bad);
+    c = await pluginChecks();
+    assert.deepEqual([c["plugin-version"].ok, c["plugin-version"].level], [false, "fail"], bad);
+    assert.match(c["plugin-version"].detail, /^artifacts\/\.atf-plugin\.json (could not be read as JSON|must hold)/, bad);
+  }
 });

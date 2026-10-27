@@ -7,7 +7,9 @@
 //                                                         breaking line of the package or another artifact contract,
 //                                                         a version change within the line recorded in packageChanges;
 //                                                         both refused while atf/atf.json "contract" isn't this code's,
-//                                                         docs/packaging.md §3.10); freezes the config's
+//                                                         docs/packaging.md §3.10, and in Claude Code plugin mode while
+//                                                         the plugin's recorded version isn't the package's, §3.12);
+//                                                         freezes the config's
 //                                                         `steps` (absent = all six) and the case types they derive into
 //                                                         run.json. Every other stage is not-chosen: never offered or
 //                                                         started, never failed or blocked. After a run that ended
@@ -90,7 +92,7 @@ import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs
 import { GROUPS, STAGE_NEEDS, clearDoctor, doctorStatus, failures, recordDoctor, runChecks } from "./lib/doctor.mjs";
 import { login as openLogin } from "./lib/login.mjs";
 import { detectShellHost } from "./lib/hosts.mjs";
-import { collectProvenance, packageOf, releaseLine } from "./lib/provenance.mjs";
+import { collectProvenance, packageOf, pluginVersionCheck, releaseLine } from "./lib/provenance.mjs";
 import { diffManifests, readManifest, writeManifest } from "./lib/history.mjs";
 import { issuesPath, stampRun, writeFeedback } from "./lib/framework-issues.mjs";
 import { approvalSummary, caseTypeOf, importStatus, testcasePaths } from "./lib/testcases.mjs";
@@ -122,6 +124,11 @@ export function initRun(configFile, { resume = false, runId, root = workspaceRoo
   // was migrated by a later package, an older one needs npx atf migrate first. Checked for a new run and a resume alike.
   const contract = contractProblem(root);
   if (contract) return { errors: [`${contract.detail}. Fix: ${contract.fix}`] };
+  // the version lock (docs/packaging.md §3.12, draft P-11): in Claude Code plugin mode, the plugin the session runs must
+  // be this package's release. The session's start has just recorded it (the plugin's SessionStart hook); none recorded
+  // (a session on another host, or one started before the plugin was enabled) is the doctor's warning, not a refusal.
+  const plugin = pluginVersionCheck({ workspace: root, framework, pkg });
+  if (plugin && !plugin.ok) return { errors: [`${plugin.detail}. Fix: ${plugin.fix}`] };
 
   if (existsSync(p.lockFile)) {
     const lock = loadJson(p.lockFile);

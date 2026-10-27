@@ -1,6 +1,6 @@
 # Packaging the framework for clients
 
-**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1 to 5 are in force (D-085 as amended by D-086, and D-087 to D-097; the cloud-agent opt-in is experimental until verified live); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
+**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1 to 6 are in force (D-085 as amended by D-086, and D-087 to D-098; the cloud-agent opt-in and the Claude Code plugin are experimental until verified live; the cloud-agent opt-in is experimental until verified live); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
 
 ## 1. What was decided in the interview
 
@@ -285,6 +285,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 | P-7 · feedback-implementor-agent fixes outputs; dev-only framework-implementor-agent | D-096 | 5 |
 | P-8 · redacted issue export and import | D-097 | 5 |
 | P-9 · contract version, `atf migrate`, frozen fixtures | D-095 | 4 |
+| P-11 · the Claude Code plugin | D-098 (experimental: `docs/claude-plugin-verification.md`) | 6 |
 | P-5 · agent add-on fragments | D-090 | 3b |
 | P-6 · the client decision log | D-091 | 3b |
 | P-10 · `atf` CLI replaces the Makefile | D-087 (the `make` targets; the other commands land with phases 3 to 5) | 2b |
@@ -404,7 +405,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 - **Supersedes:** the `make` parts of D-069, D-081 and D-084 · **Confirmed by the user on:** —
 
 ### P-11 · Claude Code also gets a private plugin, version-locked to the npm package
-- **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
+- **Status:** Accepted, recorded in decisions.md as D-098 (2026-10-27, phase 6): the guard stays in project settings, not in the plugin · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **What it carries.** A private plugin marketplace carries the Claude Code agents, the hook registration and the MCP servers.
   - **Script calls.** They still use the workspace's npm package.

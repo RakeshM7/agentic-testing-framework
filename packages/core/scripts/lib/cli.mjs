@@ -37,9 +37,9 @@ import { parseArgs } from "node:util";
 import { CONFIG_FILES, configPath } from "./config.mjs";
 import { CONTRACT_VERSION, SLUG_RE, STAGES, UNRECORDED_CONTRACT, contractProblem, workspaceContract } from "./contract.mjs";
 import { DOCTOR_BASE_SCRIPT, applyInit, initPlan, initRefusal, installedIn } from "./init.mjs";
-import { packageOf } from "./provenance.mjs";
+import { claudeAgentName, claudeMode, packageOf, pluginProvenance } from "./provenance.mjs";
 import { WORKSPACE_MARKER, expandFw, findWorkspace, frameworkRel, frameworkRoot, isInstalled, isWithin, sameDir, workspaceRoot } from "./roots.mjs";
-import { SETUP_WORKFLOW, TOKEN_ENV, sync } from "./sync.mjs";
+import { SETUP_WORKFLOW, TOKEN_ENV, claudeModeLine, sync } from "./sync.mjs";
 
 export const USAGE = `atf <command> [<product>] [options]       every command works the same on macOS, Windows and Linux
 
@@ -99,13 +99,17 @@ Running and resuming (a finished stage stays done):
 
 Options for every command:
   --env <env>        another environment of the product: config/<product>-<env>.yaml, run with ATF_ENV=<env>
-  --host claude|copilot   the CLI that opens the orchestrator-agent session (default claude); ATF_AGENT="<command>"
-                     overrides it with any command that takes the first prompt as its last argument`;
+  --host claude|copilot   the CLI that opens the orchestrator-agent session (default claude; the plugin's
+                     atf:orchestrator-agent in Claude Code plugin mode); ATF_AGENT="<command>" overrides it with any
+                     command that takes the first prompt as its last argument`;
 
-// The commands that open an orchestrator-agent session with a first prompt.
+// The commands that open an orchestrator-agent session with a first prompt. On Claude Code in plugin mode without a
+// Claude-affecting customization, the plugin supplies the agents, so the session opens the plugin's scoped
+// atf:orchestrator-agent instead (agentCommand; lib/provenance.mjs claudeMode).
+export const ORCHESTRATOR = "orchestrator-agent";
 export const HOSTS = {
-  claude: ["claude", "--agent", "orchestrator-agent"],
-  copilot: ["copilot", "--agent", "orchestrator-agent", "-i"],
+  claude: ["claude", "--agent", ORCHESTRATOR],
+  copilot: ["copilot", "--agent", ORCHESTRATOR, "-i"],
 };
 const STAGE_SHORTCUTS = ["explore", "clarifications", "testcases", "k6", "report"];
 const STAGE_NAMES = Object.keys(STAGES);
@@ -185,7 +189,7 @@ export function plan(argv, ctx = {}) {
   const doctor = (...flags) => node("doctor.mjs", config, ...flags);
   const fix = v["no-fix"] ? [] : ["--fix"];
   const agent = (prompt) => {
-    const launch = agentCommand(v.host, env);
+    const launch = agentCommand(v.host, env, { workspace, framework });
     if (launch.error) return launch;
     return { cmd: launch.cmd[0], args: [...launch.cmd.slice(1), expandFw(prompt, rel)], agent: true };
   };
@@ -304,7 +308,7 @@ export function plan(argv, ctx = {}) {
 // What `atf version` reports. The workspace is none when an installed framework has no workspace around it (the one
 // case main() would refuse for any other command); one directory that is both reads its own marker, if any.
 // -> { package: {name, version} | null, contract, workspace: null | {root, contract, recorded, problem?} | {root, error},
-//      node, plugin: null }
+//      node, plugin: {name, version} | null (in plugin mode, the version the plugin recorded; provenance.mjs) }
 export function versionInfo({ workspace = workspaceRoot, framework = frameworkRoot, node = process.version } = {}) {
   let ws = null;
   if (!(sameDir(workspace, framework) && isInstalled(framework))) {
@@ -312,8 +316,8 @@ export function versionInfo({ workspace = workspaceRoot, framework = frameworkRo
     const problem = !w.error && contractProblem(workspace);
     ws = { root: workspace, ...w, ...(problem ? { problem: `${problem.detail}. Fix: ${problem.fix}` } : {}) };
   }
-  // plugin: the Claude Code plugin's version, locked to the package's (packaging §3.12), from phase 6
-  return { package: packageOf(framework), contract: CONTRACT_VERSION, workspace: ws, node, plugin: null };
+  // the Claude Code plugin's recorded version, locked to the package's (packaging §3.12)
+  return { package: packageOf(framework), contract: CONTRACT_VERSION, workspace: ws, node, plugin: ws ? pluginProvenance(workspace, framework) : null };
 }
 
 export function versionText(info, { json = false } = {}) {
@@ -461,6 +465,9 @@ function syncStep({ workspace, framework, check = false, postinstall = false }, 
   }
   const created = r.created ?? [];
   const problems = r.problems ?? [];
+  // the Claude Code plugin's mode, and why (atf.json "claude_plugin"): said every time, so a customization's effect shows
+  const mode = claudeModeLine(r.claude);
+  if (mode) out.log(`${label}: ${mode}`);
   for (const f of r.changed) out.log(`${label}: ${check ? "out of date" : "updated"}: ${f}`);
   // the cloud agent's setup workflow (atf.json "cloud_agent"): written once, then the client's
   for (const f of created) out.log(check ? `${label}: missing: ${f} (${SYNC_FIX} creates it)` : `${label}: created: ${f}: the Copilot cloud agent's setup steps, yours from now on. Commit it, merge it to the default branch, and add the Agents secret ${TOKEN_ENV}.`);
@@ -499,12 +506,17 @@ const example = (name) => {
   return ex[name] ?? `atf ${name} acme-crm`;
 };
 
-// The host CLI command: ATF_AGENT (split on whitespace; the prompt goes last) wins over --host.
-export function agentCommand(host, env = process.env) {
+// The host CLI command: ATF_AGENT (split on whitespace; the prompt goes last) wins over --host. Given the workspace,
+// Claude Code's names the agent as the plugin's mode decides (claudeAgentName): atf:orchestrator-agent when the plugin
+// supplies the agents, else the project's orchestrator-agent. A bad opt-in is the error (sync refuses it too).
+export function agentCommand(host, env = process.env, { workspace, framework = frameworkRoot } = {}) {
   if (env.ATF_AGENT?.trim()) return { cmd: env.ATF_AGENT.trim().split(/\s+/) };
   const h = host ?? "claude";
   if (!Object.hasOwn(HOSTS, h)) return { error: `--host '${h}' must be one of: ${Object.keys(HOSTS).join(", ")} (or set ATF_AGENT to the full command)` };
-  return { cmd: HOSTS[h] };
+  if (h !== "claude" || !workspace) return { cmd: HOSTS[h] };
+  const mode = claudeMode({ workspace, framework });
+  if (mode.error) return { error: `${mode.error}. Fix it, then run ${SYNC_FIX}` };
+  return { cmd: HOSTS.claude.map((a) => (a === ORCHESTRATOR ? claudeAgentName(a, mode) : a)) };
 }
 
 // A step through cmd.exe on Windows: npm, npx and most host CLIs are .cmd shims there, which only a shell starts. Each

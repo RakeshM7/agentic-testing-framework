@@ -16,9 +16,9 @@
 //   - copied as written: agents/, config/, templates/, schemas/, the agent-facing docs/, scripts/browser/init-page.cjs
 //     and LICENSE.md.
 //   - generated: package.json, without `private`, devDependencies or the test script.
-//   - never: tests, test-helpers.mjs, scripts/fixtures/, this script, e2e.mjs (`atf e2e` refuses an installed copy,
-//     D-087, and it needs the fixtures), node_modules, dotfiles. The decision log, feedback/ and the maintainer docs
-//     live outside packages/core, so nothing here could copy them.
+//   - never: tests, test-helpers.mjs, scripts/fixtures/, this script, build-plugin.mjs (the Claude Code plugin's
+//     build), e2e.mjs (`atf e2e` refuses an installed copy, D-087, and it needs the fixtures), node_modules, dotfiles.
+//     The decision log, feedback/ and the maintainer docs live outside packages/core, so nothing here could copy them.
 //
 // Every relative import() stays an import() of the bundled sibling at its source path, never inlined. That keeps the
 // hook entries' property (scripts/hooks/pretooluse.mjs): each lib loads inside their try, so a lib, or a dependency of
@@ -48,7 +48,8 @@ const posix = (p) => p.split(path.sep).join("/");
 const COPIED_DIRS = ["agents", "config", "templates", "schemas", "docs", "migrations"];
 const COPIED_FILES = ["LICENSE.md", "scripts/browser/init-page.cjs"];
 // scripts/ files that are not part of a client's install (see the header)
-const MAINTAINER_ONLY = new Set(["scripts/test-helpers.mjs", "scripts/build-package.mjs", "scripts/e2e.mjs"]);
+// (build-plugin.mjs builds the Claude Code plugin, a release step of ours, never a client's)
+const MAINTAINER_ONLY = new Set(["scripts/test-helpers.mjs", "scripts/build-package.mjs", "scripts/build-plugin.mjs", "scripts/e2e.mjs"]);
 const skipped = (name) => name.startsWith(".") || name === "node_modules";
 
 // Every file under `dir`, as `/` paths relative to it, sorted. Dotfiles and node_modules are left out (npm drops
