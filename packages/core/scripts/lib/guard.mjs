@@ -15,7 +15,10 @@
 // nor a file scripts/api-code.mjs generates (the API clients, types, schemas, registration and specs, D-056).
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
 // On a host that cannot name the calling agent (scripts/lib/hosts.mjs), a full-run call gets what at least one of the
-// run's agents may do (runCeiling, D-035): every call there comes from one of the run's agents.
+// run's agents may do (runCeiling, D-035): every call there comes from one of the run's agents. So does a call whose
+// host named a caller that is none of the framework's agents (the canonical call's `unattributed`: on Claude Code,
+// another plugin's agent, or a scoped name that is not one agent of the framework's plugin, packaging §3.12): it is
+// never an unmanaged name.
 // When the framework is installed apart from the workspace (D-085, scripts/lib/roots.mjs), no call writes under the
 // framework root: in or out of a run, any caller and mode (frameworkWrite()). Only an installed framework (its real path
 // inside node_modules, roots.mjs isInstalled) is read-only: a source checkout apart from the workspace (the monorepo's
@@ -276,6 +279,13 @@ function humanOnly(call) {
 const deny = (rule, reason) => ({ allowed: false, rule, reason });
 const ALLOW = { allowed: true };
 
+// Whether the call's caller is known: an agent the host named, or no agent on a host that names agents (a human's own
+// session). Not on a host that can't name agents, nor when the host named a caller that is none of the framework's
+// agents (`unattributed`, scripts/lib/tool-call.mjs): such a call comes from one of the run's agents (D-035).
+const attributable = (call) => canIdentify(call.host) && !call.unattributed;
+const callerUnknownWhy = (call) =>
+  call.unattributed ? `${labelOf(call.host)} named a caller that is none of the framework's agents (an agent of another plugin, or not one agent of the framework's plugin)` : `${labelOf(call.host)} cannot tell the guard which agent is calling`;
+
 // A leading change into the repo's own root (`cd <root> &&`, `cd /d <root> &&`, `Set-Location <root>;`) does not count
 // against a restricted agent's allow-list: agents add it when their terminal opened elsewhere (D-041). Only an absolute
 // path equal to the run's root is stripped, once; the HTTP/load/delete checks still see the whole command.
@@ -440,11 +450,12 @@ function frameworkAgents(framework, root) {
   }
 }
 // Whom the settings rule binds: a framework agent, in or out of a run, in any mode; during a run (any mode), also a
-// call whose host can't name its caller, since every call there comes from one of the run's agents (D-035). A human's
-// own session -- no agent on a host that names agents, or an agent type the framework doesn't ship (a host's built-in
-// helper) -- is not bound; the decision hook still asks before it edits a governed file.
+// call whose host can't name its caller, or named one that is none of the framework's agents (`unattributed`), since
+// every call there comes from one of the run's agents (D-035). A human's own session -- no agent on a host that names
+// agents, or an agent type the framework doesn't ship (a host's built-in helper) -- is not bound; the decision hook
+// still asks before it edits a governed file.
 function bindsSettings(call, framework, inRun, root) {
-  if (!call.agent) return inRun && !canIdentify(call.host);
+  if (!call.agent) return inRun && !attributable(call);
   const roster = frameworkAgents(framework, root);
   return !roster || roster.has(call.agent);
 }
@@ -502,12 +513,13 @@ function evaluateKind(call, run, row) {
 
 function evaluate(call, run) {
   if (run.broken) return call.kind === "shell" ? checkShell(call.command ?? "", run, null) : ALLOW;
-  if (call.agent || run.mode !== "full-run" || canIdentify(call.host)) return evaluateKind(call, run, call.agent ? run.permissions?.agents?.[call.agent] : undefined);
-  // full-run on a host that cannot name the caller: the run's combined permissions; readonly if there are none to combine.
+  if (call.agent || run.mode !== "full-run" || attributable(call)) return evaluateKind(call, run, call.agent ? run.permissions?.agents?.[call.agent] : undefined);
+  // full-run on a host that cannot name the caller, or for a caller it named that is none of the framework's agents: the
+  // run's combined permissions; readonly if there are none to combine.
   const ceiling = runCeiling(run.permissions);
   const verdict = evaluateKind(call, ceiling ? run : { ...run, mode: "readonly" }, ceiling);
   const why = ceiling ? "so it allows what at least one of this run's agents may do" : "and this run has no permissions to combine, so it is readonly here";
-  return verdict.allowed ? verdict : { ...verdict, reason: `${verdict.reason} [${labelOf(call.host)} cannot tell the guard which agent is calling, ${why}]` };
+  return verdict.allowed ? verdict : { ...verdict, reason: `${verdict.reason} [${callerUnknownWhy(call)}, ${why}]` };
 }
 
 // -> { allowed, rule?, reason?, canary? }. With several active runs (different products): a write is allowed if ANY

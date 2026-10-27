@@ -19,6 +19,8 @@ scripts/hooks/hosts/index.mjs
 scripts/hooks/hosts/claude.mjs
 scripts/hooks/hosts/copilot.mjs
 scripts/hooks/hosts/vscode.mjs
+# the Claude Code plugin's SessionStart hook (scripts/build-plugin.mjs registers it): it records the plugin's version
+scripts/hooks/plugin-session.mjs
 
 # every script agents and the CLI call as node {fw}/scripts/<x>.mjs, and the libraries loaded at run time by path or
 # with import(), each bundled at its source path
@@ -70,6 +72,7 @@ docs/playwright-conventions.md
 !**/*.test.mjs
 !scripts/test-helpers.mjs
 !scripts/build-package.mjs
+!scripts/build-plugin.mjs
 !scripts/e2e.mjs
 !scripts/fixtures/**
 !**/node_modules/**

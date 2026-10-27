@@ -35,6 +35,16 @@
 // sync never drops it silently. In .claude/settings.json the build owns only the framework's own hook entries; the
 // client's hooks and other keys are kept, in both kinds of workspace (lib/hook-registrations.mjs).
 //
+// The Claude Code plugin (docs/packaging.md §3.12; the opt-in and the mode rule are lib/provenance.mjs claudeMode). In
+// plugin mode without a Claude-affecting customization (agents "plugin") the plugin replaces the Claude Code half of the
+// build: the platform the plugin stands in for (pluginSupplies) gets no agent files and no MCP config file. Our marked
+// agent files left there by an earlier build go like a dropped agent's; the client's unmarked ones stay, with the same
+// name checks as ever (the guard keys a framework agent's ceiling on its bare name, D-021). A left-over MCP config file
+// holding only the framework's servers goes too (it carries no marker, so its servers decide; one the client added is
+// the usual error). With a customization (agents "project") everything renders as without the plugin. In every mode the
+// hook registrations are rendered (the guard is never the plugin's, D-020), and .claude/settings.json carries the
+// project's plugin keys (pluginSettings): the marketplace and the enabled plugin with the opt-in, neither without it.
+//
 //   node scripts/build-agents.mjs           write every generated file that differs
 //   node scripts/build-agents.mjs --check   write nothing; exit 1 on drift, a missing/stray source, or a stray output
 //   node scripts/build-agents.mjs --post-hook <async|sync|off>   save that mode in the framework's config/hooks.yaml,
@@ -42,7 +52,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseArgs } from "node:util";
+import { isDeepStrictEqual, parseArgs } from "node:util";
 import yaml from "js-yaml";
 import { checkHooks, configLocation, configPath, configRel, loadConfig } from "./lib/config.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
@@ -51,12 +61,48 @@ import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { checkBodyLimit, forbiddenIdentifiers, lintBody, lintFwToken } from "./lib/agents/lint.mjs";
 import { loadSources, splitFrontmatter } from "./lib/agents/source.mjs";
 import { foreignMcpEntries, renderMcpConfig, validateMcp } from "./lib/mcp.mjs";
-import { CLAUDE_SETTINGS, HOOKS_CONFIG, postModeOf, renderHookRegistrations, setPostMode } from "./lib/hook-registrations.mjs";
+import { CLAUDE_SETTINGS, HOOKS_CONFIG, formatJson, postModeOf, renderHookRegistrations, setPostMode } from "./lib/hook-registrations.mjs";
+import { PLUGIN, PLUGIN_ID, claudeMode } from "./lib/provenance.mjs";
 import { isGenerated } from "./lib/agents/renderers/common.mjs";
 import * as claude from "./lib/agents/renderers/claude.mjs";
 import * as copilot from "./lib/agents/renderers/copilot.mjs";
 
 const RENDERERS = { claude, copilot };
+
+// The platform whose agents and MCP servers the Claude Code plugin supplies in plugin mode: Claude Code's renderer.
+export const pluginSupplies = (platform) => platform?.renderer === "claude";
+
+// The project's plugin keys in .claude/settings.json (Claude Code's team setup): with the opt-in,
+// extraKnownMarketplaces.testagentic = { source } (its other fields, such as autoUpdate, kept) and
+// enabledPlugins["atf@testagentic"] = true; without it, exactly those two entries removed, and an object they leave
+// empty with them. Every other key and entry is the client's and kept. -> a new object; throws on a malformed key.
+export const MARKETPLACES_KEY = "extraKnownMarketplaces";
+export const ENABLED_KEY = "enabledPlugins";
+const isMap = (v) => Object.prototype.toString.call(v) === "[object Object]";
+export function pluginSettings(settings, mode) {
+  const out = { ...settings };
+  for (const key of [MARKETPLACES_KEY, ENABLED_KEY])
+    if (out[key] !== undefined && !isMap(out[key])) throw new Error(`'${key}' must be an object, not ${JSON.stringify(out[key])}; fix it, nothing was written`);
+  if (mode?.on) {
+    const entry = out[MARKETPLACES_KEY]?.[PLUGIN.marketplace];
+    out[MARKETPLACES_KEY] = { ...out[MARKETPLACES_KEY], [PLUGIN.marketplace]: { ...(isMap(entry) ? entry : {}), source: mode.marketplace } };
+    out[ENABLED_KEY] = { ...out[ENABLED_KEY], [PLUGIN_ID]: true };
+    return out;
+  }
+  for (const [key, name] of [[MARKETPLACES_KEY, PLUGIN.marketplace], [ENABLED_KEY, PLUGIN_ID]]) {
+    if (!out[key] || !Object.hasOwn(out[key], name)) continue;
+    const { [name]: _, ...rest } = out[key];
+    if (Object.keys(rest).length) out[key] = rest;
+    else delete out[key];
+  }
+  return out;
+}
+// settings text -> the text with the plugin keys; unchanged (formatting and all) when they already match
+function withPluginSettings(text, mode) {
+  const settings = JSON.parse(text);
+  const next = pluginSettings(settings, mode);
+  return isDeepStrictEqual(next, settings) ? text : formatJson(next) + "\n";
+}
 
 export function modelFor(models, name, platformKey) {
   return models?.agents?.[name]?.[platformKey] ?? models?.default?.[platformKey];
@@ -111,6 +157,10 @@ export function build({ check = false, postHook, root, framework } = {}) {
   const names = Object.keys(perms.resolved.agents);
   const dev = devAgentsDir(ws, fwRoot);
   if (dev.error) return { errors: [dev.error], changed: [] };
+  // the Claude Code plugin's mode (lib/provenance.mjs): a bad opt-in, or one in a source checkout, stops the build
+  const plugin = claudeMode({ workspace: ws, framework: fwRoot });
+  if (plugin.error) return { errors: [plugin.error], changed: [] };
+  const viaPlugin = plugin.on && plugin.agents === "plugin";
   const { sources, errors } = loadSources(fwRoot, names, { workspace: ws, dev: dev.dir ? dev : undefined });
   // what a body check's error names: the source (a dev agent's own path), plus the fragment when one is appended
   const label = (name) => {
@@ -134,6 +184,8 @@ export function build({ check = false, postHook, root, framework } = {}) {
       continue;
     }
     const { dir, prefix, suffix } = outputPattern(platform.output);
+    // plugin mode without a customization: the plugin supplies this platform's agents and MCP servers
+    const supplied = viaPlugin && pluginSupplies(platform);
     const expected = new Set();
     for (const [name, s] of Object.entries(sources)) {
       const model = modelFor(models, name, key);
@@ -143,6 +195,7 @@ export function build({ check = false, postHook, root, framework } = {}) {
       }
       errors.push(...checkBodyLimit(name, s.body, key, platform, label(name)));
       const caps = capabilitiesFor(perms.resolved.agents[name]);
+      if (supplied) continue;
       const rel = platform.output.replaceAll("{name}", name);
       expected.add(rel);
       outputs.set(rel, renderer.render({ name, ...s, caps, tools: toolNames(caps, platform, mcp.browser_server), model, platform, browserServer: mcp.browser_server, fw, installed }));
@@ -171,7 +224,9 @@ export function build({ check = false, postHook, root, framework } = {}) {
         // compared without case: on a case-insensitive disk (Windows, macOS) PW-UI-Fixer.md IS pw-ui-fixer.md
         const own = ours.get(rel.toLowerCase());
         if (isGenerated(text)) {
-          if (!own) stray.add(rel); // an agent the package dropped (or renamed): sync removes it, check reports it
+          // an agent the package dropped (or renamed), or any of ours when the plugin supplies them: sync removes it,
+          // check reports it
+          if (!own || supplied) stray.add(rel);
           continue;
         }
         if (own) {
@@ -195,21 +250,27 @@ export function build({ check = false, postHook, root, framework } = {}) {
       // an error naming it, with where it belongs, and nothing is written (lib/mcp.mjs foreignMcpEntries). A source
       // checkout's MCP files are all ours (D-018), rendered as they always were.
       const file = path.join(ws, rel);
+      let foreign = [];
       if (installed && existsSync(file)) {
         try {
-          errors.push(...foreignMcpEntries(readFileSync(file, "utf8"), { rel, key, servers: mcp.servers, ejected: configLocation("mcp.yaml", opts).source === "ejected" }));
+          foreign = foreignMcpEntries(readFileSync(file, "utf8"), { rel, key, servers: mcp.servers, ejected: configLocation("mcp.yaml", opts).source === "ejected" });
         } catch (e) {
-          errors.push(`${rel}: ${e.message}`);
+          foreign = [`${rel}: ${e.message}`];
         }
+        errors.push(...foreign);
       }
-      outputs.set(rel, renderMcpConfig(mcp, key, fw));
+      // the plugin supplies the servers: an earlier build's file, holding only ours, goes like a stray agent file
+      if (supplied) {
+        if (existsSync(file) && !foreign.length) stray.add(rel);
+      } else outputs.set(rel, renderMcpConfig(mcp, key, fw));
     }
   }
 
   if (!post.error) {
     const settingsFile = path.join(ws, CLAUDE_SETTINGS);
     try {
-      for (const [rel, content] of renderHookRegistrations(post.mode, existsSync(settingsFile) ? readFileSync(settingsFile, "utf8") : undefined, fw)) outputs.set(rel, content);
+      for (const [rel, content] of renderHookRegistrations(post.mode, existsSync(settingsFile) ? readFileSync(settingsFile, "utf8") : undefined, fw))
+        outputs.set(rel, rel === CLAUDE_SETTINGS ? withPluginSettings(content, plugin) : content);
     } catch (e) {
       errors.push(`${CLAUDE_SETTINGS}: ${e.message}`);
     }

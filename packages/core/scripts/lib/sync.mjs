@@ -29,14 +29,21 @@
 // a workflow without a job step that runs npm ci (or npm install) with ATF_NPM_TOKEN in its env. Sync warns; check and
 // the doctor fail. Only in an installed workspace: a source checkout commits all of .github/ already (D-018).
 //
+// The Claude Code plugin opt-in (packaging §3.12), atf/atf.json `"claude_plugin": true` with its "plugin_marketplace":
+// the mode rule is lib/provenance.mjs claudeMode, and the build renders by it (build-agents.mjs). In plugin mode without
+// a Claude-affecting customization the plugin supplies the Claude Code agents and MCP servers, so the block leaves out
+// what the build no longer writes (.claude/agents/<name>.md, .mcp.json) and keeps the rest; with a customization it is
+// the full block. sync reports the mode and why (claudeModeLine), naming the customization.
+//
 // sync() checks everything before it writes anything: a malformed block, an unreadable .gitignore or atf.json, a bad
-// "cloud_agent" or any build error (a bad overlay or fragment, a stray or missing source) leaves every file as it was
+// "cloud_agent" or "claude_plugin" or any build error (a bad overlay or fragment, a stray or missing source) leaves every file as it was
 // (D-018).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
-import { build } from "../build-agents.mjs";
+import { build, pluginSupplies } from "../build-agents.mjs";
 import { loadConfig } from "./config.mjs";
+import { CLAUDE_PLUGIN_KEY, PLUGIN, PLUGIN_ID, claudeAgentName, claudeMode } from "./provenance.mjs";
 import { WORKSPACE_MARKER, frameworkRel, isInstalled, readMarker } from "./roots.mjs";
 
 // The other files the build writes whole, besides the agents: workspace-relative, `/`-separated, written into the block
@@ -64,12 +71,33 @@ export function generatedAgentFiles({ workspace, framework }) {
   return platforms.flatMap((p) => (typeof p?.output === "string" ? names.map((n) => p.output.replaceAll("{name}", n)) : []));
 }
 
+// What the Claude Code plugin supplies in place of the build, in plugin mode without a customization: the agent files
+// and the MCP config file of the platform it stands in for (build-agents.mjs pluginSupplies), from the same config.
+export function pluginSuppliedFiles({ workspace, framework }) {
+  const opts = { framework, workspace };
+  const names = Object.keys(loadConfig("permissions.yaml", opts)?.agents ?? {});
+  const platforms = Object.values(loadConfig("platforms.yaml", opts)?.platforms ?? {}).filter(pluginSupplies);
+  return platforms.flatMap((p) => [...(typeof p.output === "string" ? names.map((n) => p.output.replaceAll("{name}", n)) : []), ...(typeof p.mcp_config?.path === "string" ? [p.mcp_config.path] : [])]);
+}
+
 // Every whole file the build writes, sorted (code-unit order, the same on every OS and locale) so atf check is stable.
 const hostEntries = (agentFiles) => [...new Set([...agentFiles, ...CLIENT_IGNORED])].sort();
 // What the cloud agent reads from git: the build's files under .github/ (its Copilot agents, its hook registration).
 const forCloudAgent = (entry) => entry.startsWith(".github/");
-// Everything the block lists: all of it, or with the cloud-agent opt-in all but what the cloud agent reads.
-export const ignoredEntries = (agentFiles, { cloudAgent = false } = {}) => hostEntries(agentFiles).filter((e) => !(cloudAgent && forCloudAgent(e)));
+// Everything the block lists: all of it, or with the cloud-agent opt-in all but what the cloud agent reads; never what
+// the plugin supplies (`supplied`, pluginSuppliedFiles in plugin mode), which the build doesn't write.
+export const ignoredEntries = (agentFiles, { cloudAgent = false, supplied = [] } = {}) => {
+  const skip = new Set(supplied);
+  return hostEntries(agentFiles).filter((e) => !(cloudAgent && forCloudAgent(e)) && !skip.has(e));
+};
+
+// What sync says about the Claude Code plugin's mode (lib/provenance.mjs claudeMode), and why; null without the opt-in.
+export function claudeModeLine(mode) {
+  if (!mode?.on) return null;
+  if (mode.agents === "plugin")
+    return `Claude Code plugin mode (${WORKSPACE_MARKER} "${CLAUDE_PLUGIN_KEY}"): the ${PLUGIN_ID} plugin supplies the Claude Code agents and MCP servers, so .claude/agents/ and .mcp.json are not rendered; sessions open ${claudeAgentName("orchestrator-agent", mode)}. The guard's hooks stay in .claude/settings.json.`;
+  return `Claude Code plugin mode (${WORKSPACE_MARKER} "${CLAUDE_PLUGIN_KEY}"), with the project's agents: this workspace customizes the Claude Code agents (${mode.customizations.join(", ")}), which the ${PLUGIN.name} plugin can't carry, so .claude/agents/ and .mcp.json are rendered as without the plugin and sessions open orchestrator-agent; the plugin's ${PLUGIN.name}: agents stay installed but unused.`;
+}
 // With the opt-in, what the client commits for the cloud agent: those files and the setup workflow.
 export const cloudAgentFiles = (agentFiles) => [...hostEntries(agentFiles).filter(forCloudAgent), SETUP_WORKFLOW];
 
@@ -154,13 +182,18 @@ export function withGitignoreBlock(text, entries) {
 
 // -> { errors, changed: [workspace-relative paths that differ (or would, with check)], created: [the setup workflow,
 // written (or missing, with check)], problems: [{ detail, fix }] (what sync reports and never fixes), installed,
-// cloudAgent, committed: [what the opt-in commits for the cloud agent] }
+// cloudAgent, committed: [what the opt-in commits for the cloud agent], claude: the plugin's mode (provenance.mjs
+// claudeMode: { on: false } | { on, agents, customizations, marketplace }) }
 export function sync({ workspace, framework, check = false }) {
   const installed = isInstalled(framework);
-  const result = { errors: [], changed: [], created: [], problems: [], installed, cloudAgent: false, committed: [] };
+  const result = { errors: [], changed: [], created: [], problems: [], installed, cloudAgent: false, committed: [], claude: { on: false } };
   const fail = (errors, changed = []) => ({ ...result, errors, changed });
   let ignore = null;
   let setup = {};
+  // the plugin's mode, in either kind of workspace: a source checkout's opt-in is an error (the build's too)
+  const claude = claudeMode({ workspace, framework });
+  if (claude.error) return fail([claude.error]);
+  result.claude = claude;
   if (installed) {
     const opt = cloudAgent(workspace);
     if (opt.error) return fail([opt.error]);
@@ -172,14 +205,15 @@ export function sync({ workspace, framework, check = false }) {
     } catch (e) {
       return fail([`${GITIGNORE}: ${e.message}`]);
     }
-    let agentFiles;
+    let agentFiles, supplied;
     try {
       agentFiles = generatedAgentFiles({ workspace, framework });
       if (opt.on) setup = setupWorkflow({ workspace, framework });
+      supplied = claude.agents === "plugin" ? pluginSuppliedFiles({ workspace, framework }) : [];
     } catch (e) {
       return fail([e.message]);
     }
-    const next = withGitignoreBlock(current, ignoredEntries(agentFiles, { cloudAgent: opt.on }));
+    const next = withGitignoreBlock(current, ignoredEntries(agentFiles, { cloudAgent: opt.on, supplied }));
     if (next.error) return fail([`${GITIGNORE}: ${next.error}`]);
     if (next.text !== current) ignore = { file, text: next.text };
     if (opt.on) result.committed = cloudAgentFiles(agentFiles);

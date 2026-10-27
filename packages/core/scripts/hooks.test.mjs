@@ -11,6 +11,7 @@ import { logHookError } from "./lib/hook-log.mjs";
 import { frameworkRoot, workspaceRoot } from "./lib/contract.mjs";
 import { initRun, setStage, status } from "./run.mjs";
 import * as claude from "./hooks/hosts/claude.mjs";
+import { PLUGIN_MCP_PREFIX, PLUGIN_NAME } from "./lib/hosts.mjs";
 import * as copilot from "./hooks/hosts/copilot.mjs";
 import { startRun, tempRoot, writeConfig } from "./test-helpers.mjs";
 
@@ -42,6 +43,65 @@ test("identity comes only from a trusted source: Copilot payloads cannot name th
   assert.equal(vscode("pw-ui-fixer", { tool_name: "read_file", tool_input: {} }).agent, "pw-ui-fixer");
   const viaCli = claude.normalize({ tool_name: "Bash", tool_input: {}, agent_type: "orchestrator-agent" }, { env: {}, host: "claude-code" });
   assert.deepEqual([viaCli.host, viaCli.agent], ["unknown", undefined], "Copilot CLI reading .claude/settings.json is not Claude Code");
+});
+
+// The framework's Claude Code plugin (packaging §3.12): its agents arrive as `atf:<name>` and its MCP tools as
+// `mcp__plugin_atf_<server>__<tool>`. Record the strings a live session shows here (docs/claude-plugin-verification.md).
+test("Claude Code plugin: atf:<name> is that framework agent; any other scoped agent_type is unattributed, never unmanaged", () => {
+  assert.equal(PLUGIN_NAME, "atf");
+  assert.equal(PLUGIN_MCP_PREFIX, "mcp__plugin_atf_");
+  const env = { CLAUDE_PROJECT_DIR: FULL.root };
+  const as = (agent_type, tool_name = "Bash", tool_input = {}) => claude.normalize({ agent_type, tool_name, tool_input }, { env, host: "claude-code" });
+  const caller = (c) => [c.agent, c.unattributed];
+  assert.deepEqual(caller(as("atf:pw-ui-fixer")), ["pw-ui-fixer", undefined]);
+  assert.deepEqual(caller(as("atf:orchestrator-agent")), ["orchestrator-agent", undefined], "the main session started with --agent atf:orchestrator-agent");
+  assert.ok(!("unattributed" in as("atf:pw-ui-fixer")), "the flag is absent unless set");
+  for (const t of ["other:pw-ui-fixer", "atf:a:b", "atf:", ":x", ":", "atf::pw-ui-fixer", "ATF:pw-ui-fixer", "atf:PW-UI-FIXER", "atf: pw-ui-fixer", "atf:pw-ui-fixer ", "atf:pw--ui", "atf:-x", "atf:pw_ui", "atfx:pw-ui-fixer", "x:atf:pw-ui-fixer"])
+    assert.deepEqual(caller(as(t)), [undefined, true], t);
+  assert.deepEqual(caller(as(42)), [undefined, true], "not a string: unattributed");
+  // bare names and no name behave as before
+  assert.deepEqual(caller(as("pw-ui-fixer")), ["pw-ui-fixer", undefined]);
+  assert.deepEqual(caller(as("general-purpose")), ["general-purpose", undefined]);
+  for (const t of [undefined, null, ""]) assert.deepEqual(caller(as(t)), [undefined, undefined], `${t}: the main session`);
+  // Copilot CLI reading .claude/settings.json is still not Claude Code, whatever agent_type says
+  const viaCli = claude.normalize({ tool_name: "Bash", tool_input: {}, agent_type: "other:x" }, { env: {}, host: "claude-code" });
+  assert.deepEqual([viaCli.host, viaCli.agent, viaCli.unattributed], ["unknown", undefined, undefined]);
+  // a spawn of the plugin's agent starts that framework agent; another scoped name stays as given
+  assert.equal(as("atf:playwright-ui-orchestrator", "Agent", { subagent_type: "atf:pw-ui-fixer" }).subagent, "pw-ui-fixer");
+  for (const s of ["pw-ui-fixer", "other:pw-ui-fixer", "atf:a:b"]) assert.equal(as(undefined, "Agent", { subagent_type: s }).subagent, s);
+});
+
+test("Claude Code plugin: the framework plugin's MCP tools are its project tools; another plugin's are unknown", () => {
+  const env = { CLAUDE_PROJECT_DIR: FULL.root };
+  const tool = (tool_name) => {
+    const c = claude.normalize({ agent_type: "atf:module-explorer", tool_name, tool_input: {} }, { env, host: "claude-code" });
+    return [c.kind, c.browserAction];
+  };
+  for (const name of ["click", "type", "fill_form", "navigate", "evaluate", "close", "run_code_unsafe"]) {
+    assert.deepEqual(tool(`mcp__plugin_atf_playwright__browser_${name}`), ["browser", name]);
+    assert.deepEqual(tool(`mcp__plugin_atf_playwright__browser_${name}`), tool(`mcp__playwright__browser_${name}`), name);
+  }
+  for (const t of ["mcp__plugin_other_playwright__browser_click", "mcp__plugin_atf_x_playwright__browser_click", "mcp__plugin_atfx_playwright__browser_click",
+    "mcp__plugin_other_srv__tool", "mcp__plugin_atf_srv__tool", "mcp__plugin_atf_playwright__browser_", "mcp__plugin_atf_playwright__browser_a-b", "mcp__other__browser_click", "mcp__playwright__browser_a\nb", "mcp__play\nwright__browser_click", "playwright__browser_click"])
+    assert.deepEqual(tool(t), ["unknown", undefined], JSON.stringify(t));
+});
+
+test("Claude Code adapter: long adversarial agent types and tool names are read in linear time", () => {
+  const env = { CLAUDE_PROJECT_DIR: FULL.root };
+  const n = 200_000;
+  const inputs = [
+    { agent_type: `atf:${"a-".repeat(n)}!`, tool_name: `mcp__${"playwright".repeat(n / 10)}!` },
+    { agent_type: `atf:${"a".repeat(n)}-`, tool_name: `mcp__${"playwright__browser_".repeat(n / 20)}!` },
+    { agent_type: ":".repeat(n), tool_name: `mcp__plugin_atf_${"playwright".repeat(n / 10)}__browser_${"x".repeat(n)}!` },
+    { agent_type: `${"atf:".repeat(n / 4)}x`, tool_name: `mcp__playwright${"__browser_".repeat(n / 10)}` },
+  ];
+  for (const p of inputs) {
+    const t = performance.now();
+    const c = claude.normalize({ ...p, tool_input: {} }, { env, host: "claude-code" });
+    const ms = performance.now() - t;
+    assert.ok(ms < 250, `${ms.toFixed(0)} ms for a ${p.tool_name.length}-character name`);
+    assert.equal(c.unattributed, true);
+  }
 });
 
 test("full-run on a host that cannot identify the caller: the run's combined permissions", () => {
@@ -191,6 +251,28 @@ test("hook entry: Claude Code blocks with exit 2 and records the canary", () => 
   const c = hook(["--host", "claude-code"], { agent_type: "orchestrator-agent", tool_name: "Bash", tool_input: { command: "node scripts/run.mjs guard-check acme" } }, { CLAUDE_PROJECT_DIR: root });
   assert.equal(c.status, 2);
   assert.deepEqual(readdirSync(path.join(root, "artifacts/acme/state/guard-check")), ["claude-code--orchestrator-agent.json"]);
+});
+
+test("hook entry: a plugin agent gets its own row, another plugin's agent the run's combined ceiling (packaging §3.12)", () => {
+  const write = (agent_type, rel) => hook(["--host", "claude-code"], { agent_type, tool_name: "Write", tool_input: { file_path: path.join(FULL.root, rel) } }, { CLAUDE_PROJECT_DIR: FULL.root });
+  const evidence = "artifacts/acme/modules/contacts/clarification-evidence/contacts-1/notes.md";
+  assert.equal(write("atf:pw-ui-fixer", "playwright-tests/acme/pages/contacts/contacts.page.ts").status, 0);
+  const own = write("atf:pw-ui-fixer", evidence);
+  assert.equal(own.status, 2);
+  assert.match(own.stderr, /\(fs-write\).*outside this agent's filesystem\.write allow-list/);
+  assert.equal(write("other:pw-ui-fixer", evidence).status, 0, "what at least one of the run's agents may write");
+  const other = write("other:pw-ui-fixer", "config/permissions.yaml");
+  assert.equal(other.status, 2);
+  assert.match(other.stderr, /\(fs-write\).*Claude Code named a caller that is none of the framework's agents.*so it allows what at least one of this run's agents may do/);
+  const settings = write("other:x", "atf/permissions.yaml");
+  assert.equal(settings.status, 2);
+  assert.match(settings.stderr, /\(workspace-settings\)/);
+  const browser = hook(["--host", "claude-code"], { agent_type: "atf:pw-ui-reviewer", tool_name: "mcp__plugin_atf_playwright__browser_navigate", tool_input: { url: "https://app.acme.test" } }, { CLAUDE_PROJECT_DIR: FULL.root });
+  assert.equal(browser.status, 2);
+  assert.match(browser.stderr, /\(browser-none\)/);
+  const unknown = hook(["--host", "claude-code"], { agent_type: "atf:module-explorer", tool_name: "mcp__plugin_other_srv__tool", tool_input: {} }, { CLAUDE_PROJECT_DIR: FULL.root });
+  assert.equal(unknown.status, 2);
+  assert.match(unknown.stderr, /\(unmapped-tool\): 'mcp__plugin_other_srv__tool' is not a tool the guard knows on Claude Code/);
 });
 
 test("hook entry: Copilot CLI gets a deny decision on stdout and exit 2", () => {

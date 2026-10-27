@@ -31,3 +31,7 @@ auth.json
 
 # The built @testagentic/atf (packages/core/scripts/build-package.mjs): published by the release workflow, never committed
 packages/core/dist/
+
+# The built Claude Code plugin (packages/core/scripts/build-plugin.mjs): pushed to the marketplace repository by the release
+# workflow, never committed here
+packages/claude-plugin/dist/

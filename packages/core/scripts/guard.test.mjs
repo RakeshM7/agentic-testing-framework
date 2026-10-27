@@ -976,7 +976,7 @@ test("every framework script is writable by framework-implementor-agent or delib
     "scripts/lib/sync.mjs", "scripts/sync.test.mjs", "scripts/lib/init.mjs", "scripts/init.test.mjs",
     // D-094: what the package ships and its fail-closed hooks are decided by the build; D-095: migrate rewrites atf/atf.json
     // and every run's state, and the frozen-workspace test is the compatibility gate
-    "scripts/build-package.mjs", "scripts/build-package.test.mjs", "scripts/lib/migrate.mjs", "scripts/migrate.test.mjs", "scripts/contract-fixtures.test.mjs",
+    "scripts/build-package.mjs", "scripts/build-package.test.mjs", "scripts/build-plugin.mjs", "scripts/build-plugin.test.mjs", "scripts/lib/migrate.mjs", "scripts/migrate.test.mjs", "scripts/contract-fixtures.test.mjs",
     // D-097: the issue bundle decides what leaves a client workspace (redaction) and what enters the maintainers' feedback
     "scripts/lib/issues-bundle.mjs", "scripts/issues-bundle.test.mjs", "scripts/lib/zip.mjs", "scripts/zip.test.mjs",
   ]);
@@ -1162,4 +1162,98 @@ test("the workspace's atf/ is human-only: no framework agent writes there or eje
 
   // the roster fails closed: a framework whose agent sources can't be read counts every named caller as one of them
   assert.equal(check(outside, call("general-purpose", "Write", { file_path: path.join(outside, "atf", "permissions.yaml") }), tempRoot()).rule, "workspace-settings");
+});
+
+// The framework's Claude Code plugin (packaging §3.12): Claude Code reports its agents as `atf:<name>`, and the
+// adapter reads that as the agent <name>; any other scoped agent type is a caller the guard can't attribute (D-035).
+test("Claude Code plugin agents: atf:<name> gets exactly <name>'s verdicts; another scoped name the run's combined ceiling, never unmanaged", () => {
+  const check = (root, c) => checkTool(c, root, {}, { framework: root });
+  const own = "playwright-tests/acme/pages/contacts/contacts.page.ts";
+  const evidence = "artifacts/acme/modules/contacts/clarification-evidence/contacts-1/notes.md";
+  const nobody = "config/permissions.yaml";
+  const post = "curl -X POST https://app.acme.test/api/contacts -d '{}'";
+  const calls = (agent, root) => [
+    ...[own, evidence, nobody].map((rel) => call(agent, "Write", { file_path: path.join(root, rel) })),
+    sh(agent, "node scripts/ui-code.mjs check acme contacts"), sh(agent, "npx tsc --noEmit"), sh(agent, post), sh(agent, "curl -X DELETE https://app.acme.test/api/contacts/1"),
+    call(agent, "Agent", { subagent_type: "pw-ui-reviewer" }), call(agent, "Agent", { subagent_type: "atf:pw-ui-reviewer" }),
+    call(agent, "WebFetch", { url: "https://app.acme.test/x" }), call(agent, "WebSearch", { query: "x" }),
+    call(agent, "mcp__playwright__browser_navigate", {}), call(agent, "mcp__plugin_atf_playwright__browser_type", {}), call(agent, "mcp__plugin_other_srv__tool", {}),
+  ];
+  for (const { root } of [FULL, RO]) {
+    // exactly the bare name's verdicts, on what it may and may not do
+    assert.deepEqual(calls("atf:pw-ui-fixer", root).map((c) => check(root, c)), calls("pw-ui-fixer", root).map((c) => check(root, c)));
+    assert.equal(check(root, call("atf:pw-ui-fixer", "Write", { file_path: path.join(root, own) })).allowed, true);
+    assert.equal(check(root, call("atf:pw-ui-fixer", "Write", { file_path: path.join(root, evidence) })).rule, "fs-write");
+  }
+  // an orchestrator of the plugin starts the plugin's workers by its own spawn list
+  const spawn = (agent, sub) => allowed(FULL.root, call(agent, "Agent", { subagent_type: sub }));
+  assert.deepEqual([spawn("atf:playwright-ui-orchestrator", "atf:pw-ui-fixer"), spawn("atf:playwright-ui-orchestrator", "atf:pw-api-fixer"), spawn("atf:playwright-ui-orchestrator", "other:pw-ui-fixer")], [true, false, false]);
+
+  // full-run: another plugin's agent named like a framework agent gets what a host that can't name its caller gets
+  for (const agent of ["other:pw-ui-fixer", "atf:a:b", "atf:", ":x"]) {
+    const c = call(agent, "Write", { file_path: path.join(FULL.root, evidence) });
+    assert.deepEqual([c.agent, c.unattributed], [undefined, true], agent);
+    assert.equal(check(FULL.root, c).allowed, true, `${agent}: at least one of the run's agents may write it`);
+    const refused = check(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, nobody) }));
+    assert.equal(refused.rule, "fs-write", `${agent}: no agent of the run may write the framework's config`);
+    assert.match(refused.reason, /\[Claude Code named a caller that is none of the framework's agents \(an agent of another plugin, or not one agent of the framework's plugin\), so it allows what at least one of this run's agents may do\]$/);
+    assert.equal(check(FULL.root, call(agent, "Agent", { subagent_type: "feedback-implementor-agent" })).rule, "spawn", `${agent}: agents outside the run stay out`);
+    assert.equal(check(FULL.root, call(agent, "mcp__plugin_other_srv__tool", {})).rule, "unmapped-tool", `${agent}: an unknown tool fails closed (D-036)`);
+    assert.equal(check(FULL.root, sh(agent, "curl -X DELETE https://app.acme.test/api/contacts/1")).rule, "delete-not-owned");
+    assert.equal(check(FULL.root, sh(agent, post)).allowed, true, "some agent of the run may mutate over HTTP");
+  }
+  // ... where an unmanaged name (a human's own session, a host's built-in helper) gets the mode rules only
+  for (const agent of [undefined, "general-purpose", "Explore"]) {
+    assert.equal(check(FULL.root, call(agent, "Write", { file_path: path.join(FULL.root, nobody) })).allowed, true, `${agent}: unmanaged`);
+    assert.equal(check(FULL.root, call(agent, "Agent", { subagent_type: "feedback-implementor-agent" })).allowed, true, `${agent}: unmanaged`);
+    assert.equal(check(FULL.root, call(agent, "mcp__plugin_other_srv__tool", {})).allowed, true, `${agent}: unmanaged`);
+  }
+  // a readonly run: the mode rules, like any unattributed call there (D-035, D-036)
+  const ro = (agent, c) => check(RO.root, c(agent));
+  for (const c of [(a) => call(a, "Write", { file_path: path.join(RO.root, nobody) }), (a) => sh(a, post), (a) => call(a, "mcp__plugin_other_srv__tool", {}), (a) => call(a, "mcp__playwright__browser_evaluate", {})])
+    assert.deepEqual(ro("other:pw-ui-fixer", c), ro(undefined, c));
+});
+
+test("Claude Code plugin agents: another plugin's agent may not write atf/ during a run; outside a run it gets the mode rules (D-088)", () => {
+  const check = (root, c) => checkTool(c, root, {}, { framework: frameworkRoot });
+  const outside = tempRoot();
+  for (const root of [outside, RO.root, FULL.root]) mkdirSync(path.join(root, "atf", "config"), { recursive: true });
+  for (const { root } of [FULL, RO])
+    for (const agent of ["other:x", "other:pw-ui-fixer", "atf:a:b"]) {
+      assert.equal(check(root, call(agent, "Write", { file_path: path.join(root, "atf", "permissions.yaml") })).rule, "workspace-settings", agent);
+      assert.equal(check(root, call(agent, "Edit", { file_path: path.join(root, "atf", "config", "mcp.yaml") })).rule, "workspace-settings", agent);
+      for (const c of ["echo x > atf/mcp.yaml", "npx atf eject config"]) assert.equal(check(root, sh(agent, c)).rule, "workspace-settings", `${agent}: ${c}`);
+      // and the framework plugin's agents are framework agents, in or out of a run
+      assert.equal(check(root, call("atf:pw-ui-fixer", "Write", { file_path: path.join(root, "atf", "permissions.yaml") })).rule, "workspace-settings");
+    }
+  assert.equal(check(outside, call("other:x", "Write", { file_path: path.join(outside, "atf", "permissions.yaml") })).allowed, true, "no run: the mode rules");
+  assert.equal(check(outside, sh("other:x", "curl -X POST https://x/api")).rule, "http-mutate", "no run: readonly shell rules");
+  assert.equal(check(outside, call("atf:pw-ui-fixer", "Write", { file_path: path.join(outside, "atf", "permissions.yaml") })).rule, "workspace-settings", "no run: still a framework agent");
+});
+
+test("Claude Code plugin MCP tools: mcp__plugin_atf_<server>__<tool> is classified like mcp__<server>__<tool>; another plugin's tools fail closed during a run", () => {
+  const check = (root, c) => checkTool(c, root, {}, { framework: root });
+  const agents = [undefined, "clarification-explorer", "knowledge-generator", "pw-ui-reviewer", "module-explorer", "pw-ui-test-runner-triager", "atf:clarification-explorer", "other:x"];
+  const actions = ["click", "navigate", "snapshot", "type", "fill_form", "press_key", "evaluate", "file_upload", "handle_dialog", "close", "run_code_unsafe"];
+  let denied = 0;
+  for (const { root } of [RO, FULL])
+    for (const agent of agents)
+      for (const a of actions) {
+        const plugin = check(root, call(agent, `mcp__plugin_atf_playwright__browser_${a}`, {}));
+        assert.deepEqual(plugin, check(root, call(agent, `mcp__playwright__browser_${a}`, {})), `${agent} ${a}`);
+        denied += plugin.allowed ? 0 : 1;
+      }
+  assert.ok(denied > 20, "the comparison covers denials too");
+  assert.equal(check(RO.root, call("clarification-explorer", "mcp__plugin_atf_playwright__browser_evaluate", {})).rule, "browser-read");
+  assert.equal(check(FULL.root, call("clarification-explorer", "mcp__plugin_atf_playwright__browser_evaluate", {})).allowed, true);
+  assert.equal(check(FULL.root, call("pw-ui-reviewer", "mcp__plugin_atf_playwright__browser_navigate", {})).rule, "browser-none");
+
+  // another plugin's server is not the framework's, even one named playwright: unknown, refused during a run
+  const foreign = ["mcp__plugin_other_srv__tool", "mcp__plugin_other_playwright__browser_click", "mcp__plugin_atf_x_playwright__browser_click"];
+  for (const { root } of [RO, FULL])
+    for (const t of foreign) assert.equal(check(root, call("clarification-explorer", t, {})).rule, "unmapped-tool", t);
+  for (const t of foreign) {
+    assert.equal(check(FULL.root, call("other:x", t, {})).rule, "unmapped-tool", `${t}: under the combined ceiling`);
+    assert.equal(check(tempRoot(), call("clarification-explorer", t, {})).allowed, true, `${t}: no active run`);
+  }
 });

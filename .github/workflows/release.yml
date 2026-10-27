@@ -7,6 +7,14 @@
 # No --provenance: npm accepts provenance only from a public source repository (GitHub changelog, 2023-07-26,
 # "publishing with provenance is restricted to public source repositories only"), and the attestation goes to the
 # public Sigstore transparency log, naming the repository and commit of a package meant to stay private.
+#
+# The Claude Code plugin (docs/packaging.md §3.12, draft P-11) is the second channel of the same release: same commit,
+# same version. The publish job builds it before npm publish, so a plugin that doesn't build stops the release before
+# anything ships. The plugin job then rebuilds it as the private marketplace's content and pushes it to the marketplace
+# repository: the repository variable PLUGIN_MARKETPLACE_REPO (owner/name) with the secret PLUGIN_MARKETPLACE_TOKEN (a
+# token that may push to that repository only). It replaces plugins/atf/ and .claude-plugin/marketplace.json, commits
+# "atf <version>", and tags atf-v<version>. Without the variable or the secret it pushes nothing and says so; a dry run
+# pushes nothing. It is its own job so that a failed push can be re-run alone, after npm has the version.
 name: Release
 
 on:
@@ -55,7 +63,75 @@ jobs:
         run: node packages/core/scripts/build-package.mjs --check
       - name: Refuse a DRAFT licence or a tag that doesn't match the version
         run: node packages/core/scripts/build-package.mjs --release "$TAG"
+      - name: Build the Claude Code plugin (packages/claude-plugin/dist)
+        run: node packages/core/scripts/build-plugin.mjs
       - name: Publish
         run: npm publish ./packages/core/dist ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  plugin:
+    needs: publish
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+      MARKETPLACE_REPO: ${{ vars.PLUGIN_MARKETPLACE_REPO }}
+      HAS_TOKEN: ${{ secrets.PLUGIN_MARKETPLACE_TOKEN != '' && 'true' || 'false' }}
+    steps:
+      # secrets can't be tested in an `if:`, so this step decides, and says why when nothing is pushed
+      - name: Decide whether to push the plugin
+        id: gate
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "::notice title=Claude Code plugin::Dry run: the plugin was built by the publish job, nothing is pushed to the marketplace"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$MARKETPLACE_REPO" ] || [ "$HAS_TOKEN" != "true" ]; then
+            echo "::notice title=Claude Code plugin::Not pushed: set the repository variable PLUGIN_MARKETPLACE_REPO (owner/name of the marketplace repository) and the secret PLUGIN_MARKETPLACE_TOKEN to release the plugin"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.push == 'true'
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.push == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - if: steps.gate.outputs.push == 'true'
+        run: npm ci --ignore-scripts
+      - name: Push the plugin to the marketplace repository
+        if: steps.gate.outputs.push == 'true'
+        env:
+          TOKEN: ${{ secrets.PLUGIN_MARKETPLACE_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./packages/core/package.json').version")"
+          if [ "$TAG" != "core-v$version" ]; then echo "::error::tag $TAG does not match the package version $version"; exit 1; fi
+          tag="atf-v$version"
+          market="$RUNNER_TEMP/marketplace"
+          # the token goes in an auth header for this clone only, never into the URL or the clone's config
+          basic="$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"
+          echo "::add-mask::$basic"
+          auth="AUTHORIZATION: basic $basic"
+          git -c http.extraheader="$auth" clone --quiet "https://github.com/$MARKETPLACE_REPO.git" "$market"
+          node packages/core/scripts/build-plugin.mjs --out "$RUNNER_TEMP/atf-plugin" --marketplace "$market"
+          cd "$market"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- .claude-plugin/marketplace.json "plugins/atf"
+          exists="$(git -c http.extraheader="$auth" ls-remote --tags origin "refs/tags/$tag")"
+          if git diff --cached --quiet; then
+            # a re-run after a push that went through: nothing changed, and the tag is there
+            if [ -n "$exists" ]; then echo "::notice title=Claude Code plugin::$tag is already in $MARKETPLACE_REPO"; exit 0; fi
+          else
+            if [ -n "$exists" ]; then echo "::error::$tag already exists in $MARKETPLACE_REPO with other content; a released version is never replaced"; exit 1; fi
+            git commit --quiet -m "atf $version" -m "Built from ${GITHUB_REPOSITORY}@${GITHUB_SHA} ($TAG) by packages/core/scripts/build-plugin.mjs."
+          fi
+          git tag -a "$tag" -m "atf $version"
+          branch="$(git symbolic-ref --short HEAD)"
+          git -c http.extraheader="$auth" push --atomic origin "HEAD:refs/heads/$branch" "refs/tags/$tag"
+          echo "::notice title=Claude Code plugin::Pushed atf $version to $MARKETPLACE_REPO ($branch, $tag)"

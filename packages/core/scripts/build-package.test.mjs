@@ -48,7 +48,7 @@ test("the build writes dist: every client-side module bundled at its source path
   assert.deepEqual(FILES, plannedFiles());
   assert.deepEqual(checkDist(DIST), []);
   assert.equal(BUILT.bundled, entryPoints().length);
-  for (const must of ["bin/atf.mjs", "scripts/hooks/pretooluse.mjs", "scripts/hooks/posttooluse.mjs", "scripts/hooks/hosts/claude.mjs", "scripts/lib/guard.mjs", "scripts/run.mjs", "scripts/browser/init-page.cjs", "agents/orchestrator-agent.md", "config/permissions.yaml", "templates/workspace/_npmrc", "schemas/run.schema.json", "docs/platforms.md", "LICENSE.md", "package.json"])
+  for (const must of ["bin/atf.mjs", "scripts/hooks/pretooluse.mjs", "scripts/hooks/posttooluse.mjs", "scripts/hooks/plugin-session.mjs", "scripts/hooks/hosts/claude.mjs", "scripts/lib/guard.mjs", "scripts/run.mjs", "scripts/browser/init-page.cjs", "agents/orchestrator-agent.md", "config/permissions.yaml", "templates/workspace/_npmrc", "schemas/run.schema.json", "docs/platforms.md", "LICENSE.md", "package.json"])
     assert.ok(FILES.includes(must), must);
   // copied files are byte for byte the source
   for (const rel of ["agents/orchestrator-agent.md", "config/permissions.yaml", "docs/artifact-contract.md", "LICENSE.md", "scripts/browser/init-page.cjs"]) assert.equal(read(rel), read(rel, CORE), rel);
@@ -68,7 +68,7 @@ test("the build writes dist: every client-side module bundled at its source path
 test("nothing maintainer-only ships: tests, test helpers, fixtures, the e2e harness, the build itself, the decision log", () => {
   for (const f of FILES) {
     assert.doesNotMatch(f, /\.test\.mjs$|^scripts\/fixtures\/|(^|\/)node_modules\/|(^|\/)\./, f);
-    assert.ok(!["scripts/test-helpers.mjs", "scripts/e2e.mjs", "scripts/build-package.mjs", "docs/decisions.md", "docs/packaging.md", "docs/agent-architecture.md", "package-files.txt"].includes(f), f);
+    assert.ok(!["scripts/test-helpers.mjs", "scripts/e2e.mjs", "scripts/build-package.mjs", "scripts/build-plugin.mjs", "docs/decisions.md", "docs/packaging.md", "docs/agent-architecture.md", "package-files.txt"].includes(f), f);
   }
   assert.ok(!FILES.some((f) => f.startsWith("feedback/") || f.startsWith("dist/")));
   // and the allow-list itself refuses them, whatever its include lines say
@@ -158,7 +158,7 @@ test("the built package installed in a client workspace: atf sync and atf check 
 test("the bundled hook still fails closed when a lib, or a package a lib needs, does not load", () => {
   // the hook entries import nothing but node: built-ins statically: every lib, and with it every package, loads
   // inside their try (an inlined lib's js-yaml would be hoisted above it)
-  for (const rel of ["scripts/hooks/pretooluse.mjs", "scripts/hooks/posttooluse.mjs", "bin/atf.mjs"]) {
+  for (const rel of ["scripts/hooks/pretooluse.mjs", "scripts/hooks/posttooluse.mjs", "scripts/hooks/plugin-session.mjs", "bin/atf.mjs"]) {
     const statics = [...read(rel).matchAll(/^import .* from "([^"]+)";$/gm)].map((m) => m[1]);
     assert.ok(statics.every((s) => s.startsWith("node:")), `${rel}: ${statics}`);
   }

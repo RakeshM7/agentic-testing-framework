@@ -180,6 +180,9 @@ test("a file init can't read safely stops it before anything is written (exit 1)
     [".gitignore", `${INIT_BLOCK_START}\nx\n`, /the atf init block is malformed/],
     ["atf/atf.json", "{ nope", /atf\/atf\.json could not be read as JSON/],
     ["atf/atf.json", '{ "cloud_agent": "yes" }', /atf\/atf\.json "cloud_agent" must be true or false, not "yes"; fix it, then run atf init again$/],
+    ["atf/atf.json", '{ "claude_plugin": "yes" }', /atf\/atf\.json "claude_plugin" must be true or false, not "yes"; fix it, then run atf init again$/],
+    ["atf/atf.json", '{ "claude_plugin": true }', /atf\/atf\.json "plugin_marketplace" is required with "claude_plugin": true: .*; fix it, then run atf init again$/],
+    ["atf/atf.json", '{ "claude_plugin": true, "plugin_marketplace": "nope" }', /atf\/atf\.json "plugin_marketplace" must be a git URL .* not "nope"; fix it, then run atf init again$/],
     ["atf/atf.json", '{ "contract": 2.5 }', /atf\/atf\.json "contract" must be a whole number of 1 or more \(the artifact-contract version\), not 2\.5; fix it, then run atf init again$/],
   ]) {
     const dir = path.join(tempRoot(), "ws");

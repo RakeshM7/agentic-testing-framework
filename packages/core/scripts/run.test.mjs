@@ -721,6 +721,60 @@ test("resume within a line continues and records each version change in the run,
   assert.deepEqual(loadJson(path.join(paths("acme", v.root).historyDir, "acme-run-1.json")).packageChanges, summary.packageChanges);
 });
 
+// The Claude Code plugin's version lock (docs/packaging.md §3.12, draft P-11): in plugin mode, init and resume refuse a
+// plugin whose recorded version isn't the package's, and the run's provenance records the plugin it ran with.
+function pluginRun({ optIn = true, recorded } = {}) {
+  const ws = installedWorkspace();
+  if (optIn) put(ws.root, "atf/atf.json", `${JSON.stringify({ claude_plugin: true, plugin_marketplace: "acme-corp/atf-marketplace" })}\n`);
+  const record = (v) => put(ws.root, "artifacts/.atf-plugin.json", `${JSON.stringify({ plugin: "atf", version: v, at: "2026-10-27T09:00:00.000Z" })}\n`);
+  if (recorded) record(recorded);
+  const cfg = writeConfig(ws.root);
+  const init = (v, opts = {}) => initRun(cfg, { root: ws.root, framework: ws.framework, runId: "acme-run-1", env: { CLAUDECODE: "1" }, pkg: PKG(v), ...opts });
+  return { ...ws, cfg, init, record, resume: (v) => init(v, { resume: true }), runFile: paths("acme", ws.root).runFile };
+}
+const pluginMismatch = (plugin, pkg) =>
+  `the atf@testagentic plugin is ${plugin} (artifacts/.atf-plugin.json, recorded 2026-10-27T09:00:00.000Z) and the installed @testagentic/atf is ${pkg}: the two are released together and must be the same version. Fix: update whichever is behind: claude plugin update atf@testagentic, then start a new Claude Code session (it records the plugin's version); or npm install --save-dev @testagentic/atf@${plugin} (in the workspace)`;
+
+test("plugin mode: init refuses a plugin of another version, starts with the same one and records it in provenance; resume refuses one that changed", async () => {
+  const p = pluginRun({ recorded: "0.1.1" });
+  assert.deepEqual(p.init("0.1.0"), { errors: [pluginMismatch("0.1.1", "0.1.0")] });
+  assert.equal(existsSync(p.runFile), false, "nothing written");
+  p.record("0.1.0");
+  const r = p.init("0.1.0");
+  assert.equal(r.errors, undefined);
+  assert.deepEqual(r.run.provenance.plugin, { name: "atf", version: "0.1.0" });
+  assert.deepEqual(await validateProduct("acme", { root: p.root }), [], "the schema takes the recorded plugin");
+  assert.equal(p.resume("0.1.0").errors, undefined);
+  // the plugin was updated but the package wasn't (or the other way round): resume is refused, the run left as it was
+  p.record("0.1.2");
+  const before = readFileSync(p.runFile, "utf8");
+  assert.deepEqual(p.resume("0.1.0"), { errors: [pluginMismatch("0.1.2", "0.1.0")] });
+  assert.equal(readFileSync(p.runFile, "utf8"), before);
+  // a record the plugin didn't write is refused too, never guessed
+  put(p.root, "artifacts/.atf-plugin.json", "{ nope");
+  assert.match(p.resume("0.1.0").errors[0], /^artifacts\/\.atf-plugin\.json could not be read as JSON .*Fix: delete it, then start a Claude Code session/);
+});
+
+test("plugin mode with no version recorded yet starts (the doctor warns), recording no plugin; without the opt-in a record is ignored", () => {
+  const none = pluginRun();
+  const r = none.init("0.1.0");
+  assert.equal(r.errors, undefined);
+  assert.equal(r.run.provenance.plugin, null);
+  const off = pluginRun({ optIn: false, recorded: "5.0.0" });
+  const o = off.init("0.1.0");
+  assert.equal(o.errors, undefined, "no plugin mode: no lock");
+  assert.equal(o.run.provenance.plugin, null, "a plugin this run doesn't use is not what it was made with");
+});
+
+test("run.schema.json provenance.plugin: {name: atf, version} or null, nothing else", async () => {
+  const { run } = versionedRun("0.1.0");
+  const withPlugin = (plugin) => ({ ...run, provenance: { ...run.provenance, plugin } });
+  assert.deepEqual(await validateData("run", withPlugin(null)), []);
+  assert.deepEqual(await validateData("run", withPlugin({ name: "atf", version: "0.1.0" })), []);
+  for (const bad of [{ name: "other", version: "0.1.0" }, { name: "atf" }, { name: "atf", version: "" }, { name: "atf", version: "0.1.0", at: "x" }, "atf 0.1.0"])
+    assert.notDeepEqual(await validateData("run", withPlugin(bad)), [], JSON.stringify(bad));
+});
+
 test("a run that predates package versions resumes as compatible, recording nothing", () => {
   for (const strip of [(run) => delete run.provenance.package, (run) => delete run.provenance]) {
     const v = versionedRun("0.1.0");
