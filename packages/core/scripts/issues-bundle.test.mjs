@@ -240,6 +240,9 @@ test("evidence references: inside the workspace and its output areas only, never
   put(root, "config/acme.yaml", "x");
   put(root, "k6-tests/acme/out.json", "{}");
   assert.deepEqual(evidenceRefs(root, [`see artifacts/acme/x.txt:3, ${path.join(root, "k6-tests/acme/out.json")}, artifacts/acme/.auth/state.json, playwright-tests/acme/.env.local, config/acme.yaml, ../etc/passwd.txt, artifacts/acme/missing.txt`]), ["artifacts/acme/x.txt", "k6-tests/acme/out.json"]);
+  // a `~` in a path (Windows 8.3 short names such as C:\Users\RUNNER~1\...) stays part of it
+  put(root, "artifacts/RUN~1/y.txt", "y");
+  assert.deepEqual(evidenceRefs(root, [`${path.join(root, "artifacts", "RUN~1", "y.txt")} and artifacts/RUN~1/y.txt`]), ["artifacts/RUN~1/y.txt"]);
 });
 
 test("import: in the framework's source checkout, one feedback file per issue in today's format, marked as a redacted client bundle", async () => {

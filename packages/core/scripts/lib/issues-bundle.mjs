@@ -303,7 +303,8 @@ function seeds(workspace, runs) {
 
 // ---- evidence --------------------------------------------------------------------------------------------------------
 
-const PATH_TOKEN = /(?:[A-Za-z]:)?[\w.@\\/-]*[\\/][\w.@-]*\.[A-Za-z0-9]{1,8}/g;
+// `~` belongs to a path too: Windows 8.3 short names (C:\Users\RUNNER~1\...) and home-relative folders
+const PATH_TOKEN = /(?:[A-Za-z]:)?[\w.@~\\/-]*[\\/][\w.@~-]*\.[A-Za-z0-9]{1,8}/g;
 
 // The files an issue's text names that may go in a bundle: inside the workspace, under artifacts/, playwright-tests/ or
 // k6-tests/, never in .auth/, .git/ or node_modules/ and never a .env file. -> [workspace-relative paths with `/`]
