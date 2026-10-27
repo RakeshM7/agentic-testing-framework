@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // CLI over scripts/lib/framework-issues.mjs (D-083): an agent records a problem with the framework itself -- not the
-// product, not the test code -- and goes on with its task; `run.mjs end` turns the run's issues into feedback files.
+// product, not the test code -- and goes on with its task. The issues stay in the run's results; a human exports them
+// as a redacted bundle for the framework's maintainers (`atf issues export`, docs/packaging.md §3.9), and in the
+// framework's own source checkout `run.mjs end` also writes them as feedback files (lib/framework-issues.mjs).
 //   framework-issues.mjs add <product> --from <agent> --kind <prompt|script|contract|doc|config|template|other>
 //                            --target <framework file> --summary <one line> --evidence <what you saw>
 //                            [--fix <suggested fix>] [--severity blocking|high|medium|low]

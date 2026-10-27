@@ -125,11 +125,13 @@ Defined once, here (D-059). Each code reviewer judges **every** test of its modu
 
 Severity: **blocker** = a safety rule broken or a wrong expected behavior; **major** = a missing assertion of the case, or a flakiness risk the fixer must remove; **minor**, **info** = style, never blocking. The derived verdict is `pass` exactly when no blocker or major remains. Anything a script can check (titles, tags, ledger calls, fixed waits, locators grounded in snapshots, options, thresholds) is a gate or `check` rule, never a rubric item.
 
-## Feedback contract (improving the framework itself)
+## Feedback contract
 
-Problems with the framework — an agent prompt, a script, a doc — are recorded as **feedback files** and fixed by `feedback-implementor-agent`. Per-product issues in generated test code are not feedback: each domain's own reviewer and fixer handle those during the run.
+Problems are recorded as **feedback files**. The file's `target` says what it is about and who resolves it (P-7):
+- **A run's outputs** (`target: <product>`): the knowledge base, test cases, the endpoint catalogue and plans, Playwright and k6 code, the report narrative. `feedback-implementor-agent` fixes them, only through the overlays and slots each domain's agents own, and the domain's `check` verifies the fix. Issues a run's own reviewer and fixer can catch are still theirs during the run; feedback is what a human (or a later look) finds afterwards.
+- **The framework itself** (`target: framework`): an agent prompt, a script, a doc. The maintainers' dev-only `framework-implementor-agent`, never shipped, fixes those under D-062.
 
-Agents have no write access to `feedback/`. During a run, an agent that meets a problem with the framework itself records it with `node {fw}/scripts/framework-issues.mjs add` (every restricted shell may run it, `common_shell_allow` in `config/permissions.yaml`); `run.mjs end` writes the run's issues as feedback files, one per reporting agent, to `feedback/run-<run-id>/<date>-<agent>.md` in the schema below (D-083). A human may also file feedback by hand.
+Agents have no write access to `feedback/`. During a run, an agent that meets a problem with the framework itself records it with `node {fw}/scripts/framework-issues.mjs add` (every restricted shell may run it, `common_shell_allow` in `config/permissions.yaml`); `run.mjs end` keeps the run's issues in `results/<run>/framework-issues.json` (D-097). In the framework's own repository it also writes them as feedback files, one per reporting agent, to `feedback/run-<run-id>/<date>-<agent>.md` in the schema below (D-083), for `framework-implementor-agent`. In a client workspace a human sends them back with `npx atf issues export`, a redacted bundle that `atf issues import` turns into those feedback files on the maintainers' side. A human may also file feedback by hand.
 
 ### Where feedback lives
 
@@ -147,7 +149,7 @@ source_agent: <agent name, or human>
 date: <YYYY-MM-DD>
 target: <product slug, or "framework">
 related_files:
-  - <path of each file the finding concerns, e.g. agents/pw-ui-pom-writer.md or scripts/lib/knowledge.mjs>
+  - <path of each file the finding concerns, e.g. playwright-tests/acme/pages/contacts/list.page.ts or scripts/lib/knowledge.mjs>
 severity: <blocking | high | medium | low>
 ---
 
@@ -161,8 +163,8 @@ severity: <blocking | high | medium | low>
 
 ### How it's consumed
 
-1. Pass the file **path** to `feedback-implementor-agent` (never the text).
-2. It runs `node {fw}/scripts/feedback.mjs triage <file>` (the Accepted decisions whose **Affects** match the files a finding names or the agent plans to change), implements each finding within its allowed scope, with a new or updated `*.test.mjs` for every change under `scripts/`, runs `npm run build-agents` after an agent change and `npm run check`, and appends the Resolution to the same file (D-062):
+1. Pass the file **path** to the agent its `target` names (never the text).
+2. The agent runs `node {fw}/scripts/feedback.mjs triage <file>`: per finding, the files it names (or the planned ones, `--plan`), the Accepted decisions of the workspace's log whose **Affects** match them and, for a product target, each file's output domain (or `managed`). It fixes each finding within its scope and appends the Resolution to the same file:
    ```markdown
    ## Resolution (<date>)
 
@@ -171,6 +173,9 @@ severity: <blocking | high | medium | low>
    - **Reason:** <what changed and how it was verified, or why not>
    - **Files changed:** <comma list or `- path` lines; `none` unless fixed>
    - **Decisions considered:** <D-NNN, ...; or `none`>
+   - **Domain check:** <outputs, a fixed finding: e.g. `node {fw}/scripts/ui-code.mjs check acme contacts`>
    ```
-   `node {fw}/scripts/feedback.mjs check <file>` validates the frontmatter (all five fields) and the Resolution: one entry per `## Finding N`, a valid status, a reason, a `fixed` finding lists files and a `scripts/**.test.mjs` for any non-test script it changed, and names every Accepted decision that governs a file it changed; `deferred` and `declined` list no files. (`Fixed (unverified)` and `Skipped` no longer exist.)
-3. Changes to permissions, models, platforms, MCP servers, the guard, the hooks or settings are never made by an agent: such findings are `deferred` with the exact change for a human. A finding whose fix would conflict with a recorded decision is `deferred` with `Deferred — needs user confirmation (D-NNN)` (the check requires that decision to exist and be listed as considered). The agent never edits the checker (`scripts/feedback.mjs`, `scripts/lib/feedback.mjs`, `scripts/feedback.test.mjs`) either.
+3. `node {fw}/scripts/feedback.mjs check <file>` must exit 0. In both modes it validates the frontmatter (all five fields; `target` is a product slug or `framework`) and the Resolution: one entry per `## Finding N`, a valid status, a reason, a `fixed` finding lists files and names every Accepted decision that governs a file it changed, and `deferred` and `declined` list no files. A finding whose fix would conflict with a recorded decision is `deferred` with `Deferred — needs user confirmation (D-NNN)` (the decision must exist and be listed as considered). Then, per mode:
+   - **Outputs** (`feedback-implementor-agent`, P-7): a `fixed` finding's `Domain check` names the passing `check` of each domain it changed (`knowledge.mjs`, `testcases.mjs`, `endpoints.mjs`, `api-plan.mjs`, `ui-code.mjs`, `api-code.mjs`, `workload.mjs`, `k6-code.mjs`, `report.mjs`) on the feedback's product, and every file it changed lies in one of those domains' writable sets and is no managed file. A domain's set is what both its own agents' rows and the implementor's row in `config/permissions.yaml` may write, so the permissions file stays the one statement of the scope (`OUTPUT_DOMAINS` in `scripts/lib/feedback.mjs` maps each domain to its check and agents). A changed test case loses its approval, and only a human approves (D-048): the Reason must say the changed cases await human re-approval.
+   - **Framework** (`framework-implementor-agent`, D-062): a `fixed` finding that changed a non-test file under `scripts/` lists a `scripts/**.test.mjs` that exists; the agent runs `npm run build-agents` after an agent change and `npm run check` before it writes the Resolution.
+4. Neither agent changes permissions, models, platforms, MCP servers, the guard, the hooks, settings or `atf/`: such findings are `deferred` with the exact change for a human. `feedback-implementor-agent` writes no framework file at all (its shell is restricted to the domains' `build`, `check` and `paths`, `feedback.mjs` and the decision lookups; it never approves test cases and never reaches the product), and neither agent edits the checker (`scripts/feedback.mjs`, `scripts/lib/feedback.mjs`, `scripts/feedback.test.mjs`). (`Fixed (unverified)` and `Skipped` no longer exist.)

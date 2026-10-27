@@ -5,6 +5,9 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { main } from "./feedback.mjs";
+import { OUTPUT_AGENT, OUTPUT_DOMAINS, outputDomainsOf } from "./lib/feedback.mjs";
+import { loadConfig } from "./lib/config.mjs";
+import { canWrite, resolvePermissions } from "./lib/permissions.mjs";
 
 const DECISIONS = `# Design decisions
 
@@ -218,4 +221,131 @@ test("triage normalises finding files and --plan, and reports paths outside the 
 test("an unknown decision id in a deferral is reported once", () => {
   const r = run(doc(entry(1, "deferred", "Deferred - needs user confirmation (D-099): x", "none", "D-099"), entry(2, "declined", "no", "none")));
   assert.equal(problems(r).filter((p) => /D-099 is not a recorded decision/.test(p)).length, 1);
+});
+
+// ---- outputs mode (P-7): feedback on a run's outputs (target: <product>), resolved by feedback-implementor-agent ----
+const FRONT_OUT = `---
+source_agent: human
+date: 2026-10-27
+target: acme
+related_files:
+  - artifacts/acme/modules/contacts/testcases/cases.json
+severity: medium
+---
+`;
+const FINDINGS_OUT = `
+## Finding 1: A case misses the empty-name boundary
+**Summary:** artifacts/acme/modules/contacts/testcases/cases.json has no empty-name case
+**Evidence:** x
+**Suggested fix:** y
+
+## Finding 2: The list page object waits on a spinner that no longer exists
+**Summary:** playwright-tests/acme/pages/contacts/list.page.ts
+**Evidence:** x
+**Suggested fix:** y
+`;
+const outEntry = (n, status, reason, files, check, considered = "none") =>
+  `### Finding ${n}\n- **Status:** ${status}\n- **Reason:** ${reason}\n- **Files changed:** ${files}\n- **Decisions considered:** ${considered}\n${check === undefined ? "" : `- **Domain check:** ${check}\n`}\n`;
+const outDoc = (...entries) => FRONT_OUT + FINDINGS_OUT + res(...entries);
+const CASES = "artifacts/acme/modules/contacts/testcases/cases.json";
+const POM = "playwright-tests/acme/pages/contacts/list.page.ts";
+const TC_CHECK = "`node {fw}/scripts/testcases.mjs check acme contacts` (exit 0)";
+const UI_CHECK = "`node {fw}/scripts/ui-code.mjs check acme contacts` (exit 0)";
+const scope = () => resolvePermissions(loadConfig("permissions.yaml", { workspace: mkdtempSync(path.join(tmpdir(), "atf-scope-")) })).resolved;
+
+test("outputs mode: fixes through the domains' files, each with its domain check, pass; changed cases await re-approval", () => {
+  const r = run(outDoc(
+    outEntry(1, "fixed", "added the empty-name case; TC-contacts-009 awaits human re-approval", CASES, TC_CHECK),
+    outEntry(2, "fixed", "waits on the table instead", POM, UI_CHECK),
+  ));
+  assert.equal(r.code, 0, JSON.stringify(r.out));
+  assert.equal(r.out.mode, "outputs");
+  assert.deepEqual(r.out.counts, { fixed: 2, deferred: 0, declined: 0 });
+  // one finding across two domains names both checks
+  const both = run(outDoc(
+    outEntry(1, "fixed", "the case and its page object; the changed case awaits human re-approval", `${CASES}, ${POM}`, `${TC_CHECK}, ${UI_CHECK}`),
+    outEntry(2, "declined", "the spinner still exists", "none"),
+  ));
+  assert.equal(both.code, 0, JSON.stringify(both.out));
+});
+
+test("outputs mode: a fixed finding without a domain check, or whose check is not its files' domain, fails", () => {
+  const p = (...e) => problems(run(outDoc(...e))).join("\n");
+  const ok2 = outEntry(2, "declined", "no", "none");
+  assert.match(p(outEntry(1, "fixed", "x; awaits human re-approval", CASES), ok2), /Finding 1: 'Domain check' is missing/);
+  assert.match(p(outEntry(1, "fixed", "x; awaits human re-approval", CASES, "none"), ok2), /'Domain check' is missing/);
+  assert.match(p(outEntry(1, "fixed", "x; awaits human re-approval", CASES, "ran it, it passed"), ok2), /names no `<script>\.mjs check acme/);
+  assert.match(p(outEntry(1, "fixed", "x", POM, TC_CHECK), ok2), /list\.page\.ts is in the playwright-ui domain, whose check \(ui-code\.mjs check\) Domain check does not name/);
+  assert.match(p(outEntry(1, "fixed", "x", POM, "`node {fw}/scripts/review.mjs check acme contacts`"), ok2), /review\.mjs check is not a domain check/);
+  assert.match(p(outEntry(1, "fixed", "x", POM, "`node {fw}/scripts/ui-code.mjs check other contacts`"), ok2), /on 'other', not on this feedback's product 'acme'/);
+});
+
+test("outputs mode: framework files, another product's files, managed and generated files and atf/ are refused", () => {
+  const p = (files, check = UI_CHECK) => problems(run(outDoc(outEntry(1, "fixed", "x", files, check), outEntry(2, "declined", "no", "none")))).join("\n");
+  for (const f of ["scripts/lib/review.mjs", "agents/pw-ui-fixer.md", "docs/conventions.md", "config/permissions.yaml", "schemas/report.schema.json",
+    "templates/report/deck.html", "atf/atf.json", "atf/decisions.md", "playwright-tests/other/pages/contacts/list.page.ts",
+    "artifacts/acme/knowledge/captures/x.txt", "artifacts/acme/results/r1/contacts/playwright-ui/fix-report.json", "artifacts/acme/modules/contacts/testcases/approval.csv"])
+    assert.match(p(f), new RegExp(`${f.replaceAll(".", "\\.")} is in no output domain of product 'acme'`), f);
+  for (const f of ["playwright-tests/acme/tests/api/contacts/contacts.spec.ts", "playwright-tests/acme/fixtures/ui/base.ts", "k6-tests/acme/scripts/contacts-load.js",
+    "artifacts/acme/modules/contacts/k6/workload.json", "artifacts/acme/results/r1/report/report.json"])
+    assert.match(p(f), new RegExp(`${f.replaceAll(".", "\\.")} is a managed file`), f);
+  // no test file is asked for: the domain check replaces D-062's test per script change
+  assert.doesNotMatch(p("scripts/lib/review.mjs"), /without a new or updated/);
+});
+
+test("outputs mode: changed test cases must say they await human re-approval", () => {
+  const r = run(outDoc(outEntry(1, "fixed", "added the empty-name case", CASES, TC_CHECK), outEntry(2, "declined", "no", "none")));
+  assert.equal(r.code, 1);
+  assert.match(problems(r).join("\n"), /Finding 1: it changed test cases, so the Reason must say they await human re-approval/);
+  const other = run(outDoc(outEntry(1, "declined", "no", "none"), outEntry(2, "fixed", "no case changed", POM, UI_CHECK)));
+  assert.equal(other.code, 0, JSON.stringify(other.out));
+});
+
+test("outputs mode keeps the shared rules: governing decisions named, triage per domain, no files on a deferral", () => {
+  const LOG = "### D-001 · Page objects wait on tables\n- **Status:** Accepted · 2026-10-01\n- **Affects:** `playwright-tests/acme/pages/**`\n";
+  const { root, file } = setup(outDoc(outEntry(1, "declined", "no", "none"), outEntry(2, "fixed", "x", POM, UI_CHECK)));
+  writeFileSync(path.join(root, "docs/decisions.md"), `# Design decisions\n\n${LOG}`);
+  assert.match(main(["check", file], { root }).out.problems.join("\n"), /list\.page\.ts is governed by D-001/);
+  const tri = main(["triage", file], { root });
+  assert.equal(tri.out.mode, "outputs");
+  assert.deepEqual(tri.out.findings[1].decisions.map((d) => d.id), ["D-001"]);
+  assert.deepEqual(tri.out.findings[0].domains, [{ file: CASES, domains: ["testcases"] }]);
+  assert.deepEqual(tri.out.findings[1].domains, [{ file: POM, domains: ["playwright-ui"] }]);
+  const deferred = run(outDoc(outEntry(1, "deferred", "needs a change to playwright.config.ts, a shared repo file", CASES), outEntry(2, "declined", "no", "none")));
+  assert.match(problems(deferred).join("\n"), /a deferred finding changed no file/);
+  assert.doesNotMatch(problems(deferred).join("\n"), /Domain check/);
+});
+
+test("the target decides the mode: framework keeps D-062's checks, anything else that is no product slug is a problem", () => {
+  const fw = run(doc(entry(1, "fixed", "x", "scripts/lib/review.mjs", "D-003"), entry(2, "declined", "no", "none")));
+  assert.equal(fw.out.mode, "framework");
+  assert.match(problems(fw).join("\n"), /without a new or updated scripts\/\*\*\/\*\.test\.mjs/);
+  assert.doesNotMatch(problems(fw).join("\n"), /Domain check|output domain/);
+  const bad = run(FRONT_OUT.replace("target: acme", "target: Acme Corp") + FINDINGS_OUT + res(entry(1, "declined", "n", "none"), entry(2, "declined", "n", "none")));
+  assert.match(problems(bad).join("\n"), /target must be a product slug .* or 'framework'/);
+});
+
+test("every output domain is a real slice of feedback-implementor-agent's row, which writes no framework file (P-7)", () => {
+  const s = scope();
+  const sample = {
+    knowledge: ["artifacts/acme/knowledge/overview.md", "artifacts/acme/knowledge/modules/contacts/notes.md"],
+    testcases: [CASES],
+    "api-discovery": ["artifacts/acme/modules/contacts/api/overlay.json"],
+    "api-plan": ["artifacts/acme/modules/contacts/api/plan-overlay.json"],
+    "playwright-ui": [POM, "playwright-tests/acme/tests/ui/contacts/cases.spec.ts", "playwright-tests/acme/helpers/ui/contacts.data.ts"],
+    "playwright-api": ["playwright-tests/acme/helpers/api/contacts.payloads.ts", "artifacts/acme/modules/contacts/api-code/client-overlay.json"],
+    "k6-workload": ["artifacts/acme/modules/contacts/k6/workload-overlay.json"],
+    k6: ["k6-tests/acme/scripts/slots/contacts.js", "k6-tests/acme/lib/ext/auth.js"],
+    report: ["artifacts/acme/results/acme-run-1/report/narrative.json"],
+  };
+  assert.deepEqual(Object.keys(sample).sort(), Object.keys(OUTPUT_DOMAINS).sort());
+  for (const [dom, files] of Object.entries(sample)) for (const f of files) assert.deepEqual(outputDomainsOf(s, f, "acme"), { managed: false, domains: [dom] }, f);
+  const row = s.agents[OUTPUT_AGENT];
+  assert.deepEqual(row.spawns, []);
+  assert.equal(row.shell, "restricted");
+  for (const f of ["scripts/run.mjs", "scripts/lib/feedback.mjs", "agents/pw-ui-fixer.md", "agents/_shared/fixer.md", "docs/conventions.md", "schemas/report.schema.json",
+    "config/permissions.yaml", "templates/k6/lib/x.js", "atf/atf.json", "atf/permissions.yaml", ".claude/agents/x.md", ".github/agents/x.agent.md", ".mcp.json"])
+    assert.equal(canWrite(row, f, s.variables, { product: "acme" }), false, f);
+  for (const c of [" approve", "endpoints.mjs probe", "knowledge.mjs snapshot", "fix.mjs"])
+    assert.ok(!row.shell_allow.some((a) => a.includes(c)), `no ${c}`);
 });

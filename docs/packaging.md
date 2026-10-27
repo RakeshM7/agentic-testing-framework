@@ -1,6 +1,6 @@
 # Packaging the framework for clients
 
-**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1 to 4 are in force (D-085 as amended by D-086, and D-087 to D-095; the cloud-agent opt-in is experimental until verified live); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
+**Status:** agreed design, 2026-10-24. The user reviewed every draft entry below and agreed to each as written. Phases 1 to 5 are in force (D-085 as amended by D-086, and D-087 to D-097; the cloud-agent opt-in is experimental until verified live); the rest is not yet. The draft decision entries at the end are written in the format of [`decisions.md`](decisions.md). Each one moves into `decisions.md` as Accepted (dated 2026-10-24, with its superseded entries marked) in the same change that implements its phase, so the log never runs ahead of the code (rules 4 and 5 there).
 
 ## 1. What was decided in the interview
 
@@ -282,6 +282,8 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 | P-3 · the cloud-agent opt-in | D-093 (experimental: `docs/cloud-agent-verification.md`) | 3c |
 | P-2 · distribution: npmjs private org, bundle, allow-list, EULA gate | D-094 | 4 |
 | P-4 · config overlays and eject | D-088 | 3a |
+| P-7 · feedback-implementor-agent fixes outputs; dev-only framework-implementor-agent | D-096 | 5 |
+| P-8 · redacted issue export and import | D-097 | 5 |
 | P-9 · contract version, `atf migrate`, frozen fixtures | D-095 | 4 |
 | P-5 · agent add-on fragments | D-090 | 3b |
 | P-6 · the client decision log | D-091 | 3b |
@@ -359,7 +361,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 - **Confirmed by the user on:** — (extends D-031 and D-082 without weakening them)
 
 ### P-7 · `feedback-implementor-agent` fixes a run's outputs, not the framework
-- **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 ("designed to fix the issues reported in testcase generation or playwright tests etc, the actual outputs of this framework")
+- **Status:** Accepted, recorded in decisions.md as D-096 (2026-10-27, phase 5) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24 ("designed to fix the issues reported in testcase generation or playwright tests etc, the actual outputs of this framework")
 - **Decision:**
   - **New scope.** The agent takes feedback about a run's outputs (knowledge, test cases, catalogue and plans, Playwright and k6 code, report narrative) and fixes them only through each domain's overlays and slots, followed by that domain's `check`.
   - **Re-approval.** Changed test cases return to human approval.
@@ -371,7 +373,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 - **Supersedes:** D-062 (its write scope and the test-per-change rule) · **Confirmed by the user on:** —
 
 ### P-8 · Framework issues leave a client workspace only as a redacted export bundle
-- **Status:** Proposed (reviewed and agreed by the user on 2026-10-24) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
+- **Status:** Accepted, recorded in decisions.md as D-097 (2026-10-27, phase 5) · **Date:** 2026-10-24 · **Source:** conversation with the user, 2026-10-24
 - **Decision:**
   - **End of run.** `run.mjs end` keeps the issues in the run's `framework-issues.json` and no longer writes `feedback/run-*`.
   - **Export.** `atf issues export` writes a redacted zip: the issues, the versions, the config customizations, and evidence with hosts, URLs, emails and secret-like values replaced. Screenshots and bodies are included only on request, and every redaction is listed in a manifest. The client sees it before it is written.

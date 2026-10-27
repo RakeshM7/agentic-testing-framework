@@ -57,6 +57,7 @@ export const CLIENT_GITIGNORE = [
   "test-results/",
   "playwright-report/",
   "blob-report/",
+  "atf-issues-*.zip",
   "/config/interview-answers.json",
   "*.log",
   ".DS_Store",

@@ -15,6 +15,11 @@
 // A workspace's add-on fragments, atf/agents/<name>.extra.md, are appended to their agents' bodies (docs/packaging.md
 // §3.5, scripts/lib/agents/source.mjs), read from the workspace also when it is the framework's own directory; every
 // body check below measures the combined text, and its errors name both files.
+// A source checkout's workspace may also keep dev-only agents the package never ships (docs/packaging.md §3.8): the
+// folder atf/atf.json "dev_agents" names (roots.mjs devAgentsDir; an error in a workspace with the framework installed)
+// holds their sources, in the same format and lint, and the effective permissions.yaml (the workspace's
+// atf/permissions.yaml overlay) their rows. Their host files are rendered beside the framework's and, like them, committed
+// (D-018); a dev agent with a framework agent's name, or without a permissions row, is an error naming its source.
 // Nothing generated is ever edited by hand: change a source or config, then rebuild.
 //
 // An agent file with no source in the agent folders (.claude/agents/*.md, .github/agents/*.agent.md):
@@ -41,7 +46,7 @@ import { parseArgs } from "node:util";
 import yaml from "js-yaml";
 import { checkHooks, configLocation, configPath, configRel, loadConfig } from "./lib/config.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
-import { expandFw, frameworkRoot, frameworkRel, isInstalled, workspaceRoot } from "./lib/roots.mjs";
+import { devAgentsDir, expandFw, frameworkRoot, frameworkRel, isInstalled, workspaceRoot } from "./lib/roots.mjs";
 import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { checkBodyLimit, forbiddenIdentifiers, lintBody, lintFwToken } from "./lib/agents/lint.mjs";
 import { loadSources, splitFrontmatter } from "./lib/agents/source.mjs";
@@ -104,8 +109,14 @@ export function build({ check = false, postHook, root, framework } = {}) {
   const { models, mcp } = config;
   const { platforms } = config.platforms;
   const names = Object.keys(perms.resolved.agents);
-  const { sources, errors } = loadSources(fwRoot, names, { workspace: ws });
-  const label = (name) => (sources[name]?.fragment ? `agents/${name}.md + ${sources[name].fragment}` : undefined);
+  const dev = devAgentsDir(ws, fwRoot);
+  if (dev.error) return { errors: [dev.error], changed: [] };
+  const { sources, errors } = loadSources(fwRoot, names, { workspace: ws, dev: dev.dir ? dev : undefined });
+  // what a body check's error names: the source (a dev agent's own path), plus the fragment when one is appended
+  const label = (name) => {
+    const s = sources[name];
+    return s?.fragment ? `agents/${name}.md + ${s.fragment}` : s?.dev;
+  };
   errors.push(...validateMcp(mcp));
   if (post.error) errors.push(post.error);
   const forbidden = forbiddenIdentifiers(platforms);
@@ -142,7 +153,7 @@ export function build({ check = false, postHook, root, framework } = {}) {
       // a source checkout: every agent file here is ours, so one without a source is an error (D-018)
       for (const { name: f } of entries)
         if (f.startsWith(prefix) && f.endsWith(suffix) && !expected.has(`${dir}/${f}`))
-          errors.push(`${dir}/${f}: not generated from agents/ (no source or no permissions row); remove it or add agents/<name>.md`);
+          errors.push(`${dir}/${f}: not generated from agents/${dev.dir ? ` or ${dev.rel}/` : ""} (no source or no permissions row); remove it or add agents/<name>.md`);
     } else {
       // a client's workspace: these folders also hold the client's own agents, told from ours by the generated marker
       const ours = new Map(Object.keys(sources).map((name) => [platform.output.replaceAll("{name}", name).toLowerCase(), name]));

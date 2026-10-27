@@ -62,8 +62,11 @@
 //                                                         A domain whose review used up its rounds is failed (reviewFailed, with its open
 //                                                         findings) and blocks its dependants at once.
 //   run.mjs end <product> [--abandon]                     write state/history/<run-id>.json and results/<run>/manifest.json
-//                                                         (the sha256 of every working file and test code file, D-078), and
-//                                                         release the lock
+//                                                         (the sha256 of every working file and test code file, D-078),
+//                                                         stamp results/<run>/framework-issues.json with the run's metadata
+//                                                         (frameworkIssues: {file, count, export?}: kept for atf issues
+//                                                         export; a source checkout also writes feedback/run-<id>/, D-083),
+//                                                         and release the lock
 //   run.mjs diff <product> [<run-a> <run-b>]              what changed between two ended runs' manifests (default: the last
 //                                                         two), per area: added, removed, changed
 //   run.mjs validate <product>                            schema-check run.json, ledger, permissions, module outputs
@@ -82,14 +85,14 @@ import { read as readLedger } from "./lib/ledger.mjs";
 import { csvPath, ensureCsv } from "./lib/clarifications.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
 import { configPath, configSource, loadConfig } from "./lib/config.mjs";
-import { expandFw, frameworkRoot, frameworkRel } from "./lib/roots.mjs";
+import { expandFw, frameworkRoot, frameworkRel, isInstalled } from "./lib/roots.mjs";
 import { clearGuardChecks, guardStatus, markAbsent } from "./lib/guard-check.mjs";
 import { GROUPS, STAGE_NEEDS, clearDoctor, doctorStatus, failures, recordDoctor, runChecks } from "./lib/doctor.mjs";
 import { login as openLogin } from "./lib/login.mjs";
 import { detectShellHost } from "./lib/hosts.mjs";
 import { collectProvenance, packageOf, releaseLine } from "./lib/provenance.mjs";
 import { diffManifests, readManifest, writeManifest } from "./lib/history.mjs";
-import { issuesPath, readIssues, writeFeedback } from "./lib/framework-issues.mjs";
+import { issuesPath, stampRun, writeFeedback } from "./lib/framework-issues.mjs";
 import { approvalSummary, caseTypeOf, importStatus, testcasePaths } from "./lib/testcases.mjs";
 import { SCENARIO_ANSWERS, writeScenarios } from "./lib/explore.mjs";
 
@@ -728,7 +731,9 @@ async function applyStage(product, stage, module, action, error, { root, reused 
   return { key, ...ctx.run.stages[key] };
 }
 
-export async function endRun(product, { abandon = false, root = workspaceRoot } = {}) {
+// framework: the framework root, which decides where the run's framework issues go (installed: they stay for an export;
+// a source checkout: feedback files too).
+export async function endRun(product, { abandon = false, root = workspaceRoot, framework = frameworkRoot } = {}) {
   const ctx = ctxFor(product, root);
   if (!ctx.active) return { errors: [`no active run for product '${product}'`] };
   const st = await status(product, { root });
@@ -745,9 +750,31 @@ export async function endRun(product, { abandon = false, root = workspaceRoot } 
   };
   // what this run left behind, so a later run can be diffed against it (D-078)
   summary.manifest = writeManifest(root, product, ctx.p.results(ctx.runId), ctx.runId);
-  // the framework problems agents recorded, as feedback files for feedback-implementor-agent (D-083)
-  const { issues } = readIssues(issuesPath(ctx.p.results(ctx.runId)));
-  if (issues.length) summary.feedback = writeFeedback(root, { issues, runId: ctx.runId, product });
+  // The framework problems agents recorded (D-083) stay in the run's framework-issues.json, stamped with what an export
+  // needs once run.json belongs to a later run (docs/packaging.md §3.9, draft P-8). They leave a client's workspace only
+  // as the redacted bundle a human previews and confirms (`atf issues export`). The framework's own source checkout is
+  // the exception: there the framework is the maintainers' own, so its runs still write feedback files straight to its
+  // implementor, as before.
+  const issuesFile = issuesPath(ctx.p.results(ctx.runId));
+  const { issues } = stampRun(issuesFile, {
+    product,
+    environment: ctx.run.environment,
+    runId: ctx.runId,
+    createdAt: ctx.run.createdAt,
+    endedAt: summary.endedAt,
+    outcome: summary.outcome,
+    startedOnHost: ctx.run.startedOnHost ?? null,
+    contract: ctx.run.layoutVersion ?? null,
+    target: ctx.run.target ?? null,
+    modules: ctx.run.modules ?? [],
+    provenance: ctx.run.provenance ?? null,
+    ...(ctx.run.packageChanges?.length ? { packageChanges: ctx.run.packageChanges } : {}),
+  });
+  summary.frameworkIssues = { file: rel(root, issuesFile), count: issues.length };
+  if (issues.length) {
+    if (isInstalled(framework)) summary.frameworkIssues.export = `npx atf issues export --run ${ctx.runId}`;
+    else summary.feedback = writeFeedback(root, { issues, runId: ctx.runId, product });
+  }
   writeJson(path.join(ctx.p.historyDir, `${ctx.runId}.json`), summary);
   unlinkSync(ctx.p.lockFile);
   return summary;

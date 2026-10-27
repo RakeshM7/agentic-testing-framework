@@ -1,6 +1,7 @@
 // The hand-written agent sources: agents/<name>.md, one per agent in config/permissions.yaml. A source holds only what
 // no config file can derive: the agent's identity (name, description, optional color, user_invocable) and its
-// platform-neutral prompt body. Tools, model and MCP servers are never written here; the build derives them.
+// platform-neutral prompt body. Tools, model and MCP servers are never written here; the build derives them. A source
+// checkout's workspace may add dev-only agents in the same format from a folder of its own (loadSources `dev`).
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
@@ -98,21 +99,41 @@ export function appendFragment(name, body, fragment, eol) {
   return [body.replace(/(\r?\n)+$/, ""), "", fragmentHeading(name), "", fragment.replace(/\n/g, eol)].join(eol) + eol;
 }
 
-// -> { sources: { [name]: { meta, body, eol, fragment? } }, errors }. `names` = the agents in config/permissions.yaml.
-// `workspace`, when given, is where `atf/agents/` add-on fragments are read from (the build's workspace root; the
-// framework's own directory when the two are one); without it no fragment is read, as before. `fragment` is the
-// fragment's workspace-relative path, for errors that measure the combined body.
-export function loadSources(root, names, { workspace } = {}) {
+// -> { sources: { [name]: { meta, body, eol, fragment?, dev? } }, errors }. `names` = the agents in the effective
+// permissions.yaml. `workspace`, when given, is where `atf/agents/` add-on fragments are read from (the build's workspace
+// root; the framework's own directory when the two are one); without it no fragment is read, as before. `fragment` is
+// the fragment's workspace-relative path, for errors that measure the combined body.
+//
+// `dev` ({ dir, rel }: roots.mjs devAgentsDir) adds the workspace's dev-only agents (docs/packaging.md §3.8): every
+// <dir>/*.md is an agent source in the same format, its includes read from the framework's agents/_shared/, and `dev`
+// on its entry is its workspace-relative path (for the generated note and for errors). A dev agent needs a row in the
+// effective permissions.yaml (the workspace's atf/permissions.yaml overlay), like any agent, and a name of its own: one
+// a framework source already has is an error, compared without case, since the host files of the two would be one file
+// on a case-insensitive disk. A row with no source in either folder stays an error. Dev agents get no add-on fragment:
+// their source is the workspace's own, edited directly.
+export function loadSources(root, names, { workspace, dev } = {}) {
   const dir = path.join(root, SOURCE_DIR);
   const errors = [];
   const sources = {};
-  for (const f of existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".md")) : [])
-    if (!names.includes(f.slice(0, -3))) errors.push(`${SOURCE_DIR}/${f}: not in config/permissions.yaml`);
+  const own = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".md")) : [];
+  for (const f of own) if (!names.includes(f.slice(0, -3))) errors.push(`${SOURCE_DIR}/${f}: not in config/permissions.yaml`);
+  const devNames = new Set();
+  if (dev) {
+    const taken = new Map(own.map((f) => [f.toLowerCase(), f]));
+    for (const f of readdirSync(dev.dir).filter((f) => f.endsWith(".md"))) {
+      const rel = `${dev.rel}/${f}`;
+      const name = f.slice(0, -3);
+      if (taken.has(f.toLowerCase())) errors.push(`${rel}: '${name}' is the name of a framework agent (${SOURCE_DIR}/${taken.get(f.toLowerCase())}); give the dev agent a name of its own`);
+      else if (!names.includes(name)) errors.push(`${rel}: no permissions row for '${name}' in the effective permissions.yaml; add one under agents: in atf/permissions.yaml`);
+      else devNames.add(name);
+    }
+  }
   for (const name of names) {
-    const rel = `${SOURCE_DIR}/${name}.md`;
-    const file = path.join(root, rel);
+    const isDev = devNames.has(name);
+    const rel = isDev ? `${dev.rel}/${name}.md` : `${SOURCE_DIR}/${name}.md`;
+    const file = isDev ? path.join(dev.dir, `${name}.md`) : path.join(root, rel);
     if (!existsSync(file)) {
-      errors.push(`${rel}: missing`);
+      errors.push(`${rel}: missing${dev ? ` (nor in ${dev.rel}/)` : ""}`);
       continue;
     }
     try {
@@ -122,13 +143,13 @@ export function loadSources(root, names, { workspace } = {}) {
       const errs = validate(name, meta, rel);
       const body = expandIncludes(root, rel, split.body, errs);
       if (errs.length) errors.push(...errs);
-      else sources[name] = { meta, body, eol: text.includes("\r\n") ? "\r\n" : "\n" };
+      else sources[name] = { meta, body, eol: text.includes("\r\n") ? "\r\n" : "\n", ...(isDev ? { dev: rel } : {}) };
     } catch (e) {
       errors.push(e.message);
     }
   }
   if (workspace !== undefined)
-    for (const [name, fragment] of Object.entries(loadFragments(workspace, names, errors))) {
+    for (const [name, fragment] of Object.entries(loadFragments(workspace, names.filter((n) => !devNames.has(n)), errors))) {
       const s = sources[name];
       if (!s) continue; // its source is missing or broken: already an error
       s.body = appendFragment(name, s.body, fragment, s.eol);

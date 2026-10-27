@@ -1,8 +1,19 @@
 // Feedback files (docs/conventions.md, Feedback contract): parsing, decision-aware triage and the Resolution check.
 // Deterministic; never edits a file. The agent writes the Resolution, `check` verifies it.
+//
+// Two modes, told apart by the file's own frontmatter `target` (written by whoever filed it, never by the resolver):
+//   outputs    target: <product slug> -- feedback about what a run produced, resolved by feedback-implementor-agent
+//              (P-7). A fixed finding names the domain check it ran, and each file it changed lies in that domain's
+//              writable set (OUTPUT_DOMAINS, bounded by config/permissions.yaml) and is no managed file; changed test
+//              cases say they await human re-approval.
+//   framework  target: framework -- feedback about the framework itself, resolved by the maintainers'
+//              framework-implementor-agent under D-062: a fixed finding that changed scripts/ lists a *.test.mjs.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { loadConfig } from "./config.mjs";
+import { SLUG_RE } from "./contract.mjs";
 import { governing, loadDecisions } from "./decisions.mjs";
+import { canWrite, isManaged, resolvePermissions } from "./permissions.mjs";
 
 export const STATUSES = ["fixed", "deferred", "declined"];
 export const SEVERITIES = ["blocking", "high", "medium", "low"];
@@ -22,6 +33,64 @@ const lowerGlobs = (decisions) => decisions.map((d) => ({ ...d, affects: d.affec
 const govern = (decisions, f) => governing(lowerGlobs(decisions), f.toLowerCase());
 const isTest = (f) => /^scripts\/(?:.+\/)?[^/]+\.test\.mjs$/.test(f);
 const isScript = (f) => f.startsWith("scripts/") && !isTest(f);
+
+export const FRAMEWORK_TARGET = "framework";
+export const OUTPUT_AGENT = "feedback-implementor-agent";
+// The run-output domains (P-7): the script whose `check` verifies each, and the agents whose write rows in
+// config/permissions.yaml own its files. A file is in a domain when OUTPUT_AGENT's row and one of these rows may both
+// write it and it is not a managed file, so the permissions file stays the one statement of the scope.
+export const OUTPUT_DOMAINS = {
+  knowledge: { script: "knowledge", agents: ["knowledge-generator"] },
+  testcases: { script: "testcases", agents: ["testcase-writer"], reapproval: true },
+  "api-discovery": { script: "endpoints", agents: ["api-discoverer"] },
+  "api-plan": { script: "api-plan", agents: ["api-test-planner"] },
+  "playwright-ui": { script: "ui-code", agents: ["pw-ui-fixer"] },
+  "playwright-api": { script: "api-code", agents: ["pw-api-fixer", "pw-api-client-writer", "pw-api-tests-writer"] },
+  "k6-workload": { script: "workload", agents: ["k6-workload-designer"] },
+  k6: { script: "k6-code", agents: ["k6-fixer"] },
+  report: { script: "report", agents: ["report-generator"] },
+};
+const DOMAIN_OF_SCRIPT = Object.fromEntries(Object.entries(OUTPUT_DOMAINS).map(([d, v]) => [v.script, d]));
+const REAPPROVAL_RE = /awaits? human re-?approval/i;
+
+// -> "outputs" | "framework" | null (target missing or not a product slug; frontmatter problems say why)
+export function modeOf(front) {
+  const t = front?.target;
+  if (t === FRAMEWORK_TARGET) return "framework";
+  return t && SLUG_RE.test(t) ? "outputs" : null;
+}
+
+// The effective permissions (overlays and ejected config included, as the guard sees them) -> resolved, or throws.
+function loadScope(root) {
+  const { errors, resolved } = resolvePermissions(loadConfig("permissions.yaml", { workspace: root }));
+  if (errors.length) throw new Error(`config/permissions.yaml: ${errors.join("; ")}`);
+  for (const a of [OUTPUT_AGENT, ...Object.values(OUTPUT_DOMAINS).flatMap((d) => d.agents)])
+    if (!resolved.agents[a]) throw new Error(`config/permissions.yaml has no '${a}' row`);
+  return resolved;
+}
+
+// -> { managed, domains: [domain] } for a repo-relative path of product `product`, in any module and any run (`*`)
+export function outputDomainsOf(resolved, file, product) {
+  const values = { product, module: "*", run_id: "*" };
+  const vars = resolved.variables ?? {};
+  if (isManaged(resolved, file, values)) return { managed: true, domains: [] };
+  if (!canWrite(resolved.agents[OUTPUT_AGENT], file, vars, values)) return { managed: false, domains: [] };
+  const domains = Object.entries(OUTPUT_DOMAINS).filter(([, d]) => d.agents.some((a) => canWrite(resolved.agents[a], file, vars, values))).map(([n]) => n);
+  return { managed: false, domains };
+}
+
+// The domain checks a Resolution names: `<script>.mjs check <product> ...` -> { domains: Set, problems }
+function namedChecks(text, product, at) {
+  const domains = new Set();
+  const problems = [];
+  for (const m of text.matchAll(/([\w-]+)\.mjs[`'"]?\s+check\s+[`'"]?([^\s`'",]+)/g)) {
+    const dom = DOMAIN_OF_SCRIPT[m[1]];
+    if (!dom) problems.push(`${at}: ${m[1]}.mjs check is not a domain check (one of ${Object.values(OUTPUT_DOMAINS).map((d) => `${d.script}.mjs`).join(", ")})`);
+    else if (m[2] !== product) problems.push(`${at}: Domain check runs ${m[1]}.mjs check on '${m[2]}', not on this feedback's product '${product}'`);
+    else domains.add(dom);
+  }
+  return { domains, problems };
+}
 
 // -> { front, problems, body } ; the frontmatter is a flat key: value file with one list (related_files).
 export function parseFrontmatter(text) {
@@ -68,6 +137,7 @@ export function splitSections(body) {
 //   - **Reason:** <one line or more>
 //   - **Files changed:** <comma-separated paths, or none>      (or an indented `- path` list)
 //   - **Decisions considered:** D-012, D-040                   (or none)
+//   - **Domain check:** `node {fw}/scripts/ui-code.mjs check acme contacts`   (outputs mode, a fixed finding)
 export function parseResolution(text) {
   const heads = [...text.matchAll(/^### Finding (\d+)\b.*$/gm)];
   const entries = new Map();
@@ -82,12 +152,14 @@ export function parseResolution(text) {
     };
     const split = (s) => (s === null ? null : [...s.matchAll(/(?:^|[\s,])-?\s*`?([^\s,`]+)`?/g)].map((x) => norm(x[1])).filter((x) => x && !/^none$/i.test(x) && x !== "-"));
     const considered = field("Decisions considered");
+    const domainCheck = field("Domain check");
     entries.set(n, {
       n,
       status: field("Status")?.toLowerCase().replace(/[`*]/g, "") ?? null,
       reason: field("Reason"),
       files: split(field("Files changed")),
       considered: considered === null ? null : [...considered.matchAll(/D-\d{3}/g)].map((x) => x[0]),
+      domainCheck: domainCheck === null || /^none$/i.test(domainCheck) ? null : domainCheck,
     });
   });
   return { entries, problems };
@@ -103,8 +175,9 @@ function load(file) {
   return { ...fm, ...splitSections(fm.body) };
 }
 
-// -> { findings: [{ n, title, files, decisions: [{ id, title, files }] }], decisions: [...] } for the files each
-// finding names (plus the file's related_files for every finding unless it names its own) and the planned paths.
+// -> { mode, findings: [{ n, title, files, decisions: [{ id, title, files }], domains? }], decisions: [...] } for the
+// files each finding names (plus the file's related_files for every finding unless it names its own) and the planned
+// paths. In outputs mode each finding also lists, per file, its output domains (or `managed: true`).
 export function triage(file, { root, plan = [] }) {
   const doc = load(file);
   const { decisions, error } = loadDecisions(root);
@@ -130,11 +203,21 @@ export function triage(file, { root, plan = [] }) {
     const files = [...new Set([...(named.length ? named : related), ...planned])];
     return { n: f.n, title: f.title, files, decisions: map(files) };
   });
+  const mode = modeOf(doc.front);
+  if (mode === "outputs") {
+    // where each file is fixed: its output domains, or managed / outside every domain (then not this agent's to change)
+    const scope = loadScope(root);
+    for (const f of findings)
+      f.domains = f.files.map((file) => {
+        const o = outputDomainsOf(scope, file, doc.front.target);
+        return { file, ...(o.managed ? { managed: true } : {}), domains: o.domains };
+      });
+  }
   const all = [...new Set(findings.flatMap((f) => f.files))];
-  return { file: path.relative(root, path.resolve(file)).replaceAll("\\", "/"), problems: [...new Set(problems)], findings, decisions: map(all) };
+  return { file: path.relative(root, path.resolve(file)).replaceAll("\\", "/"), mode, problems: [...new Set(problems)], findings, decisions: map(all) };
 }
 
-// -> { complete, problems, counts }
+// -> { complete, mode, problems, counts }
 export function check(file, { root }) {
   const problems = [];
   const doc = load(file);
@@ -149,10 +232,19 @@ export function check(file, { root }) {
     seen.add(f.n);
   }
   const counts = { fixed: 0, deferred: 0, declined: 0 };
+  const mode = modeOf(doc.front);
+  if (doc.front?.target && !mode) problems.push(`frontmatter: target must be a product slug (feedback on a run's outputs) or '${FRAMEWORK_TARGET}' (feedback on the framework)`);
   if (doc.resolution === null) {
     problems.push("no '## Resolution (<date>)' section");
-    return { complete: false, problems, counts };
+    return { complete: false, mode, problems, counts };
   }
+  let scope = null;
+  if (mode === "outputs")
+    try {
+      scope = loadScope(root);
+    } catch (e) {
+      problems.push(e.message);
+    }
   const { entries, problems: rp } = parseResolution(doc.resolution);
   problems.push(...rp);
   for (const n of entries.keys()) if (!seen.has(n)) problems.push(`Resolution: Finding ${n} has no matching '## Finding ${n}'`);
@@ -187,7 +279,8 @@ export function check(file, { root }) {
     }
     if (e.status === "fixed") {
       if (!files.length) problems.push(`${at}: a fixed finding must list the files it changed`);
-      if (files.some(isScript)) {
+      if (mode === "outputs" && scope) problems.push(...outputProblems(scope, e, files, doc.front.target, at));
+      if (mode === "framework" && files.some(isScript)) {
         const tests = files.filter(isTest);
         if (!tests.length) problems.push(`${at}: changed ${files.filter(isScript).join(", ")} under scripts/ without a new or updated scripts/**/*.test.mjs in Files changed`);
         for (const t of tests) if (!existsSync(path.join(root, t))) problems.push(`${at}: test file ${t} does not exist`);
@@ -197,7 +290,31 @@ export function check(file, { root }) {
         for (const d of govern(decisions, file)) if (!named.has(d.id)) problems.push(`${at}: ${file} is governed by ${d.id} "${d.title}", which Decisions considered does not name`);
     }
   }
-  return { complete: problems.length === 0, problems: [...new Set(problems)], counts };
+  return { complete: problems.length === 0, mode, problems: [...new Set(problems)], counts };
+}
+
+// Outputs mode (P-7), a fixed finding: the domain check it ran, every file in a named domain's writable set and no
+// managed file, and changed test cases awaiting human re-approval.
+function outputProblems(scope, e, files, product, at) {
+  const problems = [];
+  if (!e.domainCheck) {
+    problems.push(`${at}: 'Domain check' is missing: the check of each domain it changed, e.g. \`node {fw}/scripts/ui-code.mjs check ${product} <module>\`, which exited 0`);
+    return problems;
+  }
+  const named = namedChecks(e.domainCheck, product, at);
+  problems.push(...named.problems);
+  if (!named.domains.size && !named.problems.length) problems.push(`${at}: 'Domain check' names no \`<script>.mjs check ${product} ...\` command`);
+  let cases = false;
+  for (const file of files) {
+    const o = outputDomainsOf(scope, file, product);
+    if (o.managed) problems.push(`${at}: ${file} is a managed file (a script writes it); fix it through its domain's overlay or slots`);
+    else if (!o.domains.length) problems.push(`${at}: ${file} is in no output domain of product '${product}' (${OUTPUT_AGENT} writes only the overlays and slots of config/permissions.yaml)`);
+    else if (!o.domains.some((d) => named.domains.has(d)))
+      problems.push(`${at}: ${file} is in the ${o.domains.join(" or ")} domain, whose check (${o.domains.map((d) => `${OUTPUT_DOMAINS[d].script}.mjs check`).join(" or ")}) Domain check does not name`);
+    if (o.domains.some((d) => OUTPUT_DOMAINS[d].reapproval)) cases = true;
+  }
+  if (cases && !REAPPROVAL_RE.test(e.reason ?? "")) problems.push(`${at}: it changed test cases, so the Reason must say they await human re-approval ('awaits human re-approval'; only a human approves)`);
+  return problems;
 }
 
 // -> { file, source, related, findings: [{ n, files }] } -- what the file concerns.

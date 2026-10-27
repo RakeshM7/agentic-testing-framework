@@ -50,8 +50,10 @@ export function writeConfig(root, { mode = "readonly", policy, product = "acme",
 
 // A started run whose session has passed the guard liveness check (as on Claude Code) and the dependency check, unless
 // `verified: false` (no guard record) or `doctored: false` (no dependency record).
+// `prepare(root)` runs before init, e.g. to add a permissions row the run freezes.
 export function startRun(opts = {}) {
   const root = tempRoot();
+  opts.prepare?.(root);
   const r = initRun(writeConfig(root, opts), { root, framework: root, runId: opts.runId ?? "acme-run-1", env: { CLAUDECODE: "1" } });
   if (r.errors) throw new Error(r.errors.join("\n"));
   if (opts.verified !== false) recordCanary(r.product, root, { host: "claude-code", agent: "orchestrator-agent" });

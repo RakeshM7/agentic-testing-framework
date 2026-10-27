@@ -516,46 +516,54 @@ agents:
     shell_allow: ["node {fw}/scripts/report-data.mjs *", "node {fw}/scripts/report.mjs render *", "node {fw}/scripts/report.mjs check *", "node {fw}/scripts/report.mjs paths *"]
     filesystem: { read: ["${product_dir}/**"], write: ["${results}/report/narrative.json"] }
 
-  feedback-implementor-agent:   # existing: fixes agent prompts / framework from feedback/ files (not generated test code)
+  feedback-implementor-agent:   # P-7: fixes a run's OUTPUTS from feedback/ files (target: <product>), never the framework
     layer: 1
     spawns: []
     live_target: { browser: none, http: none, load: none }
     web_research: none
-    shell: project
+    shell: restricted           # like k6-fixer (S7-F1): no shell command can write a generated or managed file
+    # The domains' own build|check|paths (tsc, playwright --list and k6 inspect run inside check), as their writers and
+    # fixers run them; the run's status; feedback.mjs (triage, check, paths) and the workspace's decision log. Never
+    # `testcases.mjs approve` (human-only, D-048: a changed case waits for a human), never a command that reaches the
+    # product or the web (endpoints.mjs find-spec|introspect|probe, knowledge.mjs add-source|input|snapshot), and not
+    # fix.mjs: a fixer round's snapshot and fix-report are the orchestration's; feedback.mjs check holds this agent to
+    # the domain sets instead.
+    shell_allow: ["node {fw}/scripts/run.mjs status *",
+                  "node {fw}/scripts/feedback.mjs triage *", "node {fw}/scripts/feedback.mjs check *", "node {fw}/scripts/feedback.mjs paths *",
+                  "node {fw}/scripts/decisions.mjs *",
+                  "node {fw}/scripts/knowledge.mjs render *", "node {fw}/scripts/knowledge.mjs merge-glossary *",
+                  "node {fw}/scripts/knowledge.mjs check *", "node {fw}/scripts/knowledge.mjs paths *",
+                  "node {fw}/scripts/testcases.mjs build *", "node {fw}/scripts/testcases.mjs check *", "node {fw}/scripts/testcases.mjs paths *",
+                  "node {fw}/scripts/endpoints.mjs build *", "node {fw}/scripts/endpoints.mjs check *", "node {fw}/scripts/endpoints.mjs paths *",
+                  "node {fw}/scripts/api-plan.mjs build *", "node {fw}/scripts/api-plan.mjs check *", "node {fw}/scripts/api-plan.mjs paths *",
+                  "node {fw}/scripts/ui-code.mjs build *", "node {fw}/scripts/ui-code.mjs check *", "node {fw}/scripts/ui-code.mjs paths *",
+                  "node {fw}/scripts/api-code.mjs build *", "node {fw}/scripts/api-code.mjs check *", "node {fw}/scripts/api-code.mjs paths *",
+                  "node {fw}/scripts/workload.mjs build *", "node {fw}/scripts/workload.mjs check *", "node {fw}/scripts/workload.mjs paths *",
+                  "node {fw}/scripts/k6-code.mjs build *", "node {fw}/scripts/k6-code.mjs check *", "node {fw}/scripts/k6-code.mjs paths *",
+                  "node {fw}/scripts/report.mjs render *", "node {fw}/scripts/report.mjs check *", "node {fw}/scripts/report.mjs paths *"]
     filesystem:
-      read: ["feedback/**", "agents/**", "docs/**", "scripts/**", "config/**", "schemas/**", "templates/**"]
-      write: ["agents/*.md", "agents/_shared/*.md", "docs/**", "feedback/**", "scripts/api-code.mjs",
-              "scripts/api-code.test.mjs", "scripts/api-plan.mjs", "scripts/api-plan.test.mjs",
-              "scripts/build-agents.mjs", "scripts/build-agents.test.mjs", "scripts/clarifications.mjs",
-              "scripts/clarifications.test.mjs", "scripts/decisions.test.mjs", "scripts/doctor.mjs",
-              "scripts/doctor.test.mjs", "scripts/domains.test.mjs",
-              "scripts/endpoints.mjs", "scripts/endpoints.test.mjs", "scripts/explore.mjs", "scripts/explore.test.mjs",
-              "scripts/fix.mjs", "scripts/fix.test.mjs", "scripts/foundation.mjs", "scripts/foundation.test.mjs",
-              "scripts/gate.mjs", "scripts/gate.test.mjs", "scripts/k6-code.mjs", "scripts/k6-code.test.mjs",
-              "scripts/knowledge.mjs", "scripts/knowledge.test.mjs", "scripts/login.test.mjs", "scripts/orchestration.mjs",
-              "scripts/orchestration.test.mjs", "scripts/report-data.mjs", "scripts/report.mjs",
-              "scripts/report.test.mjs", "scripts/requests.mjs", "scripts/results.mjs", "scripts/review.mjs",
-              "scripts/review.test.mjs", "scripts/run-config.mjs", "scripts/run-config.test.mjs", "scripts/run.mjs",
-              "scripts/run.test.mjs", "scripts/shared-libs.test.mjs", "scripts/test-helpers.mjs",
-              "scripts/testcases.mjs", "scripts/testcases.test.mjs", "scripts/triage.mjs", "scripts/triage.test.mjs",
-              "scripts/ui-code.mjs", "scripts/ui-code.test.mjs", "scripts/workload.mjs", "scripts/workload.test.mjs",
-              "scripts/lib/api-code.mjs", "scripts/lib/api-discovery.mjs", "scripts/lib/api-plan.mjs",
-              "scripts/lib/citations.mjs", "scripts/lib/clarifications.mjs", "scripts/lib/contract.mjs",
-              "scripts/lib/coverage.mjs", "scripts/lib/csv.mjs", "scripts/lib/doctor.mjs", "scripts/lib/domain-flows.mjs",
-              "scripts/lib/files.mjs", "scripts/lib/history.mjs", "scripts/lib/provenance.mjs", "scripts/lib/bug-export.mjs", "scripts/lib/framework-issues.mjs", "scripts/framework-issues.mjs", "scripts/e2e.mjs", "scripts/pipeline.test.mjs",
-              "scripts/lib/endpoints.mjs", "scripts/lib/explore.mjs", "scripts/lib/fix.mjs",
-              "scripts/lib/foundation.mjs", "scripts/lib/graphql.mjs", "scripts/lib/k6-code.mjs",
-              "scripts/lib/knowledge.mjs", "scripts/lib/login.mjs", "scripts/lib/mcp.mjs", "scripts/lib/openapi.mjs", "scripts/lib/probe.mjs",
-              "scripts/lib/registry.mjs", "scripts/lib/report.mjs", "scripts/lib/requests.mjs", "scripts/lib/run-config-draft.mjs",
-              "scripts/lib/review.mjs", "scripts/lib/testcases.mjs", "scripts/lib/triage.mjs",
-              "scripts/lib/ts-scan.mjs", "scripts/lib/ui-code.mjs", "scripts/lib/verified.mjs",
-              "scripts/lib/workload.mjs", "scripts/lib/gate/*.mjs", "scripts/fixtures/**", "schemas/*.json",
-              "templates/**"]
-    # G12 (D-062): the write list is enumerated because a glob has no exclude; it covers the scripts, libs, gate rules,
-    # fixtures, schemas and templates of G0-G11 and leaves out the safety files below, which stay human-only.
-    # Never config/ (permissions, models, platforms, MCP servers), the safety code (scripts/lib/{guard,permissions,ledger,
-    # hosts,tool-call,browser-tools,guard-check,decisions,hook-registrations,hook-log,agent-scope}.mjs, scripts/hooks/, scripts/lib/agents/),
-    # the checker it is checked by (scripts/{feedback,ledger}.mjs, scripts/lib/feedback.mjs, scripts/{feedback,guard,hooks,roster}.test.mjs),
-    # the hook registrations or editor settings
-    # (.claude/settings.json, .github/hooks/, .vscode/) or the generated agent/MCP files (rebuilt from agents/ by
-    # `npm run build-agents` via its shell): safety, permissions, models and platforms are human-only decisions (D-013).
+      read: ["feedback/**", "config/**", "${product_dir}/**", "${pw_project}/**", "${k6_project}/**"]
+      # Per domain, exactly what its owning agents write (scripts/lib/feedback.mjs OUTPUT_DOMAINS reads these rows, so
+      # `feedback.mjs check` holds a Resolution's files to the same sets). Left out: the explorer's and the knowledge
+      # captures (the live product's evidence), the fixers' fix-report.json (a fixer round's record), the foundation
+      # overlays (pw-repo-owner and the scaffolders own the shared and foundation files).
+      write: ["feedback/**",
+              # knowledge (knowledge-generator)
+              "${knowledge}/overview.md", "${knowledge}/glossary.md", "${knowledge}/modules/${module}/overview.md",
+              "${knowledge}/modules/${module}/glossary.md", "${knowledge}/modules/${module}/notes.md",
+              # test cases (testcase-writer's overlay; an edited case loses its approval, and only a human approves)
+              "${modules}/testcases/cases.json",
+              # the endpoint catalogue and the plans (api-discoverer, api-test-planner, k6-workload-designer overlays)
+              "${modules}/api/overlay.json", "${modules}/api/plan-overlay.json", "${modules}/k6/workload-overlay.json",
+              # Playwright UI (pw-ui-fixer's code)
+              "${pw_project}/pages/**", "${pw_project}/tests/ui/**", "${pw_project}/helpers/ui/**",
+              # Playwright API (pw-api-fixer's slots and helpers, the API writers' overlays)
+              "${pw_project}/helpers/api/**", "${modules}/api-code/client-overlay.json", "${modules}/api-code/tests-overlay.json",
+              # k6 (k6-fixer's slots and lib extensions)
+              "${k6_project}/scripts/slots/${module}.js", "${k6_project}/lib/ext/**",
+              # the report narrative (report-generator)
+              "${results}/report/narrative.json"]
+    # Never a framework file (scripts/, agents/, docs/, schemas/, config/, templates/: the maintainers' dev-only
+    # framework-implementor-agent keeps D-062's scope), atf/ (the workspace's own settings, D-088), the host and
+    # generated agent/MCP files, or a managed file (managed_files: the guard denies it whatever this list says).
+    # Safety, permissions, models and platforms are human-only decisions (D-013).

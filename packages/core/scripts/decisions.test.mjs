@@ -238,7 +238,8 @@ test("the log is atf/decisions.md by default: a client's entries govern its file
 });
 
 test("the monorepo's atf.json names docs/decisions.md, the maintainers' log", () => {
-  assert.deepEqual(JSON.parse(readFileSync(path.join(workspaceRoot, "atf", "atf.json"), "utf8")), { decisions: "docs/decisions.md" });
+  // (and its dev-only agents' folder, docs/packaging.md §3.8)
+  assert.deepEqual(JSON.parse(readFileSync(path.join(workspaceRoot, "atf", "atf.json"), "utf8")), { decisions: "docs/decisions.md", dev_agents: "dev/agents" });
   assert.deepEqual(decisionsFile(workspaceRoot), { file: "docs/decisions.md", path: path.join(workspaceRoot, "docs", "decisions.md") });
   assert.equal(loadDecisions(workspaceRoot).decisions.length, decisions.length);
   // a named path is the workspace's, whatever separator it is written with, and normalized
