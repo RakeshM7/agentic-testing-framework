@@ -119,7 +119,7 @@ test("export: the whole bundle, evidence left out by default; no original value 
   const issue = JSON.parse(files.get(`issues/run-1/${ids[0]}.json`));
   assert.equal(issue.target, "agents/module-explorer.md", "the framework's own file is not client data");
   assert.match(issue.summary, /^Step 3 fails on <url-\d+> for <email-\d+>$/);
-  assert.match(issue.evidence, /^token=<secret-\d+> from <ip-1>, Authorization: Bearer <secret-\d+>; <module-1>Page; see <workspace>\/artifacts\/<product-1>\/modules\/<module-1>\/explore\/notes\.txt:3/);
+  assert.match(issue.evidence, /^token=<secret-\d+> from <ip-1>, Authorization: Bearer <secret-\d+>; <module-1>Page; see <workspace>[\\/]artifacts[\\/]<product-1>[\\/]modules[\\/]<module-1>[\\/]explore[\\/]notes\.txt:3/, "the separators as the issue wrote them (\\ on Windows)");
   assert.equal(issue.fix, `password=${issue.fix.match(/<secret-\d+>/)[0]} should never be logged`);
   assert.deepEqual(issue.evidenceFiles.map((e) => e.entry ?? e.leftOut), ["evidence/run-1/e1.txt", "binary", "network body"]);
   // a target the framework lacks goes through the redactor (nothing to replace in this one)
@@ -271,7 +271,7 @@ test("import: in the framework's source checkout, one feedback file per issue in
   // never overwrites: the same bundle again is refused, with nothing written; --out picks another folder
   const again = capture();
   assert.equal(importBundle({ workspace: maintainers, framework: frameworkRoot, zip, log: again }), 1);
-  assert.match(again.text(), /feedback\/client-globex-labs-2026-10-27 exists: nothing written \(was this bundle imported already\? pass --out <new folder>/);
+  assert.match(again.text(), /feedback[\\/]client-globex-labs-2026-10-27 exists: nothing written \(was this bundle imported already\? pass --out <new folder>/);
   assert.equal(importBundle({ workspace: maintainers, framework: frameworkRoot, zip, out: path.join(maintainers, "feedback/second"), log: capture() }), 0);
   assert.equal(readdirSync(path.join(maintainers, "feedback/second")).filter((f) => f.endsWith(".md")).length, 3);
 });
