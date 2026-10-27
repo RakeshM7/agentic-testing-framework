@@ -2,7 +2,7 @@
 // config/permissions.yaml only, platform syntax only from config/platforms.yaml.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
@@ -13,7 +13,7 @@ import { splitFrontmatter } from "./lib/agents/source.mjs";
 import { generatedNote, isGenerated } from "./lib/agents/renderers/common.mjs";
 import { frameworkRoot } from "./lib/contract.mjs";
 import { resolvePermissions } from "./lib/permissions.mjs";
-import { expandFw, frameworkRel, isInstalled, workspaceRoot } from "./lib/roots.mjs";
+import { devAgentsDir, expandFw, frameworkRel, isInstalled, workspaceRoot } from "./lib/roots.mjs";
 import { installedWorkspace } from "./test-helpers.mjs";
 
 // Sources and config are the framework's; the generated files are the workspace's (the same directory, or the
@@ -723,4 +723,143 @@ test("a source checkout's settings: the same merge, and its output byte for byte
   assert.deepEqual(build({ root, postHook: "off" }).errors, []);
   assert.deepEqual(settingsOf(root).hooks.Stop, [CLIENT_STOP]);
   assert.deepEqual(Object.keys(settingsOf(root).hooks), ["PreToolUse", "Stop"]);
+});
+
+// ---- dev-only agents (docs/packaging.md §3.8): a source checkout's workspace renders agents the package never ships ----
+// The framework is a scratch source checkout; the workspace names its dev folder in atf/atf.json and gives each dev
+// agent its row in atf/permissions.yaml, as the monorepo does.
+const DEV = "dev-probe";
+const DEV_ROW = { layer: 1, spawns: [], shell: "project", filesystem: { read: ["feedback/**"], write: ["feedback/**"] } };
+const devSource = (name = DEV, body = "Maintain the framework from feedback files.\n") => `---\nname: ${name}\ndescription: A dev-only maintainer.\nuser_invocable: true\n---\n\n${body}`;
+function devPair({ framework = scratch(), atf = { dev_agents: "dev/agents" }, rows = { [DEV]: DEV_ROW }, sources = { [DEV]: devSource() } } = {}) {
+  const ws = mkdtempSync(path.join(tmpdir(), "atf-dev-"));
+  put(ws, "atf/atf.json", JSON.stringify(atf));
+  if (rows) put(ws, "atf/permissions.yaml", yaml.dump({ agents: rows }));
+  mkdirSync(path.join(ws, "dev", "agents"), { recursive: true });
+  for (const [name, text] of Object.entries(sources)) put(ws, `dev/agents/${name}.md`, text);
+  return { framework, ws, run: (opts = {}) => build({ root: ws, framework, ...opts }) };
+}
+
+test("a dev agent is rendered from the folder atf.json names, in every platform's file, with its own source in the note", () => {
+  const { framework, ws, run } = devPair();
+  assert.ok(!isInstalled(framework));
+  assert.deepEqual(run().errors, []);
+  const fw = frameworkRel(ws, framework);
+  for (const rel of OUTS(DEV)) {
+    const text = readFileSync(path.join(ws, rel), "utf8");
+    assert.equal(noteOf(ws, rel), `# GENERATED from dev/agents/${DEV}.md by ${fw}/scripts/build-agents.mjs -- edit the source, then run npm run build-agents.`, rel);
+    assert.ok(isGenerated(text), rel);
+    assert.equal(splitFrontmatter(text, rel).meta.name, DEV);
+    assert.match(text, /Maintain the framework from feedback files\./);
+  }
+  // its tools come from its row like any agent's; the framework's agents are rendered beside it, unchanged
+  assert.equal(generatedNote("pw-ui-fixer", fw), noteOf(ws, OUTS("pw-ui-fixer")[0]));
+  assert.ok(splitFrontmatter(readFileSync(path.join(ws, OUTS(DEV)[0]), "utf8"), "x").meta.tools.includes("Write"));
+  assert.deepEqual(run({ check: true }), { errors: [], changed: [] });
+  // its files are ordinary generated files: a hand edit is drift, and once the source goes they are stray
+  writeFileSync(path.join(ws, OUTS(DEV)[0]), readFileSync(path.join(ws, OUTS(DEV)[0]), "utf8") + "x");
+  assert.deepEqual(run({ check: true }).changed, [OUTS(DEV)[0]]);
+  rmSync(path.join(ws, "dev", "agents", `${DEV}.md`));
+  rmSync(path.join(ws, "atf", "permissions.yaml"));
+  assert.ok(run({ check: true }).errors.some((e) => new RegExp(`${DEV}\\.md: not generated from agents/ or dev/agents/`).test(e)));
+});
+
+test("a dev agent's includes come from the framework's agents/_shared/, and it gets the same lint, its errors naming its source", () => {
+  const framework = scratch();
+  withInclude(framework);
+  const { ws, run } = devPair({ framework, sources: { [DEV]: devSource(DEV, "Intro.\n\n<!-- include: _shared/probe.md -->\n") } });
+  assert.deepEqual(run().errors, []);
+  for (const rel of OUTS(DEV)) assert.match(readFileSync(path.join(ws, rel), "utf8"), /Intro\.\n\nShared fixer rule: report, do not guess\.\n/);
+  put(ws, `dev/agents/${DEV}.md`, devSource(DEV, "<!-- include: _shared/nope.md -->\n"));
+  assert.ok(run({ check: true }).errors.some((e) => e.startsWith(`dev/agents/${DEV}.md: include '_shared/nope.md' names no file`)));
+  put(ws, `dev/agents/${DEV}.md`, devSource(DEV, "Use AskUserQuestion when unsure.\n"));
+  assert.ok(run({ check: true }).errors.some((e) => e.startsWith(`dev/agents/${DEV}.md: body names platform-specific 'AskUserQuestion'`)));
+  put(ws, `dev/agents/${DEV}.md`, devSource(DEV, "Run node {fw}scripts/run.mjs.\n"));
+  assert.ok(run({ check: true }).errors.some((e) => e.startsWith(`dev/agents/${DEV}.md: '{fw}s'`)));
+  put(ws, `dev/agents/${DEV}.md`, devSource("someone-else", "x\n"));
+  assert.ok(run({ check: true }).errors.some((e) => e === `dev/agents/${DEV}.md: frontmatter name must be '${DEV}'`));
+  // its source is the workspace's own: an add-on fragment for it is refused like one for an unknown agent
+  put(ws, `dev/agents/${DEV}.md`, devSource());
+  put(ws, `atf/agents/${DEV}.extra.md`, "More.\n");
+  assert.ok(run({ check: true }).errors.some((e) => e === `atf/agents/${DEV}.extra.md: the framework has no agent '${DEV}' to add to`));
+});
+
+test("a dev agent with a framework agent's name (in any case) or without a permissions row fails, named; so does a row with no source", () => {
+  const read = (ws) => (existsSync(path.join(ws, ".claude", "agents")) ? readdirSync(path.join(ws, ".claude", "agents")) : []);
+  const clash = devPair({ sources: { [DEV]: devSource(), "pw-ui-fixer": devSource("pw-ui-fixer") } });
+  const r = clash.run();
+  assert.ok(r.errors.includes("dev/agents/pw-ui-fixer.md: 'pw-ui-fixer' is the name of a framework agent (agents/pw-ui-fixer.md); give the dev agent a name of its own"), r.errors.join("\n"));
+  assert.deepEqual(r.changed, []);
+  assert.deepEqual(read(clash.ws), [], "nothing is written on error");
+  const cased = devPair({ sources: { "Testcase-Writer": devSource("Testcase-Writer") }, rows: { "Testcase-Writer": DEV_ROW } });
+  assert.ok(cased.run({ check: true }).errors.some((e) => e.startsWith("dev/agents/Testcase-Writer.md: 'Testcase-Writer' is the name of a framework agent (agents/testcase-writer.md)")));
+  const unlisted = devPair({ rows: null });
+  assert.deepEqual(unlisted.run().errors, [`dev/agents/${DEV}.md: no permissions row for '${DEV}' in the effective permissions.yaml; add one under agents: in atf/permissions.yaml`]);
+  assert.deepEqual(read(unlisted.ws), []);
+  const orphan = devPair({ rows: { [DEV]: DEV_ROW, "dev-ghost": DEV_ROW } });
+  assert.ok(orphan.run({ check: true }).errors.includes("agents/dev-ghost.md: missing (nor in dev/agents/)"));
+});
+
+test("dev_agents must name an existing folder inside the workspace and outside the framework; otherwise the build fails naming atf/atf.json", () => {
+  const key = 'atf/atf.json "dev_agents"';
+  const errorFor = (value, setup) => {
+    const { ws, run } = devPair({ atf: { dev_agents: value } });
+    setup?.(ws);
+    const r = run();
+    assert.deepEqual(r.changed, [], JSON.stringify(value));
+    assert.equal(r.errors.length, 1, `${JSON.stringify(value)}: ${r.errors.join("; ")}`);
+    return r.errors[0];
+  };
+  for (const v of ["../outside", "dev/../../outside", "/etc", "C:\\agents", "C:agents", "\\\\server\\share\\agents", ".", "dev/.."])
+    assert.equal(errorFor(v), `${key} (${v}) must name a folder inside the workspace, relative to it`, v);
+  for (const v of [true, "", "  ", ["dev/agents"]]) assert.equal(errorFor(v), `${key} must be a workspace-relative folder, not ${JSON.stringify(v)}`);
+  assert.equal(errorFor("dev/nope"), `${key} (dev/nope) names no folder`);
+  assert.equal(errorFor("dev/agents/x.md", (ws) => put(ws, "dev/agents/x.md", "x")), `${key} (dev/agents/x.md) names no folder`);
+  // a link that leaves the workspace is outside it too
+  const outside = mkdtempSync(path.join(tmpdir(), "atf-out-"));
+  assert.match(errorFor("linked", (ws) => symlinkSync(outside, path.join(ws, "linked"), "junction")), /^atf\/atf\.json "dev_agents" \(linked\) must name a folder inside the workspace/);
+  // the monorepo's shape, the framework inside the workspace: a folder in it would ship with the package
+  const ws = mkdtempSync(path.join(tmpdir(), "atf-mono-"));
+  for (const d of ["config", "agents"]) cpSync(path.join(frameworkRoot, d), path.join(ws, "packages", "core", d), { recursive: true });
+  put(ws, "atf/atf.json", JSON.stringify({ dev_agents: "packages/core/agents" }));
+  assert.deepEqual(build({ root: ws, framework: path.join(ws, "packages", "core") }).errors, [`${key} (packages/core/agents) is inside the framework (packages/core), which the package ships; keep dev-only agents outside it`]);
+  // and an unreadable atf.json is an error too, not a build without the dev agents
+  const broken = devPair();
+  put(broken.ws, "atf/atf.json", "{ nope");
+  assert.match(broken.run({ check: true }).errors[0], /^atf\/atf\.json could not be read as JSON/);
+});
+
+test("installed: dev_agents is refused, naming atf/atf.json, and nothing is written; without the key nothing changes", () => {
+  const { root, framework } = installedWorkspace();
+  assert.ok(isInstalled(framework));
+  assert.deepEqual(build({ root, framework }).errors, []);
+  const before = readdirSync(path.join(root, ".claude", "agents")).sort();
+  put(root, "atf/atf.json", JSON.stringify({ dev_agents: "dev/agents" }));
+  put(root, `dev/agents/${DEV}.md`, devSource());
+  put(root, "atf/permissions.yaml", yaml.dump({ agents: { [DEV]: DEV_ROW } }));
+  const r = build({ root, framework });
+  assert.equal(r.errors.length, 1);
+  assert.match(r.errors[0], /^atf\/atf\.json "dev_agents": dev-only agents belong to the framework's own source checkout/);
+  assert.deepEqual(r.changed, []);
+  assert.deepEqual(readdirSync(path.join(root, ".claude", "agents")).sort(), before);
+  // a dev folder nobody names is just a folder; the overlay row without a source is the usual error
+  put(root, "atf/atf.json", "{}");
+  assert.ok(build({ root, framework, check: true }).errors.includes(`agents/${DEV}.md: missing`));
+});
+
+test("this repository's own workspace renders its dev agents from its real atf/ config, beside the framework's", { skip: !devAgentsDir(workspaceRoot, frameworkRoot).dir && "no dev_agents in this workspace" }, () => {
+  // a temp workspace with the real atf/ and dev folder, against the real framework (a source checkout): the files a
+  // build writes there are what the committed ones must be
+  const dev = devAgentsDir(workspaceRoot, frameworkRoot);
+  const names = readdirSync(dev.dir).filter((f) => f.endsWith(".md")).map((f) => f.slice(0, -3));
+  assert.ok(names.length > 0);
+  const ws = mkdtempSync(path.join(tmpdir(), "atf-repo-"));
+  cpSync(path.join(workspaceRoot, "atf"), path.join(ws, "atf"), { recursive: true });
+  cpSync(dev.dir, path.join(ws, dev.rel), { recursive: true });
+  const { errors, changed } = build({ root: ws, framework: frameworkRoot, check: true });
+  assert.deepEqual(errors, []);
+  for (const name of names) for (const rel of OUTS(name)) assert.ok(changed.includes(rel), `${rel} would be written`);
+  assert.ok(OUTS("orchestrator-agent").every((rel) => changed.includes(rel)), "the framework's agents too");
+  // the package never sees them: no dev agent is among the framework's own sources
+  for (const name of names) assert.ok(!existsSync(path.join(frameworkRoot, "agents", `${name}.md`)), name);
 });

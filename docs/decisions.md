@@ -151,6 +151,8 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-093 | A client workspace opts in to the Copilot cloud agent by committing its agent and hook files; the setup workflow is written once and then the client's | Accepted | 2026-10-26 |
 | D-094 | The package is published to a private npmjs org as an unminified bundle with an allow-listed file set; nothing ships while the licence is a draft | Accepted | 2026-10-26 |
 | D-095 | Semver with an artifact-contract version and tested migrations; a run never resumes across a breaking line | Accepted | 2026-10-26 |
+| D-096 | feedback-implementor-agent fixes a run's outputs; the framework is maintained by a dev-only framework-implementor-agent | Accepted | 2026-10-27 |
+| D-097 | Framework issues leave a client workspace only as a redacted, previewed export bundle | Accepted | 2026-10-27 |
 
 ## Decisions
 
@@ -1891,3 +1893,56 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Why:** clients keep long-lived knowledge, catalogues, test cases and runs. An upgrade must not lose them or silently misread them, and a run must finish on the code that started it.
 - **Affects:** `packages/core/scripts/lib/contract.mjs`, `packages/core/scripts/run.mjs`, `packages/core/scripts/lib/provenance.mjs`, `packages/core/schemas/run.schema.json`, `packages/core/scripts/lib/migrate.mjs`, `packages/core/scripts/migrate.test.mjs`, `packages/core/migrations/README.md`, `packages/core/scripts/contract-fixtures.test.mjs`, `packages/core/scripts/fixtures/workspaces/generate.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/guard.mjs`
 - **Confirmed by the user on:** 2026-10-24 (draft P-9) and 2026-10-26 (version 0.1.0; a 0.x minor is breaking). This extends D-066, D-071, D-072, D-077, D-084 and D-088 without weakening them.
+
+### D-096 · feedback-implementor-agent fixes a run's outputs; the framework is maintained by a dev-only framework-implementor-agent
+- **Status:** Accepted · **Date:** 2026-10-27 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §3.8 and phase 5: draft P-7 and Q5; "designed to fix the issues reported in testcase generation or playwright tests etc, the actual outputs of this framework")
+- **Decision:**
+  - **`feedback-implementor-agent` fixes outputs** (`agents/feedback-implementor-agent.md`). It takes feedback files whose `target` is a product, about what a run produced: knowledge, test cases, the endpoint catalogue and API plan, Playwright UI and API code, the k6 workload and scripts, the report narrative. For each finding it:
+    1. triages it against the workspace's decision log (D-091);
+    2. routes it to one domain;
+    3. fixes it only through that domain's overlays and slots;
+    4. runs the domain's `build` and `check`;
+    5. appends a Resolution.
+
+    It never approves: a changed test case awaits human re-approval (D-048, D-053). It never writes the framework, `atf/`, host, generated or managed files, or safety config.
+    - **Permissions** (`config/permissions.yaml`): `shell: restricted`, allowing only the domains' build, check and paths commands, `run.mjs status`, `feedback.mjs` and `decisions.mjs`. No spawns. It writes only the domains' own overlays and slots, the report narrative and `feedback/**`.
+  - **`feedback.mjs check` picks its mode from the feedback file's `target`,** which the filer writes, never the resolver:
+    - **A product slug: outputs mode.** A fixed finding's Resolution names the `<domain>.mjs check <product>` it ran. Every changed file must lie in that domain's writable set, as permitted by both the domain's own agents' rows and this agent's row, and must not be managed. A test-case change must say it awaits human re-approval.
+    - **`target: framework`: D-062's mode, unchanged** (a test per script change).
+  - **`framework-implementor-agent` is dev-only (user, 2026-10-26).** Today's framework-fixing role continues only in the framework's own repository:
+    - **Source:** `dev/agents/framework-implementor-agent.md` at the repository root.
+    - **Permissions:** its row, D-062's scope, is in the monorepo's own overlay `atf/permissions.yaml` (D-088).
+    - **Feedback it works from:** files with `target: framework`, including those `atf issues import` creates (D-097).
+  - **Dev agents.** `atf/atf.json` `"dev_agents": "<folder>"` adds agent sources outside the framework, honoured only in a source checkout. In an installed workspace the key is a build error. Within the source checkout these are errors, each naming the file:
+    - the folder escapes the workspace or lies inside the framework;
+    - a dev agent's name clashes with a framework agent's;
+    - a dev agent has no permissions row;
+    - a permissions row has no source in either folder.
+
+    Their generated files are committed (D-018). Nothing in `packages/core` names the dev agent, so the package never ships it (D-094).
+  - **The guard.**
+    - `{fw}/` in a permissions row's `filesystem` globs expands like in `shell_allow`, so an overlay row can name framework files.
+    - The `workspace-settings` rule's roster includes the workspace's dev agents, so no dev agent writes the `atf/` overlay that grants its own permissions. An unreadable `dev_agents` fails closed.
+    - The D-062 tests ("writes the G0-G11 files", "every framework script is writable or carved out") now hold for `framework-implementor-agent`, through its overlay row.
+- **Why:**
+  - In a client install the framework is read-only, so a framework fixer there has nothing to do. The user's intent for this agent was always the outputs.
+  - Routing through each domain's overlays and checks keeps every fix in a file the next build keeps, and reviewed by the same check as the domain's own agents.
+  - The maintainers still need D-062's agent, but clients must never receive it.
+- **Affects:** `packages/core/agents/feedback-implementor-agent.md`, `packages/core/config/permissions.yaml`, `packages/core/scripts/feedback.mjs`, `packages/core/scripts/lib/feedback.mjs`, `packages/core/scripts/feedback.test.mjs`, `packages/core/docs/conventions.md`, `dev/agents/framework-implementor-agent.md`, `atf/permissions.yaml`, `atf/atf.json`, `packages/core/scripts/lib/roots.mjs`, `packages/core/scripts/lib/agents/source.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/permissions.mjs`, `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/guard.test.mjs`, `packages/core/scripts/roster.test.mjs`
+- **Supersedes:** — · **Confirmed by the user on:** 2026-10-24 (draft P-7, Q5) and 2026-10-26 (the dev agent in `dev/agents/` with its row in the `atf/permissions.yaml` overlay). This narrows D-062 and D-013 (their framework-fixing agent is now `framework-implementor-agent`, with the same scope and checks), extends D-086 (the repository root gains `dev/`, holding only dev agents), and extends D-043 (`feedback-implementor-agent` writes across domains outside a run's fixer rounds, through the domains' own overlays and checks) without weakening them.
+
+### D-097 · Framework issues leave a client workspace only as a redacted, previewed export bundle
+- **Status:** Accepted · **Date:** 2026-10-27 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §3.9, Q6 and phase 5: draft P-8)
+- **Decision:**
+  - **End of run.** `run.mjs end` always writes `results/<run>/framework-issues.json`. It stamps the run's metadata into it (contract, provenance, package changes, target and modules), because `state/run.json` is overwritten by the next run. It reports the issues under `frameworkIssues`. In an installed workspace it no longer writes `feedback/run-*`. In the framework's own repository it still does, for `framework-implementor-agent` (D-083).
+  - **`atf issues export [--run <id> | --since <date>] [--include-evidence] [--client <name>] [--out <dir>] [--yes] [--dry-run]`** collects the issues of ended runs, from every product and environment, into `atf-issues-<client>-<date>.zip`. The zip is written with Node's zlib (`scripts/lib/zip.mjs`) and is never overwritten.
+    - **Client name (user):** `--client`, else `atf/atf.json` `"client"`, else the workspace's `package.json` name.
+    - **Redaction:** one redactor per bundle gives each distinct value a stable placeholder. It covers private keys, workspace and home paths, JWTs, auth headers, secret-like key values, URLs, emails, target hosts, IPs, UUIDs, bare host names, long hex and base64 strings, and product and module slugs. The manifest lists each redaction by kind, placeholder, count and location, never the original value. Config is listed by source and digest, never content.
+    - **Evidence:** only files an issue names, under `artifacts/`, `playwright-tests/` or `k6-tests/`, never secrets or settings. Text evidence is redacted; binary or large evidence is left out unless `--include-evidence` is given, and then binary goes in unredacted, with a warning.
+    - **Preview, then a typed `yes` (user).** Export prints every entry, issue and redaction. `--dry-run` writes nothing, `--yes` skips the prompt, and a non-interactive export without `--yes` is refused.
+  - **`atf issues import <zip> [--out <dir>]`** runs only in the framework's own repository. It verifies the bundle (CRCs, format, listed entries) and writes one feedback file per issue to `feedback/client-<client>-<date>/`, marked as imported and redacted. It refuses an existing target, so a bundle can't be imported twice by accident.
+  - **The guard** refuses `atf issues`, export and import in every form, to framework agents and, during a run, to unattributed calls (D-088's `workspace-settings` rule). Only a human decides what leaves the workspace, and what enters the maintainers' feedback.
+  - **`atf init`** git-ignores `atf-issues-*.zip`.
+- **Why:** framework issues are the maintainers' to fix, and client product data must not leave without the client seeing exactly what goes. Placeholders keep the issues readable for the maintainers without the client's values.
+- **Affects:** `packages/core/scripts/run.mjs`, `packages/core/scripts/framework-issues.mjs`, `packages/core/scripts/lib/framework-issues.mjs`, `packages/core/scripts/lib/issues-bundle.mjs`, `packages/core/scripts/issues-bundle.test.mjs`, `packages/core/scripts/lib/zip.mjs`, `packages/core/scripts/zip.test.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/lib/init.mjs`
+- **Supersedes:** — · **Confirmed by the user on:** 2026-10-24 (draft P-8, Q6) and 2026-10-26 (a `.zip`; the client name from `atf.json` else the package name; preview and a typed `yes`). This narrows D-083's end-of-run feedback files to the framework's own repository, and extends D-088 and D-091 without weakening them.

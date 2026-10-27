@@ -118,6 +118,44 @@ export function expandFw(text, rel = ownFrameworkRel()) {
   return rel ? s.replaceAll(FW_TOKEN, rel) : s.replaceAll(`${FW_TOKEN}/`, "").replaceAll(FW_TOKEN, ".");
 }
 
+// Dev-only agents (docs/packaging.md §3.8): the framework's own repository may keep agents the package never ships
+// (the agent that maintains the framework there) in a workspace folder that atf/atf.json names,
+// `"dev_agents": "<workspace-relative folder>"`. Their sources have the framework's format and their permissions rows
+// come from the workspace's atf/permissions.yaml overlay; the build renders them beside the framework's agents
+// (scripts/lib/agents/source.mjs). Only a source checkout honours the key: in a client's workspace (the framework
+// installed) it is an error, since a dev agent maintains a framework the client can't change, and silently dropping a
+// key someone set would leave its permissions rows without sources. The path is checked as decisions.mjs checks the log's:
+// relative in every OS's convention, inside the workspace (symlinks resolved) and not the workspace itself; it must
+// also be an existing folder outside the framework root, so the package can never ship it and no framework source is
+// read twice. Dependency-free, so the guard can use it too.
+// -> { dir: null } without the key | { dir: <absolute>, rel: <workspace-relative, `/`> } | { error }
+export const DEV_AGENTS_KEY = "dev_agents";
+export function devAgentsDir(workspace = workspaceRoot, framework = frameworkRoot) {
+  const { cfg, error } = readMarker(workspace);
+  if (error) return { error };
+  const v = cfg?.[DEV_AGENTS_KEY];
+  if (v === undefined) return { dir: null };
+  const key = `${WORKSPACE_MARKER} "${DEV_AGENTS_KEY}"`;
+  if (isInstalled(framework)) return { error: `${key}: dev-only agents belong to the framework's own source checkout, not to a workspace with the framework installed; remove the key (your own agents go in the host's agent folders, beside the generated ones)` };
+  if (typeof v !== "string" || !v.trim()) return { error: `${key} must be a workspace-relative folder, not ${JSON.stringify(v)}` };
+  const named = v.trim();
+  const p = named.replaceAll("\\", "/");
+  const outside = { error: `${key} (${named}) must name a folder inside the workspace, relative to it` };
+  if (path.posix.isAbsolute(p) || path.win32.isAbsolute(p) || /^[a-zA-Z]:/.test(p)) return outside;
+  const abs = path.resolve(workspace, p);
+  const rel = path.relative(path.resolve(workspace), abs);
+  if (!rel || rel.split(/[\\/]/)[0] === ".." || path.isAbsolute(rel)) return outside;
+  let isDir = false;
+  try {
+    isDir = statSync(abs).isDirectory();
+  } catch {}
+  if (!isDir) return { error: `${key} (${named}) names no folder` };
+  // it exists: now compared by real path, so a link out of the workspace (or back onto it) is outside too
+  if (!isWithin(abs, workspace) || sameDir(abs, workspace)) return outside;
+  if (isWithin(abs, framework)) return { error: `${key} (${named}) is inside the framework (${frameworkRel(workspace, framework) || "."}), which the package ships; keep dev-only agents outside it` };
+  return { dir: abs, rel: rel.replaceAll("\\", "/") };
+}
+
 // Whether the framework is an installed package, which no agent writes (the guard's framework-readonly rule): its real
 // path, symlinks and junctions resolved, has a `node_modules` segment (any case, either separator). A source checkout
 // (the monorepo's packages/core, also when reached through the workspace's node_modules/@testagentic/atf link, which

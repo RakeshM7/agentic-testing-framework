@@ -37,7 +37,7 @@ import { shellWriteTargets } from "./decisions.mjs";
 import { canIdentify, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
 import { atLeast, canWrite, effectiveLiveTarget, isManaged, normalizeWritePath, runCeiling, shellAllowed, shellSegments } from "./permissions.mjs";
-import { expandFw, frameworkRel, frameworkRoot, isInstalled, sameDir } from "./roots.mjs";
+import { devAgentsDir, expandFw, frameworkRel, frameworkRoot, isInstalled, sameDir } from "./roots.mjs";
 
 const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
 
@@ -405,24 +405,36 @@ function writeUnder(call, root, dir) {
 const atfEject = atfVerb("eject");
 const atfInit = atfVerb("init");
 const atfMigrate = atfVerb("migrate");
+const atfIssues = atfVerb("issues");
 const ATF_EJECT = Symbol("atf eject");
 const ATF_INIT = Symbol("atf init");
 const ATF_MIGRATE = Symbol("atf migrate");
-const ATF_CLI_WRITES = new Map([[ATF_EJECT, "`atf eject` writes atf/config/"], [ATF_INIT, "`atf init` writes atf/ (a workspace's marker and decision log)"], [ATF_MIGRATE, "`atf migrate` writes atf/atf.json (the workspace's artifact contract) and every run's state"]]);
+const ATF_ISSUES = Symbol("atf issues");
+const ATF_CLI_WRITES = new Map([[ATF_EJECT, "`atf eject` writes atf/config/"], [ATF_INIT, "`atf init` writes atf/ (a workspace's marker and decision log)"], [ATF_MIGRATE, "`atf migrate` writes atf/atf.json (the workspace's artifact contract) and every run's state"], [ATF_ISSUES, "`atf issues` exports what leaves the workspace, or imports a client's bundle, and only a human decides either (D-097)"]]);
 function workspaceSettingsWrite(call, root) {
   if (call.kind === "shell") {
     const lines = spellings(call.command);
     if (lines.some(atfEject)) return ATF_EJECT;
     if (lines.some(atfInit)) return ATF_INIT;
     if (lines.some(atfMigrate)) return ATF_MIGRATE;
+    if (lines.some(atfIssues)) return ATF_ISSUES;
   }
   return writeUnder(call, root, path.join(root, "atf"));
 }
 // The framework's agents: the names of its agent sources, agents/<name>.md (the fragments in agents/_shared/ are no
-// agent). null when they can't be read, and then every named caller counts as one (fails closed).
-function frameworkAgents(framework) {
+// agent), and in a source checkout the workspace's dev-only agents (atf/atf.json "dev_agents", D-096), which may not
+// edit the overlay that grants their own permissions either. null when any of them can't be read, and then every named
+// caller counts as one (fails closed).
+const agentNames = (dir) => readdirSync(dir, { withFileTypes: true }).filter((d) => !d.isDirectory() && d.name.endsWith(".md")).map((d) => d.name.slice(0, -3));
+function frameworkAgents(framework, root) {
   try {
-    return new Set(readdirSync(path.join(framework, "agents"), { withFileTypes: true }).filter((d) => !d.isDirectory() && d.name.endsWith(".md")).map((d) => d.name.slice(0, -3)));
+    const names = agentNames(path.join(framework, "agents"));
+    if (root) {
+      const dev = devAgentsDir(root, framework);
+      if (dev.error) return null;
+      if (dev.dir) names.push(...agentNames(dev.dir));
+    }
+    return new Set(names);
   } catch {
     return null;
   }
@@ -431,9 +443,9 @@ function frameworkAgents(framework) {
 // call whose host can't name its caller, since every call there comes from one of the run's agents (D-035). A human's
 // own session -- no agent on a host that names agents, or an agent type the framework doesn't ship (a host's built-in
 // helper) -- is not bound; the decision hook still asks before it edits a governed file.
-function bindsSettings(call, framework, inRun) {
+function bindsSettings(call, framework, inRun, root) {
   if (!call.agent) return inRun && !canIdentify(call.host);
-  const roster = frameworkAgents(framework);
+  const roster = frameworkAgents(framework, root);
   return !roster || roster.has(call.agent);
 }
 const SETTINGS_REASON = "atf/ holds this workspace's own settings (its marker, config overlays and ejected config, decision log and agent fragments), which only a human changes (D-013, packaging §3.4): report the change it needs instead";
@@ -514,7 +526,7 @@ export function checkTool(call, root, env = process.env, { framework = framework
   if (fwFile)
     return deny("framework-readonly", `${fwFile} is part of the installed framework (${framework}), which no agent changes (D-085): change the workspace's own files instead, or report it (${fw("node {fw}/scripts/framework-issues.mjs add")})`);
   const runs = findActiveRuns(root, env, framework);
-  const settings = bindsSettings(call, framework, runs.length > 0) ? workspaceSettingsWrite(call, root) : null;
+  const settings = bindsSettings(call, framework, runs.length > 0, root) ? workspaceSettingsWrite(call, root) : null;
   if (settings && settings !== UNKNOWN_TARGET) return deny("workspace-settings", `${ATF_CLI_WRITES.get(settings) ?? `${settings} is under atf/`}; ${SETTINGS_REASON}`);
   // a write tool whose target can't be told fails closed: refused by the run's own rules first (fs-write), else here
   const settingsUnknown = (verdict) =>

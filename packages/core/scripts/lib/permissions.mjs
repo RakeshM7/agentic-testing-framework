@@ -39,7 +39,9 @@ export function resolvePermissions(doc, { fw = "" } = {}) {
       web_research: a.web_research ?? "none",
       shell: a.shell ?? "none",
       shell_allow: [...(a.shell_allow ?? []).map((c) => expandFw(c, fw)), ...(a.shell === "restricted" && Array.isArray(common) ? common : [])],
-      filesystem: { read: a.filesystem?.read ?? [], write: a.filesystem?.write ?? [] },
+      // `{fw}/` in a glob is the framework's path from the workspace, like in shell_allow: an overlay row (atf/, D-088)
+      // names framework files that way, e.g. the monorepo's dev-only framework-implementor-agent (D-096)
+      filesystem: { read: (a.filesystem?.read ?? []).map((g) => expandFw(g, fw)), write: (a.filesystem?.write ?? []).map((g) => expandFw(g, fw)) },
       ask_user: a.ask_user ?? "none",
       browser_session: a.browser_session ?? "shared", // fresh: may close its own browser session (D-047)
     };

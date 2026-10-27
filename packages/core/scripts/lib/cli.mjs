@@ -24,6 +24,12 @@
 // `atf migrate [--dry-run]` brings the workspace's artifacts to this package's artifact contract (docs/packaging.md
 // §3.10; scripts/lib/migrate.mjs): every product and environment at once, so it takes no --env. It runs in a child node,
 // since the migration is async and run() is not.
+//
+// `atf issues export|import` (docs/packaging.md §3.9, draft P-8; scripts/lib/issues-bundle.mjs): export writes the
+// redacted bundle of the framework issues agents recorded, after a preview and a typed `yes` on the human's terminal
+// (or --yes); import, in the framework's source checkout only, turns a client's bundle into feedback files. Both cover
+// every product and environment, so neither takes --env. They run in a child node, since export asks on the terminal
+// and run() is synchronous. Exactly the words export and import, like every command.
 import { spawnSync } from "node:child_process";
 import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -57,6 +63,16 @@ Upgrading:
                                                     contract, after an upgrade that changes it: backs up the run
                                                     state, then applies the package's migrations (--dry-run: show
                                                     them, write nothing)
+
+Framework issues (problems the agents met with the framework itself, kept in each run's results):
+  atf issues export [--run <id> | --since <YYYY-MM-DD>] [--include-evidence] [--client <name>] [--out <dir>]
+                    [--yes] [--dry-run]             write atf-issues-<client>-<date>.zip, redacted, for the
+                                                    framework's maintainers: shows every entry, issue and redaction,
+                                                    then asks you to type yes (--yes: don't ask; --dry-run: show only).
+                                                    Screenshots, network bodies and large files only with
+                                                    --include-evidence
+  atf issues import <zip> [--out <dir>]             turn a client's bundle into feedback files under
+                                                    feedback/client-<client>-<date>/ (framework source checkout only)
 
 Host files (the agents, hooks and MCP config of Claude Code, Copilot and VS Code):
   atf sync                                          render them from the installed package and atf/; npm install
@@ -108,6 +124,10 @@ const COMMANDS = {
   e2e: { args: [], options: { keep: { type: "boolean" } } },
   version: { args: [], options: { json: { type: "boolean" } } },
   migrate: { args: [], options: { "dry-run": { type: "boolean" } } },
+  issues: {
+    args: ["subcommand", "rest..."],
+    options: { run: { type: "string" }, since: { type: "string" }, "include-evidence": { type: "boolean" }, client: { type: "string" }, out: { type: "string" }, yes: { type: "boolean" }, "dry-run": { type: "boolean" } },
+  },
   sync: { args: [], options: { postinstall: { type: "boolean" } } },
   check: { args: [] },
   eject: { args: ["subcommand", "file..."] },
@@ -211,6 +231,8 @@ export function plan(argv, ctx = {}) {
     case "migrate":
       if (v.env) return fail("atf migrate migrates every product and environment of the workspace at once: it takes no --env");
       return steps({ cmd: process.execPath, args: ["--input-type=module", "-e", MIGRATE_SCRIPT, workspace, framework, ...(v["dry-run"] ? ["--dry-run"] : [])] });
+    case "issues":
+      return issuesCommand({ sub: named.subcommand, extra, v, cwd, workspace, framework });
     case "sync":
       return v.postinstall ? postinstallPlan({ env, cwd, framework }) : { steps: [{ sync: { workspace, framework } }] };
     case "check":
@@ -381,6 +403,44 @@ const { migrateWorkspace } = await import(pathToFileURL(path.join(framework, "sc
 process.exitCode = await migrateWorkspace({ workspace, framework, dryRun: flag === "--dry-run" });
 `;
 
+// atf issues: its options checked here, so a mistyped one never reaches the child; the client name, the runs and the
+// bundle are checked there (scripts/lib/issues-bundle.mjs). Paths are resolved from where the human typed the command,
+// since the child runs in the workspace.
+const ISSUES_EXPORT_ONLY = ["run", "since", "include-evidence", "client", "yes", "dry-run"];
+function issuesCommand({ sub, extra, v, cwd, workspace, framework }) {
+  if (sub !== "export" && sub !== "import") return fail(`atf issues takes export or import, not '${sub}', e.g. ${example("issues")}`);
+  if (v.env) return fail(`atf issues ${sub} covers every product and environment of the workspace at once: it takes no --env`);
+  const out = v.out === undefined ? {} : { out: path.resolve(cwd, v.out) };
+  const child = (opts) => ({ steps: [{ cmd: process.execPath, args: ["--input-type=module", "-e", ISSUES_SCRIPT, workspace, framework, JSON.stringify(opts)] }] });
+  if (sub === "import") {
+    const wrong = ISSUES_EXPORT_ONLY.find((k) => v[k] !== undefined);
+    if (wrong) return fail(`atf issues import takes <zip> and --out only, not --${wrong}`);
+    if (!extra.length) return fail("atf issues import needs <zip>, e.g. atf issues import atf-issues-acme-2026-10-26.zip");
+    if (extra.length > 1) return fail(`atf issues import: unexpected '${extra[1]}'`);
+    if (isInstalled(framework)) return fail("atf issues import runs only in the framework's own source checkout, where its maintainers turn client bundles into feedback; here, atf issues export makes the bundle you send them");
+    return child({ subcommand: "import", zip: path.resolve(cwd, extra[0]), ...out });
+  }
+  if (extra.length) return fail(`atf issues export: unexpected '${extra[0]}'`);
+  if (v.run !== undefined && v.since !== undefined) return fail("atf issues export takes --run or --since, not both");
+  if (v.run !== undefined && !SLUG_RE.test(v.run)) return fail(`--run '${v.run}' must be a run id (lowercase kebab-case)`);
+  if (v.since !== undefined && !isDate(v.since)) return fail(`--since '${v.since}' must be a date, YYYY-MM-DD`);
+  if (v.yes && v["dry-run"]) return fail("atf issues export takes --yes or --dry-run, not both");
+  return child({ subcommand: "export", run: v.run, since: v.since, includeEvidence: Boolean(v["include-evidence"]), client: v.client, yes: Boolean(v.yes), dryRun: Boolean(v["dry-run"]), ...out });
+}
+
+const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(`${s}T00:00:00Z`)) && new Date(`${s}T00:00:00Z`).toISOString().startsWith(s);
+
+// atf issues in a child node (argv: the workspace, the framework, then the options as JSON), loaded by path like
+// MIGRATE_SCRIPT so lib/issues-bundle.mjs stays its own module in the published build. stdio is inherited, so export's
+// prompt reads the human's own terminal, and a non-terminal stdin makes it refuse without --yes.
+export const ISSUES_SCRIPT = `
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+const [workspace, framework, json] = process.argv.slice(1);
+const { issuesCommand } = await import(pathToFileURL(path.join(framework, "scripts", "lib", "issues-bundle.mjs")).href);
+process.exitCode = await issuesCommand({ workspace, framework, ...JSON.parse(json) });
+`;
+
 // One sync or check: what changed, or what stops it. -> exit code (0 for every outcome of the postinstall).
 function syncStep({ workspace, framework, check = false, postinstall = false }, out) {
   let r;
@@ -435,7 +495,7 @@ const alreadyEjected = (files) =>
   `${files.map((f) => f.file).join(", ")} ${files.length === 1 ? "is" : "are"} already ejected; edit ${files.length === 1 ? "it" : "them"} instead. Nothing was written.`;
 
 const example = (name) => {
-  const ex = { config: "atf config acme-crm --url https://crm.example.com", eject: "atf eject config permissions.yaml", import: "atf import acme-crm contacts", approve: "atf approve acme-crm contacts", steps: "atf steps acme-crm explore,testcases" };
+  const ex = { config: "atf config acme-crm --url https://crm.example.com", eject: "atf eject config permissions.yaml", import: "atf import acme-crm contacts", approve: "atf approve acme-crm contacts", steps: "atf steps acme-crm explore,testcases", issues: "atf issues export --dry-run" };
   return ex[name] ?? `atf ${name} acme-crm`;
 };
 

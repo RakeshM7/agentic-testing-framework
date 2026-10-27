@@ -12,7 +12,7 @@ import { CONFIG_FILES, configPath } from "./lib/config.mjs";
 import { GROUPS, recordDoctor } from "./lib/doctor.mjs";
 import { recordCanary } from "./lib/guard-check.mjs";
 import { collect } from "./report-data.mjs";
-import { buildCatalogue, markApproved, put, renderFoundation, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
+import { buildCatalogue, installedWorkspace, markApproved, put, renderFoundation, startRun, tempRoot, writeConfig, writeModuleKnowledge, writeProductKnowledge } from "./test-helpers.mjs";
 import { append, read as readLedger } from "./lib/ledger.mjs";
 import { packageOf, releaseLine } from "./lib/provenance.mjs";
 
@@ -928,7 +928,10 @@ test("framework issues (D-083): agents record them during the run, deduped; end 
   const listed = issues(["list", "acme"], { root }).out.issues;
   assert.deepEqual(listed.map((i) => [i.from, i.reporters]), [["module-explorer", ["module-explorer", "clarification-explorer"]], ["pw-ui-pom-writer", ["pw-ui-pom-writer"]]]);
 
-  const end = await endRun("acme", { root });
+  // the framework's source checkout (the test root is its own framework): the feedback files as before, and the JSON
+  const end = await endRun("acme", { root, framework: root });
+  assert.deepEqual(end.frameworkIssues, { file: "artifacts/acme/results/acme-run-1/framework-issues.json", count: 2 });
+  assert.equal(JSON.parse(readFileSync(path.join(root, end.frameworkIssues.file), "utf8")).issues.length, 2);
   assert.deepEqual(end.feedback.map((f) => f.replace(/\d{4}-\d{2}-\d{2}/, "D")), ["feedback/run-acme-run-1/D-module-explorer.md", "feedback/run-acme-run-1/D-pw-ui-pom-writer.md"]);
   const text = readFileSync(path.join(root, end.feedback[0]), "utf8");
   const doc = parseFrontmatter(text);
@@ -936,4 +939,27 @@ test("framework issues (D-083): agents record them during the run, deduped; end 
   assert.deepEqual([doc.front.source_agent, doc.front.target, doc.front.related_files, doc.front.severity], ["module-explorer", "framework", ["agents/module-explorer.md"], "high"]);
   assert.match(text, /## Finding 1: Step 3 names a flag explore\.mjs refuses\n\*\*Summary:\*\* .*also reported by clarification-explorer\)\n\*\*Evidence:\*\* explore\.mjs state: unknown option --via-item\n\*\*Suggested fix:\*\* use --item/);
   assert.equal((await endRun("acme", { root })).errors?.length, 1, "nothing to write twice: the run has ended");
+});
+
+test("framework issues in a client's workspace (P-8): end keeps them in the run's JSON, stamped for an export, and writes no feedback/run-*", async () => {
+  const { main: issues } = await import("./framework-issues.mjs");
+  const { framework } = installedWorkspace(); // an installed framework: the client's, not theirs to fix
+  const { root, run } = startRun();
+  issues(["add", "acme", "--from", "module-explorer", "--kind", "doc", "--target", "docs/a.md", "--summary", "s", "--evidence", "e"], { root });
+  const end = await endRun("acme", { root, framework });
+  assert.deepEqual(end.frameworkIssues, { file: "artifacts/acme/results/acme-run-1/framework-issues.json", count: 1, export: "npx atf issues export --run acme-run-1" });
+  assert.equal(end.feedback, undefined);
+  assert.equal(existsSync(path.join(root, "feedback")), false, "nothing under feedback/");
+  const d = JSON.parse(readFileSync(path.join(root, end.frameworkIssues.file), "utf8"));
+  assert.equal(d.issues.length, 1);
+  assert.deepEqual([d.run.product, d.run.environment, d.run.runId, d.run.outcome, d.run.contract, d.run.modules, d.run.target], ["acme", "default", "acme-run-1", end.outcome, CONTRACT_VERSION, ["contacts", "deals"], run.target]);
+  assert.deepEqual(d.run.provenance, run.provenance, "the versions and config sources an export reports");
+  assert.equal(d.run.startedOnHost, run.startedOnHost);
+
+  // a run with no issue still gets its JSON, so an export knows it ended with none
+  const second = initRun(writeConfig(root), { root, framework: root, runId: "acme-run-2", env: { CLAUDECODE: "1" } });
+  assert.equal(second.errors, undefined);
+  const end2 = await endRun("acme", { root, framework });
+  assert.deepEqual(end2.frameworkIssues, { file: "artifacts/acme/results/acme-run-2/framework-issues.json", count: 0 });
+  assert.deepEqual(JSON.parse(readFileSync(path.join(root, end2.frameworkIssues.file), "utf8")).issues, []);
 });

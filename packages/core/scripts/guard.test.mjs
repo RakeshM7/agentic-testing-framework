@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import yaml from "js-yaml";
 import { checkTool } from "./lib/guard.mjs";
 import { toolCall } from "./lib/tool-call.mjs";
 import { shellAllowed } from "./lib/permissions.mjs";
@@ -813,7 +814,7 @@ test("make approve: a separator inside quotes is text, not a new command; an unq
     "git commit -m 'docs: a && make approve explained'",
     "git commit -m \"docs: a || make approve explained\"",
   ])
-    for (const agent of [undefined, "feedback-implementor-agent"]) assert.equal(allowed(FULL.root, sh(agent, c)), true, `${agent ?? "(no agent)"}: ${c}`);
+    for (const agent of [undefined, "pw-ui-test-runner-triager"]) assert.equal(allowed(FULL.root, sh(agent, c)), true, `${agent ?? "(no agent)"}: ${c}`);
 });
 
 test("the atf CLI's approve and import --approved are human-only for every caller, however atf is started (D-087)", () => {
@@ -867,7 +868,7 @@ test("the atf CLI's approve and import --approved are human-only for every calle
     "cat atf/atf.json",
     "node --test packages/core/scripts/cli.test.mjs",
   ])
-    for (const agent of [undefined, "feedback-implementor-agent"]) assert.equal(allowed(FULL.root, sh(agent, c)), true, `${agent ?? "(no agent)"}: ${c}`);
+    for (const agent of [undefined, "pw-ui-test-runner-triager"]) assert.equal(allowed(FULL.root, sh(agent, c)), true, `${agent ?? "(no agent)"}: ${c}`);
   assert.match(checkTool(sh(undefined, "npx atf approve acme contacts"), FULL.root).reason, /runs `npx atf approve <product> <module>`/);
 });
 
@@ -920,9 +921,21 @@ test("report-generator writes only report/narrative.json and runs only report-da
   assert.deepEqual(perms["report-generator"].filesystem.write, ["${results}/report/narrative.json"]);
 });
 
-test("feedback-implementor-agent writes the G0-G11 framework files and never a safety file or its own checker (D-062)", () => {
-  const w = (rel) => allowed(FULL.root, call("feedback-implementor-agent", "Write", { file_path: path.join(FULL.root, rel) }));
-  const e = (rel) => allowed(FULL.root, call("feedback-implementor-agent", "Edit", { file_path: path.join(FULL.root, rel) }));
+// A full-run whose frozen permissions also hold the monorepo's dev-only framework-implementor-agent row, taken from its
+// overlay atf/permissions.yaml (D-096): the framework's own D-062 scope, now that feedback-implementor-agent fixes outputs.
+const DEV = startRun({
+  mode: "full-run",
+  prepare: (root) => {
+    const file = path.join(root, "config", "permissions.yaml");
+    const base = yaml.load(readFileSync(file, "utf8"));
+    const overlay = yaml.load(readFileSync(path.join(frameworkRoot, "..", "..", "atf", "permissions.yaml"), "utf8"));
+    writeFileSync(file, yaml.dump({ ...base, agents: { ...base.agents, ...overlay.agents } }));
+  },
+});
+
+test("framework-implementor-agent writes the G0-G11 framework files and never a safety file or its own checker (D-062, D-096)", () => {
+  const w = (rel) => allowed(DEV.root, call("framework-implementor-agent", "Write", { file_path: path.join(DEV.root, rel) }));
+  const e = (rel) => allowed(DEV.root, call("framework-implementor-agent", "Edit", { file_path: path.join(DEV.root, rel) }));
   for (const rel of [
     "scripts/lib/gate/common.mjs", "scripts/lib/endpoints.mjs", "scripts/lib/api-plan.mjs", "scripts/lib/domain-flows.mjs", "scripts/lib/report.mjs",
     "scripts/fixtures/explore/contacts-list.md", "schemas/report.schema.json", "templates/report/deck.html", "templates/k6/lib/x.js",
@@ -948,7 +961,7 @@ test("feedback-implementor-agent writes the G0-G11 framework files and never a s
   }
 });
 
-test("every framework script is writable by feedback-implementor-agent or deliberately carved out, so a new file forces a decision (D-062)", () => {
+test("every framework script is writable by framework-implementor-agent or deliberately carved out, so a new file forces a decision (D-062, D-096)", () => {
   const carved = new Set([
     "scripts/feedback.mjs", "scripts/ledger.mjs", "scripts/feedback.test.mjs", "scripts/guard.test.mjs", "scripts/hooks.test.mjs", "scripts/roster.test.mjs", "scripts/ledger.test.mjs", "scripts/decisions.mjs",
     ...["guard", "permissions", "ledger", "hosts", "tool-call", "browser-tools", "decisions", "guard-check", "hook-registrations", "hook-log", "agent-scope", "feedback", "sweep", "telemetry", "roots", "config"].map((n) => `scripts/lib/${n}.mjs`),
@@ -964,6 +977,8 @@ test("every framework script is writable by feedback-implementor-agent or delibe
     // D-094: what the package ships and its fail-closed hooks are decided by the build; D-095: migrate rewrites atf/atf.json
     // and every run's state, and the frozen-workspace test is the compatibility gate
     "scripts/build-package.mjs", "scripts/build-package.test.mjs", "scripts/lib/migrate.mjs", "scripts/migrate.test.mjs", "scripts/contract-fixtures.test.mjs",
+    // D-097: the issue bundle decides what leaves a client workspace (redaction) and what enters the maintainers' feedback
+    "scripts/lib/issues-bundle.mjs", "scripts/issues-bundle.test.mjs", "scripts/lib/zip.mjs", "scripts/zip.test.mjs",
   ]);
   const files = [];
   // node_modules is git-ignored and never the framework's own code, wherever an install put it; paths as the run's
@@ -975,7 +990,7 @@ test("every framework script is writable by feedback-implementor-agent or delibe
     }
   };
   walk("scripts");
-  const w = (rel) => allowed(FULL.root, call("feedback-implementor-agent", "Write", { file_path: path.join(FULL.root, rel) }));
+  const w = (rel) => allowed(DEV.root, call("framework-implementor-agent", "Write", { file_path: path.join(DEV.root, rel) }));
   for (const rel of files) assert.equal(w(rel), !carved.has(rel), `${rel}: ${carved.has(rel) ? "carved out" : "writable"}`);
 });
 
@@ -1088,7 +1103,9 @@ test("the workspace's atf/ is human-only: no framework agent writes there or eje
     // the CLI's init writes a workspace's atf/ in process too, in any folder
     "npx atf init", "npx atf init ../other-ws --no-install", "npx @testagentic/atf init", "node node_modules/@testagentic/atf/bin/atf.mjs init", "atf in''it", "bash -c \"npx atf init\"",
     // the CLI's migrate writes atf/atf.json and every run's state in process, a dry run included (D-095)
-    "npx atf migrate", "npx atf migrate --dry-run", "node node_modules/@testagentic/atf/bin/atf.mjs migrate", "atf mig''rate", "bash -c \"npx atf migrate\""];
+    "npx atf migrate", "npx atf migrate --dry-run", "node node_modules/@testagentic/atf/bin/atf.mjs migrate", "atf mig''rate", "bash -c \"npx atf migrate\"",
+    // the CLI's issues export and import decide what leaves the workspace and what enters the maintainers' feedback (D-097)
+    "npx atf issues export --yes", "npx atf issues export --dry-run", "node node_modules/@testagentic/atf/bin/atf.mjs issues import x.zip", "atf iss''ues export"];
   const as = (agent, c) => ({ ...c, agent });
   for (const root of roots)
     for (const agent of roster) {

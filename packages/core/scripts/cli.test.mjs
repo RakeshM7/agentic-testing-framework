@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { HOSTS, USAGE, agentCommand, configFromExample, plan, run, versionInfo, windowsCommandLine, workspaceError } from "./lib/cli.mjs";
+import { HOSTS, ISSUES_SCRIPT, USAGE, agentCommand, configFromExample, plan, run, versionInfo, windowsCommandLine, workspaceError } from "./lib/cli.mjs";
 import { CONTRACT_VERSION } from "./lib/contract.mjs";
 import { frameworkRoot } from "./lib/roots.mjs";
 import { put, tempRoot } from "./test-helpers.mjs";
@@ -112,7 +113,7 @@ test("the human-only forms are spelled exactly: no alias, no abbreviation, no --
 
 test("help and usage", () => {
   for (const argv of [[], ["help"], ["--help"], ["-h"], ["run", "--help"]]) assert.equal(plan(argv, ctx(ws())).print, USAGE, argv.join(" "));
-  for (const cmd of ["init", "setup", "config", "interview", "login", "validate", "doctor", "e2e", "version", "migrate", "eject", "run", "status", "next", "diff", "resume", "explore", "clarifications", "testcases", "k6", "report", "automate", "steps", "import", "approve", "sweep"])
+  for (const cmd of ["init", "setup", "config", "interview", "login", "validate", "doctor", "e2e", "version", "migrate", "issues", "eject", "run", "status", "next", "diff", "resume", "explore", "clarifications", "testcases", "k6", "report", "automate", "steps", "import", "approve", "sweep"])
     assert.match(USAGE, new RegExp(`atf (?:\\S+\\|)*${cmd}\\b`), `${cmd} is in the usage`);
 });
 
@@ -236,6 +237,80 @@ test("atf eject config never overwrites, refuses one directory, and parses stric
   assert.match(err(["eject", "config", "models", "mcp"]), /^atf eject config: unexpected 'mcp'/);
   assert.match(err(["eject", "config", "--force"]), /Unknown option '--force'/);
   assert.match(err(["ejec", "config"]), /unknown command 'ejec'/);
+});
+
+test("atf issues: exactly export or import, strict options, paths from where it was typed, in a child node", () => {
+  const root = ws();
+  const here = tempRoot();
+  const p = (argv, extra) => plan(argv, ctx(root, { cwd: here, ...extra }));
+  const opts = (argv) => {
+    const r = p(argv);
+    assert.equal(r.error, undefined, `${argv.join(" ")}: ${r.error}`);
+    const [step] = r.steps;
+    assert.equal(step.cmd, process.execPath);
+    assert.deepEqual(step.args.slice(0, 2), ["--input-type=module", "-e"]);
+    assert.equal(step.args[2], ISSUES_SCRIPT);
+    assert.deepEqual(step.args.slice(3, 5), [root, frameworkRoot]);
+    return JSON.parse(step.args[5]);
+  };
+  assert.deepEqual(opts(["issues", "export"]), { subcommand: "export", includeEvidence: false, yes: false, dryRun: false });
+  assert.deepEqual(opts(["issues", "export", "--run", "acme-20261026-1230", "--include-evidence", "--client", "Globex", "--out", "bundles", "--yes"]), { subcommand: "export", run: "acme-20261026-1230", includeEvidence: true, client: "Globex", yes: true, dryRun: false, out: path.join(here, "bundles") });
+  assert.deepEqual(opts(["issues", "export", "--since", "2026-10-01", "--dry-run"]), { subcommand: "export", since: "2026-10-01", includeEvidence: false, yes: false, dryRun: true });
+  assert.deepEqual(opts(["issues", "import", "b.zip", "--out", "fb"]), { subcommand: "import", zip: path.join(here, "b.zip"), out: path.join(here, "fb") });
+  const err = (...argv) => p(argv).error;
+  assert.match(err("issues"), /^atf issues needs <subcommand>, e\.g\. atf issues export --dry-run$/);
+  assert.match(err("issues", "Export"), /^atf issues takes export or import, not 'Export'/);
+  assert.match(err("issues", "exports"), /^atf issues takes export or import, not 'exports'/);
+  assert.match(err("issue", "export"), /unknown command 'issue'/);
+  assert.match(err("issues", "export", "--run", "a", "--since", "2026-10-01"), /takes --run or --since, not both/);
+  assert.match(err("issues", "export", "--since", "2026-02-30"), /--since '2026-02-30' must be a date, YYYY-MM-DD/);
+  assert.match(err("issues", "export", "--since", "yesterday"), /must be a date/);
+  assert.match(err("issues", "export", "--run", "Acme_1"), /--run 'Acme_1' must be a run id/);
+  assert.match(err("issues", "export", "--yes", "--dry-run"), /takes --yes or --dry-run, not both/);
+  assert.match(err("issues", "export", "--yes=true"), /does not take an argument/);
+  assert.match(err("issues", "export", "--evidence"), /Unknown option '--evidence'/);
+  assert.match(err("issues", "export", "now"), /^atf issues export: unexpected 'now'$/);
+  assert.match(err("issues", "export", "--env", "staging"), /covers every product and environment .*: it takes no --env/);
+  assert.match(err("issues", "import"), /^atf issues import needs <zip>/);
+  assert.match(err("issues", "import", "a.zip", "b.zip"), /^atf issues import: unexpected 'b\.zip'$/);
+  assert.match(err("issues", "import", "a.zip", "--yes"), /^atf issues import takes <zip> and --out only, not --yes$/);
+  // import: the framework's source checkout only
+  const copy = tempRoot();
+  put(copy, "node_modules/atf/scripts/x.mjs", "");
+  assert.match(p(["issues", "import", "a.zip"], { framework: path.join(copy, "node_modules", "atf") }).error, /runs only in the framework's own source checkout/);
+});
+
+test("atf issues export through run(): the child previews, refuses without a terminal or --yes, and writes with --yes", async () => {
+  const { main: addIssue } = await import("./framework-issues.mjs");
+  const { endRun, initRun } = await import("./run.mjs");
+  const { writeConfig } = await import("./test-helpers.mjs");
+  const root = tempRoot();
+  put(root, "atf/atf.json", JSON.stringify({ client: "globex" }));
+  assert.equal(initRun(writeConfig(root), { root, framework: root, runId: "acme-run-1", env: { CLAUDECODE: "1" } }).errors, undefined);
+  addIssue(["add", "acme", "--from", "module-explorer", "--kind", "doc", "--target", "docs/conventions.md", "--summary", "wrong for https://app.acme.test", "--evidence", "seen"], { root });
+  await endRun("acme", { root, framework: root });
+  const exec = (argv) => {
+    const res = {};
+    const code = run(plan(argv, ctx(root)), { workspace: root, spawn: (cmd, args, opts) => Object.assign(res, spawnSync(cmd, args, { ...opts, stdio: "pipe", encoding: "utf8" })), out: { log() {}, error() {} } });
+    return { code, out: `${res.stdout}${res.stderr}` };
+  };
+  const zips = () => readdirSync(root).filter((f) => f.endsWith(".zip"));
+  const dry = exec(["issues", "export", "--dry-run"]);
+  assert.equal(dry.code, 0, dry.out);
+  assert.match(dry.out, /^atf issues export: 1 framework issue\(s\) from 1 ended run\(s\), for client globex$/m);
+  assert.match(dry.out, /wrong for <url-1>/);
+  assert.deepEqual(zips(), []);
+  const refused = exec(["issues", "export"]);
+  assert.equal(refused.code, 1);
+  assert.match(refused.out, /not written: confirm on a terminal by typing yes, or pass --yes/);
+  assert.deepEqual(zips(), []);
+  const yes = exec(["issues", "export", "--yes"]);
+  assert.equal(yes.code, 0, yes.out);
+  assert.equal(zips().length, 1);
+  assert.match(zips()[0], /^atf-issues-globex-\d{4}-\d{2}-\d{2}\.zip$/);
+  const imported = exec(["issues", "import", path.join(root, zips()[0])]);
+  assert.equal(imported.code, 0, imported.out);
+  assert.match(imported.out, /^ {2}feedback\/client-globex-\d{4}-\d{2}-\d{2}\/FI-[0-9a-f]{8}\.md$/m);
 });
 
 test("run() stops at the first failing step, in the workspace, and reports a missing program", () => {

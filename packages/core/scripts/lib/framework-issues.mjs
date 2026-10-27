@@ -1,9 +1,14 @@
 // Problems with the framework itself, recorded by the agents that meet them during a run (D-083): a prompt that
 // contradicts a script, a script that fails on valid input, a contract or doc that is wrong. Not the product's bugs
 // (triage) and not the generated test code's (review and fix). An agent adds one through
-// `scripts/framework-issues.mjs add`, which assigns a stable id and dedupes; `run.mjs end` writes them, one file per
-// reporting agent, in the feedback format (docs/conventions.md) to feedback/run-<run-id>/, where
-// feedback-implementor-agent takes them. Agents never write feedback/ themselves.
+// `scripts/framework-issues.mjs add`, which assigns a stable id and dedupes. Agents never write feedback/ themselves.
+// Where they go at the end of a run (docs/packaging.md §3.9, draft P-8):
+//   - `run.mjs end` stamps the run's metadata into the file (stampRun) and leaves the issues there. In a client's
+//     workspace the framework isn't theirs to fix, so the issues leave it only as the redacted bundle a human previews
+//     and confirms (`atf issues export`, scripts/lib/issues-bundle.mjs).
+//   - In the framework's own source checkout, end also writes them as feedback files (writeFeedback), as D-083 did, so
+//     the maintainers' own runs still reach the framework's implementor directly.
+//   - The bundle import (source checkout only) turns a client's bundle into the same feedback files (renderFeedback).
 // File: results/<run>/framework-issues.json (script-owned).
 import { createHash } from "node:crypto";
 import path from "node:path";
@@ -55,34 +60,57 @@ export function addIssue(file, entry, { from, runId, now = () => new Date().toIS
 
 const one = (s) => String(s).replace(/\s*\r?\n\s*/g, " ").trim();
 
-// The issues as feedback files (docs/conventions.md "Feedback file schema"), one per reporting agent, into
-// feedback/run-<run-id>/<date>-<agent>.md. -> [repo-relative paths written]
+// The run's metadata, stamped by `run.mjs end` into its framework-issues.json, which end writes even when no agent
+// recorded an issue, so every ended run has one: what an export needs once state/run.json belongs to a later run. The
+// target and modules are what the export redacts; provenance holds the versions and config sources it reports (D-077,
+// D-088). -> the file's content
+export function stampRun(file, meta) {
+  return withFileLock(file, () => {
+    const d = readIssues(file);
+    d.runId ??= meta.runId;
+    d.run = meta;
+    writeJson(file, d);
+    return d;
+  });
+}
+
+// One feedback file's text (docs/conventions.md "Feedback file schema") for the issues one agent reported: shared by
+// run.mjs end (writeFeedback) and the bundle import, so both write the same format. `origin` is the comment under the
+// frontmatter saying where the findings came from; `context` (optional) a line added to every finding about the run it
+// was met in; `evidence(issue)` (optional) extra text for its Evidence line.
+export function renderFeedback({ agent, issues, date, origin, context = null, evidence = () => "" }) {
+  const severity = SEVERITIES.find((s) => issues.some((i) => i.severity === s)) ?? "medium";
+  return [
+    "---",
+    `source_agent: ${agent}`,
+    `date: ${date}`,
+    "target: framework",
+    "related_files:",
+    ...[...new Set(issues.map((i) => i.target))].sort().map((f) => `  - ${f}`),
+    `severity: ${severity}`,
+    "---",
+    "",
+    `<!-- ${origin} -->`,
+    "",
+    ...issues.flatMap((i, n) => [
+      `## Finding ${n + 1}: ${one(i.summary)}`,
+      `**Summary:** ${one(i.summary)} (${i.kind}, \`${i.target}\`, ${i.id}${i.reporters.length > 1 ? `; also reported by ${i.reporters.filter((r) => r !== agent).join(", ")}` : ""})`,
+      `**Evidence:** ${one(i.evidence)}${evidence(i) ? ` ${one(evidence(i))}` : ""}`,
+      `**Suggested fix:** ${i.fix ? one(i.fix) : "none proposed by the agent"}`,
+      ...(context ? [`**Context:** ${one(context)}`] : []),
+      "",
+    ]),
+  ].join("\n");
+}
+
+// The issues as feedback files, one per reporting agent, into feedback/run-<run-id>/<date>-<agent>.md: run.mjs end does
+// this in the framework's source checkout only (see the header). -> [repo-relative paths written]
 export function writeFeedback(root, { issues, runId, product, date = new Date().toISOString().slice(0, 10) }) {
   const byAgent = new Map();
   for (const i of issues) byAgent.set(i.from, [...(byAgent.get(i.from) ?? []), i]);
   const written = [];
   for (const [agent, list] of [...byAgent].sort(([a], [b]) => a.localeCompare(b))) {
-    const severity = SEVERITIES.find((s) => list.some((i) => i.severity === s));
-    const text = [
-      "---",
-      `source_agent: ${agent}`,
-      `date: ${date}`,
-      "target: framework",
-      "related_files:",
-      ...[...new Set(list.map((i) => i.target))].sort().map((f) => `  - ${f}`),
-      `severity: ${severity}`,
-      "---",
-      "",
-      `<!-- Written by scripts/run.mjs end from the framework issues agents recorded during run ${runId} of ${product} (D-083). -->`,
-      "",
-      ...list.flatMap((i, n) => [
-        `## Finding ${n + 1}: ${one(i.summary)}`,
-        `**Summary:** ${one(i.summary)} (${i.kind}, \`${i.target}\`, ${i.id}${i.reporters.length > 1 ? `; also reported by ${i.reporters.filter((r) => r !== agent).join(", ")}` : ""})`,
-        `**Evidence:** ${one(i.evidence)}`,
-        `**Suggested fix:** ${i.fix ? one(i.fix) : "none proposed by the agent"}`,
-        "",
-      ]),
-    ].join("\n");
+    const text = renderFeedback({ agent, issues: list, date, origin: `Written by scripts/run.mjs end from the framework issues agents recorded during run ${runId} of ${product} (D-083).` });
     const file = path.join(root, "feedback", `run-${runId}`, `${date}-${agent}.md`);
     writeAtomic(file, text);
     written.push(path.relative(root, file).replaceAll("\\", "/"));

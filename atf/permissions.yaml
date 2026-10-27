@@ -1,0 +1,59 @@
+# This repository's overlay on packages/core/config/permissions.yaml (D-088: deep-merged over the framework's copy, a
+# map key by key). Human-only, like all of atf/. It holds the rows of the dev-only agents, whose sources are in
+# dev/agents/ (atf/atf.json "dev_agents", docs/packaging.md §3.8): agents that maintain the framework here and that the
+# package never ships, so their rows can't live in the framework's own permissions.yaml.
+#
+# Paths: `feedback/**` and `docs/**` are this workspace's (the feedback files, the maintainer docs); every framework path
+# is written `{fw}/<path>`, the framework's path from the workspace (D-085: packages/core here), as the shell allow-lists
+# write `node {fw}/scripts/...`.
+# NOTE: resolvePermissions (packages/core/scripts/lib/permissions.mjs) expands `{fw}` only in shell_allow today, not in
+# filesystem globs; until it does, a `{fw}/...` glob matches nothing, so during an active run in this repository the
+# guard refuses this agent's framework writes (fail closed). Outside a run no per-agent row applies.
+agents:
+  framework-implementor-agent:   # dev-only: fixes agent prompts / framework from feedback/ files (not generated test code)
+    layer: 1
+    spawns: []
+    live_target: { browser: none, http: none, load: none }
+    web_research: none
+    shell: project
+    filesystem:
+      read: ["feedback/**", "docs/**", "{fw}/agents/**", "{fw}/docs/**", "{fw}/scripts/**", "{fw}/config/**", "{fw}/schemas/**",
+             "{fw}/templates/**"]
+      write: ["{fw}/agents/*.md", "{fw}/agents/_shared/*.md", "{fw}/docs/**", "docs/**", "feedback/**", "{fw}/scripts/api-code.mjs",
+              "{fw}/scripts/api-code.test.mjs", "{fw}/scripts/api-plan.mjs", "{fw}/scripts/api-plan.test.mjs",
+              "{fw}/scripts/build-agents.mjs", "{fw}/scripts/build-agents.test.mjs", "{fw}/scripts/clarifications.mjs",
+              "{fw}/scripts/clarifications.test.mjs", "{fw}/scripts/decisions.test.mjs", "{fw}/scripts/doctor.mjs",
+              "{fw}/scripts/doctor.test.mjs", "{fw}/scripts/domains.test.mjs",
+              "{fw}/scripts/endpoints.mjs", "{fw}/scripts/endpoints.test.mjs", "{fw}/scripts/explore.mjs", "{fw}/scripts/explore.test.mjs",
+              "{fw}/scripts/fix.mjs", "{fw}/scripts/fix.test.mjs", "{fw}/scripts/foundation.mjs", "{fw}/scripts/foundation.test.mjs",
+              "{fw}/scripts/gate.mjs", "{fw}/scripts/gate.test.mjs", "{fw}/scripts/k6-code.mjs", "{fw}/scripts/k6-code.test.mjs",
+              "{fw}/scripts/knowledge.mjs", "{fw}/scripts/knowledge.test.mjs", "{fw}/scripts/login.test.mjs", "{fw}/scripts/orchestration.mjs",
+              "{fw}/scripts/orchestration.test.mjs", "{fw}/scripts/report-data.mjs", "{fw}/scripts/report.mjs",
+              "{fw}/scripts/report.test.mjs", "{fw}/scripts/requests.mjs", "{fw}/scripts/results.mjs", "{fw}/scripts/review.mjs",
+              "{fw}/scripts/review.test.mjs", "{fw}/scripts/run-config.mjs", "{fw}/scripts/run-config.test.mjs", "{fw}/scripts/run.mjs",
+              "{fw}/scripts/run.test.mjs", "{fw}/scripts/shared-libs.test.mjs", "{fw}/scripts/test-helpers.mjs",
+              "{fw}/scripts/testcases.mjs", "{fw}/scripts/testcases.test.mjs", "{fw}/scripts/triage.mjs", "{fw}/scripts/triage.test.mjs",
+              "{fw}/scripts/ui-code.mjs", "{fw}/scripts/ui-code.test.mjs", "{fw}/scripts/workload.mjs", "{fw}/scripts/workload.test.mjs",
+              "{fw}/scripts/lib/api-code.mjs", "{fw}/scripts/lib/api-discovery.mjs", "{fw}/scripts/lib/api-plan.mjs",
+              "{fw}/scripts/lib/citations.mjs", "{fw}/scripts/lib/clarifications.mjs", "{fw}/scripts/lib/contract.mjs",
+              "{fw}/scripts/lib/coverage.mjs", "{fw}/scripts/lib/csv.mjs", "{fw}/scripts/lib/doctor.mjs", "{fw}/scripts/lib/domain-flows.mjs",
+              "{fw}/scripts/lib/files.mjs", "{fw}/scripts/lib/history.mjs", "{fw}/scripts/lib/provenance.mjs", "{fw}/scripts/lib/bug-export.mjs", "{fw}/scripts/lib/framework-issues.mjs", "{fw}/scripts/framework-issues.mjs", "{fw}/scripts/e2e.mjs", "{fw}/scripts/pipeline.test.mjs",
+              "{fw}/scripts/lib/endpoints.mjs", "{fw}/scripts/lib/explore.mjs", "{fw}/scripts/lib/fix.mjs",
+              "{fw}/scripts/lib/foundation.mjs", "{fw}/scripts/lib/graphql.mjs", "{fw}/scripts/lib/k6-code.mjs",
+              "{fw}/scripts/lib/knowledge.mjs", "{fw}/scripts/lib/login.mjs", "{fw}/scripts/lib/mcp.mjs", "{fw}/scripts/lib/openapi.mjs", "{fw}/scripts/lib/probe.mjs",
+              "{fw}/scripts/lib/registry.mjs", "{fw}/scripts/lib/report.mjs", "{fw}/scripts/lib/requests.mjs", "{fw}/scripts/lib/run-config-draft.mjs",
+              "{fw}/scripts/lib/review.mjs", "{fw}/scripts/lib/testcases.mjs", "{fw}/scripts/lib/triage.mjs",
+              "{fw}/scripts/lib/ts-scan.mjs", "{fw}/scripts/lib/ui-code.mjs", "{fw}/scripts/lib/verified.mjs",
+              "{fw}/scripts/lib/workload.mjs", "{fw}/scripts/lib/gate/*.mjs", "{fw}/scripts/fixtures/**", "{fw}/schemas/*.json",
+              "{fw}/templates/**"]
+    # G12 (D-062), carried over from feedback-implementor-agent when that agent was re-scoped to a run's outputs
+    # (docs/packaging.md §3.8, draft P-7): the write list is enumerated because a glob has no exclude; it covers the
+    # scripts, libs, gate rules, fixtures, schemas and templates of G0-G11 and leaves out the safety files below, which
+    # stay human-only.
+    # Never {fw}/config/ (permissions, models, platforms, MCP servers) or this repository's atf/ and dev/agents/, the
+    # safety code ({fw}/scripts/lib/{guard,permissions,ledger,hosts,tool-call,browser-tools,guard-check,decisions,
+    # hook-registrations,hook-log,agent-scope}.mjs, {fw}/scripts/hooks/, {fw}/scripts/lib/agents/),
+    # the checker it is checked by ({fw}/scripts/{feedback,ledger}.mjs, {fw}/scripts/lib/feedback.mjs,
+    # {fw}/scripts/{feedback,guard,hooks,roster}.test.mjs), the hook registrations or editor settings
+    # (.claude/settings.json, .github/hooks/, .vscode/) or the generated agent/MCP files (rebuilt from the sources by
+    # `npm run build-agents` via its shell): safety, permissions, models and platforms are human-only decisions (D-013).
