@@ -137,8 +137,10 @@ export function rememberConfirmed(root, session, ids) {
 // ---- the policy ----------------------------------------------------------------------------------------------------
 function targetsOf(call, root) {
   const files = call.kind === "write" ? call.paths : call.kind === "shell" ? shellWriteTargets(call.command) : [];
-  return files
-    .map((f) => path.relative(root, path.resolve(root, f)).replaceAll("\\", "/"))
+  // a shell's relative targets also from every directory the host says it runs the line in (the call's cwds), as the
+  // guard reads them (guard.mjs writeUnder)
+  const bases = [root, ...(call.kind === "shell" ? (call.cwds ?? []).map((d) => path.resolve(root, d)) : [])];
+  return [...new Set(files.flatMap((f) => bases.map((b) => path.relative(root, path.resolve(b, f)).replaceAll("\\", "/"))))]
     .filter((rel) => rel && !rel.startsWith("..") && !path.isAbsolute(rel) && !UNGOVERNED.some((r) => r.test(rel)));
 }
 

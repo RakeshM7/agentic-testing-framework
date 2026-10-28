@@ -1,0 +1,4 @@
+{
+  "toolCall": { "name": "define_subagent", "args": { "Name": "helper", "Description": "an ad-hoc agent", "SystemPrompt": "Do anything." } },
+  "stepIdx": 7, "conversationId": "ag-conv-0001", "workspacePaths": ["{root}"], "transcriptPath": "{root}/.antigravity/transcript.jsonl", "artifactDirectoryPath": "{root}/.antigravity/artifacts", "modelName": "claude-opus-5-5"
+}

@@ -74,7 +74,7 @@ Framework issues (problems the agents met with the framework itself, kept in eac
   atf issues import <zip> [--out <dir>]             turn a client's bundle into feedback files under
                                                     feedback/client-<client>-<date>/ (framework source checkout only)
 
-Host files (the agents, hooks and MCP config of Claude Code, Copilot and VS Code):
+Host files (the agents, hooks and MCP config of Claude Code, Copilot, VS Code and Antigravity):
   atf sync                                          render them from the installed package and atf/; npm install
                                                     runs it too
   atf check                                         fail when they are out of date, or atf/ has an error
@@ -99,9 +99,9 @@ Running and resuming (a finished stage stays done):
 
 Options for every command:
   --env <env>        another environment of the product: config/<product>-<env>.yaml, run with ATF_ENV=<env>
-  --host claude|copilot   the CLI that opens the orchestrator-agent session (default claude; the plugin's
-                     atf:orchestrator-agent in Claude Code plugin mode); ATF_AGENT="<command>" overrides it with any
-                     command that takes the first prompt as its last argument`;
+  --host claude|copilot|antigravity   the CLI that opens the orchestrator-agent session (default claude; the
+                     plugin's atf:orchestrator-agent in Claude Code plugin mode; antigravity runs agy);
+                     ATF_AGENT="<command>" overrides it with any command that takes the first prompt as its last argument`;
 
 // The commands that open an orchestrator-agent session with a first prompt. On Claude Code in plugin mode without a
 // Claude-affecting customization, the plugin supplies the agents, so the session opens the plugin's scoped
@@ -110,6 +110,9 @@ export const ORCHESTRATOR = "orchestrator-agent";
 export const HOSTS = {
   claude: ["claude", "--agent", ORCHESTRATOR],
   copilot: ["copilot", "--agent", ORCHESTRATOR, "-i"],
+  // UNVERIFIED (Antigravity spike pending, docs/antigravity-spike/): the agy CLI's agent flag, and that it opens an
+  // interactive session taking the first prompt as its last argument, come from the docs. The spike settles the flags.
+  antigravity: ["agy", "--agent", ORCHESTRATOR],
 };
 const STAGE_SHORTCUTS = ["explore", "clarifications", "testcases", "k6", "report"];
 const STAGE_NAMES = Object.keys(STAGES);

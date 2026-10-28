@@ -79,8 +79,19 @@ test("--host picks the session's CLI, ATF_AGENT overrides it, and an unknown hos
   assert.deepEqual([last(["run", "acme", "--host", "copilot"]).cmd, ...last(["run", "acme", "--host", "copilot"]).args.slice(0, -1)], HOSTS.copilot);
   const custom = last(["run", "acme"], { ATF_AGENT: "  my-cli  --agent  orchestrator-agent " });
   assert.deepEqual([custom.cmd, ...custom.args.slice(0, -1)], ["my-cli", "--agent", "orchestrator-agent"]);
-  assert.match(plan(["run", "acme", "--host", "cursor"], ctx(root)).error, /--host 'cursor' must be one of: claude, copilot/);
+  assert.match(plan(["run", "acme", "--host", "cursor"], ctx(root)).error, /--host 'cursor' must be one of: claude, copilot, antigravity/);
   assert.deepEqual(agentCommand(undefined, {}).cmd, HOSTS.claude);
+});
+
+test("--host antigravity opens the orchestrator-agent session through agy, the prompt last", () => {
+  const root = ws();
+  assert.deepEqual(HOSTS.antigravity, ["agy", "--agent", "orchestrator-agent"]);
+  // the plugin's mode is Claude Code's only: Antigravity keeps the project's agent name even given the workspace
+  assert.deepEqual(agentCommand("antigravity", {}, { workspace: root }).cmd, HOSTS.antigravity);
+  const step = plan(["run", "acme", "--host", "antigravity"], ctx(root)).steps.at(-1);
+  assert.deepEqual([step.cmd, ...step.args.slice(0, -1)], HOSTS.antigravity);
+  assert.equal(step.agent, true);
+  assert.match(USAGE, /--host claude\|copilot\|antigravity/);
 });
 
 test("--env names the environment's config and runs every step with ATF_ENV (D-081)", () => {

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.83",
+        "--browser",
+        "chromium",
+        "--isolated",
+        "--init-page",
+        "__REPO__/packages/core/scripts/browser/init-page.cjs"
+      ]
+    }
+  }
+}

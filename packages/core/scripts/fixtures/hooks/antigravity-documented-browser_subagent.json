@@ -1,0 +1,4 @@
+{
+  "toolCall": { "name": "browser_subagent", "args": { "Task": "Open https://app.acme.test and click Delete on the first contact", "RecordingName": "delete-contact" } },
+  "stepIdx": 7, "conversationId": "ag-conv-0001", "workspacePaths": ["{root}"], "transcriptPath": "{root}/.antigravity/transcript.jsonl", "artifactDirectoryPath": "{root}/.antigravity/artifacts", "modelName": "claude-opus-5-5"
+}

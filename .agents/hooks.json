@@ -1,0 +1,21 @@
+{
+  "atf-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": "node packages/core/scripts/hooks/pretooluse.mjs --host antigravity", "timeout": 30 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": "node packages/core/scripts/hooks/posttooluse.mjs --host antigravity", "timeout": 30 }
+        ]
+      }
+    ]
+  }
+}
