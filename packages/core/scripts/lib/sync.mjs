@@ -10,11 +10,13 @@
 // What the block does NOT list, on purpose:
 //   .claude/settings.json   sync owns only the framework's own entries in its `hooks` key (D-092); the client's own
 //                           hooks and other settings live there too, so the client decides whether to commit it
+//   .agents/hooks.json      Antigravity's hook file, the same case: sync owns only its "atf-guard" hook set and keeps
+//                           the client's other sets (lib/hook-registrations.mjs), so the client decides
 //   .vscode/settings.json   the build does not write it at all: its chat settings are a hand-kept file (and later
 //                           atf init's), never a sync output
-//   the agent folders       .claude/agents/ and .github/agents/ also hold the client's own agents, which the build
-//                           leaves alone (no GENERATED marker); git can't re-include a file under an ignored folder,
-//                           so the block names the framework's agent files one by one instead
+//   the agent folders       .claude/agents/, .github/agents/ and .agents/agents/ also hold the client's own agents,
+//                           which the build leaves alone (no GENERATED marker); git can't re-include a file under an
+//                           ignored folder, so the block names the framework's agent files one by one instead
 // The agent files follow the roster: the effective permissions.yaml's agents through each platform's output template
 // (platforms.yaml), as the build derives them; an agent the package adds or drops changes the block on the next sync.
 //
@@ -47,10 +49,12 @@ import { CLAUDE_PLUGIN_KEY, PLUGIN, PLUGIN_ID, claudeAgentName, claudeMode } fro
 import { WORKSPACE_MARKER, frameworkRel, isInstalled, readMarker } from "./roots.mjs";
 
 // The other files the build writes whole, besides the agents: workspace-relative, `/`-separated, written into the block
-// anchored at the workspace root. Never a folder (see above).
+// anchored at the workspace root. Never a folder (see above). Never .agents/hooks.json either: like
+// .claude/settings.json it is shared with the client's own hooks (see above).
 export const CLIENT_IGNORED = [
   ".mcp.json",
   ".vscode/mcp.json",
+  ".agents/mcp_config.json",
   ".github/hooks/framework-guard.json",
   ".vscode/hooks/framework-guard.json",
 ];

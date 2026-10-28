@@ -37,7 +37,7 @@ import { hostname } from "node:os";
 import path from "node:path";
 import { isInputBrowserTool, isMutatingBrowserTool, networkGuarded } from "./browser-tools.mjs";
 import { shellWriteTargets } from "./decisions.mjs";
-import { canIdentify, labelOf } from "./hosts.mjs";
+import { canIdentify, deniesUnknownInRun, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
 import { atLeast, canWrite, effectiveLiveTarget, isManaged, normalizeWritePath, runCeiling, shellAllowed, shellSegments } from "./permissions.mjs";
 import { devAgentsDir, expandFw, frameworkRel, frameworkRoot, isInstalled, sameDir } from "./roots.mjs";
@@ -370,7 +370,8 @@ function managedPath(file, run) {
 // D-085: the spelling of a framework file the call would write, else null; only when the framework root is not the
 // workspace root and the framework is installed (isInstalled: its real path inside node_modules; a source checkout
 // apart from the workspace stays editable, and isInstalled fails closed). A written path and every shell write target the hook can read (scripts/lib/decisions.mjs
-// shellWriteTargets: redirects, tee, cp, mv, rm, sed -i, git restore, ...; a relative one from the workspace and from
+// shellWriteTargets: redirects, tee, cp, mv, rm, sed -i, git restore, ...; a relative one from the workspace, from the
+// directory the host runs the line in when its payload says (the call's cwds: Antigravity's `Cwd`, D-099), and from
 // every directory the line changes into) are compared as written (a device or UNC prefix and `..` resolved; case,
 // separators, a trailing dot or space and a stream suffix folded) and as the file system resolves them (symlinks,
 // junctions, 8.3 names), with the framework root both as given and as resolved. Fails closed: a write tool whose
@@ -388,7 +389,11 @@ function writeUnder(call, root, dir) {
   if (call.kind === "write" && !(call.paths ?? []).length) return UNKNOWN_TARGET;
   const command = String(call.command ?? "");
   const files = call.kind === "write" ? call.paths : call.kind === "shell" ? shellWriteTargets(command) : [];
-  const bases = [root, ...(call.kind === "shell" ? [...command.matchAll(CD_DIRS)].map((m) => path.resolve(root, devicePath(m[1] ?? m[2] ?? m[3]))) : [])];
+  // a shell's relative targets from the workspace, from every directory the host says it runs the line in (the call's
+  // cwds, never the root), and from every directory the line changes into, read from each of those
+  const starts = [root, ...(call.kind === "shell" ? (call.cwds ?? []).map((d) => path.resolve(root, devicePath(d))) : [])];
+  const cds = call.kind === "shell" ? [...command.matchAll(CD_DIRS)].map((m) => devicePath(m[1] ?? m[2] ?? m[3])) : [];
+  const bases = [...new Set([...starts, ...starts.flatMap((s) => cds.map((d) => path.resolve(s, d)))])];
   const dirs = [...new Set([path.resolve(dir), realOf(path.resolve(dir))].filter(Boolean).map(normalizeWritePath))];
   for (const f of files)
     for (const base of bases) {
@@ -512,6 +517,10 @@ function evaluateKind(call, run, row) {
 }
 
 function evaluate(call, run) {
+  // D-101 (narrows D-036 on the hosts lib/hosts.mjs marks): an unclassified tool is refused for every caller in any mode,
+  // a broken run's included, before any caller or mode rule could let it through
+  if (call.kind === "unknown" && deniesUnknownInRun(call.host))
+    return deny("unmapped-tool", `'${call.tool}' is not a tool the guard knows on ${labelOf(call.host)}, and there an unrecognised tool is refused for every caller during a run, readonly included (D-101: its built-in browser and agent tools are unmapped by design); if the tool is safe, map it in scripts/hooks/hosts/${call.host}.mjs`);
   if (run.broken) return call.kind === "shell" ? checkShell(call.command ?? "", run, null) : ALLOW;
   if (call.agent || run.mode !== "full-run" || attributable(call)) return evaluateKind(call, run, call.agent ? run.permissions?.agents?.[call.agent] : undefined);
   // full-run on a host that cannot name the caller, or for a caller it named that is none of the framework's agents: the

@@ -972,6 +972,8 @@ test("every framework script is writable by framework-implementor-agent or delib
     "scripts/config.test.mjs",
     // D-087: the atf CLI is the human's command surface; the guard's human-only match relies on its strict parsing
     "scripts/lib/cli.mjs", "scripts/cli.test.mjs",
+    // D-099: the tests of the hook registrations (the safety lib above), .agents/hooks.json's atf-guard set included
+    "scripts/hook-registrations.test.mjs",
     // D-089: sync renders the hook registrations and MCP configs into the workspace; init writes its atf/ settings
     "scripts/lib/sync.mjs", "scripts/sync.test.mjs", "scripts/lib/init.mjs", "scripts/init.test.mjs",
     // D-094: what the package ships and its fail-closed hooks are decided by the build; D-095: migrate rewrites atf/atf.json
@@ -1231,6 +1233,31 @@ test("Claude Code plugin agents: another plugin's agent may not write atf/ durin
   assert.equal(check(outside, call("atf:pw-ui-fixer", "Write", { file_path: path.join(outside, "atf", "permissions.yaml") })).rule, "workspace-settings", "no run: still a framework agent");
 });
 
+test("Antigravity: during a run an unclassified tool is refused for every caller, readonly included (D-101); other hosts keep D-036", () => {
+  const check = (root, c) => checkTool(c, root, {}, { framework: root });
+  const unknown = (host, x = {}) => toolCall({ host, kind: "unknown", tool: "browser_subagent", ...x });
+  // readonly: refused on Antigravity whoever calls (no caller, a named agent with or without a browser, a foreign name)
+  for (const x of [{}, { agent: "module-explorer" }, { agent: "pw-ui-reviewer" }, { agent: "other:x", unattributed: true }]) {
+    const v = check(RO.root, unknown("antigravity", x));
+    assert.equal(v.rule, "unmapped-tool", JSON.stringify(x));
+    assert.match(v.reason, /^'browser_subagent' is not a tool the guard knows on Antigravity, .*\(D-101[^)]*\); if the tool is safe, map it in scripts\/hooks\/hosts\/antigravity\.mjs$/);
+  }
+  // ... while the other hosts keep D-036 as recorded: an unattributed readonly call gets the mode rules only
+  for (const host of ["copilot-cli", "vscode-agent-host", "copilot-cloud", "unknown"]) {
+    assert.equal(check(RO.root, unknown(host)).allowed, true, `${host}: readonly, unattributed (D-036 unchanged)`);
+    assert.equal(check(RO.root, unknown(host, { agent: "module-explorer" })).rule, "unmapped-tool", `${host}: a named agent`);
+  }
+  assert.equal(check(RO.root, unknown("claude-code")).allowed, true, "a human's own session on a host that names agents");
+  // full-run: refused on every host, as before
+  for (const host of ["antigravity", "copilot-cli", "copilot-cloud", "vscode-agent-host"]) assert.equal(check(FULL.root, unknown(host)).rule, "unmapped-tool", `${host}: full-run`);
+  // no active run: unchanged, a human's own session
+  for (const host of ["antigravity", "copilot-cli"]) assert.equal(check(tempRoot(), unknown(host)).allowed, true, `${host}: no run`);
+  // Antigravity's mapped tools keep the readonly rules
+  assert.equal(check(RO.root, toolCall({ host: "antigravity", kind: "read", tool: "view_file", paths: [path.join(RO.root, "artifacts/acme/state/run.json")] })).allowed, true);
+  assert.equal(check(RO.root, toolCall({ host: "antigravity", kind: "browser", tool: "mcp_playwright_browser_snapshot", browserAction: "snapshot" })).allowed, true);
+  assert.equal(check(RO.root, toolCall({ host: "antigravity", kind: "shell", tool: "run_command", command: "curl -X POST https://app.acme.test/api/contacts" })).allowed, false);
+});
+
 test("Claude Code plugin MCP tools: mcp__plugin_atf_<server>__<tool> is classified like mcp__<server>__<tool>; another plugin's tools fail closed during a run", () => {
   const check = (root, c) => checkTool(c, root, {}, { framework: root });
   const agents = [undefined, "clarification-explorer", "knowledge-generator", "pw-ui-reviewer", "module-explorer", "pw-ui-test-runner-triager", "atf:clarification-explorer", "other:x"];
@@ -1256,4 +1283,30 @@ test("Claude Code plugin MCP tools: mcp__plugin_atf_<server>__<tool> is classifi
     assert.equal(check(FULL.root, call("other:x", t, {})).rule, "unmapped-tool", `${t}: under the combined ceiling`);
     assert.equal(check(tempRoot(), call("clarification-explorer", t, {})).allowed, true, `${t}: no active run`);
   }
+});
+
+test("a shell's cwd (a host that says where it runs the line) is another base for its relative write targets, never the root", () => {
+  const check = (root, c, framework = root) => checkTool(c, root, {}, { framework });
+  const unnamed = (command, cwds, host = "antigravity") => toolCall({ host, kind: "shell", tool: "run_command", command, cwds });
+  for (const { root } of [RO, FULL]) {
+    // atf/ (packaging §3.4): from a cwd inside it, from a relative cwd, and through a cd read from the cwd
+    for (const [cmd, cwd] of [["echo x > atf.json", path.join(root, "atf")], ["echo x > atf.json", "atf"], ["cp a config/permissions.yaml", path.join(root, "atf")], ["cd atf && echo x > mcp.yaml", root], ["cd .. && echo x > atf/mcp.yaml", path.join(root, "config")]])
+      assert.equal(check(root, unnamed(cmd, [cwd])).rule, "workspace-settings", `${cmd} in ${cwd}`);
+    // two cwds: both are read
+    assert.equal(check(root, unnamed("echo x > atf.json", [path.join(root, "config"), path.join(root, "atf")])).rule, "workspace-settings");
+    // the cwd is no root: the run's rules still apply, and a cwd elsewhere only adds bases
+    assert.equal(check(root, unnamed("echo x > notes.md", [path.join(root, "artifacts")])).allowed, true);
+    assert.equal(check(root, unnamed("echo x > atf.json", [tempRoot()])).allowed, true, "a file named atf.json elsewhere");
+  }
+  // the installed framework (D-085): a relative write from a cwd inside it is refused, in a run or not
+  const fw = path.join(tempRoot(), "node_modules", "@testagentic", "atf");
+  mkdirSync(path.join(fw, "scripts", "lib"), { recursive: true });
+  writeFileSync(path.join(fw, "scripts", "lib", "guard.mjs"), "//");
+  for (const root of [RO.root, FULL.root, tempRoot()])
+    for (const [cmd, cwd] of [["echo x > scripts/lib/guard.mjs", fw], ["rm lib/guard.mjs", path.join(fw, "scripts")], ["cd scripts && echo x >> lib/guard.mjs", fw]])
+      assert.equal(check(root, unnamed(cmd, [cwd]), fw).rule, "framework-readonly", `${cmd} in ${cwd}`);
+  // every host's canonical call takes it; without one, nothing changes
+  assert.equal(check(RO.root, unnamed("echo x > atf.json", [path.join(RO.root, "atf")], "copilot-cli")).rule, "workspace-settings");
+  assert.equal(check(RO.root, unnamed("echo x > atf.json", [])).allowed, true);
+  assert.equal("cwds" in toolCall({ kind: "shell", command: "ls" }), false, "absent when the host names none");
 });

@@ -1,6 +1,6 @@
 # Platforms and hosts
 
-The pipeline, contracts, scripts and guard are platform-neutral. This doc is the only place for what differs per host. The reasons behind each choice are in [`decisions.md`](../../../docs/decisions.md) (D-018 – D-040).
+The pipeline, contracts, scripts and guard are platform-neutral. This doc is the only place for what differs per host. The reasons behind each choice are in [`decisions.md`](../../../docs/decisions.md) (D-018 – D-040; Antigravity: D-099 – D-101).
 
 ## How one agent becomes every platform's file
 
@@ -14,35 +14,41 @@ config/mcp.yaml             MCP servers
       ▼
 .claude/agents/<name>.md           Claude Code
 .github/agents/<name>.agent.md     VS Code Copilot Chat, Copilot CLI, cloud coding agent
+.agents/agents/<name>.md           Antigravity: the App, the agy CLI, the IDE
 .mcp.json, .vscode/mcp.json        MCP servers for Claude Code / VS Code
+.agents/mcp_config.json            MCP servers for Antigravity
+      + hook registrations from config/hooks.yaml: .claude/settings.json, .github/hooks/, .vscode/hooks/,
+        and the `atf-guard` set of .agents/hooks.json
 ```
 
 A body can share a fragment: a line `<!-- include: _shared/<file>.md -->` is replaced at build time by `agents/_shared/<file>.md` (the three fixers share `_shared/fixer.md`, D-059), so the generated files hold the expanded text. To change an agent, edit `agents/<name>.md` (body, `description`, `color`, `user_invocable`) and rebuild. To change what it may do, edit `config/permissions.yaml`, a human decision (D-013). Start a new session afterwards, since every host loads agents at session start.
 
 ## Starting a session
 
-Start the **orchestrator-agent** session with a run-config path, or with none: it then interviews you (a few questions in one message, including which steps to run) and drafts `config/<product>.yaml` as `readonly` (D-063). With a path, it shows the step menu pre-selected from the config's `steps` and, before the first stage, asks you once per missing prerequisite (explore, clarify, generate test cases, describe scenarios, use your own test case file, or skip the step), D-066. `npx atf interview` and `npx atf run <product>` open that session on Claude Code (`--host copilot`: Copilot CLI; `ATF_AGENT="<command>"`: any other CLI that takes the first prompt as its last argument). On other hosts, start it yourself and say you have no run-config yet. The interview needs a host where the agent can ask you questions. On one that can't, write the file by hand.
+Start the **orchestrator-agent** session with a run-config path, or with none: it then interviews you (a few questions in one message, including which steps to run) and drafts `config/<product>.yaml` as `readonly` (D-063). With a path, it shows the step menu pre-selected from the config's `steps` and, before the first stage, asks you once per missing prerequisite (explore, clarify, generate test cases, describe scenarios, use your own test case file, or skip the step), D-066. `npx atf interview` and `npx atf run <product>` open that session on Claude Code (`--host copilot`: Copilot CLI; `--host antigravity`: the `agy` CLI; `ATF_AGENT="<command>"`: any other CLI that takes the first prompt as its last argument). On other hosts, start it yourself and say you have no run-config yet. The interview needs a host where the agent can ask you questions. On one that can't, write the file by hand.
 
 ## Host matrix
 
-VS Code Copilot Chat can run a chat on two engines. They behave differently for the guard, so they have separate columns (D-035, D-039).
+VS Code Copilot Chat can run a chat on two engines. They behave differently for the guard, so they have separate columns (D-035, D-039). Antigravity's App and `agy` CLI share one column; its IDE has its own. Antigravity support is built from its documentation and is not yet verified live: "unverified" there means "see [`docs/antigravity-spike/`](../../../docs/antigravity-spike/README.md)" (D-099).
 
-| | Claude Code | VS Code: local agent | VS Code: Copilot CLI engine | Copilot CLI | Copilot cloud coding agent |
-|---|---|---|---|---|---|
-| Agent files | `.claude/agents/` | `.github/agents/` (`.claude/agents` turned off) | `.github/agents/` | `.github/agents/` | `.github/agents/` |
-| Start a run | `claude --agent orchestrator-agent` | a local agent chat, then pick **orchestrator-agent** | a chat on the Copilot CLI engine (VS Code log: session type `agent-host-copilotcli`) | `copilot --agent orchestrator-agent` | assign an issue (maintenance only) |
-| Nested subagents (3 layers) | yes | yes, with `chat.subagents.allowInvocationsFromSubagents` | not verified | not verified | n/a |
-| Hook registration | `.claude/settings.json` | `.vscode/hooks/` + each agent's own hook | `.github/hooks/` (seen live) | `.github/hooks/` | `.github/hooks/` |
-| Guard knows the calling agent | yes (`agent_type`) | yes (build-baked `--agent`) | **no** | **no** | **no** |
-| `full-run` | yes, per agent | yes, per agent | yes, **combined ceiling** | yes, **combined ceiling** | yes, **combined ceiling** |
-| Ask the human | `AskUserQuestion` | `vscode/askQuestions` | not verified | `ask_user` | none: stops and reports |
-| Live browser (Playwright MCP) | `.mcp.json` | `.vscode/mcp.json` | starts the Playwright server (seen live) | register the server from `config/mcp.yaml` in the CLI's MCP config | none |
-| Design-decision confirmation | permission prompt | permission prompt | permission prompt | permission prompt | refused, reported in the PR |
+| | Claude Code | VS Code: local agent | VS Code: Copilot CLI engine | Copilot CLI | Copilot cloud coding agent | Antigravity App / CLI | Antigravity IDE |
+|---|---|---|---|---|---|---|---|
+| Agent files | `.claude/agents/` | `.github/agents/` (`.claude/agents` turned off) | `.github/agents/` | `.github/agents/` | `.github/agents/` | `.agents/agents/` | `.agents/agents/` (whether the IDE lists them: unverified) |
+| Start a run | `claude --agent orchestrator-agent` | a local agent chat, then pick **orchestrator-agent** | a chat on the Copilot CLI engine (VS Code log: session type `agent-host-copilotcli`) | `copilot --agent orchestrator-agent` | assign an issue (maintenance only) | App: pick **orchestrator-agent**; CLI: `agy --agent orchestrator-agent` (flag unverified) | pick **orchestrator-agent** (unverified) |
+| Nested subagents (3 layers) | yes | yes, with `chat.subagents.allowInvocationsFromSubagents` | not verified | not verified | n/a | unverified | unverified |
+| Hook registration | `.claude/settings.json` | `.vscode/hooks/` + each agent's own hook | `.github/hooks/` (seen live) | `.github/hooks/` | `.github/hooks/` | the `atf-guard` set of `.agents/hooks.json` | the `atf-guard` set of `.agents/hooks.json` |
+| Guard knows the calling agent | yes (`agent_type`) | yes (build-baked `--agent`) | **no** | **no** | **no** | **no** (until the spike verifies agents' own hooks) | **no** |
+| `full-run` | yes, per agent | yes, per agent | yes, **combined ceiling** | yes, **combined ceiling** | yes, **combined ceiling** | yes, **combined ceiling**; whether a deny is honoured: unverified | as App / CLI |
+| Unmapped tools in a readonly run | denied for agents | denied for agents | mode rules only | mode rules only | mode rules only | **denied for every call** (D-101) | **denied for every call** (D-101) |
+| Ask the human | `AskUserQuestion` | `vscode/askQuestions` | not verified | `ask_user` | none: stops and reports | `ask_question` | `ask_question` |
+| Live browser (Playwright MCP) | `.mcp.json` | `.vscode/mcp.json` | starts the Playwright server (seen live) | register the server from `config/mcp.yaml` in the CLI's MCP config | none | `.agents/mcp_config.json`; never the built-in browser | `.agents/mcp_config.json`; never the built-in browser |
+| Model | Claude Opus (D-017) | `config/models.yaml` | `auto` (seen live) | `config/models.yaml` | `config/models.yaml` | the session's: pick Claude Opus 5.5 (D-100) | the session's: pick Claude Opus 5.5 (D-100) |
+| Design-decision confirmation | permission prompt | permission prompt | permission prompt | permission prompt | refused, reported in the PR | `ask` decision (unverified) | `ask` decision (unverified) |
 
 **Combined ceiling** (D-035): where the guard can't tell which agent is calling, a full-run call may do what at least one of the run's agents may do. The run's agents are the layer-0 agents and everything they can spawn, so not `feedback-implementor-agent`.
 - **Still blocked:** writes outside the pipeline's paths, starting agents outside the run, deletes of entities the run didn't create, and unmapped tools.
 - **Lost:** one agent can do another agent's job. For example, a reviewer could edit tests, or a test writer could change data over HTTP.
-- **Readonly runs:** unchanged on these hosts.
+- **Readonly runs:** unchanged on these hosts, except on Antigravity, where an unmapped tool is denied for every call during any run (D-101): its built-in browser drives your own Chrome, outside the Playwright init page's readonly guard.
 
 ## Setup
 
@@ -66,7 +72,7 @@ VS Code Copilot Chat can run a chat on two engines. They behave differently for 
 **Hook registrations on every host are generated** from `config/hooks.yaml` by `npm run build-agents`, or `npx atf sync` in a client workspace (D-092); never hand-edit the framework's entries. In `.claude/settings.json` the build owns only the framework's own hook entries, so a workspace's own Claude Code hooks there are kept. The PreToolUse guard is always registered and blocking. The PostToolUse hook, which only remembers confirmed design decisions, is set for all hosts with:
 
 ```
-npm run build-agents -- --post-hook async   # default: Claude Code runs it in the background; Copilot and VS Code wait for it
+npm run build-agents -- --post-hook async   # default: Claude Code runs it in the background; Copilot, VS Code and Antigravity wait for it
 npm run build-agents -- --post-hook sync    # every host waits for it
 npm run build-agents -- --post-hook off     # not registered: faster, but every governed edit asks again
 ```
@@ -100,12 +106,26 @@ npm run build-agents -- --post-hook off     # not registered: faster, but every 
    - **The MCP files stay ignored:** the cloud agent takes MCP servers from repository settings.
    - **Before clients rely on it,** run the checklist in the framework repository's `docs/cloud-agent-verification.md` on a real repository.
 
+### Antigravity: App, `agy` CLI and IDE (D-099)
+Built from Antigravity's documentation; not yet verified live. Until the spike ([Verifying Antigravity](#verifying-antigravity)) has run on your surface, treat that surface as not supported for runs.
+1. **Render the files.** In a client workspace, `npx @testagentic/atf init` and then `npx atf sync` (or just `npm install`). In this repository, `npm run build-agents`. That writes:
+   - `.agents/agents/<name>.md`, one per agent. Only the entry agents are main agents; the rest are subagents;
+   - `.agents/mcp_config.json`, the MCP servers from `config/mcp.yaml`. In a client workspace it is git-ignored with the agents;
+   - the `atf-guard` set of `.agents/hooks.json`. The file is shared: the build owns only that set, renders it first and keeps your own sets. It is not git-ignored, so you decide whether to commit it. A malformed file is an error, and sync writes nothing.
+2. **Trust the workspace** when Antigravity asks, so it loads the hooks and the MCP servers. Without the hooks, the guard check stops every run.
+3. **Choose Claude Opus 5.5 in the model picker** before you start. The generated agents have `model: inherit` and run the session's model (D-100).
+4. **Permission preset.** Keep a preset that still runs the hooks and shows you an `ask`; the spike records which presets do. Don't run with `agy --dangerously-skip-permissions` until the spike shows the guard still blocks under it.
+5. **Start the run.** `npx atf run <product> --host antigravity` opens `agy --agent orchestrator-agent` (flag unverified). In the App or the IDE, pick **orchestrator-agent** and give it `config/<product>.yaml`.
+6. **The live browser is the Playwright MCP server** from `.agents/mcp_config.json`, Playwright's own Chromium (D-070). Never use Antigravity's built-in browser: it drives your own Chrome, outside the init page's readonly guard (D-076). The guard denies its tools, and every other unmapped tool, during any run (D-101).
+7. **The guard can't tell which agent is calling** yet, so a full-run gets the run's combined ceiling (D-035). Agents' commands run in Antigravity's sandbox (`commandExecutionPolicy: sandbox`) unless their permissions reach the live target (browser, HTTP or load) or their shell allow-list runs a command that needs the network (`npm`, `npx`, `playwright`, `k6`, `foundation.mjs install`). pw-repo-owner, for example, is `auto` for its installs.
+
 ## When the guard check fails
 
 `run.mjs stage … start` refuses until the session's guard is verified (D-024).
 - **"the guard did not intercept guard-check"**: hooks are not running in this session.
   - VS Code: trust the workspace, keep `chat.useHooks` on, keep `.vscode/settings.json` as committed.
   - Claude Code: check `.claude/settings.json`.
+  - Antigravity: trust the workspace, check that `.agents/hooks.json` has the `atf-guard` set enabled (`npx atf sync` restores it), and record what you saw for the spike (D-099).
   - If the hook ran but didn't block (VS Code's Hooks log shows the guard's deny as `NonBlockingError`), the host didn't receive a block it honours. On VS Code, `scripts/hooks/hosts/index.mjs` must map `vscode` to `vscode.mjs` (D-040). If VS Code also ignores a deny decision on exit 0, its hooks don't enforce in that build: update VS Code, or run the pipeline on Claude Code.
   - Then run `run.mjs guard-check <product>` again.
 - **"full-run on VS Code's local agent needs the custom agents' own hooks"**: the guard check was blocked, but not by an agent's own hook. There, an unidentified call counts as your own session and gets no per-agent limits (D-037).
@@ -161,3 +181,14 @@ Not yet verified on a live session. Each has a fail-safe default, and a mismatch
 - Whether Copilot accepts `gpt-6-luna` as the agents' `model:` name (`config/models.yaml`, D-034). An unknown name falls back to the surface's default model.
 
 To verify, register a temporary audit hook that appends each payload to a git-ignored file, run one agent per host, and turn the captured payloads into fixtures for `scripts/hooks.test.mjs`.
+
+## Verifying Antigravity
+
+Nothing about Antigravity has been seen live yet: every value the code marks `UNVERIFIED (Antigravity spike pending, docs/antigravity-spike/)` comes from antigravity.google/docs (read 2026-10-27). The spike kit in the framework repository's [`docs/antigravity-spike/README.md`](../../../docs/antigravity-spike/README.md) settles them, on the App, the CLI and the IDE:
+- the tool names and argument keys, including how a Playwright MCP tool is named;
+- whether workspace hooks fire inside subagents at every level, and whether an agent's own frontmatter hook runs only for that agent. If it does, the guard can name the caller and the combined ceiling is no longer needed;
+- which deny form Antigravity honours, and under which permission presets;
+- the hook's environment, working directory and shell, the agent-file keys, the body limit, whether the sandbox blocks network, and the `agy` flags;
+- how two hook sets in `.agents/hooks.json` combine (their order, and whether a client set's allow can override the guard's deny), where `run_command` runs relative to its `Cwd`, and how `workspacePaths` lists a multi-root window.
+
+Its findings table names the repo value each finding updates. A surface where a deny isn't honoured, or where subagent calls skip the hooks, is listed here as not supported for runs. Until then, the fail-safe defaults hold for what the kit checks: a hook that doesn't run, or a deny that isn't honoured, shows up as a refused guard check (D-037). Argument keys the adapter doesn't know fail closed during a run: a write with no target it can read, or a `run_command` with no command line it can read, is refused. One gap stays open until the spike: a payload the hook can't parse loses its `workspacePaths`, so the hook judges its own working directory, and fails open if that is not the workspace (the registration's command is relative to the workspace, so a hook started elsewhere doesn't run at all, and the guard check then stops the run).

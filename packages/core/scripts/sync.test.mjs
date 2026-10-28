@@ -60,8 +60,10 @@ test("atf sync renders the client's host files from the installed package, with 
   assert.equal(existsSync(path.join(ws.root, ".vscode/settings.json")), false, "the build never writes .vscode/settings.json");
   // the .gitignore block, created with the file
   assert.equal(read(ws.root, ".gitignore"), `${blockOf(ws).join("\n")}\n`);
-  assert.deepEqual(CLIENT_IGNORED, [".mcp.json", ".vscode/mcp.json", ".github/hooks/framework-guard.json", ".vscode/hooks/framework-guard.json"]);
+  assert.deepEqual(CLIENT_IGNORED, [".mcp.json", ".vscode/mcp.json", ".agents/mcp_config.json", ".github/hooks/framework-guard.json", ".vscode/hooks/framework-guard.json"]);
+  assert.match(read(ws.root, ".gitignore"), /^\/\.agents\/mcp_config\.json$/m, "Antigravity's MCP config is the build's whole file");
   assert.doesNotMatch(read(ws.root, ".gitignore"), /settings\.json/, ".claude/settings.json and .vscode/settings.json are the client's to commit");
+  assert.doesNotMatch(read(ws.root, ".gitignore"), /hooks\.json/, ".agents/hooks.json holds the client's own hook sets too: theirs to commit");
   // what changed, one line each, then a count
   assert.ok(lines.includes("atf sync: updated: .claude/agents/report-generator.md"));
   assert.ok(lines.includes("atf sync: updated: .gitignore"));
@@ -97,7 +99,9 @@ test("withGitignoreBlock: an empty file, an existing block, and a malformed bloc
   assert.equal(withGitignoreBlock(withGitignoreBlock("a\n", E).text, E).text, withGitignoreBlock("a\n", E).text, "idempotent");
   assert.deepEqual(gitignoreBlock(["x.json"]), [BLOCK_START, "/x.json", BLOCK_END], "one list, filtered by phase 3c's opt-in");
   assert.deepEqual(gitignoreBlock(["a*b?[c]\\d.md"]), [BLOCK_START, "/a\\*b\\?\\[c]\\\\d.md", BLOCK_END], "a literal path, its glob characters escaped");
-  assert.deepEqual(ignoredEntries(["z.md", ".mcp.json", ".claude/a.md"]), [".claude/a.md", ".github/hooks/framework-guard.json", ".mcp.json", ".vscode/hooks/framework-guard.json", ".vscode/mcp.json", "z.md"], "sorted, without duplicates");
+  assert.deepEqual(ignoredEntries(["z.md", ".mcp.json", ".claude/a.md"]), [".agents/mcp_config.json", ".claude/a.md", ".github/hooks/framework-guard.json", ".mcp.json", ".vscode/hooks/framework-guard.json", ".vscode/mcp.json", "z.md"], "sorted, without duplicates");
+  // the cloud-agent opt-in commits only what is under .github/: Antigravity's files stay in the block
+  assert.deepEqual(ignoredEntries([".agents/agents/a.md", ".github/agents/a.agent.md"], { cloudAgent: true }), [".agents/agents/a.md", ".agents/mcp_config.json", ".mcp.json", ".vscode/hooks/framework-guard.json", ".vscode/mcp.json"]);
   for (const bad of [`${BLOCK_START}\n/x\n`, `/x\n${BLOCK_END}\n`, `${BLOCK_END}\n${BLOCK_START}\n`, `${BLOCK_START}\n${BLOCK_END}\n${BLOCK_START}\n${BLOCK_END}\n`])
     assert.match(withGitignoreBlock(bad, E).error, /the atf sync block is malformed/, JSON.stringify(bad));
 });
@@ -123,7 +127,7 @@ test("the .gitignore block lists each of the framework's agent files and no fold
   const lines = read(ws.root, ".gitignore").split("\n");
   const block = lines.slice(lines.indexOf(BLOCK_START), lines.indexOf(BLOCK_END) + 1);
   // every agent file the build wrote, each on its own line, with the other whole files as before, sorted
-  const generated = [".claude/agents", ".github/agents"].flatMap((dir) => listed(ws.root, dir).map((f) => `${dir}/${f}`)).filter((rel) => !Object.hasOwn(mine, rel));
+  const generated = [".claude/agents", ".github/agents", ".agents/agents"].flatMap((dir) => listed(ws.root, dir).map((f) => `${dir}/${f}`)).filter((rel) => !Object.hasOwn(mine, rel));
   assert.ok(generated.length > 60, `${generated.length} agent files`);
   assert.deepEqual(block.slice(1, -1), [...generated, ...CLIENT_IGNORED].map((e) => `/${e}`).sort());
   assert.deepEqual(block, blockOf(ws), "the roster's files, both hosts");
@@ -141,6 +145,17 @@ test("the .gitignore block lists each of the framework's agent files and no fold
   const r = git(["check-ignore", "--", ...asked], ws.root);
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(r.stdout.trim().split(/\r?\n/), [".claude/agents/report-generator.md", ".github/agents/report-generator.agent.md"]);
+});
+
+test("generatedAgentFiles follows each platform's output template, Antigravity's .agents/agents/ included", () => {
+  const framework = tempRoot();
+  const workspace = tempRoot();
+  put(framework, "config/platforms.yaml", 'platforms:\n  claude:\n    output: ".claude/agents/{name}.md"\n  antigravity:\n    output: ".agents/agents/{name}.md"\n    mcp_config: { path: ".agents/mcp_config.json", key: mcpServers }\n');
+  const files = generatedAgentFiles({ workspace, framework });
+  assert.ok(files.includes(".agents/agents/orchestrator-agent.md") && files.includes(".claude/agents/orchestrator-agent.md"), files.join("\n"));
+  assert.equal(files.filter((f) => f.startsWith(".agents/agents/")).length, files.filter((f) => f.startsWith(".claude/agents/")).length);
+  const entries = ignoredEntries(files);
+  assert.ok(entries.includes(".agents/mcp_config.json") && !entries.includes(".agents/hooks.json"));
 });
 
 test("an older block that ignored the agent folders whole: atf check flags it, atf sync replaces it in place", () => {
