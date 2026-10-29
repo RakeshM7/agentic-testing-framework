@@ -1,0 +1,19 @@
+[
+  {
+    "question": "Is \"Name\" required when creating a contact?",
+    "steps": "1. Sign in.\n2. Open \"Contacts\".\n3. Click \"New contact\".\n4. Leave \"Name *\" empty and click \"Save\".\n5. Observe whether the contact is saved.",
+    "item": [
+      "FR-contacts-33"
+    ],
+    "kq": [
+      "KQ-contacts-1"
+    ]
+  },
+  {
+    "question": "What format does \"Email\" accept?",
+    "steps": "1. Sign in.\n2. Open \"Contacts\".\n3. Click \"New contact\".\n4. Type \"not-an-email\" in \"Email\" and click \"Save\".\n5. Observe the message.",
+    "item": [
+      "FR-contacts-32"
+    ]
+  }
+]

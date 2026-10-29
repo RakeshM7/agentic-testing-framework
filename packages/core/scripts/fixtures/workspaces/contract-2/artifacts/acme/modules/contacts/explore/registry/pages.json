@@ -1,0 +1,22 @@
+{
+  "module": "contacts",
+  "next": 3,
+  "pages": {
+    "/contacts": {
+      "id": "PG-contacts-1",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1",
+      "slug": "contacts",
+      "template": "/contacts"
+    },
+    "/contacts/{}": {
+      "id": "PG-contacts-2",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1",
+      "slug": "contacts-id",
+      "template": "/contacts/{id}"
+    }
+  }
+}

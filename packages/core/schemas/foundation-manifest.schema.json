@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "foundation-manifest.schema.json",
+  "title": "artifacts/<product>/foundation/<side>-manifest.json: what scripts/foundation.mjs render wrote for one side, and the verified stamp a passing check adds (D-054). Script-owned.",
+  "type": "object",
+  "required": ["side", "project", "overlay", "files", "extensions", "verified"],
+  "additionalProperties": false,
+  "properties": {
+    "side": { "enum": ["repo", "ui", "api", "k6"] },
+    "project": { "type": "string" },
+    "overlay": { "type": "string" },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "template", "sha256"],
+        "additionalProperties": false,
+        "properties": { "path": { "type": "string" }, "template": { "type": "string" }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+      }
+    },
+    "extensions": { "type": "array", "items": { "type": "string" } },
+    "verified": { "type": ["object", "null"], "additionalProperties": { "type": ["string", "null"] } }
+  }
+}

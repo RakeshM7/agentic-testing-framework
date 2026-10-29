@@ -1,0 +1,9 @@
+{
+  "product": "acme",
+  "runId": "acme-run-1",
+  "verified": {
+    "report": "41c3af936ca503baf1ccf254341a467ca5e15e87bce19d00773e3e265c7c1b90",
+    "narrative": "61a7f3f7518e14b8487753ae02bd1f161233864b575c99d0b0ff3864c2434a8a",
+    "html": "b3df6f35c2f20301bc31276de0fcc5c23ca51bcdc6ca284175770e540931e2b3"
+  }
+}

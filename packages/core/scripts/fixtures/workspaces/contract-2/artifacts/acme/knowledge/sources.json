@@ -1,0 +1,20 @@
+[
+  {
+    "id": "S1",
+    "title": "Acme help center",
+    "location": "https://help.acme.test",
+    "type": "vendor-doc",
+    "accessed": "2026-10-01",
+    "addedBy": "_product",
+    "runId": "acme-run-1"
+  },
+  {
+    "id": "S2",
+    "title": "contacts guide",
+    "location": "https://help.acme.test/contacts",
+    "type": "vendor-doc",
+    "accessed": "2026-10-01",
+    "addedBy": "contacts",
+    "runId": "acme-run-1"
+  }
+]

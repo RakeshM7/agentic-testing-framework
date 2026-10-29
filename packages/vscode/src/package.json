@@ -1,0 +1,4 @@
+{
+  "type": "module",
+  "description": "The sources are ES modules (node:test imports them as they are); scripts/build.mjs bundles them into the CommonJS dist/extension.js that the manifest's main names. Not shipped."
+}

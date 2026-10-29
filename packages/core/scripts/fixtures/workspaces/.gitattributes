@@ -1,0 +1,3 @@
+# Frozen workspaces: byte for byte as the release that wrote them, on every OS. No line-ending conversion, since their
+# stamps and manifests hold the files' hashes.
+* -text

@@ -1,0 +1,17 @@
+{
+  "name": "agentic-testing-framework",
+  "private": true,
+  "type": "module",
+  "description": "The maintainers' workspace: the framework is packages/core (@testagentic/atf), linked by npm workspaces like a client install. Generated test projects (playwright-tests/, k6-tests/) keep their own dependency trees.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "check": "node packages/core/scripts/build-agents.mjs --check && npm test",
+    "test": "node --test \"packages/core/scripts/**/*.test.mjs\" \"packages/vscode/test/**/*.test.mjs\"",
+    "build-agents": "node packages/core/scripts/build-agents.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}

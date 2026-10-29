@@ -1,0 +1,11 @@
+# The vsix ships exactly the extension's files: the bundle, the manifest, the listing pages and the icons the manifest
+# names. Everything else (src/, scripts/, test/, SPEC.md, node_modules) stays out. scripts/package.mjs refuses to
+# package when what vsce would ship differs from shippedFiles(manifest), so a new icon or file must be added here too.
+**
+!dist/extension.js
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE.md
+!media/icon.png
+!media/atf.svg

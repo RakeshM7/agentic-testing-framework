@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge-rule-facts.schema.json",
+  "title": "Rule facts of a module's notes.md and the evidence behind their quotes (artifacts/<product>/knowledge/modules/<m>/rule-facts.json), written only by knowledge.mjs check (D-051). A fact whose evidence is agent-capture or stale is allowed but weaker: test cases built on it are tagged @assumption.",
+  "type": "object",
+  "required": ["module", "facts"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "line", "category", "text", "citations", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string", "description": "Relative to knowledge/." },
+          "line": { "type": "integer", "minimum": 1 },
+          "category": { "enum": ["entities", "rules", "roles", "limits"] },
+          "text": { "type": "string" },
+          "citations": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Every quote on the line that verifies against the cached text.",
+            "items": {
+              "type": "object",
+              "required": ["source", "quote", "evidence"],
+              "additionalProperties": false,
+              "properties": {
+                "source": { "type": "string", "pattern": "^S[1-9][0-9]*$" },
+                "quote": { "type": "string" },
+                "evidence": { "enum": ["script-fetched", "agent-capture", "stale"] }
+              }
+            }
+          },
+          "evidence": { "enum": ["script-fetched", "agent-capture", "stale"], "description": "The strongest evidence among the line's quotes, in the order script-fetched, agent-capture, stale." }
+        }
+      }
+    }
+  }
+}

@@ -2,7 +2,15 @@
   "mcpServers": {
     "playwright": {
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@0.0.83", "--storage-state", "playwright-tests/freshsales/.auth/freshsales-handoff.json", "--isolated"]
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.83",
+        "--browser",
+        "chromium",
+        "--isolated",
+        "--init-page",
+        "packages/core/scripts/browser/init-page.cjs"
+      ]
     }
   }
 }

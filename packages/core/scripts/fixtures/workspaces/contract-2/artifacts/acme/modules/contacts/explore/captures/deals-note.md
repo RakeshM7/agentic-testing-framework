@@ -1,0 +1,1 @@
+Admin guide: there is a maximum number of records per plan, set under Billing.

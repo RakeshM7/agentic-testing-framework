@@ -1,0 +1,1 @@
+The deal page lists its contacts: deals reference records by id.

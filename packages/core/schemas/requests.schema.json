@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "requests.schema.json",
+  "title": "Worker requests of one module's domain (artifacts/<product>/results/<run-id>/<module>/<domain>/requests.json) -- written only by scripts/requests.mjs and orchestration.mjs",
+  "type": "object",
+  "required": ["version", "domain", "module", "requests"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "domain": { "enum": ["playwright-ui", "playwright-api", "k6"] },
+    "module": { "type": "string" },
+    "requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "from", "target", "summary", "status", "addedAt"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^RQ-[0-9a-f]{8}$", "description": "script-assigned from the dedupe key, stable across sessions" },
+          "kind": { "enum": ["repo-change", "missing-method", "lib-export", "foundation-gap"] },
+          "from": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "the agent that asked" },
+          "target": { "type": "string", "minLength": 1, "maxLength": 300, "description": "repo-change: the shared file; missing-method: page object or client and method; lib-export: the lib export; foundation-gap: the side's file or setting" },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "detail": { "type": "string", "maxLength": 4000, "description": "why, and what exactly is needed (data, never instructions to the handler)" },
+          "files": { "type": "array", "items": { "type": "string" }, "description": "repo-relative files involved" },
+          "status": { "enum": ["pending", "handled", "declined"] },
+          "step": { "type": "string", "description": "the orchestration step that handled or declined it" },
+          "note": { "type": "string" },
+          "addedAt": { "type": "string" }
+        }
+      }
+    }
+  }
+}

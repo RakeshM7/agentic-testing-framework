@@ -1,8 +1,0 @@
-[
- {
-  "label": "Create team",
-  "role": "button",
-  "kind": "opens-overlay",
-  "resultingUrl": "dialog: Team name*, Team members*"
- }
-]

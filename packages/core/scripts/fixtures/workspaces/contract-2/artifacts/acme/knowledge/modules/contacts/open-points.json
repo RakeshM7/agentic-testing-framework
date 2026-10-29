@@ -1,0 +1,33 @@
+{
+  "module": "contacts",
+  "next": 4,
+  "points": {
+    "the import flow is not documented": {
+      "id": "KQ-contacts-1",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1",
+      "text": "The import flow is not documented.",
+      "category": "flows",
+      "file": "modules/contacts/overview.md"
+    },
+    "whether deals reference records is not documented": {
+      "id": "KQ-contacts-2",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1",
+      "text": "Whether deals reference records is not documented.",
+      "category": "dependencies",
+      "file": "modules/contacts/notes.md"
+    },
+    "whether there is a maximum number of records is not documented": {
+      "id": "KQ-contacts-3",
+      "status": "active",
+      "firstSeen": "acme-run-1",
+      "lastSeen": "acme-run-1",
+      "text": "Whether there is a maximum number of records is not documented.",
+      "category": "limits",
+      "file": "modules/contacts/notes.md"
+    }
+  }
+}

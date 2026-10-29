@@ -1,0 +1,15 @@
+# Hook registrations for every host (docs/decisions.md D-020, D-092). `npm run build-agents` (`npx atf sync` in a client
+# workspace) renders them into .claude/settings.json (only the framework's own entries in its `hooks` key; the
+# workspace's own hooks there are kept), .github/hooks/framework-guard.json and .vscode/hooks/framework-guard.json.
+# Never hand-edit those hook entries; `npm run check` fails on drift.
+#
+# The PreToolUse safety guard is always registered and always blocking; it is not configurable here.
+#
+# post_tool_use: the PostToolUse hook, which remembers per session which design decisions the user has confirmed, and
+#   records each agent spawn of the active run for the report's time and effort (D-079; off = no spawns recorded).
+#   async  Claude Code runs it in the background, so tool calls don't wait for it; Copilot and VS Code have no
+#          background hooks, so there it runs synchronously
+#   sync   every host waits for it
+#   off    not registered: faster, but every edit under a design decision asks for confirmation again
+# Change it with: npm run build-agents -- --post-hook <async|sync|off>
+post_tool_use: async

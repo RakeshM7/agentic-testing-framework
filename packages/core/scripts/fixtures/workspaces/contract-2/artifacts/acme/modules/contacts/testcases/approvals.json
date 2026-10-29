@@ -1,0 +1,21 @@
+{
+  "module": "contacts",
+  "cases": {
+    "TC-contacts-1": {
+      "decision": "yes",
+      "comment": "",
+      "hash": "c88a6f699e9ab9a5bed9abf9c89d0c20b12d10644ab243c4ab98265c84f47101",
+      "version": "vc88a6f699e9a",
+      "run": "acme-run-1",
+      "at": "2026-10-01T09:00:00.000Z"
+    },
+    "TC-contacts-2": {
+      "decision": "yes",
+      "comment": "",
+      "hash": "fbcafb9fc4de5d6fff4a650c0e0aa99550c63112861c4ad0041332f05f0d0923",
+      "version": "vfbcafb9fc4de",
+      "run": "acme-run-1",
+      "at": "2026-10-01T09:00:00.000Z"
+    }
+  }
+}

@@ -1,0 +1,1 @@
+Toggling "Subscribed" changes nothing on screen until the dialog is saved.

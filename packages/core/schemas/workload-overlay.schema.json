@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workload-overlay.schema.json",
+  "title": "The k6-workload-designer's judgments for one module (artifacts/<product>/modules/<m>/k6/workload-overlay.json), applied by scripts/workload.mjs build; every value is cited and checked against the module's files",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "priorities": {
+      "type": "object",
+      "description": "EP id -> its load priority (ranks the load units against k6.budget).",
+      "propertyNames": { "pattern": "^EP-" },
+      "additionalProperties": { "type": "object", "required": ["priority", "citation"], "additionalProperties": false, "properties": { "priority": { "enum": ["p1", "p2", "p3"] }, "citation": { "$ref": "#/$defs/citation" } } }
+    },
+    "mixes": {
+      "type": "array",
+      "description": "A mixed scenario of read endpoints with weights (registry key mix:<name>|<type>); a member is loaded only through its mix.",
+      "items": {
+        "type": "object",
+        "required": ["name", "endpoints", "citation"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "$ref": "#/$defs/name" },
+          "endpoints": { "type": "array", "minItems": 2, "items": { "type": "object", "required": ["endpoint", "weight"], "additionalProperties": false, "properties": { "endpoint": { "type": "string", "pattern": "^EP-" }, "weight": { "type": "integer", "minimum": 1 } } } },
+          "citation": { "$ref": "#/$defs/citation" }
+        }
+      }
+    },
+    "thinkTime": {
+      "type": "object",
+      "description": "EP id, mix:<name> or flow:<name> -> the pause per iteration in ms (adds to the expected iteration time).",
+      "propertyNames": { "pattern": "^(EP-.+|mix:.+|flow:.+)$" },
+      "additionalProperties": { "type": "object", "required": ["ms", "citation"], "additionalProperties": false, "properties": { "ms": { "type": "integer", "minimum": 0, "maximum": 60000 }, "citation": { "$ref": "#/$defs/citation" } } }
+    },
+    "data": {
+      "type": "array",
+      "description": "Realistic data a scenario needs (for the script-writer's data slot).",
+      "items": { "type": "object", "required": ["target", "need", "citation"], "additionalProperties": false, "properties": { "target": { "type": "string", "pattern": "^(EP-.+|mix:.+|flow:.+)$" }, "need": { "type": "string", "minLength": 3 }, "citation": { "$ref": "#/$defs/citation" } } }
+    },
+    "exclude": {
+      "type": "array",
+      "description": "Endpoints kept out of load on purpose (ledger reason overlay-excluded); the reason has at least three words.",
+      "items": { "type": "object", "required": ["endpoint", "reason", "citation"], "additionalProperties": false, "properties": { "endpoint": { "type": "string", "pattern": "^EP-" }, "reason": { "type": "string", "pattern": "^\\S+(\\s+\\S+){2,}" }, "citation": { "$ref": "#/$defs/citation" } } }
+    },
+    "flows": {
+      "type": "array",
+      "description": "Full-run write flows on entities the flow created (D-005): a top-level create first; every path parameter of a later step bound to a create step's id pointer; child creates allowed under a created parent; the deletes last, children before their parent (registry key flow:<name>|<type>). Not loaded in readonly runs.",
+      "items": {
+        "type": "object",
+        "required": ["name", "steps", "citations"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "$ref": "#/$defs/name" },
+          "steps": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["endpoint"],
+              "additionalProperties": false,
+              "properties": {
+                "endpoint": { "type": "string", "pattern": "^EP-" },
+                "bind": { "description": "One bind, or one per path parameter of a nested path: {param, from: a create step of this flow, pointer: that create's id pointer} (D-005).", "oneOf": [{ "$ref": "#/$defs/bind" }, { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/bind" } }] }
+              }
+            }
+          },
+          "citations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/citation" } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "name": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "bind": { "type": "object", "required": ["param", "from", "pointer"], "additionalProperties": false, "properties": { "param": { "type": "string", "minLength": 1 }, "from": { "type": "integer", "minimum": 0 }, "pointer": { "type": "string", "pattern": "^/" } } },
+    "citation": { "type": "string", "pattern": "^(clarification|testcase|knowledge|spec|observation):.+$" }
+  }
+}

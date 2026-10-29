@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-code-coverage.schema.json",
+  "title": "api-code/coverage.json: the module's API code ledger, written only by scripts/api-code.mjs (build; check refreshes the slots and adds the verified stamps, D-056). Every endpoint ends mapped (its client method); every plan scenario mapped (its one test) or excluded (blocked by the plan, or parked by the tests-writer: a test.fixme with the reason); every plan coverage item over api.plan_budget deferred; every payload or glue slot mapped (filled) or pending (empty).",
+  "type": "object",
+  "required": ["module", "runId", "summary", "items", "parked", "blocked", "problems", "built", "verified"],
+  "additionalProperties": false,
+  "$defs": {
+    "stamp": { "type": ["object", "null"], "additionalProperties": { "type": ["string", "null"] } },
+    "reasoned": { "type": "array", "items": { "type": "object", "required": ["id", "reason"], "additionalProperties": false, "properties": { "id": { "type": "string" }, "reason": { "type": "string", "minLength": 1 } } } }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": ["string", "null"] },
+    "summary": {
+      "type": "object",
+      "required": ["total", "mapped", "excluded", "pending", "deferred"],
+      "additionalProperties": false,
+      "properties": { "total": { "type": "integer" }, "mapped": { "type": "integer" }, "excluded": { "type": "integer" }, "pending": { "type": "integer" }, "deferred": { "type": "integer" } }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "label", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "An EP id, an API id, plan:<plan coverage item>, payload:<builder> or glue:<function>." },
+          "kind": { "enum": ["endpoint", "scenario", "plan-item", "payload", "glue"] },
+          "label": { "type": "string" },
+          "status": { "enum": ["mapped", "excluded", "pending", "deferred"] },
+          "refs": { "type": "array", "items": { "type": "string" }, "description": "Files (with #member) relative to playwright-tests/<product>/." },
+          "reason": { "type": "string" },
+          "detail": { "type": "string" },
+          "why": { "type": "string" }
+        },
+        "allOf": [
+          { "if": { "properties": { "status": { "const": "mapped" } } }, "then": { "required": ["refs"] } },
+          { "if": { "properties": { "status": { "const": "excluded" } } }, "then": { "required": ["reason", "detail"], "properties": { "reason": { "enum": ["blocked", "parked"] } } } },
+          { "if": { "properties": { "status": { "const": "deferred" } } }, "then": { "required": ["reason", "detail"], "properties": { "reason": { "const": "budget" } } } }
+        ]
+      }
+    },
+    "parked": { "$ref": "#/$defs/reasoned", "description": "Scenarios the tests-writer parked in tests-overlay.json (a test.fixme with the reason; not covered)." },
+    "blocked": { "$ref": "#/$defs/reasoned", "description": "Scenarios the plan blocks, or whose request can't be built (a test.fixme with the reason)." },
+    "problems": { "type": "array", "items": { "type": "string" } },
+    "built": {
+      "type": "object",
+      "required": ["inputs"],
+      "properties": { "inputs": { "type": "object", "additionalProperties": { "type": ["string", "null"] } } }
+    },
+    "verified": {
+      "type": "object",
+      "required": ["clients", "tests"],
+      "additionalProperties": false,
+      "description": "The sha256 of each file a passing `api-code.mjs check` covered: clients (check --clients, or a full check) and tests (a full check).",
+      "properties": { "clients": { "$ref": "#/$defs/stamp" }, "tests": { "$ref": "#/$defs/stamp" } }
+    }
+  }
+}

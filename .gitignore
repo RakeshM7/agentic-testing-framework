@@ -14,21 +14,28 @@ playwright-tests/*/.auth/
 .DS_Store
 
 
-# Authenticated crawl captures may contain tokens/PII -- keep local, never commit
-artifacts/**/network-requests.json
-artifacts/**/network-request.json
-artifacts/**/console-log.txt
+# Pipeline run output is generated and local: artifacts/<run-id>/. Commit a curated, sanitized run under
+# examples/ if you want to share one. Nothing under artifacts/ is tracked except this keep-file.
+artifacts/*
+!artifacts/.gitkeep
 
-# Parallel full-product tracks: per-run lock dir (live k6 serialization)
-artifacts/**/.locks/
+# Stray Playwright output from running tests at the repo root
+/test-results/
+/playwright-report/
 
-# Playwright MCP session captures (page snapshots / console logs) -- local debug only
-.playwright-mcp/
+# The orchestrator's run-config interview answers (D-063); the drafted config/<product>.yaml is what to keep
+config/interview-answers.json
 
-# Transient Playwright run output: per-track result dirs and the repo-root default
-playwright-tests/test-results/
-playwright-tests/*/test-results-*/
+# Saved browser session (credentials); never commit
+auth.json
 
-# Throwaway locator/DOM probe scripts and scratch dumps written while authoring specs
-playwright-tests/*/scratch/
-playwright-tests/*/pages/**/probes/
+# The built @testagentic/atf (packages/core/scripts/build-package.mjs): published by the release workflow, never committed
+packages/core/dist/
+
+# The built Claude Code plugin (packages/core/scripts/build-plugin.mjs): pushed to the marketplace repository by the release
+# workflow, never committed here
+packages/claude-plugin/dist/
+
+# The built VS Code extension (packages/vscode/scripts/build.mjs and package.mjs): dist/extension.js and the vsix,
+# published to the VS Code Marketplace and Open VSX by the release workflow, never committed
+packages/vscode/dist/

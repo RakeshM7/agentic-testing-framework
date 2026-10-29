@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      { "type": "command", "command": "node packages/core/scripts/hooks/pretooluse.mjs --host copilot", "cwd": ".", "timeoutSec": 30 }
+    ],
+    "PostToolUse": [
+      { "type": "command", "command": "node packages/core/scripts/hooks/posttooluse.mjs --host copilot", "cwd": ".", "timeoutSec": 30 }
+    ]
+  }
+}

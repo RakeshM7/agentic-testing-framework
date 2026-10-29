@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workload.schema.json",
+  "title": "A module's k6 workload (artifacts/<product>/modules/<m>/k6/workload.json), written only by scripts/workload.mjs build: one scenario per human-approved @performance test case, its test type capped by the mode and opt-ins, open model, with its options exactly as the script uses them",
+  "type": "object",
+  "required": ["module", "runId", "mode", "types", "notes", "scenarios"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": "string", "description": "The run the workload was built in (check binds it to that run)." },
+    "mode": { "enum": ["readonly", "full-run"] },
+    "types": { "type": "array", "items": { "$ref": "#/$defs/type" } },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "key", "case", "name", "type", "kind", "endpoints", "mutates", "executor", "load", "sizing", "thinkTimeMs", "data", "thresholds", "options"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "key": { "type": "string", "pattern": "^case:TC-", "description": "case:<TC id>|<type>: one scenario per approved @performance test case (D-068)." },
+          "case": { "type": "string", "pattern": "^TC-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$", "description": "The human-approved @performance test case this scenario loads." },
+          "name": { "type": "string", "pattern": "^[a-z-]+-[0-9]+$", "description": "<type>-<n>: the k6 scenario name; the script is <module>-<name>.js." },
+          "type": { "$ref": "#/$defs/type" },
+          "kind": { "enum": ["endpoint", "mix", "flow"] },
+          "endpoints": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^EP-" } },
+          "weights": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } },
+          "citation": { "type": "string" },
+          "flow": {
+            "type": "object",
+            "required": ["name", "steps", "citations"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "steps": {
+                "type": "array",
+                "minItems": 2,
+                "items": { "type": "object", "required": ["endpoint", "method", "path"], "additionalProperties": false, "properties": { "endpoint": { "type": "string" }, "method": { "type": ["string", "null"] }, "path": { "type": ["string", "null"] }, "bind": { "type": ["object", "array"] } } }
+              },
+              "citations": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "mutates": { "type": "boolean", "description": "The script calls requireFullRun(true) in setup()." },
+          "cleanup": {
+            "type": "object",
+            "required": ["endpoint", "trackLeftover"],
+            "additionalProperties": false,
+            "description": "A write flow deletes what it created (endpoint; null = no delete operation) and passes anything left to trackLeftover (D-005).",
+            "properties": { "endpoint": { "type": ["string", "null"] }, "trackLeftover": { "const": true } }
+          },
+          "queryLike": { "const": true },
+          "executor": { "enum": ["constant-arrival-rate", "ramping-arrival-rate"] },
+          "load": { "type": "object", "required": ["rps", "averageRps", "capSource"], "description": "rps: this scenario's (peak) rate; averageRps: the unit's capped average-load rate; capSource: what capped it.", "properties": { "rps": { "type": "number" }, "averageRps": { "type": "number" }, "capSource": { "type": "string" }, "rateLimitCapRps": { "type": "number" }, "durationS": { "type": "integer" } } },
+          "sizing": {
+            "type": "object",
+            "required": ["peakRps", "expectedIterationS", "headroom", "preAllocatedVUs", "maxVUs"],
+            "additionalProperties": false,
+            "properties": { "peakRps": { "type": "number" }, "expectedIterationS": { "type": "number" }, "headroom": { "type": "number" }, "preAllocatedVUs": { "type": "integer", "minimum": 1 }, "maxVUs": { "type": "integer", "minimum": 1 } }
+          },
+          "thinkTimeMs": { "type": "integer", "minimum": 0 },
+          "thinkTimeCitation": { "type": "string" },
+          "data": { "type": "array", "items": { "type": "object", "required": ["target", "need", "citation"], "additionalProperties": false, "properties": { "target": { "type": "string" }, "need": { "type": "string" }, "citation": { "type": "string" } } } },
+          "thresholds": {
+            "type": "array",
+            "contains": { "type": "object", "required": ["metric"], "properties": { "metric": { "const": "dropped_iterations" } } },
+            "items": {
+              "type": "object",
+              "required": ["metric", "stat", "limit", "expr", "source", "assumed"],
+              "additionalProperties": false,
+              "properties": {
+                "metric": { "type": "string" },
+                "endpoint": { "type": "string" },
+                "stat": { "enum": ["p95", "p99", "error-rate", "dropped-iterations"] },
+                "limit": { "type": "number" },
+                "expr": { "type": "string" },
+                "source": { "enum": ["slo:global", "slo:module", "slo:endpoint", "assumed", "open-model"] },
+                "assumed": { "type": "boolean" },
+                "abortOnFail": { "const": true }
+              }
+            }
+          },
+          "options": {
+            "type": "object",
+            "required": ["scenarios", "thresholds"],
+            "additionalProperties": false,
+            "description": "The k6 options object the script exports, exactly.",
+            "properties": {
+              "scenarios": {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 1,
+                "additionalProperties": { "type": "object", "required": ["executor", "timeUnit", "preAllocatedVUs", "maxVUs"], "properties": { "executor": { "enum": ["constant-arrival-rate", "ramping-arrival-rate"] } } }
+              },
+              "thresholds": { "type": "object", "required": ["dropped_iterations"], "additionalProperties": { "type": "array", "minItems": 1 } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^K6-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$", "description": "Stable: assigned once per key in workload-registry.json, never reused." },
+    "type": { "enum": ["smoke", "average-load", "stress", "spike", "soak", "breakpoint"] }
+  }
+}

@@ -1,0 +1,1 @@
+Clicking Edit opened a new window; the browser tool stayed on the detail page.

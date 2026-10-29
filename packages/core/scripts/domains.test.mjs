@@ -1,0 +1,139 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { round, show, step } from "./orchestration.mjs";
+import { fromK6, fromPlaywright, record } from "./results.mjs";
+import { collect } from "./report-data.mjs";
+import { next, setStage, status } from "./run.mjs";
+import { checkTestcases } from "./lib/testcases.mjs";
+import { loadJson, paths, validateData } from "./lib/contract.mjs";
+import { append } from "./lib/clarifications.mjs";
+import { markApproved, put, startRun } from "./test-helpers.mjs";
+
+test("orchestration rounds are bounded by the run-config limits and reset for a new run", () => {
+  const { root } = startRun();
+  for (let i = 1; i <= 3; i++) assert.deepEqual(round("acme", "playwright-ui", "contacts", "review", { root }), { round: i, limit: 3, allowed: true });
+  assert.equal(round("acme", "playwright-ui", "contacts", "review", { root }).allowed, false);
+  assert.equal(round("acme", "playwright-ui", "contacts", "heal", { root }).round, 1, "heal rounds are counted separately");
+  step("acme", "playwright-ui", "contacts", "tests", "done", "12 specs", { root });
+  assert.equal(show("acme", "playwright-ui", "contacts", { root }).steps.tests.status, "done");
+  const p = paths("acme", root);
+  const run = loadJson(p.runFile);
+  writeFileSync(p.runFile, JSON.stringify({ ...run, runId: "acme-run-2" }));
+  assert.deepEqual(show("acme", "playwright-ui", "contacts", { root }).rounds, { review: 0, heal: 0 });
+  assert.throws(() => round("acme", "reports", "contacts", "review", { root }), /domain must be/);
+});
+
+test("Playwright and k6 outputs normalize into schema-valid results", async () => {
+  const pw = fromPlaywright({
+    stats: { duration: 1234.5 },
+    suites: [{ title: "contacts.spec.ts", file: "tests/ui/contacts/contacts.spec.ts", specs: [
+      { title: "TC-contacts-1 lists contacts", tests: [{ status: "expected", results: [{ duration: 10 }] }] },
+      { title: "TC-contacts-2 creates @mutates", tests: [{ status: "skipped", results: [] }] },
+    ], suites: [{ title: "filters", specs: [{ title: "TC-contacts-3 filters", tests: [{ status: "unexpected", results: [{ duration: 5, error: { message: "locator not found" } }] }] }] }] }],
+  });
+  assert.deepEqual(pw.totals, { total: 3, passed: 1, failed: 1, flaky: 0, skipped: 1 });
+  assert.equal(pw.items[2].error, "locator not found");
+  const k6 = fromK6([{ name: "contacts-list", data: { state: { testRunDurationMs: 30000 }, metrics: {
+    http_req_duration: { values: { "p(95)": 420 }, thresholds: { "p(95)<500": { ok: true } } },
+    http_req_failed: { values: { rate: 0.02 }, thresholds: { "rate<0.01": { ok: false } } },
+    checks: { values: { passes: 98, fails: 2 } },
+  } } }]);
+  assert.equal(k6.items[0].status, "failed");
+  assert.match(k6.items[0].error, /http_req_failed rate<0.01/);
+
+  const { root } = startRun();
+  const r = record("acme", "contacts", "playwright-ui", { status: "ran", ...pw }, { root });
+  assert.deepEqual(await validateData("results", r), []);
+  const nr = record("acme", "contacts", "k6", { status: "not-run", reason: "readonly", totals: { total: 0, passed: 0, failed: 0, flaky: 0, skipped: 0 }, durationMs: 0, items: [] }, { root });
+  assert.deepEqual(await validateData("results", nr), []);
+});
+
+test("testcases stage: the summary total must match the cases in the configured format", () => {
+  const { root } = startRun();
+  const dir = "artifacts/acme/modules/contacts/testcases";
+  put(root, `${dir}/contacts-testcases.feature`, "Feature: Contacts\n  @TC-contacts-1 @p1 @functional\n  Scenario: List\n  @TC-contacts-2 @p2 @negative\n  Scenario Outline: Invalid\n");
+  put(root, `${dir}/testcases-summary.md`, "# Summary\n\nTotal test cases: 2\n");
+  const summary = path.join(root, dir, "testcases-summary.md");
+  assert.deepEqual(checkTestcases(summary, { module: "contacts", testcasesFormat: "gherkin" }), []);
+  put(root, `${dir}/testcases-summary.md`, "Total test cases: 3\n");
+  assert.match(checkTestcases(summary, { module: "contacts", testcasesFormat: "gherkin" })[0], /says 3 .* has 2/);
+  assert.match(checkTestcases(summary, { module: "contacts", testcasesFormat: "csv" })[0], /missing/);
+});
+
+test("report data counts what exists, from files, per module", async () => {
+  const { root } = startRun();
+  const p = paths("acme", root);
+  put(root, "artifacts/acme/modules/contacts/explore/sitemap.json", JSON.stringify([{ url: "u", slug: "list", title: "List" }]));
+  append(path.join(p.module("contacts"), "clarifications.csv"), "contacts", "acme-run-1", [{ question: "q1?", steps: "1." }, { question: "q2?", steps: "1." }]);
+  put(root, "artifacts/acme/modules/contacts/testcases/testcases-summary.md", "Total test cases: 7\n");
+  put(root, "playwright-tests/acme/tests/ui/contacts/a.spec.ts", "");
+  put(root, "playwright-tests/acme/tests/ui/contacts/b.spec.ts", "");
+  put(root, "playwright-tests/acme/tests/api/contacts/c.spec.ts", "");
+  put(root, "artifacts/acme/modules/contacts/k6/workload.json", JSON.stringify({ scenarios: [{ name: "smoke-1" }, { name: "load-1" }] }));
+  put(root, "artifacts/acme/modules/deals/k6/workload.json", JSON.stringify({ scenarios: [{ name: "smoke-1" }] }));
+  put(root, "k6-tests/acme/scripts/contacts-smoke-1.js", "");
+  put(root, "k6-tests/acme/scripts/contacts-load-1.js", "");
+  put(root, "k6-tests/acme/scripts/deals-smoke-1.js", "");
+  record("acme", "contacts", "playwright-ui", { status: "ran", totals: { total: 5, passed: 4, failed: 1, flaky: 0, skipped: 0 }, durationMs: 9, items: [] }, { root });
+  const d = (await collect("acme", { root }));
+  assert.equal(d.totals.modulesExplored, 1);
+  assert.deepEqual(d.totals.clarifications, { total: 2, answered: 0, unconfirmed: 2, awaitingApproval: 0 });
+  assert.equal(d.totals.testcases, 7);
+  assert.deepEqual(d.totals.approvals, { approved: 0, rejected: 0, changes: 0, awaiting: 0 });
+  markApproved(root, ["TC-contacts-1", "TC-contacts-2"]);
+  assert.deepEqual((await collect("acme", { root })).modules[0].approvals, { approved: 2, rejected: 0, changes: 0, awaiting: 0 }, "approvals are counted per module");
+  assert.equal(d.totals.playwrightUiSpecs, 2);
+  assert.equal(d.totals.playwrightApiSpecs, 1);
+  assert.equal(d.totals.k6Scripts, 3, "the scripts of each module's workload scenarios");
+  assert.equal(d.totals.execution["playwright-ui"].failed, 1);
+  assert.equal(d.totals.execution["playwright-ui"].modulesRun, 1);
+  assert.deepEqual(d.totals.triage, { byClass: {}, bugClusters: [], unverified: [] }, "no triage.json yet");
+  assert.equal(d.modules[0].triage["playwright-ui"], null);
+});
+
+test("report data carries the triage's class counts and product-bug clusters from triage.json (D-058)", async () => {
+  const { root } = startRun();
+  const dir = "artifacts/acme/results/acme-run-1/contacts/playwright-ui";
+  put(root, `${dir}/triage.json`, JSON.stringify({
+    summary: { rows: 3, open: 0, clusters: 2, byClass: { "product-bug": 1, flaky: 1, "locator-drift": 1 } },
+    rows: [
+      { key: "ui:TC-contacts-1", class: "product-bug", cluster: "BUG-contacts-1", healable: false },
+      { key: "ui:TC-contacts-2", class: "flaky", cluster: "BUG-contacts-2", healable: false },
+      { key: "ui:TC-contacts-3", class: "locator-drift", healable: true },
+    ],
+    clusters: [{ id: "BUG-contacts-1", signature: "s1", rows: 1, ids: ["TC-contacts-1"] }, { id: "BUG-contacts-2", signature: "s2", rows: 1, ids: ["TC-contacts-2"] }],
+    verified: { results: null, knownIssues: null, overlay: null },
+  }));
+  put(root, `${dir}/triage-overlay.json`, JSON.stringify({ bugs: [{ cluster: "BUG-contacts-1", title: "Save loses the phone", severity: "major", evidence: ["e.png"] }] }));
+  const d = (await collect("acme", { root }));
+  const t = d.modules[0].triage["playwright-ui"];
+  assert.deepEqual([t.healable, t.byClass["locator-drift"]], [1, 1]);
+  assert.equal(t.verified, false, "the overlay changed after the stamp (written here after it)");
+  assert.deepEqual(d.totals.triage.byClass, { "product-bug": 1, flaky: 1, "locator-drift": 1 });
+  assert.deepEqual(d.totals.triage.bugClusters.map((c) => [c.module, c.framework, c.id, c.title, c.severity]), [["contacts", "playwright-ui", "BUG-contacts-1", "Save loses the phone", "major"]], "only product-bug clusters, with their drafts");
+});
+
+test("init creates a header-only clarifications.csv per module", () => {
+  const { root } = startRun();
+  const csv = readFileSync(path.join(paths("acme", root).module("deals"), "clarifications.csv"), "utf8");
+  assert.equal(csv.trim(), "ID,Module,Question,Steps to execute,Answer,Answer status,Clarification agent notes,Run ID");
+});
+
+test("a stage failing twice is exhausted, its dependents are blocked, and the report still becomes ready", async () => {
+  const { root } = startRun();
+  const fail = async (stage, module) => {
+    await setStage("acme", stage, module, "start", undefined, { root });
+    await setStage("acme", stage, module, "fail", "boom", { root });
+  };
+  await fail("knowledge");
+  assert.ok((await next("acme", { root })).some((s) => s.stage === "knowledge" && s.retry && s.attempt === 2));
+  await fail("knowledge");
+  assert.match((await setStage("acme", "knowledge", undefined, "start", undefined, { root })).errors[0], /failed 2 times/);
+  const st = await status("acme", { root });
+  assert.ok(st.stages.filter((s) => s.module === "contacts").every((s) => s.blocked), "everything downstream of knowledge is blocked");
+  await fail("playwright-repo");
+  await fail("playwright-repo");
+  assert.deepEqual((await next("acme", { root })).map((s) => s.stage), ["report"]);
+});

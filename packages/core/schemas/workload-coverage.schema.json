@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workload-coverage.schema.json",
+  "title": "The k6 workload coverage ledger (artifacts/<product>/modules/<m>/k6/workload-coverage.json), written only by scripts/workload.mjs: every human-approved @performance test case loaded, excluded with a reason, or deferred over k6.budget",
+  "type": "object",
+  "required": ["module", "runId", "mode", "types", "budget", "inputs", "counts", "loaded", "excluded", "deferred", "skippedTypes", "notes"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": "string", "description": "The run the workload was built in." },
+    "mode": { "enum": ["readonly", "full-run"] },
+    "types": { "type": "array", "items": { "$ref": "workload.schema.json#/$defs/type" }, "description": "The types the mode and the opt-ins allow; a case asking for another is capped (loaded[].requestedType)." },
+    "budget": { "type": "integer", "minimum": 1 },
+    "inputs": {
+      "type": "object",
+      "required": ["catalogue", "cases", "approvals", "overlay"],
+      "additionalProperties": false,
+      "description": "sha256 of each input file (null = missing): the api-discovery catalogue, testcases/coverage.json, the module's test case approvals, workload-overlay.json; plan and results (decision 16): api/plan.json and the playwright-api results.json used as functional evidence (null = none).",
+      "properties": { "catalogue": { "type": ["string", "null"] }, "cases": { "type": ["string", "null"] }, "approvals": { "type": ["string", "null"] }, "overlay": { "type": ["string", "null"] }, "plan": { "type": ["string", "null"] }, "results": { "type": ["string", "null"] } }
+    },
+    "counts": { "type": "object", "required": ["total", "loaded", "excluded", "deferred"], "additionalProperties": false, "properties": { "total": { "type": "integer" }, "loaded": { "type": "integer" }, "excluded": { "type": "integer" }, "deferred": { "type": "integer" } } },
+    "loaded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["case", "target", "endpoints", "type", "ids"],
+        "additionalProperties": false,
+        "properties": {
+          "case": { "$ref": "#/$defs/tc" },
+          "target": { "$ref": "#/$defs/target" },
+          "endpoints": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^EP-" } },
+          "type": { "$ref": "workload.schema.json#/$defs/type" },
+          "requestedType": { "$ref": "workload.schema.json#/$defs/type", "description": "The case's own type, when the mode or the opt-ins capped it (noted)." },
+          "ids": { "type": "array", "minItems": 1, "items": { "$ref": "workload.schema.json#/$defs/id" } }
+        }
+      }
+    },
+    "excluded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["case", "target", "reason", "detail"],
+        "additionalProperties": false,
+        "properties": {
+          "case": { "$ref": "#/$defs/tc" },
+          "target": { "$ref": "#/$defs/target" },
+          "reason": { "enum": ["unknown-endpoint", "unresolved-flow", "overlay-excluded", "mutating-readonly", "failed-functional", "blocked", "rate-limited", "no-safe-data"] },
+          "detail": { "type": "string", "minLength": 1 },
+          "citation": { "type": "string" }
+        }
+      }
+    },
+    "deferred": { "type": "array", "items": { "type": "object", "required": ["case", "target", "reason", "detail"], "additionalProperties": false, "properties": { "case": { "$ref": "#/$defs/tc" }, "target": { "$ref": "#/$defs/target" }, "reason": { "const": "budget" }, "detail": { "type": "string" } } } },
+    "skippedTypes": { "type": "array", "description": "A case's test type that could not be sized, and why (the case is then excluded as rate-limited).", "items": { "type": "object", "required": ["unit", "type", "reason", "detail"], "additionalProperties": false, "properties": { "unit": { "type": "string" }, "type": { "$ref": "workload.schema.json#/$defs/type" }, "reason": { "const": "rate-limited" }, "detail": { "type": "string" } } } },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "verified": { "type": "object", "description": "sha256 stamp written by a passing workload.mjs check (D-049)." }
+  },
+  "$defs": {
+    "tc": { "type": "string", "pattern": "^TC-[a-z0-9]+(-[a-z0-9]+)*-[1-9][0-9]*$" },
+    "target": { "type": "string", "description": "What the case names: an EP id, flow:<name> or mix:<name> (an overlay flow or mix), or '-' when it names neither." }
+  }
+}

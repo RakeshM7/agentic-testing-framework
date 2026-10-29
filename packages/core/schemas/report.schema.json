@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "report.schema.json",
+  "title": "results/<run>/report/report.json -- every number, table and chart of the run report, collected by scripts/report-data.mjs (G11). Data that is absent is never a silent zero: `missing` lists every absent source and a ledger without its file is {available: false, reason}. scripts/report.mjs renders the deck from this file only.",
+  "type": "object",
+  "required": ["schemaVersion", "product", "runId", "mode", "target", "generatedAt", "totals", "bugs", "queues", "coverage", "assumptions", "failedStages", "blockedStages", "awaitingApprovalStages", "incompleteStages", "missing", "modules"],
+  "additionalProperties": false,
+  "$defs": {
+    "int": { "type": "integer", "minimum": 0 },
+    "strings": { "type": "array", "items": { "type": "string" } },
+    "counts": {
+      "type": "object",
+      "required": ["total", "mapped", "excluded", "deferred", "pending"],
+      "additionalProperties": false,
+      "properties": { "total": { "$ref": "#/$defs/int" }, "mapped": { "$ref": "#/$defs/int" }, "excluded": { "$ref": "#/$defs/int" }, "deferred": { "$ref": "#/$defs/int" }, "pending": { "$ref": "#/$defs/int" } }
+    },
+    "approvals": {
+      "type": "object",
+      "required": ["approved", "rejected", "changes", "awaiting"],
+      "additionalProperties": false,
+      "properties": { "approved": { "$ref": "#/$defs/int" }, "rejected": { "$ref": "#/$defs/int" }, "changes": { "$ref": "#/$defs/int" }, "awaiting": { "$ref": "#/$defs/int" } }
+    },
+    "execution": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "flaky", "skipped", "modulesRun", "modulesNotRun", "modulesNoResults"],
+      "additionalProperties": false,
+      "properties": { "total": { "$ref": "#/$defs/int" }, "passed": { "$ref": "#/$defs/int" }, "failed": { "$ref": "#/$defs/int" }, "flaky": { "$ref": "#/$defs/int" }, "skipped": { "$ref": "#/$defs/int" }, "modulesRun": { "$ref": "#/$defs/int" }, "modulesNotRun": { "$ref": "#/$defs/int" }, "modulesNoResults": { "$ref": "#/$defs/int" } }
+    },
+    "results": {
+      "oneOf": [
+        { "type": "null", "description": "no results.json for this module and framework (listed in `missing`)" },
+        {
+          "type": "object",
+          "required": ["status", "totals"],
+          "properties": {
+            "status": { "enum": ["ran", "not-run"] },
+            "reason": { "type": "string" },
+            "durationMs": { "type": "number" },
+            "totals": { "type": "object", "required": ["total", "passed", "failed", "flaky", "skipped"] }
+          }
+        }
+      ]
+    },
+    "triage": {
+      "oneOf": [
+        { "type": "null", "description": "no triage.json for this module and framework" },
+        {
+          "type": "object",
+          "required": ["verified", "rows", "open", "byClass", "healable", "bugClusters"],
+          "properties": { "verified": { "type": "boolean" }, "rows": { "$ref": "#/$defs/int" }, "open": { "$ref": "#/$defs/int" }, "healable": { "$ref": "#/$defs/int" }, "byClass": { "type": "object", "additionalProperties": { "$ref": "#/$defs/int" } }, "bugClusters": { "type": "array" } }
+        }
+      ]
+    },
+    "bug": {
+      "type": "object",
+      "required": ["module", "framework", "id", "ids", "signature", "title", "severity", "evidence", "affected", "draft"],
+      "properties": {
+        "module": { "type": "string" },
+        "framework": { "enum": ["playwright-ui", "playwright-api", "k6"] },
+        "id": { "type": "string", "pattern": "^BUG-" },
+        "ids": { "$ref": "#/$defs/strings" },
+        "signature": { "type": "string" },
+        "title": { "type": ["string", "null"] },
+        "severity": { "enum": ["critical", "major", "minor", "trivial", null] },
+        "evidence": { "$ref": "#/$defs/strings" },
+        "affected": { "$ref": "#/$defs/strings" },
+        "draft": { "type": "boolean", "description": "false: the triager wrote no bug draft for this cluster (title, severity and evidence are then null or empty)" }
+      }
+    },
+    "stageRef": {
+      "type": "object",
+      "required": ["key", "stage", "module"],
+      "properties": { "key": { "type": "string" }, "stage": { "type": "string" }, "module": { "type": ["string", "null"] } }
+    }
+  },
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "product": { "type": "string" },
+    "runId": { "type": "string" },
+    "mode": { "enum": ["readonly", "full-run"] },
+    "target": { "type": "string" },
+    "environment": { "type": "string", "description": "the environment the run worked in (D-081); default when none was named" },
+    "provenance": { "type": ["object", "null"], "description": "run.json provenance (D-077): the framework commit, browser server, models, templates digest and Node.js the run was made with, and where each framework config file came from (config); null for runs that predate it", "properties": { "config": { "type": "array", "items": { "$ref": "run.schema.json#/$defs/configSource" } } } },
+    "customConfig": {
+      "type": ["object", "null"],
+      "description": "The framework config this run did not take from the framework's own copy (docs/packaging.md §3.4), derived from run.json by scripts/report-data.mjs customConfig. permissions: the safety ceiling of every agent, set apart and shown as a notice on the title slide: overlay (atf/permissions.yaml merged over the framework's copy), ejected (atf/config/permissions.yaml replaces it) or run-config (the run-config's own permissions_file, run.json permissionsPath); null when it is the framework's own copy. other: the overlaid or ejected models, platforms, mcp and hooks files. null for a run that predates config provenance.",
+      "required": ["permissions", "other"],
+      "additionalProperties": false,
+      "properties": {
+        "permissions": {
+          "type": ["object", "null"],
+          "required": ["source", "files"],
+          "additionalProperties": false,
+          "properties": { "source": { "enum": ["overlay", "ejected", "run-config"] }, "files": { "type": "array", "minItems": 1, "items": { "type": "string" } } }
+        },
+        "other": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "source", "files"],
+            "additionalProperties": false,
+            "properties": { "name": { "enum": ["models.yaml", "platforms.yaml", "mcp.yaml", "hooks.yaml"] }, "source": { "enum": ["overlay", "ejected"] }, "files": { "type": "array", "minItems": 1, "items": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "generatedAt": { "type": "string" },
+    "totals": {
+      "type": "object",
+      "required": ["modules", "modulesExplored", "clarifications", "testcases", "approvals", "playwrightUiSpecs", "playwrightApiSpecs", "k6Scripts", "execution", "triage", "coverage", "assumptions", "stages", "missing"],
+      "additionalProperties": false,
+      "properties": {
+        "modules": { "$ref": "#/$defs/int" },
+        "modulesExplored": { "$ref": "#/$defs/int" },
+        "clarifications": { "type": "object", "required": ["total", "answered", "unconfirmed", "awaitingApproval"], "additionalProperties": false, "properties": { "total": { "$ref": "#/$defs/int" }, "answered": { "$ref": "#/$defs/int" }, "unconfirmed": { "$ref": "#/$defs/int" }, "awaitingApproval": { "$ref": "#/$defs/int" } } },
+        "testcases": { "$ref": "#/$defs/int" },
+        "approvals": { "$ref": "#/$defs/approvals" },
+        "playwrightUiSpecs": { "$ref": "#/$defs/int" },
+        "playwrightApiSpecs": { "$ref": "#/$defs/int" },
+        "k6Scripts": { "$ref": "#/$defs/int" },
+        "execution": { "type": "object", "required": ["playwright-ui", "playwright-api", "k6"], "additionalProperties": false, "properties": { "playwright-ui": { "$ref": "#/$defs/execution" }, "playwright-api": { "$ref": "#/$defs/execution" }, "k6": { "$ref": "#/$defs/execution" } } },
+        "triage": { "type": "object", "required": ["byClass", "bugClusters", "unverified"], "additionalProperties": false, "properties": { "byClass": { "type": "object", "additionalProperties": { "$ref": "#/$defs/int" } }, "bugClusters": { "type": "array", "items": { "$ref": "#/$defs/bug" } }, "unverified": { "type": "array", "items": { "type": "object", "required": ["module", "framework"] } } } },
+        "coverage": { "$ref": "#/$defs/counts" },
+        "assumptions": { "type": "object", "required": ["k6Thresholds", "assumptionCases", "weakRuleFacts", "k6Leftovers", "k6UntrackedCreates"], "additionalProperties": false, "properties": { "k6Thresholds": { "$ref": "#/$defs/int" }, "assumptionCases": { "$ref": "#/$defs/int" }, "weakRuleFacts": { "$ref": "#/$defs/int" }, "k6Leftovers": { "$ref": "#/$defs/int" }, "k6UntrackedCreates": { "$ref": "#/$defs/int" } } },
+        "stages": { "type": "object", "required": ["failed", "blocked", "awaitingApproval"], "additionalProperties": false, "properties": { "failed": { "$ref": "#/$defs/int" }, "blocked": { "$ref": "#/$defs/int" }, "awaitingApproval": { "$ref": "#/$defs/int" }, "notChosen": { "$ref": "#/$defs/int", "description": "stages not chosen for this run (never failed or blocked)" } } },
+        "missing": { "$ref": "#/$defs/int", "description": "the number of entries of the top-level `missing`" },
+        "effort": { "type": "object", "required": ["stageMs", "stepMs", "spawns", "tokens"], "additionalProperties": false, "properties": { "stageMs": { "$ref": "#/$defs/int" }, "stepMs": { "$ref": "#/$defs/int" }, "spawns": { "$ref": "#/$defs/int" }, "tokens": { "$ref": "#/$defs/int" } } }
+      }
+    },
+    "bugs": { "type": "array", "description": "product-bug clusters, most severe first", "items": { "$ref": "#/$defs/bug" } },
+    "queues": {
+      "type": "object",
+      "required": ["testcaseApprovals", "clarifications"],
+      "additionalProperties": false,
+      "properties": {
+        "testcaseApprovals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["module", "built", "approvalCsv", "approved", "rejected", "changes", "awaiting"],
+            "properties": { "module": { "type": "string" }, "built": { "type": "boolean" }, "approvalCsv": { "type": ["string", "null"], "description": "repo-relative path of the sheet the human fills in; null until the cases are built" }, "approved": { "$ref": "#/$defs/int" }, "rejected": { "$ref": "#/$defs/int" }, "changes": { "$ref": "#/$defs/int" }, "awaiting": { "$ref": "#/$defs/int" } }
+          }
+        },
+        "clarifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["module", "id", "kind", "question", "nextStep", "file"],
+            "properties": { "module": { "type": "string" }, "id": { "type": "string" }, "kind": { "enum": ["unanswered", "awaiting-approval"] }, "question": { "type": "string" }, "nextStep": { "type": ["string", "null"] }, "file": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["ledgers"],
+      "additionalProperties": false,
+      "properties": {
+        "ledgers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ledger", "module", "available", "reason"],
+            "properties": {
+              "ledger": { "type": "string" },
+              "module": { "type": ["string", "null"] },
+              "available": { "type": "boolean" },
+              "reason": { "type": ["string", "null"], "description": "why the ledger is not available" },
+              "counts": { "$ref": "#/$defs/counts" },
+              "byTechnique": { "type": "object" },
+              "deferred": { "type": "array", "items": { "type": "object", "required": ["id", "detail"] } },
+              "excluded": { "type": "array", "items": { "type": "object", "required": ["id", "reason", "detail"] } }
+            },
+            "if": { "properties": { "available": { "const": true } } },
+            "then": { "required": ["counts", "deferred", "excluded"] }
+          }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "object",
+      "required": ["k6Thresholds", "assumptionCases", "ruleFacts", "knownLimits", "k6Leftovers", "k6Untracked"],
+      "additionalProperties": false,
+      "properties": {
+        "k6Thresholds": { "type": "array", "items": { "type": "object", "required": ["module", "scenario", "script", "metric", "limit"] } },
+        "assumptionCases": { "type": "array", "items": { "type": "object", "required": ["module", "id", "assumptions"] } },
+        "ruleFacts": { "type": "array", "items": { "type": "object", "required": ["module", "evidence", "text"], "properties": { "evidence": { "enum": ["agent-capture", "stale"] } } } },
+        "knownLimits": { "type": "array", "items": { "type": "object", "required": ["id", "text", "source"] } },
+        "k6Leftovers": { "type": "array", "items": { "type": "object", "required": ["type", "ref"] } },
+        "k6Untracked": { "type": "array", "items": { "type": "object", "required": ["module", "script", "retry", "file", "creates", "types"] } }
+      }
+    },
+    "failedStages": { "type": "array", "items": { "type": "object", "required": ["key", "error", "attempts"] } },
+    "blockedStages": { "type": "array", "items": { "$ref": "#/$defs/stageRef" } },
+    "awaitingApprovalStages": { "type": "array", "items": { "$ref": "#/$defs/stageRef" } },
+    "incompleteStages": { "type": "array", "items": { "type": "object", "required": ["key", "stage", "status", "problems"] } },
+    "steps": { "type": "array", "description": "each step of the menu and whether this run chose it; the deck shows the rest as not chosen for this run", "items": { "type": "object", "required": ["step", "chosen"], "additionalProperties": false, "properties": { "step": { "enum": ["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"] }, "chosen": { "type": "boolean" } } } },
+    "notChosenStages": { "type": "array", "description": "stages outside this run's chosen set: never failed, blocked or incomplete", "items": { "type": "object", "required": ["key", "stage", "module"], "properties": { "key": { "type": "string" }, "stage": { "type": "string" }, "module": { "type": ["string", "null"] }, "satisfiedBy": { "enum": ["earlier-run", "import"], "description": "what stood in for it for the stages that need it" } } } },
+    "effort": { "type": "object", "description": "time and effort (D-079, scripts/lib/telemetry.mjs): stage durations and attempts, domain step durations, agent spawns with what the host reported", "required": ["stages", "steps", "agents", "totals", "spawnsRecorded"], "additionalProperties": false, "properties": { "stages": { "type": "array", "items": { "type": "object", "required": ["key", "status", "attempts", "durationMs"], "properties": { "key": { "type": "string" }, "status": { "type": "string" }, "attempts": { "$ref": "#/$defs/int" }, "durationMs": { "type": ["integer", "null"], "minimum": 0 } } } }, "steps": { "type": "array" }, "agents": { "type": "array" }, "spawnsRecorded": { "type": "boolean" }, "totals": { "type": "object", "required": ["stageMs", "stepMs", "spawns", "tokens"], "additionalProperties": false, "properties": { "stageMs": { "$ref": "#/$defs/int" }, "stepMs": { "$ref": "#/$defs/int" }, "spawns": { "$ref": "#/$defs/int" }, "tokens": { "$ref": "#/$defs/int" } } } } },
+    "missing": { "type": "array", "description": "every data source that was absent or unreadable", "items": { "type": "object", "required": ["section", "module", "reason"], "additionalProperties": false, "properties": { "section": { "type": "string" }, "module": { "type": ["string", "null"] }, "reason": { "type": "string" } } } },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["module", "explored", "clarifications", "testcases", "approvals", "playwrightUiSpecs", "playwrightApiSpecs", "k6Scripts", "k6Planned", "results", "triage"],
+        "properties": {
+          "module": { "type": "string" },
+          "explored": { "type": "boolean" },
+          "clarifications": { "type": "object", "required": ["available", "total", "answered", "unconfirmed", "awaitingApproval"] },
+          "testcases": { "type": ["integer", "null"], "description": "null: no test case summary (listed in `missing`)" },
+          "approvals": { "$ref": "#/$defs/approvals" },
+          "playwrightUiSpecs": { "$ref": "#/$defs/int" },
+          "playwrightApiSpecs": { "$ref": "#/$defs/int" },
+          "k6Scripts": { "$ref": "#/$defs/int" },
+          "k6Planned": { "type": ["integer", "null"], "description": "scenarios of workload.json; null: no workload (listed in `missing`)" },
+          "results": { "type": "object", "required": ["playwright-ui", "playwright-api", "k6"], "properties": { "playwright-ui": { "$ref": "#/$defs/results" }, "playwright-api": { "$ref": "#/$defs/results" }, "k6": { "$ref": "#/$defs/results" } } },
+          "triage": { "type": "object", "required": ["playwright-ui", "playwright-api", "k6"], "properties": { "playwright-ui": { "$ref": "#/$defs/triage" }, "playwright-api": { "$ref": "#/$defs/triage" }, "k6": { "$ref": "#/$defs/triage" } } }
+        }
+      }
+    }
+  }
+}

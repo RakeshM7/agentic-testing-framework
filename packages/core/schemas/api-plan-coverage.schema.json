@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-plan-coverage.schema.json",
+  "title": "Coverage of a module's API test plan (artifacts/<product>/modules/<m>/api/plan-coverage.json), written only by scripts/api-plan.mjs (D-046)",
+  "type": "object",
+  "required": ["module", "catalogue", "discovery", "budget", "levels", "counts", "mapped", "excluded", "deferred", "pending", "questions", "retired"],
+  "additionalProperties": false,
+  "properties": {
+    "module": { "type": "string" },
+    "catalogue": { "type": ["string", "null"], "description": "sha256 of discovered-endpoints.json the plan was built from." },
+    "discovery": { "type": "object", "required": ["status"], "properties": { "status": { "type": "string" }, "blockedReason": { "type": "string" } } },
+    "budget": { "type": "integer", "minimum": 1 },
+    "levels": { "type": "object", "required": ["reached"], "description": "Martin-Lopez et al. test coverage levels TCL1-TCL7 reached by the plan." },
+    "counts": { "type": "object" },
+    "mapped": { "type": "array", "items": { "type": "object", "required": ["item", "scenarios"], "additionalProperties": false, "properties": { "item": { "type": "string" }, "scenarios": { "type": "array", "items": { "type": "string", "pattern": "^API-" } } } } },
+    "excluded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["item", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "item": { "type": "string" },
+          "reason": { "enum": ["deduped", "not_applicable", "unsupported_schema", "unreachable_status", "needs_identity", "auth_unknown", "public", "no_link", "unsafe_probe", "documentation_finding", "not_testable", "out_of_scope", "covered_elsewhere", "needs_data", "spec_wrong"] },
+          "detail": { "type": "string" },
+          "citation": { "type": "string" }
+        }
+      }
+    },
+    "deferred": { "type": "array", "description": "Items whose scenarios were over api.plan_budget (D-050): not planned this run, kept in the ledger; check counts them as resolved and reports them.", "items": { "type": "object", "required": ["item", "reason", "detail"], "additionalProperties": false, "properties": { "item": { "type": "string" }, "reason": { "const": "budget" }, "detail": { "type": "string" } } } },
+    "pending": { "type": "array", "description": "Items the planner must still resolve; check fails while any remain.", "items": { "type": "object", "required": ["item", "why"], "additionalProperties": false, "properties": { "item": { "type": "string" }, "why": { "type": "string" } } } },
+    "questions": { "type": "array", "items": { "type": "object", "required": ["id", "fault", "question", "answered"], "additionalProperties": false, "properties": { "id": { "type": "string" }, "fault": { "type": "string" }, "question": { "type": "string" }, "answered": { "type": "boolean" } } } },
+    "retired": { "type": "array", "items": { "type": "string" } },
+    "verified": { "type": "object", "required": ["plan", "catalogue"], "additionalProperties": false, "properties": { "plan": { "type": "string" }, "catalogue": { "type": ["string", "null"] } }, "description": "Stamped by api-plan.mjs check when the plan passed; orchestration.mjs next requires it." }
+  }
+}

@@ -1,0 +1,490 @@
+{
+  "cases": [
+    {
+      "key": "contacts-1",
+      "title": "Contacts boolean item 1 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-1"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-2",
+      "title": "Contacts boolean item 2 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-2"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-3",
+      "title": "Contacts enum item 3 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-3"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-4",
+      "title": "Contacts enum item 4 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-4"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-5",
+      "title": "Contacts enum item 5 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-5"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-6",
+      "title": "Contacts enum item 6 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-6"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-7",
+      "title": "Contacts enum item 7 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-7"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-8",
+      "title": "Contacts enum item 8 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-8"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-9",
+      "title": "Contacts ep item 9 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-9"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-10",
+      "title": "Contacts ep item 10 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-10"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-11",
+      "title": "Contacts required item 11 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-11"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-12",
+      "title": "Contacts ep item 12 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-12"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-13",
+      "title": "Contacts flow item 13 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-13"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-14",
+      "title": "Contacts rule item 14 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-14"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-15",
+      "title": "Contacts rule item 15 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-15"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-16",
+      "title": "Contacts state-transition item 16 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-16"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-17",
+      "title": "Contacts state-transition item 17 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-17"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-18",
+      "title": "Contacts state-transition item 18 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-18"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-19",
+      "title": "Contacts state-transition item 19 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-19"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-20",
+      "title": "Contacts state-transition item 20 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-20"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-21",
+      "title": "Contacts state-transition item 21 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-21"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-22",
+      "title": "Contacts state-transition item 22 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-22"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-23",
+      "title": "Contacts state-transition item 23 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-23"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-24",
+      "title": "Contacts state-transition item 24 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-24"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-25",
+      "title": "Contacts state-transition item 25 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-25"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-26",
+      "title": "Contacts state-transition item 26 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-26"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    },
+    {
+      "key": "contacts-27",
+      "title": "Contacts state-transition item 27 behaves as observed",
+      "type": "functional",
+      "priority": "p2",
+      "action": "the user opens the New contact dialog",
+      "steps": [
+        "Open Contacts",
+        "Click New contact"
+      ],
+      "expected": "the New contact dialog opens",
+      "covers": [
+        "CI-contacts-27"
+      ],
+      "evidence": [
+        "observation:explore/flows/create-contact.md"
+      ]
+    }
+  ]
+}

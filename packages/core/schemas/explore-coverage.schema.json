@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "explore-coverage.schema.json",
+  "title": "explore/coverage.json: the exploration's ledgers (frontier, knowledge open points, untried inputs), the questions and their CSV ids, and the verified stamp. Written only by scripts/explore.mjs (D-052), on scripts/lib/coverage.mjs statuses.",
+  "type": "object",
+  "required": ["module", "runId", "mode", "budgets", "frontier", "kq", "inputs", "questions", "liveEntities"],
+  "additionalProperties": false,
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "required": ["total", "mapped", "excluded", "pending", "deferred"],
+      "properties": { "total": { "type": "integer" }, "mapped": { "type": "integer" }, "excluded": { "type": "integer" }, "pending": { "type": "integer" }, "deferred": { "type": "integer" } }
+    },
+    "status": { "enum": ["mapped", "excluded", "pending", "deferred"] }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": "string" },
+    "mode": { "enum": ["readonly", "full-run"] },
+    "budgets": { "$ref": "explore-model.schema.json#/$defs/budgets" },
+    "frontier": {
+      "type": "object",
+      "required": ["summary", "items"],
+      "properties": {
+        "summary": { "$ref": "#/$defs/summary" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "state", "role", "name", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^FR-" },
+              "state": { "type": ["string", "null"] },
+              "role": { "type": "string" },
+              "name": { "type": "string" },
+              "status": { "$ref": "#/$defs/status" },
+              "refs": { "type": "array", "items": { "type": "string" }, "description": "mapped: the states the item led to." },
+              "reason": { "type": "string", "description": "excluded: a frontier reason code; deferred: budget." },
+              "detail": { "type": "string" },
+              "citation": { "type": "string" },
+              "by": { "enum": ["agent", "script"] }
+            }
+          }
+        }
+      }
+    },
+    "kq": {
+      "type": "object",
+      "required": ["summary", "items"],
+      "properties": {
+        "summary": { "$ref": "#/$defs/summary" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "scope", "text", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^KQ-" },
+              "scope": { "enum": ["module", "product"] },
+              "text": { "type": "string" },
+              "category": { "type": "string" },
+              "status": { "$ref": "#/$defs/status" },
+              "outcome": { "enum": ["observed", "asked", "dismissed"] },
+              "refs": { "type": "array", "items": { "type": "string" } },
+              "reason": { "const": "dismissed" },
+              "detail": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "required": ["summary", "items"],
+      "properties": {
+        "summary": { "$ref": "#/$defs/summary" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "state", "role", "name", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^FR-" },
+              "state": { "type": ["string", "null"] },
+              "role": { "type": "string" },
+              "name": { "type": "string" },
+              "status": { "$ref": "#/$defs/status" },
+              "refs": { "type": "array", "items": { "type": "string" }, "description": "The CSV ids of the questions that ask about it." },
+              "reason": { "const": "explained" },
+              "detail": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["question", "kq", "items", "csv"],
+        "additionalProperties": false,
+        "properties": {
+          "question": { "type": "string" },
+          "kq": { "type": "array", "items": { "type": "string" } },
+          "items": { "type": "array", "items": { "type": "string" } },
+          "csv": { "type": ["string", "null"], "description": "The clarifications.csv id it was appended as; null = not appended." }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "required": ["kind", "scenarios"],
+      "additionalProperties": false,
+      "description": "Scenario mode (scenarios.json): only these scenarios' flows were explored; every other control is deferred (scenario-scope).",
+      "properties": {
+        "kind": { "const": "scenarios" },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^SC-" },
+              "title": { "type": "string" },
+              "status": { "enum": ["flow", "explained", "pending"] },
+              "flows": { "type": "array", "items": { "type": "string" } },
+              "reason": { "type": "string" },
+              "detail": { "type": "string" },
+              "citation": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "liveEntities": {
+      "type": "array",
+      "description": "Entities this run created while exploring that are still live in state/ledger.jsonl: reported, not a failure (D-005 limits deletes; it does not require them).",
+      "items": { "type": "object", "required": ["type", "ref"], "properties": { "type": { "type": "string" }, "ref": { "type": "string" } } }
+    },
+    "verified": {
+      "type": "object",
+      "description": "Stamped by explore.mjs check when every rule passed: the sha256 of model, sitemap, interactions, inventory, overlay, questions, summary, log.jsonl, the four registries and both knowledge open-point files, plus digests of the flows and of the clarifications.csv rows the questions and KQs rely on. The explore stage's done refuses a missing or stale stamp.",
+      "additionalProperties": { "type": ["string", "null"] }
+    }
+  }
+}

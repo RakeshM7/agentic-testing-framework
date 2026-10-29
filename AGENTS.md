@@ -1,26 +1,44 @@
 # AGENTS.md
 
-Instructions for GitHub Copilot's cloud coding agent (and any other AGENTS.md-aware agent) working in this repo. This is a condensed, repo-wide brief — the authoritative, per-persona detail lives in `.github/agents/*.agent.md` (symlinked from `copilot-agents/`) and `docs/conventions.md`.
+Brief for any agent working in this repo: Claude Code, every GitHub Copilot surface (VS Code Copilot Chat, Copilot CLI, the cloud coding agent) and Google Antigravity (the App, the `agy` CLI, the IDE) read this file. It is a pointer, not a copy of the pipeline logic.
 
 ## What this repo is
 
-Seven testing-pipeline personas (explore, requirements-clarification, testcase-generation, Playwright automation, API testing, feedback-implementation, plus an orchestrator) defined twice: once for Claude Code (`claude-agents/`, discovered via the `.claude/agents` symlink) and once for GitHub Copilot (`copilot-agents/`, discovered via the `.github/agents` symlink). Both flavors read and write the exact same shared artifact tree — see `docs/conventions.md` for the full contract. Don't duplicate pipeline logic into this file; it's a pointer, not a third copy.
+A platform-neutral agentic testing pipeline. It has 34 small agents in three layers: main orchestrator → domain orchestrators → workers. A deterministic scripts layer owns run state, the artifact contract, the clarifications CSV, the ledger and the safety guard.
 
-## If you're picking up an issue assigned here
+Each agent is written **once**, in `packages/core/agents/<name>.md`. `npm run build-agents` generates the platform files from those sources and `packages/core/config/`:
+- `.claude/agents/` for Claude Code;
+- `.github/agents/` for Copilot;
+- `.agents/agents/` for Antigravity;
+- the MCP configs and the hook registrations.
 
-1. Read `docs/conventions.md` first — artifact paths, the pipeline stage order, and the feedback-file contract are all defined there and apply regardless of which flavor invoked you.
-2. Check `config/run-config.example.yaml` (or a target-specific config under `config/`) for the run this issue concerns. `authorizations.mode` is the master safety switch — see the rule below before doing anything against a live target.
-3. `.github/agents/orchestrator-agent.agent.md` is the entry point for a full pipeline run if one hasn't started yet; otherwise, invoke the single persona the issue actually calls for.
-4. Live browser crawling (`explore-agent`) needs an interactive Playwright MCP session and is scoped `target: vscode` — it does not run in this sandboxed cloud environment. If an issue needs fresh exploration of a target, ask for it to be run interactively in VS Code first and its artifacts committed, rather than attempting it here.
+Never edit a generated file. Hosts and setup are covered in `packages/core/docs/platforms.md`.
+
+## Read first
+
+1. **`docs/decisions.md`: before you change ANY file**, except run output and generated test code (`artifacts/`, `playwright-tests/`, `k6-tests/`, `feedback/`). Follow the rules at its top. Don't read the whole log: run `node packages/core/scripts/decisions.mjs for <files you will change> --full` for the entries that govern them, and `node packages/core/scripts/decisions.mjs index` to scan the rest by title (D-082). If your change would revert, weaken, bypass or contradict a recorded decision, stop and get the user's explicit confirmation first. As a subagent, or without a human to ask, report the conflict instead of making the change. The hook will also ask the user before any edit to a file a decision governs.
+2. `packages/core/docs/artifact-contract.md`: layout v2 (product-level), state, stages, clarifications CSV, ledger, safety, scripts.
+3. `docs/agent-architecture.md`: the 34-agent design.
+4. `packages/core/config/permissions.yaml`: what each agent may do.
+5. `packages/core/docs/agent-handoffs.md`, `packages/core/docs/playwright-conventions.md`, `packages/core/docs/k6-conventions.md`: formats and code rules.
+6. `packages/core/docs/conventions.md`: framework-wide rules and the feedback contract.
+7. `packages/core/docs/platforms.md` and `architecture.md`: hosts, and how the pieces fit.
 
 ## Hard safety rule — do not loosen this
 
-`authorizations.mode` in a run-config gates every mutating/destructive action across every agent, in both flavors: `readonly` (default) is non-mutating everywhere; `full-run` must be set explicitly, per target, by a human authorized to test that target — never inferred or assumed. Even under `full-run`, destructive actions (delete/cancel/remove) are scoped to entities that run's own agent created (tracked in each stage's `created-entities.json`) — never pre-existing or another user's data. Full detail: `docs/conventions.md`'s "Standing safety guardrails".
+`authorizations.mode` (resolved once into `artifacts/<product>/state/run.json`) caps every agent:
+- `readonly` (the default) is non-mutating everywhere, whatever `packages/core/config/permissions.yaml` says.
+- `full-run` must be set explicitly, per target, by a human authorized to test that target, and is never inferred. Then each agent gets exactly the ceiling in `packages/core/config/permissions.yaml`.
+- Even under `full-run`, destructive actions (delete/cancel/remove) are scoped to entities this run created, recorded in `state/ledger.jsonl` (`packages/core/scripts/ledger.mjs`). Never pre-existing data, and never another user's.
+- Some hosts can't tell the guard which agent is calling: Copilot CLI, VS Code chat on its Copilot CLI engine, the cloud coding agent and Antigravity. On those hosts a `full-run` call gets the run's combined ceiling instead, which is what at least one of the run's agents may do (`docs/decisions.md` D-035). On Antigravity, an unmapped tool (its built-in browser, among others) is denied during every run, readonly included (D-101).
 
-## Model / provider configuration
+The guard enforces all of this in code, keyed on the calling agent: `packages/core/scripts/lib/guard.mjs`, reached through the single hook entry `packages/core/scripts/hooks/pretooluse.mjs` on every host. Do not bypass or weaken it.
 
-Which model each agent uses, per platform, is controlled centrally by `config/models.yaml` and applied via `node scripts/sync-agent-models.mjs`. Never hand-edit the `model:` frontmatter line in a `claude-agents/*.md` or `copilot-agents/*.agent.md` file directly — the next sync overwrites it.
+## Working rules
 
-## Secrets
-
-Never put credential values inline in a prompt, issue, or commit. Every agent that needs to authenticate against a target reads credentials from a `.env`-style file path it's given — only the path is ever passed around.
+- Deterministic work belongs in `packages/core/scripts/`, with tests (`npm test`), not in prompts: run state, next-stage, locks, ledger, clarifications CSV ids/dedupe, permission checks.
+- Change an agent only in `packages/core/agents/<name>.md`, then run `npm run build-agents`. Its tools, subagents, model and MCP servers come from `packages/core/config/permissions.yaml`, `packages/core/config/models.yaml`, `packages/core/config/platforms.yaml` and `packages/core/config/mcp.yaml`. `npm run check` (CI too) fails on drift or a hand-edited generated file.
+- Agent bodies stay platform-neutral: never name a platform's tool in them (the build rejects it).
+- Never put credential values in a prompt, issue or commit; agents get a path to a `.env`-style file only.
+- `artifacts/` is generated and git-ignored.
+- Live browser work (`module-explorer`, `clarification-explorer`) needs an interactive Playwright MCP session on Claude Code or VS Code (on Antigravity, once its spike verifies it: `docs/antigravity-spike/`). Never use a host's built-in browser. Don't attempt it from a sandboxed environment or the cloud coding agent.

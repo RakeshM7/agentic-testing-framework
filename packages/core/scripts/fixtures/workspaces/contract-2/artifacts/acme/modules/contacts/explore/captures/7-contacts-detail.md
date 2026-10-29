@@ -1,0 +1,41 @@
+### Page state
+- Page URL: https://app.acme.test/contacts/101
+- Page Title: Jane Doe - Acme CRM
+- Page Snapshot:
+```yaml
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - link "Acme CRM" [ref=e4] [cursor=pointer]:
+      - /url: /contacts
+    - navigation "Main" [ref=e5]:
+      - list [ref=e6]:
+        - listitem [ref=e7]:
+          - link "Contacts" [ref=e8] [cursor=pointer]:
+            - /url: /contacts
+        - listitem [ref=e9]:
+          - link "Deals" [ref=e10] [cursor=pointer]:
+            - /url: /deals
+        - listitem [ref=e11]:
+          - link "Help" [ref=e12] [cursor=pointer]:
+            - /url: https://help.vendor.test/contacts
+    - button "Sign out" [ref=e13] [cursor=pointer]
+  - main [ref=e14]:
+    - navigation "Breadcrumb" [ref=e68]:
+      - list [ref=e69]:
+        - listitem [ref=e75]:
+          - link "Contacts" [ref=e76] [cursor=pointer]:
+            - /url: /contacts
+        - listitem [ref=e77]:
+          - link "Jane Doe" [ref=e78] [cursor=pointer]:
+            - /url: /contacts/101
+    - link "Back to contacts" [ref=e70] [cursor=pointer]:
+      - /url: /contacts
+    - heading "Jane Doe" [level=1] [ref=e71]
+    - button "Assign to Jane Doe" [ref=e79] [cursor=pointer]
+    - 'heading "Owner: Me" [level=2] [ref=e72]'
+    - button "Edit" [ref=e73] [cursor=pointer]
+    - button "Delete" [ref=e74] [cursor=pointer]
+  - contentinfo [ref=e46]:
+    - link "Privacy" [ref=e47] [cursor=pointer]:
+      - /url: /privacy
+```

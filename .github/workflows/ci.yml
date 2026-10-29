@@ -1,0 +1,29 @@
+# Every push and PR: generated agent/MCP files match their sources (no hand edits, no drift), the decision log is
+# consistent, and the scripts test suite passes -- on Linux, macOS and Windows, the systems clients run (D-087).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      # the generated files and the decision log are compared byte for byte: check them out as committed (LF)
+      - if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check

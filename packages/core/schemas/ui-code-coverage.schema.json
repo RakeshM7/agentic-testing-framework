@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ui-code-coverage.schema.json",
+  "title": "ui-code/coverage.json: the module's UI code ledger, written only by scripts/ui-code.mjs (build; check adds the verified stamps, D-055). Every test case ends mapped (its test in the cases spec), excluded (not approved, @api, or parked) or deferred (over testcases.max_cases); every page template mapped (its page object) or excluded (not touched); every dialog component mapped.",
+  "type": "object",
+  "required": ["module", "runId", "maxCases", "summary", "items", "problems", "built", "verified"],
+  "additionalProperties": false,
+  "$defs": {
+    "stamp": { "type": ["object", "null"], "additionalProperties": { "type": ["string", "null"] } }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": ["string", "null"] },
+    "maxCases": { "type": "integer", "minimum": 1 },
+    "summary": {
+      "type": "object",
+      "required": ["total", "mapped", "excluded", "pending", "deferred"],
+      "additionalProperties": false,
+      "properties": { "total": { "type": "integer" }, "mapped": { "type": "integer" }, "excluded": { "type": "integer" }, "pending": { "type": "integer" }, "deferred": { "type": "integer" } }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "label", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "A TC id, a PG id, or PG-<m>-<n>#dialog:<name>." },
+          "kind": { "enum": ["case", "page", "dialog"] },
+          "label": { "type": "string" },
+          "status": { "enum": ["mapped", "excluded", "pending", "deferred"] },
+          "refs": { "type": "array", "items": { "type": "string" }, "description": "Files relative to playwright-tests/<product>/." },
+          "reason": { "type": "string" },
+          "detail": { "type": "string" }
+        },
+        "allOf": [
+          { "if": { "properties": { "status": { "const": "mapped" } } }, "then": { "required": ["refs"] } },
+          { "if": { "properties": { "status": { "const": "excluded" } } }, "then": { "required": ["reason", "detail"], "properties": { "reason": { "enum": ["api-side", "not-approved", "not-touched", "parked"] } } } },
+          { "if": { "properties": { "status": { "const": "deferred" } } }, "then": { "required": ["reason", "detail"], "properties": { "reason": { "const": "budget" } } } }
+        ]
+      }
+    },
+    "problems": { "type": "array", "items": { "type": "string" } },
+    "parked": {
+      "type": "array",
+      "description": "Approved cases parked in the cases spec with test.fixme(true, <reason>) as the first statement of their first step: not covered (their ledger items are excluded with reason parked); the gate reports each as a minor finding.",
+      "items": { "type": "object", "required": ["id", "reason"], "additionalProperties": false, "properties": { "id": { "type": "string" }, "reason": { "type": "string" } } }
+    },
+    "built": {
+      "type": "object",
+      "required": ["inputs"],
+      "properties": { "inputs": { "type": "object", "additionalProperties": { "type": ["string", "null"] } } }
+    },
+    "verified": {
+      "type": "object",
+      "required": ["pages", "tests"],
+      "additionalProperties": false,
+      "description": "The sha256 of each file a passing `ui-code.mjs check` covered: pages (check --pages, or a full check) and tests (a full check).",
+      "properties": { "pages": { "$ref": "#/$defs/stamp" }, "tests": { "$ref": "#/$defs/stamp" } }
+    }
+  }
+}

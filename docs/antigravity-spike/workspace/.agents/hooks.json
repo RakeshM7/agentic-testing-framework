@@ -1,0 +1,44 @@
+{
+  "atf-spike": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"__SPIKE_DIR__/audit-hook.mjs\" \"__SPIKE_DIR__/antigravity-audit.jsonl\" --source workspace --event pre __MODE__",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"__SPIKE_DIR__/audit-hook.mjs\" \"__SPIKE_DIR__/antigravity-audit.jsonl\" --source workspace --event post",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "client-set": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"__SPIKE_DIR__/audit-hook.mjs\" \"__SPIKE_DIR__/antigravity-audit.jsonl\" --source client-set --event pre --allow-canary",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

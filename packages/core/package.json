@@ -1,0 +1,31 @@
+{
+  "name": "@testagentic/atf",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "description": "The agentic testing framework: scripts (run state, contracts, guard, agent builder), agent sources, default config, templates, schemas and the agent-facing docs.",
+  "bin": {
+    "atf": "bin/atf.mjs"
+  },
+  "scripts": {
+    "test": "node --test \"scripts/**/*.test.mjs\"",
+    "build": "node scripts/build-package.mjs",
+    "postinstall": "node bin/atf.mjs sync --postinstall"
+  },
+  "dependencies": {
+    "acorn": "8.19.0",
+    "ajv": "^8.17.1",
+    "js-yaml": "^4.1.0"
+  },
+  "peerDependencies": {
+    "playwright": "1.64.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "restricted"
+  }
+}

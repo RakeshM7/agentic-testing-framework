@@ -1,0 +1,216 @@
+# Publishes @testagentic/atf (docs/packaging.md §2, §3.11): the bundled build in packages/core/dist, never the source,
+# to the private @testagentic org on registry.npmjs.org (access restricted; each client reads it with its own token).
+# Runs on a tag core-v<semver> that matches packages/core/package.json, or by hand for an existing tag (a dry run by
+# default). It refuses while LICENSE.md is still the DRAFT placeholder. Needs the repository secret NPM_TOKEN: an npm
+# automation (or granular, publish-only) token of the @testagentic org.
+#
+# No --provenance: npm accepts provenance only from a public source repository (GitHub changelog, 2023-07-26,
+# "publishing with provenance is restricted to public source repositories only"), and the attestation goes to the
+# public Sigstore transparency log, naming the repository and commit of a package meant to stay private.
+#
+# The Claude Code plugin (docs/packaging.md §3.12, draft P-11) is the second channel of the same release: same commit,
+# same version. The publish job builds it before npm publish, so a plugin that doesn't build stops the release before
+# anything ships. The plugin job then rebuilds it as the private marketplace's content and pushes it to the marketplace
+# repository: the repository variable PLUGIN_MARKETPLACE_REPO (owner/name) with the secret PLUGIN_MARKETPLACE_TOKEN (a
+# token that may push to that repository only). It replaces plugins/atf/ and .claude-plugin/marketplace.json, commits
+# "atf <version>", and tags atf-v<version>. Without the variable or the secret it pushes nothing and says so; a dry run
+# pushes nothing. It is its own job so that a failed push can be re-run alone, after npm has the version.
+#
+# The VS Code extension (docs/packaging.md §3.13, draft P-12) is the third channel, public: the vscode job, after npm
+# has the version (the extension does nothing without the package it drives). It refuses packages/vscode/LICENSE.md
+# while it is the DRAFT placeholder and a tag that isn't core-v<packages/vscode/package.json version>, packages the
+# vsix (uploaded as a workflow artifact on every run, dry runs included), then publishes it to the VS Code Marketplace
+# with the secret VSCE_PAT (an Azure DevOps token with Marketplace > Manage, for the publisher testagentic) and to Open
+# VSX with the secret OVSX_PAT (an open-vsx.org token of a member of the testagentic namespace). Each publish is
+# skipped with a notice on a dry run or without its secret, and a version that is already there is a notice, not a
+# failure, so a re-run publishes only what is missing. ovsx runs through npx at a pinned version, not as a
+# devDependency: it is needed here only, and its dependency tree stays out of every install.
+name: Release
+
+on:
+  push:
+    tags: ["core-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag to release, core-v<version> (it must exist and match packages/core/package.json)"
+        required: true
+        type: string
+      dry_run:
+        description: "Run npm publish --dry-run: everything but the upload"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          # writes an .npmrc that reads NODE_AUTH_TOKEN for registry.npmjs.org
+          registry-url: https://registry.npmjs.org/
+      - run: npm ci
+      # the generated host files, the decision log and the whole test suite, the build's own tests included
+      - run: npm run check
+      - name: Build packages/core/dist
+        run: npm run build --workspace @testagentic/atf
+      - name: Check dist against packages/core/package-files.txt
+        run: node packages/core/scripts/build-package.mjs --check
+      - name: Refuse a DRAFT licence or a tag that doesn't match the version
+        run: node packages/core/scripts/build-package.mjs --release "$TAG"
+      - name: Build the Claude Code plugin (packages/claude-plugin/dist)
+        run: node packages/core/scripts/build-plugin.mjs
+      - name: Publish
+        run: npm publish ./packages/core/dist ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  plugin:
+    needs: publish
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+      MARKETPLACE_REPO: ${{ vars.PLUGIN_MARKETPLACE_REPO }}
+      HAS_TOKEN: ${{ secrets.PLUGIN_MARKETPLACE_TOKEN != '' && 'true' || 'false' }}
+    steps:
+      # secrets can't be tested in an `if:`, so this step decides, and says why when nothing is pushed
+      - name: Decide whether to push the plugin
+        id: gate
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "::notice title=Claude Code plugin::Dry run: the plugin was built by the publish job, nothing is pushed to the marketplace"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$MARKETPLACE_REPO" ] || [ "$HAS_TOKEN" != "true" ]; then
+            echo "::notice title=Claude Code plugin::Not pushed: set the repository variable PLUGIN_MARKETPLACE_REPO (owner/name of the marketplace repository) and the secret PLUGIN_MARKETPLACE_TOKEN to release the plugin"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.push == 'true'
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.push == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - if: steps.gate.outputs.push == 'true'
+        run: npm ci --ignore-scripts
+      - name: Push the plugin to the marketplace repository
+        if: steps.gate.outputs.push == 'true'
+        env:
+          TOKEN: ${{ secrets.PLUGIN_MARKETPLACE_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./packages/core/package.json').version")"
+          if [ "$TAG" != "core-v$version" ]; then echo "::error::tag $TAG does not match the package version $version"; exit 1; fi
+          tag="atf-v$version"
+          market="$RUNNER_TEMP/marketplace"
+          # the token goes in an auth header for this clone only, never into the URL or the clone's config
+          basic="$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"
+          echo "::add-mask::$basic"
+          auth="AUTHORIZATION: basic $basic"
+          git -c http.extraheader="$auth" clone --quiet "https://github.com/$MARKETPLACE_REPO.git" "$market"
+          node packages/core/scripts/build-plugin.mjs --out "$RUNNER_TEMP/atf-plugin" --marketplace "$market"
+          cd "$market"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- .claude-plugin/marketplace.json "plugins/atf"
+          exists="$(git -c http.extraheader="$auth" ls-remote --tags origin "refs/tags/$tag")"
+          if git diff --cached --quiet; then
+            # a re-run after a push that went through: nothing changed, and the tag is there
+            if [ -n "$exists" ]; then echo "::notice title=Claude Code plugin::$tag is already in $MARKETPLACE_REPO"; exit 0; fi
+          else
+            if [ -n "$exists" ]; then echo "::error::$tag already exists in $MARKETPLACE_REPO with other content; a released version is never replaced"; exit 1; fi
+            git commit --quiet -m "atf $version" -m "Built from ${GITHUB_REPOSITORY}@${GITHUB_SHA} ($TAG) by packages/core/scripts/build-plugin.mjs."
+          fi
+          git tag -a "$tag" -m "atf $version"
+          branch="$(git symbolic-ref --short HEAD)"
+          git -c http.extraheader="$auth" push --atomic origin "HEAD:refs/heads/$branch" "refs/tags/$tag"
+          echo "::notice title=Claude Code plugin::Pushed atf $version to $MARKETPLACE_REPO ($branch, $tag)"
+
+  vscode:
+    needs: publish
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+      HAS_VSCE_PAT: ${{ secrets.VSCE_PAT != '' && 'true' || 'false' }}
+      HAS_OVSX_PAT: ${{ secrets.OVSX_PAT != '' && 'true' || 'false' }}
+      OVSX: ovsx@1.2.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Refuse a DRAFT licence or a tag that doesn't match the extension's version
+        run: node packages/vscode/scripts/package.mjs --release "$TAG"
+      - name: Build and package the vsix
+        id: vsix
+        run: |
+          set -euo pipefail
+          node packages/vscode/scripts/package.mjs
+          node -e '
+            const m = require("./packages/vscode/package.json");
+            const out = [`version=${m.version}`, `id=${m.publisher}.${m.name}`, `publisher=${m.publisher}`, `name=${m.name}`, `path=packages/vscode/dist/atf-vscode-${m.version}.vsix`];
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, out.join("\n") + "\n");'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atf-vscode-${{ steps.vsix.outputs.version }}
+          path: ${{ steps.vsix.outputs.path }}
+          if-no-files-found: error
+      # secrets can't be tested in an `if:`, so each publish step decides, and says why when it publishes nothing
+      - name: Publish to the VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          ID: ${{ steps.vsix.outputs.id }}
+          VERSION: ${{ steps.vsix.outputs.version }}
+          VSIX: ${{ steps.vsix.outputs.path }}
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" = "true" ]; then echo "::notice title=VS Code Marketplace::Dry run: $ID $VERSION was packaged (see the workflow artifact), nothing is published"; exit 0; fi
+          if [ "$HAS_VSCE_PAT" != "true" ]; then echo "::notice title=VS Code Marketplace::Not published: set the secret VSCE_PAT (a token with Marketplace > Manage for the publisher) to publish $ID"; exit 0; fi
+          # `vsce show` fails for an extension the Marketplace doesn't have yet: that is "not published"
+          if npx --no -- vsce show "$ID" --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>process.exit((JSON.parse(s).versions??[]).some((v)=>v.version===process.argv[1])?0:1))' "$VERSION"; then
+            echo "::notice title=VS Code Marketplace::$ID $VERSION is already published"; exit 0
+          fi
+          # --skip-duplicate: should the version land between the check and the upload, that is not a failure either
+          npx --no -- vsce publish --packagePath "$VSIX" --skip-duplicate
+          echo "::notice title=VS Code Marketplace::Published $ID $VERSION"
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          PUBLISHER: ${{ steps.vsix.outputs.publisher }}
+          NAME: ${{ steps.vsix.outputs.name }}
+          VERSION: ${{ steps.vsix.outputs.version }}
+          VSIX: ${{ steps.vsix.outputs.path }}
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" = "true" ]; then echo "::notice title=Open VSX::Dry run: $PUBLISHER.$NAME $VERSION was packaged (see the workflow artifact), nothing is published"; exit 0; fi
+          if [ "$HAS_OVSX_PAT" != "true" ]; then echo "::notice title=Open VSX::Not published: set the secret OVSX_PAT (an open-vsx.org token of a member of the $PUBLISHER namespace) to publish $PUBLISHER.$NAME"; exit 0; fi
+          # the registry's public API answers 200 for a version it has, 404 otherwise
+          status="$(curl -sS -o /dev/null -w '%{http_code}' "https://open-vsx.org/api/$PUBLISHER/$NAME/$VERSION" || true)"
+          if [ "$status" = "200" ]; then echo "::notice title=Open VSX::$PUBLISHER.$NAME $VERSION is already published"; exit 0; fi
+          npx --yes -- "$OVSX" publish "$VSIX" -p "$OVSX_PAT" --skip-duplicate
+          echo "::notice title=Open VSX::Published $PUBLISHER.$NAME $VERSION"

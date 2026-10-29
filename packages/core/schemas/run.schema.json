@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "run.schema.json",
+  "title": "Current run state (artifacts/<product>/state/run.json)",
+  "type": "object",
+  "required": ["layoutVersion", "product", "runId", "createdAt", "target", "mode", "configPath", "permissionsPath", "modules", "stages"],
+  "additionalProperties": false,
+  "$defs": {
+    "configSource": {
+      "type": "object",
+      "description": "Where one framework config file came from (scripts/lib/config.mjs configSource, docs/packaging.md §3.4): the framework's own copy, the framework's copy with the workspace's atf/<name> overlay merged over it, or the workspace's ejected atf/config/<name>. files: its sources, base first, workspace-relative with `/` (absolute outside the workspace). digest: sha256 of the effective text; null when it could not be read at init.",
+      "required": ["name", "source", "files", "digest"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "enum": ["permissions.yaml", "models.yaml", "platforms.yaml", "mcp.yaml", "hooks.yaml"] },
+        "source": { "enum": ["framework", "overlay", "ejected"] },
+        "files": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "digest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  },
+  "properties": {
+    "layoutVersion": { "const": 2, "description": "The artifact-contract version the run was started on (scripts/lib/contract.mjs CONTRACT_VERSION, docs/packaging.md §3.10; named before packaging). init --resume refuses a run on another contract until npx atf migrate has migrated the workspace." },
+    "product": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "runId": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "createdAt": { "type": "string" },
+    "target": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string" },
+        "api_urls": { "type": "array", "items": { "type": "string" }, "description": "API hosts of the same product; the guard treats them as the target (D-045)." }
+      }
+    },
+    "mode": { "enum": ["readonly", "full-run"], "description": "Single source of truth for the safety mode; caps every agent's permissions." },
+    "configPath": { "type": "string" },
+    "permissionsPath": { "type": "string" },
+    "steps": { "type": "array", "uniqueItems": true, "minItems": 1, "items": { "enum": ["explore", "clarifications", "testcases", "playwright-ui", "playwright-api", "k6"] }, "description": "The steps chosen for this run (run-config `steps`, frozen at init; the gap menu may change them through run.mjs steps). Absent in older runs = all six. Every stage outside the chosen set (lib/contract.mjs chosenStages) is not-chosen." },
+    "caseTypes": { "type": "array", "uniqueItems": true, "items": { "enum": ["ui", "api", "performance"] }, "description": "The test case types this run derives from its steps and testcases.types: ui always, api with playwright-api, performance with k6." },
+    "testcasesMode": { "type": "object", "propertyNames": { "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" }, "additionalProperties": { "enum": ["import", "generate"] }, "description": "The testcases stage's mode per module (D-066, lib/contract.mjs testcasesModes): generate for every module when the testcases step is chosen; import for a module whose imported cases need converting or linking although testcases is not chosen (run.mjs steps --import-mode): the writer only converts and links, and the generated coverage items are deferred (reason import). A module not listed has no testcases stage this run. Absent in older runs: generate when testcases is chosen, else none." },
+    "environment": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "The environment the run works in (D-081, run-config environment, the session's ATF_ENV); absent in older runs = default." },
+    "provenance": {
+      "type": "object",
+      "description": "What the run was made with (D-077, scripts/lib/provenance.mjs): absent in older runs.",
+      "additionalProperties": false,
+      "properties": {
+        "framework": { "type": ["object", "null"], "additionalProperties": false, "required": ["commit", "dirty"], "properties": { "commit": { "type": "string" }, "dirty": { "type": "boolean" } } },
+        "package": { "type": ["object", "null"], "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } }, "description": "The framework package the run was started with, from its own package.json (scripts/lib/provenance.mjs packageOf, docs/packaging.md §3.10); null when it couldn't be read. init --resume refuses a run whose package is on another breaking line (releaseLine). Absent in runs that predate it, which resume as compatible." },
+        "plugin": { "type": ["object", "null"], "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "const": "atf" }, "version": { "type": "string", "minLength": 1 } }, "description": "The Claude Code plugin the run's session used (docs/packaging.md §3.12, scripts/lib/provenance.mjs pluginProvenance): in plugin mode (atf/atf.json claude_plugin), the version it recorded in artifacts/.atf-plugin.json, which init requires to be the package's; null outside plugin mode or with none recorded. Absent in runs that predate it." },
+        "browserServer": { "type": ["string", "null"] },
+        "models": { "type": "object" },
+        "templates": { "type": "string" },
+        "node": { "type": "string" },
+        "config": { "type": "array", "items": { "$ref": "#/$defs/configSource" }, "description": "Every framework config file in scripts/lib/config.mjs CONFIG_FILES order, untouched ones as `framework`. permissions.yaml here is the workspace's default; a run-config's own permissions_file replaces it, which shows as a permissionsPath other than this entry's files[0] (scripts/report-data.mjs customConfig). Absent in runs that predate config overrides." }
+      }
+    },
+    "packageChanges": {
+      "type": "array",
+      "description": "Each init --resume on another version of the package within the run's breaking line, in order (scripts/run.mjs resumeRun, docs/packaging.md §3.10): the run's provenance keeps the release it started with, and end carries these into state/history/. Absent when the run never changed version.",
+      "items": {
+        "type": "object",
+        "required": ["at", "name", "from", "to"],
+        "additionalProperties": false,
+        "properties": { "at": { "type": "string" }, "name": { "type": "string", "minLength": 1 }, "from": { "type": "string", "minLength": 1 }, "to": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "startedOnHost": { "type": "string", "description": "Host the run was started on, as guessed by run.mjs init (keys of scripts/lib/hosts.mjs HOSTS)." },
+    "modules": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" } },
+    "stages": {
+      "type": "object",
+      "description": "Keyed '<scope>/<stage>' where scope is '_product' or a module slug.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "additionalProperties": false,
+        "properties": {
+          "status": { "enum": ["pending", "running", "done", "failed"] },
+          "attempts": { "type": "integer", "minimum": 0 },
+          "startedAt": { "type": "string" },
+          "finishedAt": { "type": "string" },
+          "error": { "type": "string" },
+          "reviewFailed": { "type": "boolean", "description": "the domain's review used up its rounds with findings open: final, dependants are blocked (G10)" },
+          "findings": { "type": "array", "items": { "type": "object" }, "description": "the open blocker/major findings of a failed review" },
+          "doneRefusals": { "type": "integer", "minimum": 0 },
+          "interrupted": { "type": "boolean", "description": "init --resume found the stage still running: the session that ran it ended, so the attempt counts as failed and next offers it again while attempts remain (D-071)" },
+          "reused": { "type": "boolean", "description": "done by run.mjs next: the knowledge was reused" },
+          "carriedFrom": { "type": "string", "description": "adopted from this earlier run, which ended awaiting-approval" },
+          "reopened": { "type": "string", "description": "why run.mjs steps --reopen sent this completed testcases stage back to pending (new case types, or import mode turning into generate); the human approvals of unchanged cases stand" }
+        }
+      }
+    }
+  }
+}

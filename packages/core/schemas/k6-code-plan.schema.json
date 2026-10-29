@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "k6-code-plan.schema.json",
+  "title": "k6/code-plan.json: a module's generated k6 scripts (G7), written only by scripts/k6-code.mjs: one script per workload.json scenario with its generated requests, and the slots of k6-tests/<p>/scripts/slots/<m>.js the k6-script-writer fills (needed or optional, filled or empty). A passing k6-code.mjs check stamps `verified`.",
+  "type": "object",
+  "required": ["module", "runId", "mode", "files", "scripts", "slots"],
+  "additionalProperties": false,
+  "$defs": {
+    "ep": { "type": "string", "pattern": "^EP-" },
+    "expect": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "type": "integer" },
+        "statusIn": { "type": "array", "items": { "type": "integer" }, "minItems": 1 },
+        "statusClass": { "const": "2xx" },
+        "source": { "type": "string", "description": "plan:<API id> (its happy-path expectation), or class-only" }
+      },
+      "oneOf": [{ "required": ["status"] }, { "required": ["statusIn"] }, { "required": ["statusClass"] }]
+    },
+    "bind": {
+      "type": "object",
+      "required": ["param", "from", "pointer"],
+      "additionalProperties": false,
+      "properties": { "param": { "type": "string" }, "from": { "type": "integer", "minimum": 0 }, "pointer": { "type": "string" } }
+    }
+  },
+  "properties": {
+    "module": { "type": "string" },
+    "runId": { "type": ["string", "null"], "description": "workload.json's results run" },
+    "mode": { "enum": ["readonly", "full-run"] },
+    "basePath": { "type": "string", "description": "The k6 overlay's basePath (artifacts/<p>/foundation/k6-overlay.json), which lib/config.js url() prepends; empty when none is recorded" },
+    "files": {
+      "type": "object",
+      "required": ["slots", "scripts"],
+      "additionalProperties": false,
+      "description": "Paths relative to k6-tests/<product>/.",
+      "properties": { "slots": { "type": "string" }, "scripts": { "type": "array", "items": { "type": "string" } } }
+    },
+    "scripts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "file", "type", "kind", "endpoints", "mutates", "requests", "thinkTimeMs"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^K6-" },
+          "name": { "type": "string" },
+          "file": { "type": "string", "pattern": "^scripts/[^/]+\\.js$" },
+          "type": { "enum": ["smoke", "average-load", "stress", "spike", "soak", "breakpoint"] },
+          "kind": { "enum": ["endpoint", "mix", "flow"] },
+          "endpoints": { "type": "array", "items": { "$ref": "#/$defs/ep" } },
+          "mutates": { "type": "boolean" },
+          "queryLike": { "const": true },
+          "weights": { "type": "object", "additionalProperties": { "type": "number" } },
+          "requests": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["endpoint", "method", "path", "pathParams", "expect", "slots"],
+              "additionalProperties": false,
+              "properties": {
+                "endpoint": { "$ref": "#/$defs/ep" },
+                "method": { "type": "string" },
+                "path": { "type": "string" },
+                "urlPath": { "type": "string", "description": "What the script passes to url(): the catalogue path with the k6 overlay's basePath stripped (url() prepends it); present only when it differs from path" },
+                "pathParams": { "type": "array", "items": { "type": "string" } },
+                "expect": { "$ref": "#/$defs/expect" },
+                "slots": { "type": "array", "items": { "type": "string" } },
+                "bind": { "type": "array", "items": { "$ref": "#/$defs/bind" } },
+                "deletes": { "type": "integer", "minimum": 0, "description": "A flow delete: the create step whose entity it deletes (trackDeleted after a 2xx)" }
+              }
+            }
+          },
+          "trackLeftover": {
+            "type": "object",
+            "required": ["type", "pointer", "assumed"],
+            "additionalProperties": false,
+            "properties": { "type": { "type": "string" }, "pointer": { "type": "string" }, "assumed": { "type": "boolean" } }
+          },
+          "creates": {
+            "type": "array",
+            "description": "Every create step of a flow, each tracked with trackLeftover by its id pointer (D-005); step 0 is trackLeftover above",
+            "items": { "type": "object", "required": ["step", "type", "pointer", "assumed"], "additionalProperties": false, "properties": { "step": { "type": "integer", "minimum": 0 }, "type": { "type": "string" }, "pointer": { "type": "string" }, "assumed": { "type": "boolean" } } }
+          },
+          "cleanup": {
+            "type": "object",
+            "required": ["endpoint"],
+            "additionalProperties": false,
+            "properties": { "endpoint": { "oneOf": [{ "$ref": "#/$defs/ep" }, { "type": "null" }] } }
+          },
+          "thinkTimeMs": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "function", "kind", "needed", "usedBy", "filled"],
+        "additionalProperties": false,
+        "properties": {
+          "key": { "type": "string", "pattern": "^(data|(path|query|body|checks):EP-.+)$" },
+          "function": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$" },
+          "kind": { "enum": ["data", "path", "query", "body", "checks"] },
+          "endpoint": { "$ref": "#/$defs/ep" },
+          "needed": { "type": "boolean" },
+          "usedBy": { "type": "array", "items": { "type": "string", "pattern": "^K6-" } },
+          "filled": { "type": "boolean" }
+        }
+      }
+    },
+    "verified": { "type": "object", "additionalProperties": { "type": ["string", "null"] } }
+  }
+}
