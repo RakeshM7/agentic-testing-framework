@@ -159,6 +159,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-101 | On Antigravity, unrecognised tools are denied during every run, readonly included | Accepted | 2026-10-27 |
 | D-102 | The VS Code extension is a public UI over the CLI with no safety role; human-only commands run in a terminal the human sees | Accepted | 2026-10-29 |
 | D-103 | The package is published to GitHub Packages under the testagentic organization; the rest of D-094 is unchanged | Accepted | 2026-10-29 |
+| D-104 | An interim evaluation licence replaces the DRAFT placeholder until a lawyer's EULA | Accepted | 2026-10-29 |
 
 ## Decisions
 
@@ -2113,3 +2114,22 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - Moving back to npm later is a registry change in `publishConfig`, the release and the `.npmrc` template.
 - **Affects:** `packages/core/package.json`, `packages/core/templates/workspace/_npmrc`, `.github/workflows/release.yml`, `packages/core/scripts/build-package.mjs`, `packages/core/scripts/build-package.test.mjs`, `packages/core/package-files.txt`, `packages/core/LICENSE.md`, `packages/core/scripts/init.test.mjs`
 - **Supersedes:** D-094 (its npmjs private-org registry and client `.npmrc`; the rest is restated above) · **Confirmed by the user on:** 2026-10-29 (GitHub Packages under a new `testagentic` organization; the repository stays where it is, publishing with a personal access token). This extends D-089, D-095 and D-102 without weakening them.
+
+### D-104 · An interim evaluation licence replaces the DRAFT placeholder until a lawyer's EULA
+- **Status:** Accepted · **Date:** 2026-10-29 · **Source:** conversation with the user, 2026-10-29. The text was drafted in the session, completed and corrected by the user, and approved by them.
+- **Decision:**
+  - **What replaces the placeholder.** `packages/core/LICENSE.md` is now "@testagentic/atf: interim evaluation licence", version 1, effective 29 October 2026, from the licensor Rakesh M. It replaces the DRAFT placeholder, so the release gate (D-103, restating D-094) lets a release through.
+  - **What it grants and forbids:**
+    - **Who:** only developers given access on GitHub Packages or by written invitation, and that access is personal.
+    - **May:** install and run the package in their own workspaces against systems they are authorized to test, and create the files the framework expects of them (run-configs, `atf/` overlays and fragments, the decision log).
+    - **May not:** share or publish it, modify or reverse-engineer it, build derivative works on it, use it to build a competing product, or use it against unauthorized systems.
+    - **Outputs:** the generated test cases, code and reports belong to the developer.
+    - **Also:** the package's contents are confidential; feedback (including `atf issues` bundles) may be used freely; no warranty, and liability limited to the amount paid (zero during the evaluation).
+    - **Ending:** at the end of the evaluation, by notice, or on breach, after which the developer deletes the package but keeps their outputs.
+    - **Law:** the laws of India, with the courts at Chennai.
+  - **Still interim.** It states itself that a full EULA reviewed by a lawyer replaces it. A new version takes effect only when published with a new release.
+  - **The VS Code extension** keeps its own DRAFT placeholder until a licence is chosen for it: it is public and holds no IP, so its licence can differ.
+  - **The release-gate test** writes its own placeholder instead of relying on the framework's file staying a draft.
+- **Why:** the user wants a few trusted developers to evaluate the package now, without a lawyer's EULA. A plain-language evaluation licence states what they may and may not do, keeps the IP protected by contract (§2), and leaves the generated outputs with them.
+- **Affects:** `packages/core/LICENSE.md`, `packages/core/scripts/build-package.test.mjs`, `packages/vscode/test/report-package.test.mjs`
+- **Confirmed by the user on:** 2026-10-29 (the interim licence text, with their own name, contact, law and venue). This extends D-103 without weakening it.
