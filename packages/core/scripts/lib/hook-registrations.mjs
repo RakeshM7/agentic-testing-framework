@@ -3,9 +3,11 @@
 //                                        every other key, and every other hook entry, is kept as it is
 //   .github/hooks/framework-guard.json   Copilot CLI and the cloud coding agent (a dedicated file, rendered whole)
 //   .vscode/hooks/framework-guard.json   VS Code's local agent (a dedicated file, rendered whole)
+//   .agents/hooks.json                   Antigravity: only the framework's named hook set, `atf-guard` (below); every
+//                                        other set is kept as it is
 // The PreToolUse guard is always registered, synchronously, on every host. Only the PostToolUse hook is configurable:
-//   async  Claude Code runs it in the background (`async: true`); Copilot and VS Code have no background hooks, so
-//          there it stays synchronous
+//   async  Claude Code runs it in the background (`async: true`); Copilot, VS Code and Antigravity have no background
+//          hooks, so there it stays synchronous
 //   sync   every host waits for it
 //   off    not registered: every governed edit asks again, the session never remembers a confirmation
 // Every command runs the framework's hook script by its path from the workspace (`{fw}`, D-085: nothing in this repo).
@@ -27,6 +29,18 @@
 // When the merge equals what the file already holds (compared as JSON, so the client's formatting and event order are
 // not drift), the file's text is kept as it is: --check reports drift only in the framework's entries, and the build
 // rewrites nothing else. In this repo the file holds only the framework's entries, so its output is what it was.
+//
+// .agents/hooks.json is shared the same way with the workspace's own Antigravity hooks, but the file is an object of
+// named hook sets ({ "<set>": { enabled, PreToolUse: [...], PostToolUse: [...] } }), so the framework's part is one
+// whole set, `atf-guard` (mergeAntigravityHooks):
+//   - `atf-guard` is rendered, never read: whatever it held is replaced, and it is always the first key
+//   - every other set is kept, as it is, in the order it had
+//   - the merged result is checked for the guard (first key, PreToolUse as rendered) before anything is returned
+// A file that is not a JSON object, or a set that is not an object, is an error: nothing is written. The file's text is
+// kept as it is when the merge equals it (as JSON) and `atf-guard` is already first; a guard moved down is drift.
+// Its commands run cwd-relative, from the workspace root (`{fw}` as for Copilot and VS Code).
+// UNVERIFIED (Antigravity spike pending, docs/antigravity-spike/): that the hook runs from the workspace root, and that
+// the sets run in key order, so the guard listed first runs first.
 // Dependency-free.
 import { isDeepStrictEqual } from "node:util";
 import { expandFw } from "./roots.mjs";
@@ -34,6 +48,8 @@ import { expandFw } from "./roots.mjs";
 export const HOOKS_CONFIG = "config/hooks.yaml";
 export const POST_MODES = ["async", "sync", "off"];
 export const CLAUDE_SETTINGS = ".claude/settings.json";
+export const ANTIGRAVITY_HOOKS = ".agents/hooks.json";
+export const ANTIGRAVITY_SET = "atf-guard";
 
 const CLAUDE_PRE_MATCHER = "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|WebSearch|Agent|Task|mcp__.*playwright.*";
 // Agent and Task: the spawns the PostToolUse hook records for the report's time and effort (D-079)
@@ -145,15 +161,72 @@ function vscodeHooks(mode, fw) {
   return { hooks: { PreToolUse: [entry("pretooluse")], ...(mode !== "off" ? { PostToolUse: [entry("posttooluse")] } : {}) } };
 }
 
+// Antigravity's set. It has no background hooks: async renders as sync, off omits PostToolUse.
+function antigravitySet(mode, fw) {
+  const group = (name) => [{ matcher: ".*", hooks: [{ type: "command", command: command(name, "antigravity", fw), timeout: 30 }] }];
+  return { enabled: true, PreToolUse: group("pretooluse"), ...(mode !== "off" ? { PostToolUse: group("posttooluse") } : {}) };
+}
+
+// The parsed .agents/hooks.json (or undefined) -> the merged sets (see the header). Throws on a shape it can't merge
+// safely, naming where.
+export function mergeAntigravityHooks(current, mode, fw = "") {
+  if (current !== undefined && !isMap(current))
+    throw new Error(`must be a JSON object (set name -> hook set), not ${describe(current)}; fix it, nothing was written`);
+  const merged = {};
+  put(merged, ANTIGRAVITY_SET, antigravitySet(mode, fw));
+  for (const [name, set] of Object.entries(current ?? {})) {
+    if (name === ANTIGRAVITY_SET) continue; // ours: replaced, whatever it held
+    if (!isMap(set)) throw new Error(`set '${name}' must be an object, not ${describe(set)}; fix it, nothing was written`);
+    put(merged, name, set);
+  }
+  assertAntigravityGuard(merged, fw);
+  return merged;
+}
+
+// The guard is mandatory (D-042, D-092): `atf-guard` is the first set and its first PreToolUse group is as rendered.
+function assertAntigravityGuard(sets, fw) {
+  const [want] = antigravitySet("off", fw).PreToolUse;
+  if (Object.keys(sets)[0] !== ANTIGRAVITY_SET || sets[ANTIGRAVITY_SET]?.enabled !== true || !isDeepStrictEqual(sets[ANTIGRAVITY_SET].PreToolUse?.[0], want))
+    throw new Error(`internal: the merged hook sets lost the '${ANTIGRAVITY_SET}' guard; nothing was written`);
+}
+
+function renderAntigravityHooks(mode, text, fw) {
+  let current;
+  if (text !== undefined && text.trim() !== "") {
+    try {
+      current = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`not valid JSON (${e.message}); fix it, nothing was written`);
+    }
+  }
+  const merged = mergeAntigravityHooks(current, mode, fw);
+  // unchanged only when it is the same as JSON AND the guard is already first: the position is ours, so a moved guard is drift
+  const same = current !== undefined && isDeepStrictEqual(merged, current) && Object.keys(current)[0] === ANTIGRAVITY_SET;
+  return same ? text : formatJson(merged) + "\n";
+}
+
+// a shared file's error names that file (e.file), for the build's message
+function inFile(file, render) {
+  try {
+    return render();
+  } catch (e) {
+    e.file = file;
+    throw e;
+  }
+}
+
 // -> Map(workspace-relative path -> file content). `claudeSettings` is the current .claude/settings.json text (or
 // undefined); its keys other than `hooks` are kept, in their order, and in `hooks` everything but the framework's own
-// entries (mergeClaudeHooks). When nothing of ours differs, its text comes back unchanged. `fw`: the framework's path
-// from the workspace. Throws on settings it can't merge safely (not JSON, not an object, a malformed `hooks`).
-export function renderHookRegistrations(mode, claudeSettings, fw = "") {
+// entries (mergeClaudeHooks). `antigravityHooks` is the current .agents/hooks.json text (or undefined); every set but
+// `atf-guard` is kept (mergeAntigravityHooks). When nothing of ours differs, a shared file's text comes back unchanged.
+// `fw`: the framework's path from the workspace. Throws on a shared file it can't merge safely (not JSON, not an object,
+// a malformed `hooks` or set), with `e.file` naming that file.
+export function renderHookRegistrations(mode, claudeSettings, fw = "", { antigravityHooks } = {}) {
   return new Map([
-    [CLAUDE_SETTINGS, renderClaudeSettings(mode, claudeSettings, fw)],
+    [CLAUDE_SETTINGS, inFile(CLAUDE_SETTINGS, () => renderClaudeSettings(mode, claudeSettings, fw))],
     [".github/hooks/framework-guard.json", formatJson(copilotHooks(mode, fw)) + "\n"],
     [".vscode/hooks/framework-guard.json", formatJson(vscodeHooks(mode, fw)) + "\n"],
+    [ANTIGRAVITY_HOOKS, inFile(ANTIGRAVITY_HOOKS, () => renderAntigravityHooks(mode, antigravityHooks, fw))],
   ]);
 }
 

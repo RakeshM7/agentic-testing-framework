@@ -6,7 +6,7 @@
 2. **One job per agent.** 34 small agents with declared inputs and outputs, in three layers: the main orchestrator → domain orchestrators → workers (native nested subagents). Workers never spawn and never talk to each other; every hand-off goes through the parent orchestrator as a file. Roster and flow: [`docs/agent-architecture.md`](docs/agent-architecture.md).
 3. **Product-level knowledge.** Everything accumulates under `artifacts/<product>/` across runs (knowledge, module exploration, clarifications); per-run outcomes are archived under `results/<run-id>/`. One active run per product. Contract: [`packages/core/docs/artifact-contract.md`](packages/core/docs/artifact-contract.md).
 4. **Permissions are data, enforced in code.** `packages/core/config/permissions.yaml` is the ceiling for each agent; the run's `authorizations.mode` caps everyone (readonly ⇒ read-only for all). The guard identifies the calling agent and enforces spawns, shell, HTTP/load, browser and file writes. On a host that can't name the agent, it applies the run's combined ceiling instead. Deletes are limited to entities the current run created.
-5. **Platform-neutral core, generated platform shells.** Each agent is written once (`packages/core/agents/`); its Claude Code and GitHub Copilot files are generated from it and `packages/core/config/` (tools from permissions, syntax from `packages/core/config/platforms.yaml`). Every host runs the same hook entry through a thin adapter. Hosts: [`packages/core/docs/platforms.md`](packages/core/docs/platforms.md).
+5. **Platform-neutral core, generated platform shells.** Each agent is written once (`packages/core/agents/`); its Claude Code, GitHub Copilot and Google Antigravity files are generated from it and `packages/core/config/` (tools from permissions, syntax from `packages/core/config/platforms.yaml`). Every host runs the same hook entry through a thin adapter. Hosts: [`packages/core/docs/platforms.md`](packages/core/docs/platforms.md).
 6. **Intentional design is recorded.** [`docs/decisions.md`](docs/decisions.md) says why each piece is the way it is; changing a file a decision governs needs the user's confirmation, enforced by the hook.
 
 ## Components
@@ -25,7 +25,7 @@ flowchart LR
   W -->|declared outputs| ART[(artifacts/&lt;product&gt;/modules, knowledge, results)]
   W -->|clarifications.mjs| CSV[(modules/&lt;m&gt;/clarifications.csv)]
   W -->|ledger.mjs add / owns| LED[(state/ledger.jsonl)]
-  SRC[packages/core/agents/ + packages/core/config/] -->|npm run build-agents| GEN[.claude/agents, .github/agents, MCP configs]
+  SRC[packages/core/agents/ + packages/core/config/] -->|npm run build-agents| GEN[.claude/agents, .github/agents, .agents/agents, MCP configs, hook registrations]
   HOOK[packages/core/scripts/hooks/pretooluse.mjs + host adapters] --> GUARD[packages/core/scripts/lib/guard.mjs]
   HOOK --> DEC[packages/core/scripts/lib/decisions.mjs]
   GUARD -.reads.-> STATE
@@ -35,7 +35,7 @@ flowchart LR
 | Layer | Where | Responsibility |
 |---|---|---|
 | Agent sources | `packages/core/agents/*.md` | the 34 roles in `docs/agent-architecture.md`, written once, platform-neutral |
-| Platform build | `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/agents/`, `packages/core/scripts/lib/mcp.mjs`, `packages/core/config/platforms.yaml`, `packages/core/config/mcp.yaml` | renders `.claude/agents/`, `.github/agents/`, `.mcp.json`, `.vscode/mcp.json`; `--check` gates drift |
+| Platform build | `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/agents/`, `packages/core/scripts/lib/mcp.mjs`, `packages/core/config/platforms.yaml`, `packages/core/config/mcp.yaml` | renders `.claude/agents/`, `.github/agents/`, `.agents/agents/`, `.mcp.json`, `.vscode/mcp.json`, `.agents/mcp_config.json` and the hook registrations (`packages/core/scripts/lib/hook-registrations.mjs`); `--check` gates drift |
 | Domain scripts | `packages/core/scripts/{knowledge,orchestration,results,report-data,report,gate,ui-code,api-code}.mjs`, `packages/core/scripts/lib/report.mjs`, `packages/core/templates/report/`, `packages/core/scripts/lib/testcases.mjs`, `packages/core/scripts/lib/ui-code.mjs`, `packages/core/scripts/lib/api-code.mjs`, `packages/core/scripts/lib/ts-scan.mjs`, `packages/core/scripts/lib/agent-scope.mjs`, `packages/core/scripts/lib/gate/`, `packages/core/scripts/lib/domain-flows.mjs` | knowledge registry, each domain's flow and its next step (`orchestration.mjs next`), loop bounds, normalized results, report numbers, test case checks, the UI code scaffold and its locator checks, the generated API code and its checks, the pre-review gate |
 | Roots + config | `packages/core/scripts/lib/roots.mjs`, `packages/core/scripts/lib/config.mjs` | the framework root (scripts, agents, default config, templates, schemas) and the workspace root (run-configs, `artifacts/`, test code, generated host files), one directory in this repo (D-085); `{fw}` in agent sources and permissions; the one reader of the framework's config files |
 | Contract + state | `packages/core/scripts/lib/contract.mjs`, `packages/core/scripts/run.mjs`, `packages/core/scripts/lib/files.mjs`, `packages/core/schemas/` | layout, stage table, output verification, lock, history; atomic, locked state writes (D-072) and resume after a crash (D-071) |
@@ -52,7 +52,8 @@ flowchart LR
 - **Done:** all other agents bottom-up to `orchestrator-agent`; `packages/core/scripts/build-agents.mjs` (frontmatter from permissions + models), `orchestration.mjs`, `results.mjs`, `report-data.mjs`; stage attempts and blocked-dependency handling in `run.mjs`.
 - **Done:** GitHub Copilot support from the same sources (VS Code Copilot Chat, Copilot CLI, cloud coding agent), one hook entry for every host, the decision log and its confirmation hook, CI running `npm run check` on Linux, macOS and Windows, and the `atf` CLI for every human command (D-087).
 - **Done:** end-to-end harnesses (D-084): `packages/core/scripts/pipeline.test.mjs` drives `run.mjs next` from init to a verified report with stand-in agents on every `npm test`; `atf e2e` runs the rendered foundation against a local demo app in a real browser, readonly and full-run, then the human's ledger sweep.
-- **Next:** verify the Copilot runtime facts listed in `packages/core/docs/platforms.md` on live sessions, a first agent-driven run against a real product, per-role models in `packages/core/config/models.yaml`.
+- **Built, not yet verified live:** Google Antigravity support (App, `agy` CLI, IDE; D-099 – D-101), from its documentation. The spike kit in `docs/antigravity-spike/` settles the provisional values.
+- **Next:** verify the Copilot and Antigravity runtime facts listed in `packages/core/docs/platforms.md` on live sessions, a first agent-driven run against a real product, per-role models in `packages/core/config/models.yaml`.
 
 ## Control flow (D-060)
 

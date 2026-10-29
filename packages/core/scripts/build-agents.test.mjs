@@ -9,6 +9,7 @@ import yaml from "js-yaml";
 import { build } from "./build-agents.mjs";
 import { renderHookRegistrations } from "./lib/hook-registrations.mjs";
 import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
+import { forbiddenIdentifiers, lintBody } from "./lib/agents/lint.mjs";
 import { splitFrontmatter } from "./lib/agents/source.mjs";
 import { generatedNote, isGenerated } from "./lib/agents/renderers/common.mjs";
 import { frameworkRoot } from "./lib/contract.mjs";
@@ -30,6 +31,8 @@ const scriptOnly = resolvePermissions({
 }).resolved.agents.probe;
 const probeTools = (platform) => toolNames(capabilitiesFor(scriptOnly), platforms[platform], server);
 const generated = (rel) => splitFrontmatter(readFileSync(path.join(workspaceRoot, rel), "utf8"), rel).meta;
+// An agent's generated file on every platform (config/platforms.yaml `output`).
+const OUTS = (name) => [`.claude/agents/${name}.md`, `.github/agents/${name}.agent.md`, `.agents/agents/${name}.md`];
 
 // A throwaway repo root with the real config/ and agents/, so tests can break things safely.
 function scratch() {
@@ -84,6 +87,78 @@ test("Copilot frontmatter: subagent allow-list, entry agents only, identity hook
   const claude = generated(".claude/agents/pw-ui-fixer.md");
   assert.equal(claude.hooks, undefined, "Claude Code identifies agents from its own hook payload");
   for (const name of Object.keys(perms.agents)) assert.equal(generated(`.github/agents/${name}.agent.md`).name, name);
+});
+
+// ---- Antigravity (App, agy CLI, IDE): rendered in a scratch build, so these hold before the committed files exist
+test("Antigravity tools are the same capabilities in Antigravity's names; only the Playwright server's browser tools", () => {
+  assert.deepEqual(probeTools("antigravity"), ["view_file", "list_dir", "grep_search", "find_by_name", "run_command"]);
+  assert.deepEqual(tools("pw-ui-tests-writer", "antigravity"), ["view_file", "list_dir", "grep_search", "find_by_name", "write_to_file", "replace_file_content", "multi_replace_file_content", "run_command"]);
+  const kg = tools("knowledge-generator", "antigravity");
+  assert.ok(kg.includes("read_url_content") && kg.includes("search_web"));
+  assert.ok(kg.includes("mcp_playwright_browser_snapshot"));
+  assert.ok(!kg.includes("mcp_playwright_browser_type"), "read-only browser gets no typing tools");
+  assert.ok(tools("clarification-explorer", "antigravity").includes("mcp_playwright_browser_close"));
+  assert.ok(tools("orchestrator-agent", "antigravity").includes("invoke_subagent"));
+  assert.ok(tools("orchestrator-agent", "antigravity").includes("ask_question"));
+  assert.ok(!tools("pw-ui-reviewer", "antigravity").includes("invoke_subagent"));
+  // deliberately unmapped: Antigravity's own browser and subagent-management tools are never granted (D-070)
+  for (const name of Object.keys(perms.agents))
+    for (const t of tools(name, "antigravity")) assert.ok(!/^(browser_|define_subagent|send_message|manage_subagents|schedule|generate_image)/.test(t), `${name}: ${t}`);
+});
+
+test("Antigravity frontmatter: entry agents are the main agent, the rest subagents; model, execution policy, no MCP or hook keys", () => {
+  const root = scratch();
+  assert.deepEqual(build({ root }).errors, []);
+  const meta = (name) => splitFrontmatter(readFileSync(path.join(root, ".agents", "agents", `${name}.md`), "utf8"), name).meta;
+  const model = load("config/models.yaml").default.antigravity;
+  assert.equal(model, "inherit", "the human picks the model in Antigravity (D-100)");
+  const orch = meta("orchestrator-agent");
+  assert.equal(orch.mainAgent, true);
+  assert.equal(orch.subagent, false);
+  assert.deepEqual(orch.tools, tools("orchestrator-agent", "antigravity"));
+  const worker = meta("pw-ui-fixer");
+  assert.equal(worker.mainAgent, false);
+  assert.equal(worker.subagent, true);
+  assert.equal(worker.commandExecutionPolicy, "sandbox");
+  // any live target (browser, HTTP, load), or a shell allow-list running npm/npx/playwright/k6 or foundation.mjs install,
+  // runs unsandboxed; every other agent stays in the sandbox (AG.md decision 6, provisional until the spike)
+  const auto = ["knowledge-generator", "module-explorer", "api-discoverer", "clarification-explorer", "pw-repo-owner", "pw-ui-test-runner-triager", "pw-api-test-runner-triager", "k6-runner-triager"];
+  assert.deepEqual(Object.keys(perms.agents).filter((name) => meta(name).commandExecutionPolicy === "auto").sort(), [...auto].sort());
+  const network = (row) => row.shell !== "none" && row.shell_allow.some((c) => /^\s*(?:\S*[/\\])?(?:npm|npx|playwright|k6)(?:\.cmd|\.exe)?(?:\s|$)|\bfoundation\.mjs install\b/i.test(c));
+  for (const [name, row] of Object.entries(perms.agents)) {
+    const m = meta(name);
+    const entry = splitFrontmatter(readFileSync(path.join(frameworkRoot, "agents", `${name}.md`), "utf8"), name).meta.user_invocable === true;
+    assert.equal(m.name, name);
+    assert.equal(m.mainAgent, entry, name);
+    assert.equal(m.subagent, !entry, name);
+    assert.equal(m.model, model, name);
+    assert.equal(m.commandExecutionPolicy, Object.values(row.live_target).some((level) => level !== "none") || network(row) ? "auto" : "sandbox", name);
+    assert.deepEqual(m.tools, tools(name, "antigravity"), name);
+    for (const key of ["mcpServers", "hooks", "agents", "color", "user-invocable"]) assert.equal(m[key], undefined, `${name}: no ${key}`);
+  }
+  assert.deepEqual(build({ check: true, root }), { errors: [], changed: [] });
+});
+
+test("Antigravity's MCP config is .agents/mcp_config.json under mcpServers, the same servers as every platform's", () => {
+  assert.deepEqual(platforms.antigravity.mcp_config, { path: ".agents/mcp_config.json", key: "mcpServers" });
+  const root = scratch();
+  assert.deepEqual(build({ root }).errors, []);
+  const ag = JSON.parse(readFileSync(path.join(root, ".agents", "mcp_config.json"), "utf8"));
+  assert.deepEqual(Object.keys(ag), ["mcpServers"]);
+  assert.deepEqual(ag.mcpServers, JSON.parse(readFileSync(path.join(root, ".mcp.json"), "utf8")).mcpServers);
+});
+
+test("a body may not name an Antigravity tool: every built-in name in its tools map is forbidden, and the build rejects one", () => {
+  const forbidden = forbiddenIdentifiers(platforms);
+  const { tools: map } = platforms.antigravity;
+  for (const name of [...Object.values(map).filter(Array.isArray).flat(), map.spawn, "mcp_playwright_browser_click"])
+    assert.equal(lintBody("probe", `Call ${name} now.`, forbidden).length > 0, true, name);
+  const root = scratch();
+  const file = path.join(root, "agents", "testcase-writer.md");
+  writeFileSync(file, readFileSync(file, "utf8").replaceAll("\r\n", "\n").replace("---\n\n", "---\n\nUse invoke_subagent to delegate.\n"));
+  const { errors, changed } = build({ root });
+  assert.ok(errors.some((e) => /testcase-writer\.md: body names platform-specific 'invoke_subagent'/.test(e)), errors.join("\n"));
+  assert.deepEqual(changed, []);
 });
 
 test("a source may not carry platform syntax: generated keys and platform tool names are rejected", () => {
@@ -189,14 +264,14 @@ test("an include expands into every platform's generated file, and a changed fra
   withInclude(root);
   const first = build({ root });
   assert.deepEqual(first.errors, []);
-  for (const rel of [".claude/agents/pw-ui-fixer.md", ".github/agents/pw-ui-fixer.agent.md"]) {
+  for (const rel of OUTS("pw-ui-fixer")) {
     const text = readFileSync(path.join(root, rel), "utf8");
     assert.match(text, /Shared fixer rule: report, do not guess\./);
     assert.ok(!text.includes("<!-- include"), "the marker is replaced by the fragment");
   }
   assert.deepEqual(build({ check: true, root }).changed, []);
   writeFileSync(path.join(root, "agents", "_shared", "probe.md"), "Changed rule.\n");
-  assert.deepEqual(build({ check: true, root }).changed.sort(), [".claude/agents/pw-ui-fixer.md", ".github/agents/pw-ui-fixer.agent.md"]);
+  assert.deepEqual(build({ check: true, root }).changed.sort(), OUTS("pw-ui-fixer").sort());
 });
 
 test("a missing, malformed or nested include is a build error; the expanded body gets the platform-neutral lint", () => {
@@ -221,7 +296,7 @@ test("the fragment directory is not an agent: no stray-source error, no generate
   writeFileSync(path.join(root, "agents", "_shared", "other.md"), "No frontmatter here.\n");
   const { errors } = build({ root });
   assert.deepEqual(errors, []);
-  for (const rel of [".claude/agents", ".github/agents"]) assert.ok(!readdirSync(path.join(root, rel)).some((f) => /probe|other|_shared/.test(f)));
+  for (const rel of [".claude/agents", ".github/agents", ".agents/agents"]) assert.ok(!readdirSync(path.join(root, rel)).some((f) => /probe|other|_shared/.test(f)));
 });
 
 // ---- G10 (D-060): orchestrators are pure loops over script decisions; workers record requests through the script ----
@@ -236,7 +311,7 @@ test("the five domain orchestrators are the shared loop body plus a short domain
     assert.match(src, /<!-- include: _shared\/domain-loop.md -->/, `${name} includes the shared body`);
     assert.ok(src.split("\n").length < 24, `${name}: a short domain section`);
     assert.ok(src.includes(`\`<domain>\` is \`${domain}\``), `${name} names its domain`);
-    for (const rel of [`.claude/agents/${name}.md`, `.github/agents/${name}.agent.md`]) {
+    for (const rel of OUTS(name)) {
       const text = body(rel).replace(/\r\n/g, "\n");
       assert.ok(text.includes(shared), `${rel} holds the expanded shared body`);
       assert.ok(!text.includes("<!-- include"), `${rel}: no include marker left`);
@@ -280,7 +355,6 @@ function splitPair() {
   return { framework, ws, run: (opts = {}) => build({ root: ws, framework, ...opts }) };
 }
 const fragmentFile = (ws, name) => path.join(ws, "atf", "agents", `${name}.extra.md`);
-const OUTS = (name) => [`.claude/agents/${name}.md`, `.github/agents/${name}.agent.md`];
 const HEADING = "## Project additions (from atf/agents/pw-ui-fixer.extra.md)";
 
 test("a fragment is appended under the fixed heading in every platform's file; no fragment changes nothing", () => {
@@ -534,7 +608,7 @@ test("installed: an MCP server the client added by hand fails build and check, n
     ]);
   }
   assert.equal(readFileSync(path.join(root, ".mcp.json"), "utf8"), mine, "untouched");
-  for (const f of [".claude", ".github"]) assert.equal(existsSync(path.join(root, f)), false, `${f}: nothing written`);
+  for (const f of [".claude", ".github", ".agents"]) assert.equal(existsSync(path.join(root, f)), false, `${f}: nothing written`);
   // ejected: the overlay would be ignored, so the pointer names the ejected copy
   put(root, "atf/config/mcp.yaml", readFileSync(path.join(framework, "config", "mcp.yaml"), "utf8"));
   assert.match(build({ root, framework, check: true }).errors[0], /add it under 'servers:' in atf\/config\/mcp\.yaml \(your ejected copy\), then run npx atf sync$/);
@@ -545,7 +619,7 @@ test("installed: a server defined through the atf/mcp.yaml overlay renders besid
   put(root, ".mcp.json", JSON.stringify({ mcpServers: { jira: SERVER } }));
   put(root, "atf/mcp.yaml", "servers:\n  jira:\n    command: npx\n    args: ['-y', '@acme/mcp-jira']\n");
   assert.deepEqual(build({ root, framework }).errors, []);
-  for (const [rel, key] of [[".mcp.json", "mcpServers"], [".vscode/mcp.json", "servers"]]) {
+  for (const [rel, key] of [[".mcp.json", "mcpServers"], [".vscode/mcp.json", "servers"], [".agents/mcp_config.json", "mcpServers"]]) {
     const servers = json(root, rel)[key];
     assert.deepEqual(Object.keys(servers), ["playwright", "jira"], rel);
     assert.deepEqual(servers.jira, SERVER, rel);

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Brief for any agent working in this repo: Claude Code and every GitHub Copilot surface (VS Code Copilot Chat, Copilot CLI, the cloud coding agent) read this file. It is a pointer, not a copy of the pipeline logic.
+Brief for any agent working in this repo: Claude Code, every GitHub Copilot surface (VS Code Copilot Chat, Copilot CLI, the cloud coding agent) and Google Antigravity (the App, the `agy` CLI, the IDE) read this file. It is a pointer, not a copy of the pipeline logic.
 
 ## What this repo is
 
@@ -9,7 +9,8 @@ A platform-neutral agentic testing pipeline. It has 34 small agents in three lay
 Each agent is written **once**, in `packages/core/agents/<name>.md`. `npm run build-agents` generates the platform files from those sources and `packages/core/config/`:
 - `.claude/agents/` for Claude Code;
 - `.github/agents/` for Copilot;
-- the MCP configs.
+- `.agents/agents/` for Antigravity;
+- the MCP configs and the hook registrations.
 
 Never edit a generated file. Hosts and setup are covered in `packages/core/docs/platforms.md`.
 
@@ -29,7 +30,7 @@ Never edit a generated file. Hosts and setup are covered in `packages/core/docs/
 - `readonly` (the default) is non-mutating everywhere, whatever `packages/core/config/permissions.yaml` says.
 - `full-run` must be set explicitly, per target, by a human authorized to test that target, and is never inferred. Then each agent gets exactly the ceiling in `packages/core/config/permissions.yaml`.
 - Even under `full-run`, destructive actions (delete/cancel/remove) are scoped to entities this run created, recorded in `state/ledger.jsonl` (`packages/core/scripts/ledger.mjs`). Never pre-existing data, and never another user's.
-- Some hosts can't tell the guard which agent is calling: Copilot CLI, VS Code chat on its Copilot CLI engine, and the cloud coding agent. On those hosts a `full-run` call gets the run's combined ceiling instead, which is what at least one of the run's agents may do (`docs/decisions.md` D-035).
+- Some hosts can't tell the guard which agent is calling: Copilot CLI, VS Code chat on its Copilot CLI engine, the cloud coding agent and Antigravity. On those hosts a `full-run` call gets the run's combined ceiling instead, which is what at least one of the run's agents may do (`docs/decisions.md` D-035). On Antigravity, an unmapped tool (its built-in browser, among others) is denied during every run, readonly included (D-101).
 
 The guard enforces all of this in code, keyed on the calling agent: `packages/core/scripts/lib/guard.mjs`, reached through the single hook entry `packages/core/scripts/hooks/pretooluse.mjs` on every host. Do not bypass or weaken it.
 
@@ -40,4 +41,4 @@ The guard enforces all of this in code, keyed on the calling agent: `packages/co
 - Agent bodies stay platform-neutral: never name a platform's tool in them (the build rejects it).
 - Never put credential values in a prompt, issue or commit; agents get a path to a `.env`-style file only.
 - `artifacts/` is generated and git-ignored.
-- Live browser work (`module-explorer`, `clarification-explorer`) needs an interactive Playwright MCP session on Claude Code or VS Code. Don't attempt it from a sandboxed environment or the cloud coding agent.
+- Live browser work (`module-explorer`, `clarification-explorer`) needs an interactive Playwright MCP session on Claude Code or VS Code (on Antigravity, once its spike verifies it: `docs/antigravity-spike/`). Never use a host's built-in browser. Don't attempt it from a sandboxed environment or the cloud coding agent.

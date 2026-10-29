@@ -13,6 +13,9 @@
 //                  (`unknown` = the adapter does not know this tool; the guard fails closed on it for managed agents)
 //   tool           the host's own tool name, for messages
 //   command        shell: the command line
+//   cwds           shell: every directory the host says it runs the command in (Antigravity's run_command `Cwd`), absent
+//                  when the payload names none. Only ever an extra base for the relative files the command writes
+//                  (guard.mjs writeUnder, decisions.mjs targetsOf), never the root the guard judges.
 //   paths          write: every file the call writes (absolute or repo-relative)
 //   urls           web_fetch: every URL fetched
 //   subagent       spawn: the agent being started
@@ -21,7 +24,7 @@
 
 export const KINDS = ["read", "write", "shell", "spawn", "web_fetch", "web_search", "browser", "ask", "other", "unknown"];
 
-export function toolCall({ host = "unknown", agent, unattributed, kind, tool = "", command, paths = [], urls = [], subagent, browserAction, sessionId } = {}) {
+export function toolCall({ host = "unknown", agent, unattributed, kind, tool = "", command, cwds = [], paths = [], urls = [], subagent, browserAction, sessionId } = {}) {
   if (!KINDS.includes(kind)) throw new Error(`tool-call: unknown kind '${kind}'`);
   return {
     host,
@@ -30,6 +33,7 @@ export function toolCall({ host = "unknown", agent, unattributed, kind, tool = "
     kind,
     tool: String(tool),
     command: command === undefined ? undefined : String(command),
+    ...(cwds.filter(Boolean).length ? { cwds: cwds.filter(Boolean).map(String) } : {}),
     paths: paths.filter(Boolean).map(String),
     urls: urls.filter(Boolean).map(String),
     subagent: subagent || undefined,

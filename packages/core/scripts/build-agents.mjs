@@ -22,7 +22,7 @@
 // (D-018); a dev agent with a framework agent's name, or without a permissions row, is an error naming its source.
 // Nothing generated is ever edited by hand: change a source or config, then rebuild.
 //
-// An agent file with no source in the agent folders (.claude/agents/*.md, .github/agents/*.agent.md):
+// An agent file with no source in the agent folders (.claude/agents/*.md, .github/agents/*.agent.md, .agents/agents/*.md):
 //   source checkout (this monorepo)   always an error: every file there is ours (D-018)
 //   installed (a client's workspace)  the folders are shared with the client's own agents, told apart by the generated
 //                                     marker (renderers/common.mjs isGenerated): a marked file is an agent the package
@@ -33,7 +33,8 @@
 // The MCP config files are rendered whole. Installed, a server (or top-level key) already in one that the effective
 // mcp.yaml doesn't produce is the client's, added by hand: an error naming it and where it belongs (lib/mcp.mjs), so a
 // sync never drops it silently. In .claude/settings.json the build owns only the framework's own hook entries; the
-// client's hooks and other keys are kept, in both kinds of workspace (lib/hook-registrations.mjs).
+// client's hooks and other keys are kept, in both kinds of workspace; in .agents/hooks.json only its `atf-guard` set,
+// every other set is kept (lib/hook-registrations.mjs).
 //
 // The Claude Code plugin (docs/packaging.md §3.12; the opt-in and the mode rule are lib/provenance.mjs claudeMode). In
 // plugin mode without a Claude-affecting customization (agents "plugin") the plugin replaces the Claude Code half of the
@@ -61,13 +62,14 @@ import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { checkBodyLimit, forbiddenIdentifiers, lintBody, lintFwToken } from "./lib/agents/lint.mjs";
 import { loadSources, splitFrontmatter } from "./lib/agents/source.mjs";
 import { foreignMcpEntries, renderMcpConfig, validateMcp } from "./lib/mcp.mjs";
-import { CLAUDE_SETTINGS, HOOKS_CONFIG, formatJson, postModeOf, renderHookRegistrations, setPostMode } from "./lib/hook-registrations.mjs";
+import { ANTIGRAVITY_HOOKS, CLAUDE_SETTINGS, HOOKS_CONFIG, formatJson, postModeOf, renderHookRegistrations, setPostMode } from "./lib/hook-registrations.mjs";
 import { PLUGIN, PLUGIN_ID, claudeMode } from "./lib/provenance.mjs";
 import { isGenerated } from "./lib/agents/renderers/common.mjs";
 import * as claude from "./lib/agents/renderers/claude.mjs";
 import * as copilot from "./lib/agents/renderers/copilot.mjs";
+import * as antigravity from "./lib/agents/renderers/antigravity.mjs";
 
-const RENDERERS = { claude, copilot };
+const RENDERERS = { claude, copilot, antigravity };
 
 // The platform whose agents and MCP servers the Claude Code plugin supplies in plugin mode: Claude Code's renderer.
 export const pluginSupplies = (platform) => platform?.renderer === "claude";
@@ -267,12 +269,16 @@ export function build({ check = false, postHook, root, framework } = {}) {
   }
 
   if (!post.error) {
-    const settingsFile = path.join(ws, CLAUDE_SETTINGS);
+    // the shared host files are merged with what the workspace already holds
+    const current = (rel) => {
+      const file = path.join(ws, rel);
+      return existsSync(file) ? readFileSync(file, "utf8") : undefined;
+    };
     try {
-      for (const [rel, content] of renderHookRegistrations(post.mode, existsSync(settingsFile) ? readFileSync(settingsFile, "utf8") : undefined, fw))
+      for (const [rel, content] of renderHookRegistrations(post.mode, current(CLAUDE_SETTINGS), fw, { antigravityHooks: current(ANTIGRAVITY_HOOKS) }))
         outputs.set(rel, rel === CLAUDE_SETTINGS ? withPluginSettings(content, plugin) : content);
     } catch (e) {
-      errors.push(`${CLAUDE_SETTINGS}: ${e.message}`);
+      errors.push(`${e.file ?? CLAUDE_SETTINGS}: ${e.message}`);
     }
   }
 

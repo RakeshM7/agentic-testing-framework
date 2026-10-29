@@ -331,3 +331,13 @@ test("the client log template parses with zero entries, and its lookup commands 
   assert.deepEqual(cli(["index"], { root }).out, { log: "atf/decisions.md", accepted: [] });
   assert.equal(checkDecisions(write("config/acme.yaml"), root, loadDecisions(root)).decision, "allow");
 });
+
+test("a shell's relative write targets are also read from the directory the host runs it in (the call's cwds), as the guard reads them", () => {
+  const root = tempRoot();
+  const shIn = (command, cwds) => toolCall({ kind: "shell", tool: "run_command", command, cwds });
+  assert.equal(checkDecisions(shIn("echo x > permissions.yaml", [path.join(root, "config")]), root, parsed).decision, "ask");
+  assert.equal(checkDecisions(shIn("echo x > permissions.yaml", ["config"]), root, parsed).decision, "ask", "a relative cwd, from the workspace");
+  assert.equal(checkDecisions(shIn("echo x > config/permissions.yaml", [tempRoot()]), root, parsed).decision, "ask", "the workspace stays a base");
+  assert.equal(checkDecisions(shIn("echo x > permissions.yaml", [tempRoot()]), root, parsed).decision, "allow", "outside the workspace: governs nothing here");
+  assert.equal(checkDecisions(shIn("echo x > permissions.yaml", []), root, parsed).decision, "allow");
+});

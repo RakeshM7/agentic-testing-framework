@@ -53,3 +53,25 @@ platforms:
       event: PreToolUse
       command: "node {fw}/scripts/hooks/pretooluse.mjs --host vscode --agent {name}"
     forbidden_in_body: ["vscode/askQuestions", ask_user, "playwright/browser_", runSubagent, run_in_terminal]
+
+  # One file serves all three Antigravity surfaces: the App, the agy CLI and the IDE. Antigravity is not verified live
+  # yet: the names below are antigravity.google/docs' (read 2026-10-27), and the ones marked UNVERIFIED wait on the
+  # spike (docs/antigravity-spike/). The workspace's .agents/hooks.json registers the guard (lib/hook-registrations.mjs).
+  antigravity:
+    renderer: antigravity
+    output: ".agents/agents/{name}.md"
+    mcp_config: { path: ".agents/mcp_config.json", key: mcpServers }
+    tools:                                # Antigravity's documented built-in tool names
+      read: [view_file, list_dir]
+      search: [grep_search, find_by_name]
+      write: [write_to_file, replace_file_content, multi_replace_file_content]
+      shell: [run_command]
+      web_fetch: [read_url_content]
+      web_search: [search_web]
+      spawn: "invoke_subagent"            # no subagent allow-list key: the guard enforces each agent's `spawns`
+      browser: "mcp_{server}_browser_{tool}"   # UNVERIFIED: how Antigravity names an MCP server's tools
+      ask: [ask_question]
+    # No identity_hook yet: whether Antigravity runs a hook from an agent's own frontmatter is UNVERIFIED (spike check
+    # 3). Until it is, the guard can't tell which agent is calling, so a full-run call gets the run's combined ceiling,
+    # as on the Copilot CLI hosts (D-035). Add the hook here once the spike shows its shape.
+    forbidden_in_body: [view_file, list_dir, grep_search, find_by_name, write_to_file, replace_file_content, run_command, read_url_content, search_web, invoke_subagent, ask_question, "mcp_playwright_browser_"]

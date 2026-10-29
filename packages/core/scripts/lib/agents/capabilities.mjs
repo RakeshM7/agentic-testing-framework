@@ -18,6 +18,10 @@ export function capabilitiesFor(row) {
     browser: row.live_target.browser, // none | read | mutate
     browserSession: row.browser_session ?? "shared", // shared | fresh (may close its own session)
     ask: row.ask_user === "allowed",
+    // not tools: a renderer that sets per-agent execution policy reads them (renderers/antigravity.mjs)
+    http: row.live_target.http, // none | read | mutate
+    load: row.live_target.load, // none | run
+    shellAllow: row.shell === "none" ? [] : (row.shell_allow ?? []), // the resolved allow-list ({fw} expanded)
   };
 }
 
