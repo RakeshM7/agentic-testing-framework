@@ -280,7 +280,7 @@ Drafts are numbered P-1 to P-12. Each takes the next free `D-` ID when it is rec
 | P-2 · private licensed package, monorepo | monorepo part: D-086; distribution part: phase 4 | 2a, 4 |
 | P-3 · `atf sync`, git-ignored host files, `atf init` | D-089 (and D-092 for client hooks and MCP servers) | 3b |
 | P-3 · the cloud-agent opt-in | D-093 (experimental: `docs/cloud-agent-verification.md`) | 3c |
-| P-2 · distribution: npmjs private org, bundle, allow-list, EULA gate | D-094 | 4 |
+| P-2 · distribution: bundle, allow-list, EULA gate; the registry | D-094, superseded by D-103 (GitHub Packages, 2026-10-29) | 4 |
 | P-4 · config overlays and eject | D-088 | 3a |
 | P-7 · feedback-implementor-agent fixes outputs; dev-only framework-implementor-agent | D-096 | 5 |
 | P-8 · redacted issue export and import | D-097 | 5 |

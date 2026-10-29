@@ -1,8 +1,10 @@
 # Publishes @testagentic/atf (docs/packaging.md §2, §3.11): the bundled build in packages/core/dist, never the source,
-# to the private @testagentic org on registry.npmjs.org (access restricted; each client reads it with its own token).
+# to GitHub Packages (npm.pkg.github.com) under the GitHub organization testagentic, as a private package (D-103): each
+# developer reads it with a GitHub token of their own, after the org grants them access to the package.
 # Runs on a tag core-v<semver> that matches packages/core/package.json, or by hand for an existing tag (a dry run by
-# default). It refuses while LICENSE.md is still the DRAFT placeholder. Needs the repository secret NPM_TOKEN: an npm
-# automation (or granular, publish-only) token of the @testagentic org.
+# default). It refuses while LICENSE.md is still the DRAFT placeholder. Needs the repository secret NPM_TOKEN: a GitHub
+# personal access token (classic) with write:packages, from an account that may publish to the testagentic org (this
+# repository is not in that org, so the built-in GITHUB_TOKEN can't publish there).
 #
 # No --provenance: npm accepts provenance only from a public source repository (GitHub changelog, 2023-07-26,
 # "publishing with provenance is restricted to public source repositories only"), and the attestation goes to the
@@ -62,8 +64,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          # writes an .npmrc that reads NODE_AUTH_TOKEN for registry.npmjs.org
-          registry-url: https://registry.npmjs.org/
+          # writes an .npmrc that reads NODE_AUTH_TOKEN for GitHub Packages, the @testagentic scope's registry
+          registry-url: https://npm.pkg.github.com
+          scope: "@testagentic"
       - run: npm ci
       # the generated host files, the decision log and the whole test suite, the build's own tests included
       - run: npm run check

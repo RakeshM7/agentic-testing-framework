@@ -149,7 +149,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-091 | Each workspace has its own decision log, named in atf/atf.json | Accepted | 2026-10-26 |
 | D-092 | Hook registrations are generated and the build owns only the framework's own hook entries; a client's own MCP entries fail with a pointer | Accepted | 2026-10-26 |
 | D-093 | A client workspace opts in to the Copilot cloud agent by committing its agent and hook files; the setup workflow is written once and then the client's | Accepted | 2026-10-26 |
-| D-094 | The package is published to a private npmjs org as an unminified bundle with an allow-listed file set; nothing ships while the licence is a draft | Accepted | 2026-10-26 |
+| D-094 | The package is published to a private npmjs org as an unminified bundle with an allow-listed file set; nothing ships while the licence is a draft | Superseded by D-103 | 2026-10-26 |
 | D-095 | Semver with an artifact-contract version and tested migrations; a run never resumes across a breaking line | Accepted | 2026-10-26 |
 | D-096 | feedback-implementor-agent fixes a run's outputs; the framework is maintained by a dev-only framework-implementor-agent | Accepted | 2026-10-27 |
 | D-097 | Framework issues leave a client workspace only as a redacted, previewed export bundle | Accepted | 2026-10-27 |
@@ -158,6 +158,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-100 | Antigravity agents inherit the session model | Accepted | 2026-10-27 |
 | D-101 | On Antigravity, unrecognised tools are denied during every run, readonly included | Accepted | 2026-10-27 |
 | D-102 | The VS Code extension is a public UI over the CLI with no safety role; human-only commands run in a terminal the human sees | Accepted | 2026-10-29 |
+| D-103 | The package is published to GitHub Packages under the testagentic organization; the rest of D-094 is unchanged | Accepted | 2026-10-29 |
 
 ## Decisions
 
@@ -1837,7 +1838,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Confirmed by the user on:** 2026-10-24 (draft P-3's opt-in) and 2026-10-26 (the setup workflow written once and client-owned; build now, verify live after; report then restore the committed files). This extends D-018, D-035, D-089 and D-091 without weakening them.
 
 ### D-094 · The package is published to a private npmjs org as an unminified bundle with an allow-listed file set; nothing ships while the licence is a draft
-- **Status:** Accepted · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §2, §3.11 and phase 4: the distribution part of draft P-2)
+- **Status:** Superseded by D-103 (2026-10-29) · **Date:** 2026-10-26 · **Source:** conversation with the user, 2026-10-24 and 2026-10-26 (packaging for clients, `docs/packaging.md` §2, §3.11 and phase 4: the distribution part of draft P-2)
 - **Decision:**
   - **Registry (user, 2026-10-26):** `@testagentic/atf` is published to the npmjs private org, `access: restricted` (`publishConfig`). Each client gets its own read-only token, used as `ATF_NPM_TOKEN`. The source `package.json` stays `private: true`; only the built package can be published.
   - **Version (user):** the first release is `0.1.0`; the breaking-line rules are in D-095.
@@ -2086,3 +2087,29 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - `npm audit` reports a high advisory in `@azure/msal-node`, pulled in by the `@vscode/vsce` devDependency; it never ships.
 - **Affects:** `packages/vscode/package.json`, `packages/vscode/SPEC.md`, `packages/vscode/src/cli.js`, `packages/vscode/src/activate.js`, `packages/vscode/src/sheets/save.js`, `packages/vscode/src/sheets/commands.js`, `packages/vscode/src/report.js`, `packages/vscode/scripts/package.mjs`, `.github/workflows/release.yml`, `package.json`
 - **Confirmed by the user on:** 2026-10-24 (draft P-12), 2026-10-27 (approval: edit the sheet, approve in a terminal) and 2026-10-28 (public on the VS Code Marketplace and Open VSX; all of §3.13 in the first version; pure-module tests plus an optional smoke test). This extends D-020, D-048, D-053, D-087 and D-094 without weakening them.
+
+### D-103 · The package is published to GitHub Packages under the testagentic organization; the rest of D-094 is unchanged
+- **Status:** Accepted · **Date:** 2026-10-29 · **Source:** conversation with the user, 2026-10-29. npm's private packages need a paid org plan, which isn't affordable for now. Publishing publicly was considered and rejected: it can't be taken back, since mirrors and CDNs keep copies. GitHub Packages is free for a few trusted developers.
+- **Decision:**
+  - **Registry (user, 2026-10-29).** `@testagentic/atf` is published to GitHub Packages (`publishConfig.registry: https://npm.pkg.github.com`). Its scope must match the owning GitHub account, so it lives under a GitHub organization named `testagentic`.
+    - The package is private there. The organization grants each trusted developer read access to it, and revoking that access stops their upgrades.
+    - The source repository stays under its current account (user). So the release publishes with the repository secret `NPM_TOKEN`: a classic personal access token with `write:packages`, from an account that may publish to `testagentic`. The built-in `GITHUB_TOKEN` can only publish to its own repository's owner. `setup-node` writes the registry and scope.
+  - **The client `.npmrc`** (written by `atf init`) maps `@testagentic` to `https://npm.pkg.github.com`, with `_authToken=${ATF_NPM_TOKEN?}`. Each developer's `ATF_NPM_TOKEN` is their own classic GitHub token with `read:packages`. The `?` keeps npm working without it.
+  - **Carried over from D-094, unchanged:**
+    - The source `package.json` stays `private`; only `packages/core/dist` is published.
+    - The first release is `0.1.0`, under D-095's versioning.
+    - `"license": "UNLICENSED"` with `LICENSE.md`. The release refuses to publish while its first line is the `DRAFT — NOT FOR RELEASE` placeholder.
+    - The esbuild bundle at source paths:
+      - unminified, ESM for node20, runtime dependencies external;
+      - relative `import()` kept lazy so the hooks still fail closed, and `import.meta.url` rewritten;
+      - assets copied as written;
+      - tests, fixtures, the e2e harness, build scripts, the decision log, `feedback/` and the maintainer docs never shipped.
+    - The allow-list `package-files.txt`, checked by the build and the release.
+    - The release order: `npm ci`, `npm run check`, the build, the allow-list check, the DRAFT and tag gate, then `npm publish`. A manual dispatch is a dry run by default.
+    - No `--provenance`.
+- **Why:**
+  - The user can't fund a paid npm org now, and wants a few trusted developers to use the package without it ever being public.
+  - GitHub Packages keeps it private and access-controlled at no cost within GitHub's free allowance.
+  - Moving back to npm later is a registry change in `publishConfig`, the release and the `.npmrc` template.
+- **Affects:** `packages/core/package.json`, `packages/core/templates/workspace/_npmrc`, `.github/workflows/release.yml`, `packages/core/scripts/build-package.mjs`, `packages/core/scripts/build-package.test.mjs`, `packages/core/package-files.txt`, `packages/core/LICENSE.md`, `packages/core/scripts/init.test.mjs`
+- **Supersedes:** D-094 (its npmjs private-org registry and client `.npmrc`; the rest is restated above) · **Confirmed by the user on:** 2026-10-29 (GitHub Packages under a new `testagentic` organization; the repository stays where it is, publishing with a personal access token). This extends D-089, D-095 and D-102 without weakening them.

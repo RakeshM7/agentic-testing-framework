@@ -50,10 +50,10 @@ test("atf init --no-install in a folder that doesn't exist yet: every file, {fw}
   assert.equal(pkg.devDependencies.playwright, "1.64.1");
   assert.match(readFileSync(path.join(dir, "package.json"), "utf8"), /^\{\n {2}"name"[\s\S]*\}\n$/, "2-space indent, trailing newline");
 
-  // .npmrc: the scope on registry.npmjs.org, a token only by environment variable (optional, so npm runs without it)
+  // .npmrc: the scope on GitHub Packages (D-103), a token only by environment variable (optional, so npm runs without it)
   const npmrc = readFileSync(path.join(dir, ".npmrc"), "utf8");
-  assert.match(npmrc, /^@testagentic:registry=https:\/\/registry\.npmjs\.org\/$/m);
-  assert.match(npmrc, /^\/\/registry\.npmjs\.org\/:_authToken=\$\{ATF_NPM_TOKEN\?\}$/m);
+  assert.match(npmrc, /^@testagentic:registry=https:\/\/npm\.pkg\.github\.com$/m);
+  assert.match(npmrc, /^\/\/npm\.pkg\.github\.com\/:_authToken=\$\{ATF_NPM_TOKEN\?\}$/m);
   assert.equal(npmrc.split("\n").filter((l) => l && !l.startsWith("#")).length, 2, "only those two lines are active");
 
   // .gitignore: the init block with the whole baseline

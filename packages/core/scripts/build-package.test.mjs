@@ -124,7 +124,7 @@ test("dist's package.json: what an install needs, publishable, and nothing from 
   assert.deepEqual(pkg.scripts, { postinstall: "node bin/atf.mjs sync --postinstall" });
   assert.deepEqual(pkg.dependencies, SOURCE_PKG.dependencies);
   assert.deepEqual(pkg.peerDependencies, { playwright: "1.64.1" });
-  assert.deepEqual(pkg.publishConfig, { registry: "https://registry.npmjs.org/", access: "restricted" });
+  assert.deepEqual(pkg.publishConfig, { registry: "https://npm.pkg.github.com" });
   for (const k of ["private", "devDependencies", "files", "workspaces"]) assert.equal(k in pkg, false, k);
   // the source can't be published by accident, and esbuild is build-time only
   assert.equal(SOURCE_PKG.private, true);
