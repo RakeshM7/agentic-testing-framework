@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "publisher": "testagentic",
   "private": true,
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "MIT",
   "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#16202c",

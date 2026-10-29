@@ -1,26 +1,27 @@
-DRAFT — NOT FOR RELEASE
+MIT License
 
-# atf for VS Code — licence (placeholder)
+Copyright (c) 2026 Rakesh M
 
-**This is a placeholder, not the licence.** Legal will replace this whole file with the extension's licence before
-its first release. The release workflow refuses to publish the extension while the first line above still reads
-`DRAFT — NOT FOR RELEASE`.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Copyright (c) 2026 the copyright holder of @testagentic/atf. All rights reserved.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-This extension is a user interface only. It contains none of the atf framework: to do anything, it needs the
-licensed `@testagentic/atf` package installed in the workspace, under that package's own licence, which this file
-does not grant, extend or replace.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
-Until the licence replaces this file:
+---
 
-1. **No rights are granted** to anyone, except to install and run the extension, unmodified, from the Visual Studio
-   Code Marketplace or Open VSX together with a licensed installation of `@testagentic/atf`.
-2. **No redistribution.** You may not copy, publish, sublicense, sell, lend or otherwise make the extension, or any
-   part of it, available to anyone else, in its original form or any other.
-3. **No derivative works.** You may not modify, adapt or create works based on the extension, except to the extent
-   the law allows this despite a contractual prohibition.
-4. **No warranty.** The extension is provided "as is", without warranty of any kind. To the extent the law allows,
-   the copyright holder is not liable for any claim, damage or loss arising from it or its use.
-
-Anything not expressly granted above is reserved by the copyright holder.
+This licence covers the atf VS Code extension only. The @testagentic/atf package
+it works with is not covered by it: that package is private, and its use is
+governed by its own licence.

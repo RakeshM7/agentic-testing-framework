@@ -25,7 +25,10 @@
 # with the secret VSCE_PAT (an Azure DevOps token with Marketplace > Manage, for the publisher testagentic) and to Open
 # VSX with the secret OVSX_PAT (an open-vsx.org token of a member of the testagentic namespace). Each publish is
 # skipped with a notice on a dry run or without its secret, and a version that is already there is a notice, not a
-# failure, so a re-run publishes only what is missing. ovsx runs through npx at a pinned version, not as a
+# failure, so a re-run publishes only what is missing.
+# For now the Marketplace upload is manual (D-105): Azure DevOps retires the global tokens vsce needs on 2026-12-01,
+# so VSCE_PAT is left unset and the human uploads the run's vsix artifact at https://marketplace.visualstudio.com/manage
+# until publishing through Entra ID or GitHub OIDC replaces it. ovsx runs through npx at a pinned version, not as a
 # devDependency: it is needed here only, and its dependency tree stays out of every install.
 name: Release
 
@@ -193,7 +196,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$DRY_RUN" = "true" ]; then echo "::notice title=VS Code Marketplace::Dry run: $ID $VERSION was packaged (see the workflow artifact), nothing is published"; exit 0; fi
-          if [ "$HAS_VSCE_PAT" != "true" ]; then echo "::notice title=VS Code Marketplace::Not published: set the secret VSCE_PAT (a token with Marketplace > Manage for the publisher) to publish $ID"; exit 0; fi
+          if [ "$HAS_VSCE_PAT" != "true" ]; then echo "::notice title=VS Code Marketplace::Not published automatically (D-105): download this run's atf-vscode-$VERSION artifact and upload the .vsix at https://marketplace.visualstudio.com/manage (publisher testagentic, Update or New extension)"; exit 0; fi
           # `vsce show` fails for an extension the Marketplace doesn't have yet: that is "not published"
           if npx --no -- vsce show "$ID" --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>process.exit((JSON.parse(s).versions??[]).some((v)=>v.version===process.argv[1])?0:1))' "$VERSION"; then
             echo "::notice title=VS Code Marketplace::$ID $VERSION is already published"; exit 0

@@ -65,11 +65,11 @@ test("the release gate: a DRAFT licence and a tag that isn't core-v<extension ve
   assert.equal(releaseErrors("core-v1.2.3", { pkgDir: dir }).length, 1, "the framework's rule: DRAFT on the first line is a draft too");
 });
 
-test("the extension's licence is the DRAFT placeholder today, marked as the framework's gate expects, so the release refuses it", () => {
+test("the extension's licence is MIT (D-105), so the release gate lets it through", () => {
   const ours = readFileSync(path.join(PKG, "LICENSE.md"), "utf8");
-  assert.ok(ours.split("\n")[0].includes(DRAFT_MARKER), "the placeholder's first line carries the marker");
-  assert.ok(licenseIsDraft(ours));
-  assert.match(releaseErrors(`core-v${manifest.version}`)[0], /LICENSE\.md is still the placeholder/);
+  assert.equal(ours.split("\n")[0], "MIT License");
+  assert.equal(licenseIsDraft(ours), false);
+  assert.deepEqual(releaseErrors(`core-v${manifest.version}`), []);
 });
 
 test("the extension's version is the framework's: one core-v tag releases both", () => {
