@@ -45,3 +45,16 @@ export function networkGuarded(framework = frameworkRoot, workspace = workspaceR
     return false;
   }
 }
+
+// The effective mcp.yaml's `browser_server` key (the workspace's override counts), read from the text like
+// networkGuarded so the guard loads no YAML parser; null when it can't be read. A host adapter whose tool names carry
+// the server judges only this server's browser_* tools as the framework's browser (D-070): a `playwright-ext` server
+// driving the user's own Chrome is not it.
+const BROWSER_SERVER = /^browser_server:[ \t]*(["']?)([A-Za-z0-9_-]+)\1[ \t]*(?:#.*)?\r?$/m;
+export function browserServer(framework = frameworkRoot, workspace = workspaceRoot) {
+  try {
+    return BROWSER_SERVER.exec(configText("mcp.yaml", { framework, workspace }))?.[2] ?? null;
+  } catch {
+    return null;
+  }
+}

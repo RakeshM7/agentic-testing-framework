@@ -2,6 +2,7 @@
 // config/permissions.yaml only, platform syntax only from config/platforms.yaml.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -45,6 +46,16 @@ test("every generated agent and MCP file matches its sources (build-agents --che
   const { errors, changed } = build({ check: true });
   assert.deepEqual(errors, []);
   assert.deepEqual(changed, []);
+});
+
+// A render follows its source's line endings (D-090), so the sources and every generated file must check out LF on
+// every OS whatever core.autocrlf says, or a Windows build differs from a Linux one and a fresh clone drifts.
+test(".gitattributes checks the agent sources and every generated host file out LF", (t) => {
+  const repo = path.resolve(frameworkRoot, "..", "..");
+  const probe = ["packages/core/agents/orchestrator-agent.md", "packages/core/agents/_shared/fixer.md", "dev/agents/x.md", ".claude/agents/x.md", ".github/agents/x.agent.md", ".agents/agents/x.md", ".agents/mcp_config.json", ".mcp.json", ".vscode/mcp.json", ".github/hooks/framework-guard.json", ".vscode/hooks/framework-guard.json"];
+  const r = spawnSync("git", ["-C", repo, "check-attr", "eol", "--", ...probe], { encoding: "utf8" });
+  if (r.status !== 0) return t.skip("not a git checkout");
+  for (const p of probe) assert.ok(r.stdout.includes(`${p}: eol: lf\n`), `${p}: eol=lf in .gitattributes`);
 });
 
 test("Claude tools follow permissions: workers cannot spawn, read-only browser gets no typing tools, CSV is script-only", () => {

@@ -15,7 +15,7 @@ import { POST_MODES } from "./lib/hook-registrations.mjs";
 import { paths } from "./lib/contract.mjs";
 import { frameworkRoot } from "./lib/roots.mjs";
 import { initRun } from "./run.mjs";
-import { writeConfig } from "./test-helpers.mjs";
+import { otherDriveCase, samePath, writeConfig } from "./test-helpers.mjs";
 
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 const real = (p) => realpathSync.native(p);
@@ -169,7 +169,9 @@ test("run.mjs init freezes the overlaid permissions; validation still applies; a
   assert.equal(kg.web_research, "none");
   assert.ok(kg.shell_allow.some((c) => /knowledge\.mjs check \*$/.test(c)) && !kg.shell_allow.some((c) => /add-source/.test(c)), "the list replaced");
   assert.equal(frozen.agents["module-explorer"].live_target.browser, "mutate", "the rest is the framework's");
-  assert.equal(path.resolve(ws, r.run.permissionsPath), configPath("permissions.yaml"), "permissionsPath still names the framework's copy");
+  // samePath: the workspace comes from tmpdir() (C:\ on Windows), the framework from import.meta.url (c:\ when VS Code
+  // started node), so the two spellings of one file may differ in drive-letter case
+  assert.ok(samePath(path.resolve(ws, r.run.permissionsPath), configPath("permissions.yaml")), `permissionsPath still names the framework's copy (${r.run.permissionsPath})`);
 
   // an overlay that breaks the file fails init like a broken file would
   const bad = workspace();
@@ -181,7 +183,8 @@ test("run.mjs init freezes the overlaid permissions; validation still applies; a
 
   // an ejected file is frozen as it is, and is the run's permissionsPath
   const ej = workspace();
-  const ejected = readFileSync(configPath("permissions.yaml"), "utf8").replace(/^(  knowledge-generator:\n(?:    .*\n)*?    web_research:) allowed/m, "$1 none");
+  // either line ending: a Windows checkout with core.autocrlf has config/permissions.yaml in CRLF
+  const ejected = readFileSync(configPath("permissions.yaml"), "utf8").replace(/^(  knowledge-generator:\r?\n(?:    .*\r?\n)*?    web_research:) allowed/m, "$1 none");
   assert.notEqual(ejected, readFileSync(configPath("permissions.yaml"), "utf8"));
   put(ej, "atf/config/permissions.yaml", ejected);
   put(ej, "atf/permissions.yaml", "agents:\n  module-explorer: {web_research: allowed}\n");
@@ -200,6 +203,24 @@ test("run.mjs init freezes the overlaid permissions; validation still applies; a
   assert.deepEqual(o.errors, undefined);
   assert.equal(JSON.parse(readFileSync(paths("acme", own).permissionsFile, "utf8")).agents["knowledge-generator"].web_research, "allowed");
   assert.equal(o.run.permissionsPath, "config/mine.yaml");
+});
+
+test("run.mjs init records the same permissionsPath whatever the case of the framework's drive letter (Windows: C:\\ and c:\\)", () => {
+  const flipped = otherDriveCase(frameworkRoot);
+  if (process.platform === "win32") {
+    assert.notEqual(flipped, frameworkRoot, "the drive letter changed case");
+    assert.ok(samePath(flipped, frameworkRoot), "and still names the framework");
+  }
+  const ws = workspace();
+  const r = initRun(writeConfig(ws), { root: ws, framework: flipped, runId: "acme-run-1", env: { CLAUDECODE: "1" } });
+  assert.deepEqual(r.errors, undefined);
+  const recorded = path.resolve(ws, r.run.permissionsPath);
+  assert.ok(samePath(recorded, configPath("permissions.yaml", { framework: flipped })), `${r.run.permissionsPath}: the framework's copy, as given`);
+  assert.ok(samePath(recorded, configPath("permissions.yaml")), `${r.run.permissionsPath}: the framework's copy, as this process spells it`);
+  const same = workspace();
+  const s = initRun(writeConfig(same), { root: same, runId: "acme-run-1", env: { CLAUDECODE: "1" } });
+  assert.deepEqual(s.errors, undefined);
+  assert.equal(r.run.permissionsPath, s.run.permissionsPath, "run.json records one relative path for either spelling");
 });
 
 test("the build reads every file through the loader: an overlaid model reaches the generated agents; --post-hook refuses an override", () => {

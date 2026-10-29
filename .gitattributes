@@ -8,3 +8,16 @@
 
 # Foundation templates render the same bytes on every OS: always LF (D-054).
 packages/core/templates/** text eol=lf
+
+# Agent sources and every generated host file are LF on every OS too, so a build is the same bytes everywhere and the
+# drift check (D-018) holds on a Windows checkout with core.autocrlf. .claude/settings.json is left out: D-092 keeps its
+# own text when the merge changes nothing.
+packages/core/agents/** text eol=lf
+dev/agents/** text eol=lf
+.claude/agents/** text eol=lf
+.github/agents/** text eol=lf
+.agents/** text eol=lf
+.mcp.json text eol=lf
+.vscode/mcp.json text eol=lf
+.github/hooks/framework-guard.json text eol=lf
+.vscode/hooks/framework-guard.json text eol=lf

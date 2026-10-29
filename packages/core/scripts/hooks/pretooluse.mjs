@@ -9,7 +9,8 @@
 // (scripts/lib/guard.mjs) and design-decision governance (scripts/lib/decisions.mjs) each judge it; deny beats ask
 // beats allow; the adapter writes the verdict in the host's format. When the guard blocks the liveness canary, the
 // blocking host/agent is recorded (scripts/lib/guard-check.mjs).
-// Fails closed: if anything here fails while a product run is active, the call is blocked. Everything is imported
+// Fails closed: if anything here fails while a product run is active (in the workspace the hook started from, or, for
+// an installed framework, the workspace that installed it), the call is blocked. Everything is imported
 // dynamically inside the try, so even a broken module cannot make the hook fail open; if not even the adapter loads,
 // the block is still written for the asserted host: a deny decision with exit 0 for VS Code (D-040), exit 2 elsewhere,
 // and for Antigravity, whose exit-code handling is unverified (D-099), its documented stdout deny decision as well.
@@ -21,6 +22,7 @@
 // call is judged in each, and deny beats ask beats allow across them.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Any lock in a product's state/ or an environment's envs/<env>/state/ (D-081). Kept here, not imported, so it works
 // even when no module loads.
@@ -42,6 +44,18 @@ function workspaceOf(start) {
     if (existsSync(path.join(dir, "atf", "atf.json"))) return dir;
     if (path.dirname(dir) === dir) return start;
   }
+}
+
+// This file's own workspace (D-085), for the fail-closed check only: an installed framework sits at
+// <ws>/node_modules/@testagentic/atf, so the nearest atf/atf.json above it is the workspace that installed it. A host
+// that runs the hook from another folder and sends a payload that can't be parsed (so its workspace is lost) still
+// finds that workspace's run. Null in a source checkout (its own repository need not be the workspace judged) or when
+// no marker is found.
+function ownWorkspace() {
+  const fw = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+  if (!fw.split(/[\\/]+/).some((s) => s.toLowerCase() === "node_modules")) return null;
+  const ws = workspaceOf(fw);
+  return ws === fw ? null : ws;
 }
 
 // VS Code blocks only on a deny decision with exit 0 (D-040, hosts/vscode.mjs). Read from the raw arguments, since
@@ -91,7 +105,11 @@ try {
 } catch (e) {
   let active = true;
   try {
-    active = runActive(root);
+    // the root the hook started from, and this file's own workspace: a run lock in either fails closed
+    const own = ownWorkspace();
+    const hit = [root, ...(own ? [own] : [])].find(runActive);
+    active = hit !== undefined;
+    if (hit) root = hit; // the error is logged where the run is
   } catch {
     // cannot tell: stay closed
   }
