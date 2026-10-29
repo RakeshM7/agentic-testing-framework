@@ -35,3 +35,7 @@ packages/core/dist/
 # The built Claude Code plugin (packages/core/scripts/build-plugin.mjs): pushed to the marketplace repository by the release
 # workflow, never committed here
 packages/claude-plugin/dist/
+
+# The built VS Code extension (packages/vscode/scripts/build.mjs and package.mjs): dist/extension.js and the vsix,
+# published to the VS Code Marketplace and Open VSX by the release workflow, never committed
+packages/vscode/dist/

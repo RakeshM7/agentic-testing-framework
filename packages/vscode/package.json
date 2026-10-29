@@ -1,0 +1,340 @@
+{
+  "name": "atf-vscode",
+  "displayName": "atf: agentic testing",
+  "description": "A UI for the atf agentic testing framework: run status, the clarifications and test case approval sheets, and run reports. Requires the licensed @testagentic/atf package installed in your workspace; without it, the extension does nothing.",
+  "version": "0.1.0",
+  "publisher": "testagentic",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE.md",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#16202c",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "qna": false,
+  "categories": [
+    "Testing"
+  ],
+  "keywords": [
+    "atf",
+    "testagentic",
+    "agentic testing",
+    "playwright",
+    "k6",
+    "test cases"
+  ],
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "atf runs the @testagentic/atf scripts installed in the workspace's node_modules, so it works only in a trusted workspace."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "atf runs Node.js scripts on the workspace's files, which needs a folder on disk."
+    }
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:atf/atf.json"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "atf",
+          "title": "atf",
+          "icon": "media/atf.svg"
+        }
+      ]
+    },
+    "views": {
+      "atf": [
+        {
+          "id": "atf.runs",
+          "name": "Runs"
+        },
+        {
+          "id": "atf.clarifications",
+          "name": "Clarifications"
+        },
+        {
+          "id": "atf.approvals",
+          "name": "Test case approval"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "atf.runs",
+        "contents": "No atf workspace is open: no folder of this window holds atf/atf.json.\nInstall the licensed @testagentic/atf in a folder, then create the workspace there.\n[Create workspace (init)](command:atf.init)",
+        "when": "atf.workspaceState == noWorkspace"
+      },
+      {
+        "view": "atf.runs",
+        "contents": "This atf workspace has no @testagentic/atf installed. Run npm install in it (the package comes from your licensed registry), then refresh.\n[Refresh](command:atf.refresh)",
+        "when": "atf.workspaceState == noFramework"
+      },
+      {
+        "view": "atf.runs",
+        "contents": "atf/atf.json can't be read. Correct it, then refresh.\n[Refresh](command:atf.refresh)",
+        "when": "atf.workspaceState == badMarker"
+      },
+      {
+        "view": "atf.runs",
+        "contents": "No products yet. Create a run-config with npx atf config <product> --url <url> (or npx atf interview), then start a run.\n[Start a run](command:atf.run)",
+        "when": "atf.workspaceState == ok"
+      }
+    ],
+    "commands": [
+      {
+        "command": "atf.refresh",
+        "title": "Refresh",
+        "category": "atf",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "atf.init",
+        "title": "Create workspace (init)",
+        "category": "atf",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "atf.sync",
+        "title": "Sync host files",
+        "category": "atf",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "atf.check",
+        "title": "Check host files",
+        "category": "atf",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "atf.doctor",
+        "title": "Doctor",
+        "category": "atf",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "atf.run",
+        "title": "Start or continue a run",
+        "category": "atf",
+        "icon": "$(play)"
+      },
+      {
+        "command": "atf.resume",
+        "title": "Resume a stage",
+        "category": "atf",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "atf.openClarifications",
+        "title": "Open clarifications",
+        "category": "atf",
+        "icon": "$(question)"
+      },
+      {
+        "command": "atf.openApproval",
+        "title": "Open approval sheet",
+        "category": "atf",
+        "icon": "$(tasklist)"
+      },
+      {
+        "command": "atf.approveModule",
+        "title": "Approve module…",
+        "category": "atf",
+        "icon": "$(pass)"
+      },
+      {
+        "command": "atf.openReport",
+        "title": "Open report",
+        "category": "atf",
+        "icon": "$(graph)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "atf.sync",
+          "when": "atf.active"
+        },
+        {
+          "command": "atf.check",
+          "when": "atf.active"
+        },
+        {
+          "command": "atf.doctor",
+          "when": "atf.active"
+        },
+        {
+          "command": "atf.run",
+          "when": "atf.active"
+        },
+        {
+          "command": "atf.resume",
+          "when": "atf.active"
+        },
+        {
+          "command": "atf.openClarifications",
+          "when": "atf.active"
+        },
+        {
+          "command": "atf.openApproval",
+          "when": "atf.active"
+        },
+        {
+          "command": "atf.approveModule",
+          "when": "atf.active"
+        },
+        {
+          "command": "atf.openReport",
+          "when": "atf.active"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "atf.run",
+          "when": "view == atf.runs && atf.active",
+          "group": "navigation@1"
+        },
+        {
+          "command": "atf.refresh",
+          "when": "view == atf.runs || view == atf.clarifications || view == atf.approvals",
+          "group": "navigation@9"
+        },
+        {
+          "command": "atf.doctor",
+          "when": "view == atf.runs && atf.active",
+          "group": "1_run@1"
+        },
+        {
+          "command": "atf.resume",
+          "when": "view == atf.runs && atf.active",
+          "group": "1_run@2"
+        },
+        {
+          "command": "atf.sync",
+          "when": "view == atf.runs && atf.active",
+          "group": "2_host@1"
+        },
+        {
+          "command": "atf.check",
+          "when": "view == atf.runs && atf.active",
+          "group": "2_host@2"
+        },
+        {
+          "command": "atf.init",
+          "when": "view == atf.runs",
+          "group": "3_setup@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "atf.run",
+          "when": "view == atf.runs && viewItem =~ /^atf\\.(product|environment)$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "atf.run",
+          "when": "view == atf.runs && viewItem =~ /^atf\\.(product|environment)$/",
+          "group": "1_run@1"
+        },
+        {
+          "command": "atf.doctor",
+          "when": "view == atf.runs && viewItem =~ /^atf\\.(product|environment)$/",
+          "group": "1_run@2"
+        },
+        {
+          "command": "atf.resume",
+          "when": "view == atf.runs && viewItem =~ /^atf\\.(product|environment|run|module)$/",
+          "group": "1_run@3"
+        },
+        {
+          "command": "atf.resume",
+          "when": "view == atf.runs && viewItem == atf.stage",
+          "group": "inline@1"
+        },
+        {
+          "command": "atf.resume",
+          "when": "view == atf.runs && viewItem == atf.stage",
+          "group": "1_run@1"
+        },
+        {
+          "command": "atf.openReport",
+          "when": "view == atf.runs && viewItem == atf.run",
+          "group": "inline@1"
+        },
+        {
+          "command": "atf.openReport",
+          "when": "view == atf.runs && viewItem == atf.run",
+          "group": "2_open@1"
+        },
+        {
+          "command": "atf.openClarifications",
+          "when": "viewItem =~ /^atf\\.(product|module|clarificationProduct|clarificationModule|clarificationRow)$/",
+          "group": "2_open@2"
+        },
+        {
+          "command": "atf.openClarifications",
+          "when": "view == atf.clarifications && viewItem =~ /^atf\\.(clarificationProduct|clarificationModule)$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "atf.openApproval",
+          "when": "viewItem =~ /^atf\\.(module|approvalModule|approvalCase)$/",
+          "group": "2_open@3"
+        },
+        {
+          "command": "atf.openApproval",
+          "when": "view == atf.approvals && viewItem == atf.approvalModule",
+          "group": "inline@1"
+        },
+        {
+          "command": "atf.approveModule",
+          "when": "viewItem =~ /^atf\\.(module|approvalModule)$/",
+          "group": "3_approve@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "atf",
+      "properties": {
+        "atf.nodePath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "The Node.js the extension runs the installed `@testagentic/atf` scripts with. Empty: `node` on the PATH."
+        },
+        "atf.host": {
+          "type": "string",
+          "enum": [
+            "claude",
+            "copilot"
+          ],
+          "default": "claude",
+          "markdownDescription": "The agent CLI that **Start or continue a run** and **Resume a stage** open (`atf run --host`). The `ATF_AGENT` environment variable still overrides it."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "package": "node scripts/package.mjs",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "test:smoke": "node test/smoke/run.mjs"
+  },
+  "devDependencies": {
+    "@types/vscode": "1.95.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2"
+  }
+}
