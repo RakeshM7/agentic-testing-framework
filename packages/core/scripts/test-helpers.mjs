@@ -19,6 +19,16 @@ import { recordCanary } from "./lib/guard-check.mjs";
 import { GROUPS, packageDir, recordDoctor } from "./lib/doctor.mjs";
 import { initRun } from "./run.mjs";
 
+// Whether two paths name one file: both resolved, and compared without case on Windows, where one file can be spelled
+// with either drive-letter case (tmpdir() gives C:\, while a node that VS Code started takes c:\ into import.meta.url
+// and so into frameworkRoot). Use it, never assert.equal, to compare two absolute paths that come from different places.
+export const samePath = (a, b) => {
+  const [x, y] = [path.resolve(a), path.resolve(b)];
+  return process.platform === "win32" ? x.toLowerCase() === y.toLowerCase() : x === y;
+};
+// The same path with its drive letter in the other case (C:\ <-> c:\); a path without a drive letter as it is.
+export const otherDriveCase = (p) => p.replace(/^[a-z](?=:)/i, (d) => (d === d.toUpperCase() ? d.toLowerCase() : d.toUpperCase()));
+
 export function tempRoot() {
   const root = mkdtempSync(path.join(tmpdir(), "atf-"));
   mkdirSync(path.join(root, "config"));

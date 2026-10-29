@@ -39,9 +39,10 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { browserServer } from "../../lib/browser-tools.mjs";
 import { stateDirs } from "../../lib/guard.mjs";
 import { resolveHost } from "../../lib/hosts.mjs";
-import { hookWorkspaceRoot } from "../../lib/roots.mjs";
+import { frameworkRoot, hookWorkspaceRoot } from "../../lib/roots.mjs";
 import { toolCall } from "../../lib/tool-call.mjs";
 
 const KINDS = {
@@ -64,23 +65,30 @@ const ARGS = {
   subagent: ["Name", "name", "AgentName", "agentName", "agent", "subagent", "SubagentName"],
 };
 
-// The short Playwright tool name of a Playwright MCP tool, else undefined. Documented template `mcp_{server}_browser_
-// {tool}` (UNVERIFIED (Antigravity spike pending, docs/antigravity-spike/)); Claude's `mcp__{server}__browser_{tool}`
-// is read too. The server key is one word of [A-Za-z0-9-] holding `playwright` (config/mcp.yaml), the name all word
-// characters. Anything else, built-in browser tools included, is unknown (D-070). String scans only: no backtracking.
+// The short Playwright tool name of a tool of the framework's browser server, else undefined. Documented template
+// `mcp_{server}_browser_{tool}` (UNVERIFIED (Antigravity spike pending, docs/antigravity-spike/)); Claude's
+// `mcp__{server}__browser_{tool}` is read too. The server key must equal the effective mcp.yaml's `browser_server`
+// (browser-tools.mjs browserServer), exactly: a `playwright-ext` server driving the user's own Chrome is not it. The name
+// is all word characters. Anything else, built-in browser tools included, is unknown (D-070); with no server, nothing
+// is the browser. String scans only: no backtracking.
 const WORD = /^\w+$/;
-const SERVER_WORD = /^[A-Za-z0-9-]+$/;
 const MCP_FORMS = [["mcp__", "__browser_"], ["mcp_", "_browser_"]];
-export function browserActionOf(tool) {
+export function browserActionOf(tool, server) {
+  if (!server) return undefined;
   for (const [prefix, sep] of MCP_FORMS) {
-    if (!tool.startsWith(prefix)) continue;
-    const at = tool.indexOf(sep, prefix.length);
-    if (at < 0) continue;
-    const server = tool.slice(prefix.length, at);
-    const name = tool.slice(at + sep.length);
-    if (SERVER_WORD.test(server) && server.includes("playwright") && WORD.test(name)) return name;
+    const head = `${prefix}${server}${sep}`;
+    if (tool.startsWith(head) && WORD.test(tool.slice(head.length))) return tool.slice(head.length);
   }
   return undefined;
+}
+
+// The browser server of the workspace the call belongs to (D-085: an installed framework's workspace, as hasActiveRun).
+function browserServerOf(payload) {
+  try {
+    return browserServer(frameworkRoot, hookWorkspaceRoot(rootOf(payload), { env: {} }));
+  } catch {
+    return null;
+  }
 }
 
 function argsOf(payload) {
@@ -137,7 +145,7 @@ export const rootOf = (payload) => rootsOf(payload)[0];
 export function normalize(payload, { env = process.env, host = "antigravity", agent } = {}) {
   const tool = String(payload?.toolCall?.name ?? "");
   const a = argsOf(payload);
-  const browserAction = browserActionOf(tool);
+  const browserAction = browserActionOf(tool, browserServerOf(payload));
   const commands = valuesOf(a, ARGS.command);
   const mapped = browserAction ? "browser" : Object.hasOwn(KINDS, tool) ? KINDS[tool] : "unknown";
   // a command line under no key the adapter knows can't be judged (it would pass as an empty line): unknown, so it is

@@ -86,6 +86,7 @@ test("plugin agents: bare name:, atf: subagents, the plugin's browser tools, no 
     for (const k of ["hooks", "mcpServers", "permissionMode"]) assert.ok(!(k in meta), `${name}: ${k} is ignored in a plugin agent`);
     assert.doesNotMatch(text, /CLAUDE_PLUGIN_ROOT/, name);
     assert.doesNotMatch(text, /\{fw\}|packages\/core/, `${name}: {fw} is the installed package's path`);
+    // LF on every OS: a render follows its source's line endings (D-090), and .gitattributes checks the sources out LF
     assert.match(text, /^---\n# GENERATED for the atf Claude Code plugin from @testagentic\/atf /, name);
     // the spawn allow-list: exactly the permissions row's, each as the plugin addresses it
     assert.deepEqual(spawnList(tools), PERMS[name].spawns.map(subagentName), `${name}: subagents`);

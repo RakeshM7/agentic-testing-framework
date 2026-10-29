@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkTool } from "./lib/guard.mjs";
@@ -15,7 +15,7 @@ import * as claude from "./hooks/hosts/claude.mjs";
 import { PLUGIN_MCP_PREFIX, PLUGIN_NAME, detectShellHost, identityOf, labelOf, resolveHost } from "./lib/hosts.mjs";
 import * as copilot from "./hooks/hosts/copilot.mjs";
 import * as antigravity from "./hooks/hosts/antigravity.mjs";
-import { startRun, tempRoot, writeConfig } from "./test-helpers.mjs";
+import { installedWorkspace, startRun, tempRoot, writeConfig } from "./test-helpers.mjs";
 
 const FULL = startRun({ mode: "full-run" });
 const cli = (payload) => copilot.normalize(payload, { env: {}, host: "copilot" });
@@ -321,6 +321,23 @@ test("hook entry fails closed on garbage while a run is active, and stays out of
   assert.equal(hook(["--host", "nonsense"], { cwd: FULL.root, tool_name: "Bash", tool_input: {} }, { CLAUDE_PROJECT_DIR: FULL.root }).status, 2);
 });
 
+test("hook entry fails closed on garbage started outside the workspace while the workspace that installed it has a run (D-007)", () => {
+  const ws = installedWorkspace();
+  const lock = path.join(ws.root, "artifacts", "acme", "state", "lock.json");
+  mkdirSync(path.dirname(lock), { recursive: true });
+  writeFileSync(lock, "{}");
+  const entry = path.join(ws.framework, "scripts", "hooks", "pretooluse.mjs");
+  const run = () => spawnSync(process.execPath, [entry, "--host", "antigravity"], { input: "not json", cwd: tempRoot(), encoding: "utf8", env: { PATH: process.env.PATH } });
+  const r = run();
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual([JSON.parse(r.stdout).decision], ["deny"]);
+  assert.match(JSON.parse(r.stdout).reason, /guard-error|failing closed/);
+  assert.ok(existsSync(path.join(ws.root, "artifacts", "hook-errors.jsonl")), "logged where the run is");
+  rmSync(lock);
+  const idle = run();
+  assert.deepEqual([idle.status, idle.stdout], [0, ""], "no run anywhere: allowed");
+});
+
 test("hook errors are logged with their stack and context, blocked or not, PreToolUse and PostToolUse (D-065)", () => {
   const entries = (root) => readFileSync(path.join(root, "artifacts", "hook-errors.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   const { root } = startRun();
@@ -487,7 +504,9 @@ const agPayload = (tool, root = FULL.root) =>
 const ag = (payload, agent) => antigravity.normalize(payload, { env: {}, host: "antigravity", agent });
 const agCall = (name, args, root = FULL.root) => ag({ toolCall: { name, args }, conversationId: "ag-conv-0001", workspacePaths: [root] });
 const agUnmapped = ["define_subagent", "send_message", "manage_subagents", "schedule", "generate_image", "browser_subagent", "browser_click", "browser_navigate", "evaluate_script",
-  "mcp_chrome-devtools_click", "mcp_chrome-devtools_evaluate_script", "mcp_playwright_evaluate_script", "mcp_other_browser_click", "mcp_playwright_x_browser_click"];
+  "mcp_chrome-devtools_click", "mcp_chrome-devtools_evaluate_script", "mcp_playwright_evaluate_script", "mcp_other_browser_click", "mcp_playwright_x_browser_click",
+  // a server whose name only holds `playwright` is not the framework's browser_server (D-070)
+  "mcp_playwright-ext_browser_click", "mcp__playwright-ext__browser_click", "mcp_my-playwright_browser_click", "mcp_Playwright_browser_click"];
 
 test("Antigravity adapter: every documented payload normalizes to its canonical call", () => {
   const at = (rel) => `${FULL.root}/${rel}`;
@@ -501,6 +520,7 @@ test("Antigravity adapter: every documented payload normalizes to its canonical 
     ask_question: { kind: "ask" },
     read_url_content: { kind: "web_fetch", urls: ["https://docs.acme.test/api/contacts"] },
     mcp_playwright_browser_click: { kind: "browser", browserAction: "click" },
+    "mcp_playwright-ext_browser_click": { kind: "unknown" },
     define_subagent: { kind: "unknown" },
     browser_subagent: { kind: "unknown" },
   };
@@ -561,6 +581,14 @@ test("Antigravity adapter: only the Playwright MCP server's tools are browser to
     assert.equal(agCall(tool, {}).kind, "unknown");
     assert.ok(performance.now() - t < 250, "linear in the name's length");
   }
+  // the server is the effective mcp.yaml's browser_server: a workspace overlay renaming it moves the browser with it
+  const ws = tempRoot();
+  mkdirSync(path.join(ws, "atf"), { recursive: true });
+  writeFileSync(path.join(ws, "atf", "atf.json"), "{}\n");
+  writeFileSync(path.join(ws, "atf", "mcp.yaml"), "browser_server: pw\n");
+  assert.deepEqual([agCall("mcp_pw_browser_click", {}, ws).kind, agCall("mcp_pw_browser_click", {}, ws).browserAction], ["browser", "click"]);
+  assert.equal(agCall("mcp_playwright_browser_click", {}, ws).kind, "unknown", "the framework's default name is no longer the browser there");
+  assert.equal(antigravity.browserActionOf("mcp_playwright_browser_click", null), undefined, "no browser_server: nothing is the browser");
 });
 
 test("Antigravity adapter: the workspace is the payload's, never the model's", () => {
@@ -666,7 +694,7 @@ test("Antigravity multi-root: every listed folder with an active run is judged; 
 test("Antigravity readonly run: an unmapped tool is refused for every caller, attributed or not (D-101 narrows D-036)", () => {
   const RO = startRun();
   const check = (c, root = RO.root) => checkTool(c, root, {}, { framework: root });
-  for (const t of ["browser_subagent", "define_subagent"]) {
+  for (const t of ["browser_subagent", "define_subagent", "mcp_playwright-ext_browser_click"]) {
     const v = check(ag(agPayload(t, RO.root)));
     assert.equal(v.rule, "unmapped-tool", `${t}: unattributed`);
     assert.match(v.reason, /refused for every caller during a run, readonly included \(D-101[^)]*\); if the tool is safe, map it in scripts\/hooks\/hosts\/antigravity\.mjs$/);
