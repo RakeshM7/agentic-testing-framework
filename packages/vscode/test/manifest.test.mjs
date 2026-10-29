@@ -43,7 +43,7 @@ test("the listing: name, publisher, version locked to @testagentic/atf, private 
   assert.equal(manifest.private, true, "npm publish must refuse it; vsce publishes it");
   assert.equal(manifest.main, "./dist/extension.js");
   assert.match(manifest.description, /Requires the licensed @testagentic\/atf package installed in your workspace/);
-  assert.match(manifest.license, /^SEE LICENSE IN LICENSE\.md$/);
+  assert.equal(manifest.license, "MIT");
   assert.ok(existsSync(path.join(PKG, manifest.icon)), manifest.icon);
   assert.ok(manifest.icon.endsWith(".png"), "the Marketplace takes no SVG icon");
   assert.deepEqual(manifest.activationEvents, ["workspaceContains:atf/atf.json"]);

@@ -160,6 +160,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-102 | The VS Code extension is a public UI over the CLI with no safety role; human-only commands run in a terminal the human sees | Accepted | 2026-10-29 |
 | D-103 | The package is published to GitHub Packages under the testagentic organization; the rest of D-094 is unchanged | Accepted | 2026-10-29 |
 | D-104 | An interim evaluation licence replaces the DRAFT placeholder until a lawyer's EULA | Accepted | 2026-10-29 |
+| D-105 | The public VS Code extension is MIT-licensed and, for now, uploaded to the Marketplace by hand | Accepted | 2026-10-29 |
 
 ## Decisions
 
@@ -2133,3 +2134,14 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Why:** the user wants a few trusted developers to evaluate the package now, without a lawyer's EULA. A plain-language evaluation licence states what they may and may not do, keeps the IP protected by contract (§2), and leaves the generated outputs with them.
 - **Affects:** `packages/core/LICENSE.md`, `packages/core/scripts/build-package.test.mjs`, `packages/vscode/test/report-package.test.mjs`
 - **Confirmed by the user on:** 2026-10-29 (the interim licence text, with their own name, contact, law and venue). This extends D-103 without weakening it.
+
+### D-105 · The public VS Code extension is MIT-licensed and, for now, uploaded to the Marketplace by hand
+- **Status:** Accepted · **Date:** 2026-10-29 · **Source:** conversation with the user, 2026-10-29
+- **Decision:**
+  - **The licence.** `packages/vscode/LICENSE.md` is the MIT License, copyright 2026 Rakesh M, and the manifest's `license` is `"MIT"`. It replaces the DRAFT placeholder, so the extension's release gate (D-102) lets it through.
+  - **The scope note.** A note under the licence says it covers the extension only: the `@testagentic/atf` package it works with stays private under its own licence (D-104).
+  - **The Marketplace upload is manual for now (user, 2026-10-29).** Azure DevOps retires the global personal access tokens `vsce publish` needs on 2026-12-01. So `VSCE_PAT` is left unset, and the release skips the Marketplace step with a notice to upload that run's `.vsix` artifact at marketplace.visualstudio.com/manage. Open VSX stays automated with `OVSX_PAT`, which that change does not affect. Automated Marketplace publishing returns through Entra ID or GitHub OIDC (`vsce publish --azure-credential` or `--oidc`) once set up and supported.
+  - **The test** now checks the MIT text and that the gate accepts it. The gate's refusal of a placeholder is still tested with a placeholder the test writes.
+- **Why:** the extension is public and holds no IP: it is a UI over the CLI that does nothing without the licensed package. A standard open-source licence is understood by every marketplace and user, and needs no lawyer.
+- **Affects:** `packages/vscode/LICENSE.md`, `packages/vscode/package.json`, `packages/vscode/test/report-package.test.mjs`, `packages/vscode/test/manifest.test.mjs`, `.github/workflows/release.yml`
+- **Confirmed by the user on:** 2026-10-29 (MIT; manual Marketplace upload for now). This extends D-102 and D-104 without weakening them.
