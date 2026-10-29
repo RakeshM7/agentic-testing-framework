@@ -198,11 +198,15 @@ test("inlining: import.meta.url becomes the module's own path; other import.meta
 });
 
 test("the release gate: refuses the DRAFT licence and a tag that doesn't match the version", async () => {
-  assert.ok(read("LICENSE.md", CORE).split("\n")[0].includes(DRAFT_MARKER), "the placeholder's first line carries the marker");
-  assert.equal(licenseIsDraft(read("LICENSE.md", CORE)), true);
+  // the framework's own licence is the interim evaluation licence (D-104), which the gate accepts
+  assert.equal(licenseIsDraft(read("LICENSE.md", CORE)), false);
   assert.equal(licenseIsDraft("DRAFT\n# EULA\n"), true);
   assert.equal(licenseIsDraft("# End-user licence agreement\nThis agreement replaces any earlier draft.\n"), false);
-  assert.deepEqual(releaseErrors(DIST, "core-v0.1.0"), [`LICENSE.md is still the placeholder (${DRAFT_MARKER}): legal's EULA must replace it before a release`]);
+  assert.deepEqual(releaseErrors(DIST, "core-v0.1.0"), []);
+  // a placeholder with the marker is refused
+  const draft = copyOfDist();
+  writeFileSync(path.join(draft, "LICENSE.md"), `${DRAFT_MARKER}\n\n# placeholder\n`);
+  assert.deepEqual(releaseErrors(draft, "core-v0.1.0"), [`LICENSE.md is still the placeholder (${DRAFT_MARKER}): legal's EULA must replace it before a release`]);
   const dist = copyOfDist();
   writeFileSync(path.join(dist, "LICENSE.md"), "# End-user licence agreement\nAll rights reserved.\n");
   assert.deepEqual(releaseErrors(dist, "core-v0.1.0"), []);
@@ -210,7 +214,7 @@ test("the release gate: refuses the DRAFT licence and a tag that doesn't match t
   assert.deepEqual(releaseErrors(dist, "v0.1.0"), ["tag 'v0.1.0' is not core-v<semver>"]);
   // the command the release workflow runs
   const gate = (out, tag) => spawnSync(process.execPath, [path.join(CORE, "scripts", "build-package.mjs"), "--release", tag, "--out", out], { encoding: "utf8" });
-  assert.equal(gate(DIST, "core-v0.1.0").status, 1);
+  assert.equal(gate(draft, "core-v0.1.0").status, 1);
   assert.equal(gate(dist, "core-v0.1.0").status, 0);
   assert.equal(await main(["--release", "core-v0.1.0", "--out", path.join(scratch(), "none")]), 1);
 });
