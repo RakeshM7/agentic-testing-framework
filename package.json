@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "check": "node packages/core/scripts/build-agents.mjs --check && npm test",
-    "test": "node --test \"packages/core/scripts/**/*.test.mjs\"",
+    "test": "node --test \"packages/core/scripts/**/*.test.mjs\" \"packages/vscode/test/**/*.test.mjs\"",
     "build-agents": "node packages/core/scripts/build-agents.mjs"
   },
   "devDependencies": {

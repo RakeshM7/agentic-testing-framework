@@ -157,6 +157,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-099 | Antigravity (App, CLI, IDE) is a supported host | Accepted | 2026-10-27 |
 | D-100 | Antigravity agents inherit the session model | Accepted | 2026-10-27 |
 | D-101 | On Antigravity, unrecognised tools are denied during every run, readonly included | Accepted | 2026-10-27 |
+| D-102 | The VS Code extension is a public UI over the CLI with no safety role; human-only commands run in a terminal the human sees | Accepted | 2026-10-29 |
 
 ## Decisions
 
@@ -1994,6 +1995,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - The Copilot adapter's browser-tool regex is quadratic on very long names.
 - **Affects:** `packages/core/scripts/build-plugin.mjs`, `packages/core/scripts/build-plugin.test.mjs`, `packages/core/scripts/hooks/plugin-session.mjs`, `packages/claude-plugin/package.json`, `.github/workflows/release.yml`, `packages/core/scripts/hooks/hosts/claude.mjs`, `packages/core/scripts/lib/hosts.mjs`, `packages/core/scripts/lib/tool-call.mjs`, `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/lib/provenance.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/sync.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/scripts/run.mjs`, `packages/core/schemas/run.schema.json`, `docs/claude-plugin-verification.md`
 - **Confirmed by the user on:** 2026-10-24 (draft P-11) and 2026-10-27 (the guard stays in project settings; a separate private marketplace repository; other plugins' agents as unattributed callers; plugin agents with sync overrides; build now, verify live after). This extends D-020, D-021, D-035, D-036, D-089, D-092, D-094 and D-095 without weakening them.
+
 ### D-099 · Antigravity (App, CLI, IDE) is a supported host
 - **Status:** Accepted · **Date:** 2026-10-27 · **Source:** conversation with the user, 2026-10-27 (decisions made through in-session questions: the surfaces, the model, the identity fallback, the readonly unknown-tool rule). Built from antigravity.google/docs as read on 2026-10-27, without Antigravity installed: every value marked `UNVERIFIED (Antigravity spike pending, docs/antigravity-spike/)` in code is provisional until the spike kit in `docs/antigravity-spike/` is run on a real machine.
 - **Decision:**
@@ -2046,3 +2048,41 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Why:** Antigravity's built-in browser drives the user's real Chrome and is unmapped by design (D-070, D-099). Under D-036 as recorded, an unattributed call in a readonly run could use it, outside the Playwright init-page guard that aborts writes in a readonly run (D-076). The same applies to `define_subagent` and the other unmapped tools.
 - **Affects:** `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/lib/hosts.mjs`, `packages/core/scripts/hooks/hosts/antigravity.mjs`
 - **Confirmed by the user on:** 2026-10-27. This narrows D-036 for the antigravity host without weakening it; D-036 and D-070 stay in force.
+### D-102 · The VS Code extension is a public UI over the CLI with no safety role; human-only commands run in a terminal the human sees
+- **Status:** Accepted · **Date:** 2026-10-29 · **Source:** conversation with the user, 2026-10-24, 2026-10-27 and 2026-10-28 (packaging for clients, `docs/packaging.md` §3.13 and phase 7: draft P-12)
+- **Decision:**
+  - **What it is.** `packages/vscode` (`atf-vscode`, publisher `testagentic`) is a UI over the `atf` CLI and the artifact contract:
+    - the **Runs** tree: products, environments, the active run's stages and next steps, and ended runs with their reports;
+    - the **Clarifications** and **Test case approval** views and editors;
+    - the **report** webview;
+    - commands for init, sync, check, doctor, run and resume.
+
+    Its shared spec is `packages/vscode/SPEC.md`.
+  - **No safety role.** It never registers, replaces or bypasses the hooks (D-020). It runs the workspace's own installed `@testagentic/atf` (`npx --no atf`, or node on the package's scripts), so untrusted and virtual workspaces are unsupported. Without the package it does nothing but say so.
+  - **Human-only commands run in a VS Code terminal the human sees,** never in a background process. These are approve, sweep, `import --approved`, eject, init, migrate and issues; the runner refuses them for `runJson`. Arguments are passed as arrays and quoted for the terminal's shell, and refused when they can't be quoted safely.
+  - **Approval (user, 2026-10-27).** The approval editor edits only `Approved` (yes, no, changes, blank) and `Comment` of `approval.csv`, as a human's edit, and refuses a decision on a row whose case changed. "Approve module…" opens a terminal running `npx atf approve <product> <module>`, where the human types the slug. The extension never approves, and never writes `approvals.json` (D-048, D-053).
+  - **Clarifications.** The editor writes only `Answer` and `Answer status` (`human` for a new or changed answer, `human-approved` to approve an agent's proposal as it stands, D-048).
+  - **Saving.** Both editors splice only the edited cells, keeping the file byte for byte (BOM, delimiter, quoting, line endings, column order). They take the framework's file lock, and refuse to save over a file changed on disk since it was loaded, offering compare or reload. They write atomically.
+  - **Webviews:**
+    - a strict CSP (`default-src 'none'`, a fresh nonce per load, no inline or remote content, no eval);
+    - data passed by message and rendered as text, with messages validated on both sides;
+    - the report served from its own folder only, with relative assets rewritten and anything escaping the folder dropped.
+  - **Publishing (user, 2026-10-28): public, on the VS Code Marketplace and Open VSX.** The extension holds no IP; the framework stays private.
+    - **Build:** `scripts/build.mjs` bundles `dist/extension.js` (CommonJS, unminified, no runtime dependencies).
+    - **Package:** `scripts/package.mjs` makes the `.vsix` from exactly the files `.vscodeignore` allows.
+    - **Release:** the release's `vscode` job gates on its own DRAFT `LICENSE.md` and on the tag matching the version (D-094). It then uploads the `.vsix` and publishes with `VSCE_PAT` and `OVSX_PAT`, each skipped when missing or on a dry run.
+    - **Version:** equal to `@testagentic/atf`'s.
+  - **Tests.** The pure modules are tested with node:test in the root `npm test`, on all three systems. An `@vscode/test-electron` smoke test runs only with `ATF_VSCODE_SMOKE=1`.
+- **Why:**
+  - Humans need a better interface for approvals, clarifications and run status than CSV files and JSON.
+  - Safety must stay in the one guard every host runs.
+  - Routing every human-only command to a visible terminal keeps the scripts' own typed confirmations in force.
+  - Public publishing gives clients normal installs and updates at no IP cost (user).
+- **Known gaps:**
+  - No script offers a read-only "next", a product or environment list, ended-run listings, or JSON from sync, check and doctor, so the extension reads the layout or a read-only export.
+  - No script validates a human's clarification answer, so the editor restates the core's rules.
+  - The clarifications summary is not re-rendered after a human edit.
+  - The smoke test has not run live yet.
+  - `npm audit` reports a high advisory in `@azure/msal-node`, pulled in by the `@vscode/vsce` devDependency; it never ships.
+- **Affects:** `packages/vscode/package.json`, `packages/vscode/SPEC.md`, `packages/vscode/src/cli.js`, `packages/vscode/src/activate.js`, `packages/vscode/src/sheets/save.js`, `packages/vscode/src/sheets/commands.js`, `packages/vscode/src/report.js`, `packages/vscode/scripts/package.mjs`, `.github/workflows/release.yml`, `package.json`
+- **Confirmed by the user on:** 2026-10-24 (draft P-12), 2026-10-27 (approval: edit the sheet, approve in a terminal) and 2026-10-28 (public on the VS Code Marketplace and Open VSX; all of §3.13 in the first version; pure-module tests plus an optional smoke test). This extends D-020, D-048, D-053, D-087 and D-094 without weakening them.
