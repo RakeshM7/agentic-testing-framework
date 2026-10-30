@@ -168,7 +168,7 @@ export class SheetPanel {
     this.draft = [];
     await this.load({ notice: { level: "info", text: r.saved ? `Saved ${path.basename(this.file)}.` : "Nothing to save: the sheet already says that." } });
     this.host.onDidSave?.();
-    if (this.kind === "approval" && r.saved) this.status("info", "Saved. Nothing is approved yet: Approve module… opens a terminal running atf approve, where you type the module slug.");
+    if (this.kind === "approval" && r.saved) this.status("info", "Saved. Nothing is approved yet: Approve module… records the saved sheet after you type the module slug.");
   }
 
   async conflict(text, r) {

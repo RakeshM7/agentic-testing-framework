@@ -5,9 +5,9 @@
 // human-only. `testcases.mjs build` renders it -- TC ID, Title, Key steps, Expected, Priority, Approved, Comment,
 // Rendered in run, Version (`v` + 12 hex of the case's content hash) -- keeping a human's entries for unchanged cases.
 // The human fills Approved (yes, no, changes or blank) and Comment, in Excel or an editor (`,` or `;`), then runs
-// `atf approve <product> <module>` in a terminal and types the module slug. That command alone writes approvals.json,
-// each decision pinned to the case's hash; this editor never writes it, never runs approve in the background, and
-// writes only the Approved and Comment cells. Staleness is the contract's own: a row whose Version is not the current
+// `atf approve <product> <module>` in a terminal, or "Approve module…" here, typing the module slug either way (here
+// through the framework's one-time confirmation file, commands.js). The approve script alone writes approvals.json,
+// each decision pinned to the case's hash; this editor never writes it and writes only the Approved and Comment cells. Staleness is the contract's own: a row whose Version is not the current
 // case's (coverage.json `cases[].hash`) is refused by approve, so the editor flags it and takes no decision on it.
 // normApproval and versionMatch restate the core's (scripts/lib/testcases.mjs), since the extension holds no framework
 // code; the tests run the core's approve over sheets this module wrote.

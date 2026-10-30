@@ -13,7 +13,8 @@
 // The deck's own script (slide navigation, arrow/PageUp/PageDown/Home/End keys, #s<n> fragments) runs unchanged.
 //
 // When index.html is missing but report.json exists, the report was collected and never rendered: a message offers
-// the render command (`node {fw}/scripts/report.mjs render <product>`), run in a terminal the human sees. render
+// the render command (`node {fw}/scripts/report.mjs render <product>`), run inside the extension (cli.runStreaming,
+// behind a cancellable notification, its output in the `atf` channel; no terminal, user 2026-10-29). render
 // works on the product's current run of an environment, so it is offered only for a run that is one; for an older
 // run the message says so instead. The extension never renders or writes the report itself (SPEC: no new runtime
 // behaviour, writes only through the framework's scripts).
@@ -109,7 +110,7 @@ export function environmentOf(root, product, runId) {
 
 // What to tell the human when a run has report.json but no index.html. `framework` is the installed package's folder
 // (node_modules/@testagentic/atf); the command is shown with {fw} as the workspace-relative path, the way the docs
-// write it, and returned as an argv for the terminal (`node` resolved by the terminal's PATH, like `npx atf`).
+// write it, and returned as an argv (["node", script, …]) whose script cli.runStreaming runs with the configured Node.js.
 export function renderFallback({ root, framework, product, runId }) {
   const env = environmentOf(root, product, runId);
   if (!env)
@@ -233,7 +234,7 @@ export function rewriteHtml(html, { dir, nonce, csp, toUri }) {
 // ---- the VS Code layer --------------------------------------------------------------------------------------------------
 
 // deps: { vscode, workspace, cli, output } (SPEC). workspace gives the atf workspace root and the installed framework;
-// cli.runInTerminal runs a command in a terminal the human sees.
+// cli.runStreaming runs the render in the background, its output in the `atf` channel.
 export function registerReport(context, deps) {
   const { vscode, output } = deps;
   const panels = new Map(); // `${product}/${runId}` -> { panel, watcher }
@@ -320,9 +321,23 @@ export function registerReport(context, deps) {
     }
     const fb = renderFallback({ root: where.root, framework: where.framework, product: report.product, runId: report.runId });
     if (!fb.command) return void vscode.window.showInformationMessage(`atf: ${fb.text}`);
-    const action = "Render in a terminal";
-    if ((await vscode.window.showInformationMessage(`atf: ${fb.text}`, action)) === action)
-      deps.cli.runInTerminal(fb.command.args, { name: `report ${report.product}`, env: fb.command.env, cwd: where.root });
+    const action = "Render it";
+    if ((await vscode.window.showInformationMessage(`atf: ${fb.text}`, action)) !== action) return;
+    const [, script, ...args] = fb.command.args;
+    let result;
+    let error;
+    await vscode.window.withProgress({ location: vscode.ProgressLocation?.Notification ?? 15, title: `Rendering the report of ${report.product} · ${report.runId}…`, cancellable: true }, async (_p, token) => {
+      try {
+        result = await deps.cli.runStreaming(args, { script, env: { ATF_ENV: "", ...fb.command.env }, cwd: where.root, token });
+      } catch (e) {
+        error = e;
+      }
+    });
+    if (result?.cancelled) return;
+    const rendered = !error && result.code === 0 ? findReport(where.root, report.product, report.runId) : null;
+    if (rendered?.state === "html") return show(rendered);
+    const why = error ? error.message : `report.mjs render exited ${result.code}`;
+    if ((await vscode.window.showErrorMessage(`atf: the report of ${report.product} · ${report.runId} was not rendered: ${why}`, "Show output")) === "Show output") output?.show?.(true);
   };
 
   context.subscriptions.push(

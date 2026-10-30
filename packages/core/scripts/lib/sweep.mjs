@@ -6,13 +6,16 @@
 //   - only with no active run, and only when the run-config the last run started from is full-run now;
 //   - only an entity with a recipe whose endpoint is a delete of the module's catalogue, on a first-party host, with no
 //     path parameter left unfilled; anything else is listed for the human to clean up by hand (`manual`);
-//   - the product slug typed at an interactive terminal confirms it, unless --dry-run (which sends nothing);
+//   - the product slug typed at an interactive terminal confirms it, unless --dry-run (which sends nothing), or the VS
+//     Code extension's dialog does: --confirm-file names its one-time file, which must be the environment's
+//     state/sweep-confirm.json, is checked (scripts/lib/confirm.mjs) and deleted before anything else;
 //   - every request carries the run-config's credentials (session cookies, api.auth_header) like the probes, follows no
 //     redirect, and 2xx, 404 and 410 count as gone.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
 import { loadJson, paths } from "./contract.mjs";
+import { SWEEP_CONFIRM, consumeConfirmation, discardConfirmation } from "./confirm.mjs";
 import { readJson } from "./files.mjs";
 import { append, live } from "./ledger.mjs";
 import { firstPartyHosts, loadAuth } from "./probe.mjs";
@@ -75,8 +78,19 @@ export function sweepPlan(product, { root, run } = {}) {
 
 const brief = ({ entry, ...rest }) => ({ runId: entry.runId, type: entry.type, ref: entry.ref, module: entry.module, ...(entry.label ? { label: entry.label } : {}), ...rest });
 
-// interactive: {isTTY, ask(question) -> answer}. -> {errors} | {dryRun, deleted, failed, manual}
-export async function sweep(product, { root, run, dryRun = false, interactive, fetchImpl = globalThis.fetch, sleep = defaultSleep, delayMs = 200, timeoutMs = 15000 } = {}) {
+// The extension dialog's confirmation of a sweep: the environment's state folder (D-081), never the product's other ones.
+export const sweepConfirmFile = (product, root) => path.join(paths(product, root).state, SWEEP_CONFIRM);
+
+// interactive: {isTTY, ask(question) -> answer}; confirmFile: the --confirm-file path, which stands in for the terminal.
+// -> {errors} | {dryRun, deleted, failed, manual}
+export async function sweep(product, { root, run, dryRun = false, interactive, confirmFile, fetchImpl = globalThis.fetch, sleep = defaultSleep, delayMs = 200, timeoutMs = 15000 } = {}) {
+  if (confirmFile != null) {
+    const file = sweepConfirmFile(product, root);
+    if (dryRun) return { errors: [`confirmation refused: a dry run sends nothing and needs no confirmation${discardConfirmation(file) ? ` (${path.relative(root, file).replaceAll("\\", "/")} was deleted)` : ""}`] };
+    const c = consumeConfirmation(confirmFile, { file, root, want: { action: "sweep", product, environment: paths(product, root).environment }, slug: product });
+    if (c.problem) return { errors: [`${c.problem}; nothing was sent`] };
+    interactive = c.interactive;
+  }
   const plan = sweepPlan(product, { root, run });
   if (plan.errors) return plan;
   const out = { dryRun, deleted: [], failed: [], manual: plan.manual.map(brief) };

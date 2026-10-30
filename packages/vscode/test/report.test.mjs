@@ -206,7 +206,7 @@ test("isRelativeUrl and resolveInside", () => {
 // ---- the VS Code layer over a fake vscode ----
 
 function fakeVscode({ pick, answer } = {}) {
-  const calls = { panels: [], info: [], warn: [], picks: [], terminals: [], commands: new Map() };
+  const calls = { panels: [], info: [], warn: [], errors: [], progress: [], picks: [], renders: [], commands: new Map() };
   const disposable = { dispose() {} };
   const vscode = {
     Uri: { file: (f) => ({ fsPath: f, toString: () => `file://${f}` }) },
@@ -237,18 +237,24 @@ function fakeVscode({ pick, answer } = {}) {
       },
       showInformationMessage: async (msg, ...items) => (calls.info.push([msg, ...items]), answer),
       showWarningMessage: async (msg) => void calls.warn.push(msg),
+      showErrorMessage: async (msg, ...items) => void calls.errors.push([msg, ...items]),
+      withProgress: async (opts, task) => (calls.progress.push(opts), task({ report() {} }, { isCancellationRequested: false, onCancellationRequested: () => disposable })),
       showQuickPick: async (items) => (calls.picks.push(items), pick ? items.find(pick) : undefined),
     },
   };
   return { vscode, calls };
 }
 
-function setup(opts) {
+// opts.render(root): what the fake report.mjs render does (writes index.html, or not); its exit code is returned
+function setup(opts = {}) {
   const root = temp();
   const framework = path.join(root, "node_modules", "@testagentic", "atf");
   const { vscode, calls } = fakeVscode(opts);
   const context = { subscriptions: [] };
-  const cli = { runInTerminal: (args, o) => calls.terminals.push([args, o]) };
+  const cli = {
+    runStreaming: async (args, o) => (calls.renders.push([args, { script: o.script, env: o.env, cwd: o.cwd }]), { code: opts.render ? opts.render(root) : 1, cancelled: false }),
+    runInTerminal: () => assert.fail("the report never opens a terminal"),
+  };
   registerReport(context, { vscode, workspace: { root, framework }, cli, output: { appendLine() {} } });
   return { root, framework, calls, open: calls.commands.get("atf.openReport"), context };
 }
@@ -290,27 +296,35 @@ test("atf.openReport without an item picks among the runs that have a report", a
   assert.match(none.calls.info[0][0], /no run has a report yet/);
 });
 
-test("atf.openReport fallback: report.json without index.html offers report.mjs render in a terminal, never renders itself", async () => {
-  const s = setup({ answer: "Render in a terminal" });
+test("atf.openReport fallback: report.json without index.html offers report.mjs render, run in the background, then shows the deck", async () => {
+  const s = setup({ answer: "Render it", render: (root) => (put(root, "artifacts/acme/results/r1/report/index.html", "<html><head></head><body>deck</body></html>"), 0) });
   put(s.root, "artifacts/acme/state/run.json", JSON.stringify({ runId: "r1" }));
   put(s.root, "artifacts/acme/results/r1/report/report.json", "{}");
   await s.open({ product: "acme", runId: "r1" });
-  assert.equal(s.calls.panels.length, 0);
   assert.match(s.calls.info[0][0], /node node_modules\/@testagentic\/atf\/scripts\/report\.mjs render acme/);
-  assert.deepEqual(s.calls.info[0].slice(1), ["Render in a terminal"]);
-  assert.deepEqual(s.calls.terminals, [[["node", path.join(s.framework, "scripts", "report.mjs"), "render", "acme"], { name: "report acme", env: {}, cwd: s.root }]]);
+  assert.deepEqual(s.calls.info[0].slice(1), ["Render it"]);
+  assert.deepEqual(s.calls.renders, [[["render", "acme"], { script: path.join(s.framework, "scripts", "report.mjs"), env: { ATF_ENV: "" }, cwd: s.root }]]);
+  assert.equal(s.calls.progress.length, 1, "behind a notification");
+  assert.equal(s.calls.panels.length, 1, "the rendered deck opens");
+
+  const broken = setup({ answer: "Render it", render: () => 1 });
+  put(broken.root, "artifacts/acme/state/run.json", JSON.stringify({ runId: "r1" }));
+  put(broken.root, "artifacts/acme/results/r1/report/report.json", "{}");
+  await broken.open({ product: "acme", runId: "r1" });
+  assert.equal(broken.calls.panels.length, 0);
+  assert.deepEqual(broken.calls.errors, [["atf: the report of acme · r1 was not rendered: report.mjs render exited 1", "Show output"]]);
 
   const declined = setup({ answer: undefined });
   put(declined.root, "artifacts/acme/state/run.json", JSON.stringify({ runId: "r1" }));
   put(declined.root, "artifacts/acme/results/r1/report/report.json", "{}");
   await declined.open({ product: "acme", runId: "r1" });
-  assert.deepEqual(declined.calls.terminals, [], "nothing runs unless the human asks");
+  assert.deepEqual(declined.calls.renders, [], "nothing runs unless the human asks");
 
-  const old = setup({ answer: "Render in a terminal" });
+  const old = setup({ answer: "Render it" });
   put(old.root, "artifacts/acme/results/r0/report/report.json", "{}");
   await old.open({ product: "acme", runId: "r0" });
   assert.deepEqual(old.calls.info[0].slice(1), [], "no button for a run render can't reach");
-  assert.deepEqual(old.calls.terminals, []);
+  assert.deepEqual(old.calls.renders, []);
 });
 
 test("atf.openReport for a run without any report says so", async () => {

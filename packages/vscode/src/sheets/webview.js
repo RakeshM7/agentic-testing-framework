@@ -231,7 +231,7 @@ export function sheetsClient(kind, validateHostMessage) {
       el("button", { class: "secondary", text: "Reload from disk", on: { click: () => post({ type: "reload" }) } }),
       el("button", { class: "secondary", text: "Open as text", on: { click: () => post({ type: "openText" }) } }),
       el("button", { class: "secondary", text: showAll ? "Show pending only" : "Show all rows", on: { click: () => { showAll = !showAll; render(); } } }),
-      kind === "approval" ? el("button", { class: "primary", text: "Approve module…", title: "Opens a terminal running atf approve; you type the module slug there", on: { click: () => post({ type: "approveModule" }) } }) : null
+      kind === "approval" ? el("button", { class: "primary", text: "Approve module…", title: "Shows the saved sheet's decisions, then records them after you type the module slug", on: { click: () => post({ type: "approveModule" }) } }) : null
     );
     if (msg.readOnly) head.append(el("div", { class: "status warning", text: "Read only: " + (msg.readOnlyReason || "this sheet can't be edited here") }));
     if (status) head.append(el("div", { class: "status " + status.level, text: status.text }));
@@ -240,7 +240,7 @@ export function sheetsClient(kind, validateHostMessage) {
       add(app, rows.length ? rows.map(clarRow) : el("p", { text: "No open rows and no answers awaiting approval." }));
       return;
     }
-    head.append(el("div", { class: "muted", text: "Approve module… opens a terminal running atf approve; it records the saved sheet after you type the module slug. Nothing is approved here." }));
+    head.append(el("div", { class: "muted", text: "Approve module… records the saved sheet after you type the module slug in its dialog. Nothing is approved here." }));
     if (!v.built) app.append(el("div", { class: "banner", text: "The test cases were never built (no coverage.json): the sheet can't be checked against them." }));
     if (v.stale) app.append(el("div", { class: "banner", text: "This sheet is out of date against the test cases" + (v.changed.length ? ": changed since rendered or no longer a case: " + v.changed.join(", ") : "") + (v.missingCases.length ? "; not in the sheet: " + v.missingCases.join(", ") : "") + ". The next test cases build re-renders it and keeps your entries for unchanged cases." }));
     if (v.unreadable.length) app.append(el("div", { class: "banner", text: "Version unreadable (Excel may have changed it): " + v.unreadable.join(", ") + ". approve reports these rows until the Version is right." }));

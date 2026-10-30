@@ -22,6 +22,10 @@ const SPEC_COMMANDS = {
   "atf.doctor": "Doctor",
   "atf.run": "Start or continue a run",
   "atf.resume": "Resume a stage",
+  "atf.newProduct": "New product…",
+  "atf.openConfig": "Open config",
+  "atf.validate": "Validate config",
+  "atf.sweep": "Sweep leftovers…",
   "atf.openClarifications": "Open clarifications",
   "atf.openApproval": "Open approval sheet",
   "atf.approveModule": "Approve module…",
@@ -105,7 +109,7 @@ test("the code declares nothing the manifest doesn't (commands, views, settings,
 });
 
 test("Basil's commands and the Runs view are registered by Basil's code", () => {
-  assert.deepEqual(COMMANDS, Object.keys(SPEC_COMMANDS).slice(0, 7));
+  assert.deepEqual(COMMANDS, Object.keys(SPEC_COMMANDS).slice(0, 11));
   for (const id of COMMANDS) assert.match(code["src/activate.js"], new RegExp(`"${id.replace(".", "\\.")}":`), id);
   assert.match(code["src/activate.js"], /registerCommand\(id, fn\)/);
   assert.match(code["src/runs.js"], /createTreeView\("atf\.runs"/);
@@ -113,4 +117,55 @@ test("Basil's commands and the Runs view are registered by Basil's code", () => 
   assert.match(code["src/extension.js"], /import \{ registerSheets \} from "\.\/sheets\/index\.js"/);
   assert.match(code["src/extension.js"], /import \{ registerReport \} from "\.\/report\.js"/);
   assert.match(code["src/extension.js"], /export function activate\(context\)/);
+});
+
+test("New product…: in the Runs view's title and the palette (with a workspace), and the no-products welcome", () => {
+  const titles = c.menus["view/title"];
+  const add = titles.find((e) => e.command === "atf.newProduct");
+  assert.deepEqual([add?.when, add?.group], ["view == atf.runs && atf.active", "navigation@0"], "an icon, first in the title");
+  assert.equal(c.commands.find((x) => x.command === "atf.newProduct").icon, "$(add)");
+  const palette = Object.fromEntries(c.menus.commandPalette.map((e) => [e.command, e.when]));
+  assert.equal(palette["atf.newProduct"], "atf.active");
+  assert.equal(palette["atf.openConfig"], "atf.active");
+  // welcome content: a line holding only a link is a button; the interview link passes its way as the argument
+  const ok = c.viewsWelcome.filter((w) => w.view === "atf.runs" && w.when === "atf.workspaceState == ok");
+  assert.equal(ok.length, 1);
+  const lines = ok[0].contents.split("\n");
+  assert.ok(lines.includes("[New product…](command:atf.newProduct)"), "the button");
+  const link = /\[Let the orchestrator interview me\]\(command:atf\.newProduct\?([^)]+)\)/.exec(ok[0].contents);
+  assert.ok(link, "the interview link");
+  assert.deepEqual(JSON.parse(decodeURIComponent(link[1])), ["interview"]);
+  // every command a welcome view links to is declared
+  const declared = new Set(c.commands.map((x) => x.command));
+  for (const w of c.viewsWelcome) for (const id of ids(/\(command:([\w.]+)/g, w.contents)) assert.ok(declared.has(id), `${w.view}: ${id}`);
+});
+
+test("a product's context menu: start or continue, resume, doctor and Open config, with the inline run kept", () => {
+  const items = c.menus["view/item/context"];
+  const matches = (when, value) => {
+    const eq = /viewItem == ([\w.]+)/.exec(when);
+    const re = /viewItem =~ \/(.+)\/$/.exec(when);
+    return /view == atf\.runs/.test(when) && (eq ? eq[1] === value : re ? new RegExp(re[1]).test(value) : false);
+  };
+  const forItem = (value) => items.filter((e) => matches(e.when, value));
+  const product = forItem("atf.product");
+  assert.deepEqual(product.filter((e) => !e.group.startsWith("inline")).map((e) => e.command).filter((x) => ["atf.run", "atf.resume", "atf.doctor", "atf.openConfig"].includes(x)).sort(), ["atf.doctor", "atf.openConfig", "atf.resume", "atf.run"]);
+  assert.ok(product.some((e) => e.command === "atf.run" && e.group.startsWith("inline")), "the inline ▷ stays");
+  assert.ok(forItem("atf.environment").some((e) => e.command === "atf.openConfig"));
+  assert.ok(!forItem("atf.stage").some((e) => e.command === "atf.openConfig"));
+  // Sweep leftovers… and Validate config: on a product's (and an environment's) right-click menu, never inline
+  for (const value of ["atf.product", "atf.environment"])
+    for (const cmd of ["atf.sweep", "atf.validate"]) assert.ok(forItem(value).some((e) => e.command === cmd && !e.group.startsWith("inline")), `${cmd} on ${value}`);
+  const palette = Object.fromEntries(c.menus.commandPalette.map((e) => [e.command, e.when]));
+  assert.equal(palette["atf.sweep"], "atf.active");
+  assert.equal(palette["atf.validate"], "atf.active");
+});
+
+test("atf.host: claude (the default), copilot-chat or copilot-cli, as the code reads it", () => {
+  const host = c.configuration.properties["atf.host"];
+  assert.deepEqual(host.enum, ["claude", "copilot-chat", "copilot-cli"]);
+  assert.equal(host.enumDescriptions.length, host.enum.length);
+  assert.equal(host.default, "claude");
+  assert.match(host.markdownDescription, /`copilot` is read as `copilot-cli`/);
+  assert.match(code["src/activate.js"], /HOSTS = \["claude", "copilot-chat", "copilot-cli"\]/);
 });

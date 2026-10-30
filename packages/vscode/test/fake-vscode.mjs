@@ -43,9 +43,13 @@ class RelativePattern {
 }
 
 // opts: folders (fs paths), shell (env.shell), config ({ nodePath, host }), quickPicks (answers, in order; a function
-// gets the items), shellIntegration (a terminal reports shell integration at once)
-export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, quickPicks = [], shellIntegration = false, messageAnswers = [] } = {}) {
-  const rec = { commands: new Map(), executed: [], context: {}, terminals: [], messages: [], quickPicks: [], watchers: [], treeViews: [], statusBar: [] };
+// gets the items), inputs (input box answers, in order; a function gets the options), shellIntegration (a terminal
+// reports shell integration at once), messageAnswers (the button each message returns), onProgress(progress, token):
+// called as a withProgress task starts (a test cancels through token.cancel()), inspect (atf settings by scope, for
+// inspect(); config is what get() reads), external (command ids that exist outside the extension, e.g. VS Code Chat's),
+// onExternal(id, args): what running one of those does (it may throw)
+export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, inspect = null, quickPicks = [], inputs = [], shellIntegration = false, messageAnswers = [], onProgress, external = [], onExternal } = {}) {
+  const rec = { commands: new Map(), executed: [], context: {}, terminals: [], messages: [], quickPicks: [], inputs: [], progress: [], opened: [], watchers: [], treeViews: [], statusBar: [], updates: [] };
   const terminalShell = new EventEmitter();
   const vscode = {
     rec,
@@ -56,6 +60,10 @@ export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, quic
     RelativePattern,
     TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
     StatusBarAlignment: { Left: 1, Right: 2 },
+    TerminalLocation: { Panel: 1, Editor: 2 },
+    QuickPickItemKind: { Separator: -1, Default: 0 },
+    ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
+    ProgressLocation: { SourceControl: 1, Window: 10, Notification: 15 },
     Uri: { file: (p) => ({ scheme: "file", fsPath: path.resolve(p), toString: () => `file://${p}` }) },
     env: { shell },
     commands: {
@@ -68,13 +76,22 @@ export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, quic
         rec.executed.push([id, ...args]);
         if (id === "setContext") rec.context[args[0]] = args[1];
         else if (rec.commands.has(id)) return rec.commands.get(id)(...args);
+        else if (external.includes(id)) return onExternal?.(id, ...args);
       },
+      getCommands: async () => [...rec.commands.keys(), ...external, "setContext"],
     },
     workspace: {
       get workspaceFolders() {
         return folders.map((f, index) => ({ uri: vscode.Uri.file(f), name: path.basename(f), index }));
       },
-      getConfiguration: () => ({ get: (k) => config[k] }),
+      getConfiguration: () => ({
+        get: (k) => config[k],
+        inspect: (k) => (inspect ? { key: `atf.${k}`, ...(inspect[k] ?? {}) } : undefined),
+        update: async (k, value, target) => {
+          rec.updates.push([k, value, target]);
+          config[k] = value;
+        },
+      }),
       createFileSystemWatcher: (pattern) => {
         const w = { pattern, create: new EventEmitter(), change: new EventEmitter(), del: new EventEmitter(), disposed: false };
         w.onDidCreate = w.create.event;
@@ -88,7 +105,7 @@ export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, quic
     },
     window: {
       createOutputChannel: (name) => {
-        const ch = { name, lines: [], appendLine: (l) => ch.lines.push(l), dispose() {} };
+        const ch = { name, lines: [], shown: 0, appendLine: (l) => ch.lines.push(l), show: () => ch.shown++, dispose() {} };
         rec.output = ch;
         return ch;
       },
@@ -125,6 +142,21 @@ export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, quic
         rec.quickPicks.push({ items: list, opts });
         const a = quickPicks.shift();
         return typeof a === "function" ? a(list) : a;
+      },
+      showInputBox: async (opts) => {
+        rec.inputs.push(opts);
+        const a = inputs.shift();
+        return typeof a === "function" ? a(opts) : a;
+      },
+      showTextDocument: async (uri, opts) => (rec.opened.push([uri.fsPath, opts]), {}),
+      withProgress: async (opts, task) => {
+        const p = { opts, reports: [] };
+        rec.progress.push(p);
+        const cancelled = new EventEmitter();
+        const token = { isCancellationRequested: false, onCancellationRequested: cancelled.event, cancel: () => ((token.isCancellationRequested = true), cancelled.fire()) };
+        const progress = { report: (r) => p.reports.push(r.message) };
+        onProgress?.(progress, token);
+        return task(progress, token);
       },
       showWarningMessage: async (m, ...actions) => (rec.messages.push(["warning", m, actions]), messageAnswers.shift()),
       showInformationMessage: async (m, ...actions) => (rec.messages.push(["info", m, actions]), messageAnswers.shift()),

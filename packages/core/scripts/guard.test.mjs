@@ -981,6 +981,9 @@ test("every framework script is writable by framework-implementor-agent or delib
     "scripts/build-package.mjs", "scripts/build-package.test.mjs", "scripts/build-plugin.mjs", "scripts/build-plugin.test.mjs", "scripts/lib/migrate.mjs", "scripts/migrate.test.mjs", "scripts/contract-fixtures.test.mjs",
     // D-097: the issue bundle decides what leaves a client workspace (redaction) and what enters the maintainers' feedback
     "scripts/lib/issues-bundle.mjs", "scripts/issues-bundle.test.mjs", "scripts/lib/zip.mjs", "scripts/zip.test.mjs",
+    // the user's decision of 2026-10-29: the check of the extension dialog's confirmation of the human-only approve,
+    // import --approved and sweep stands in for the terminal's, so the agent it guards against never edits it
+    "scripts/lib/confirm.mjs", "scripts/confirm.test.mjs",
   ]);
   const files = [];
   // node_modules is git-ignored and never the framework's own code, wherever an install put it; paths as the run's
@@ -1010,6 +1013,76 @@ test("the ledger sweep is human-only: denied to every agent and every unidentifi
   // the rest of the ledger stays as it was, and prose about sweeping is not a sweep
   assert.equal(allowed(FULL.root, sh("pw-ui-test-runner-triager", "node scripts/ledger.mjs list acme --live")), true);
   assert.equal(allowed(tempRoot(), sh(undefined, "echo make sure the floor gets a sweep")), true);
+});
+
+test("the extension dialog's confirmation files are human-only: no tool call writes them, and the commands stay refused with --confirm-file (user decision 2026-10-29)", () => {
+  const agents = Object.keys(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents);
+  const approval = "artifacts/acme/modules/contacts/testcases/approval-confirm.json";
+  // sweep-confirm.json is refused wherever it is: each environment's state folder, and anywhere else
+  const files = [approval, "artifacts/acme/state/sweep-confirm.json", "artifacts/acme/envs/staging/state/sweep-confirm.json", "notes/sweep-confirm.json"];
+  const writes = (root, f) => ["Write", "Edit"].map((tool) => [tool, { file_path: path.join(root, f) }]);
+  const shells = (f) => [`echo {} > ${f}`, `cp /tmp/c.json ${f}`, `tee ${f} < /tmp/c.json`, `node -e "require('fs').writeFileSync('${f}', '{}')"`];
+  const cmds = [
+    `node scripts/testcases.mjs approve acme contacts --confirm-file ${approval}`,
+    `node scripts/testcases.mjs import acme contacts --approved --confirm-file ${approval}`,
+    `node scripts/testcases.mjs import acme contacts --file data/x.feature --confirm-file=${approval} --approved`,
+    "node scripts/ledger.mjs sweep acme --confirm-file artifacts/acme/state/sweep-confirm.json",
+    "node scripts/ledger.mjs sweep acme --confirm-file c.json",
+    "npx atf approve acme contacts --confirm-file c.json", "npx atf sweep acme --confirm-file c.json",
+  ];
+  // the framework's agents, in a readonly and a full-run run
+  for (const { root } of [RO, FULL])
+    for (const agent of agents) {
+      for (const f of files) {
+        for (const [tool, input] of writes(root, f)) assert.equal(allowed(root, call(agent, tool, input)), false, `${agent}: ${tool} ${f}`);
+        for (const c of shells(f)) assert.equal(allowed(root, sh(agent, c)), false, `${agent}: ${c}`);
+      }
+      for (const c of cmds) assert.equal(allowed(root, sh(agent, c)), false, `${agent}: ${c}`);
+    }
+  // the human's own session, another plugin's agent, and every host's unattributed calls, in and out of a run
+  const unnamed = (host, command) => toolCall({ host, kind: "shell", tool: "bash", command });
+  const hosts = ["copilot-cli", "vscode", "claude-code", "copilot-cloud", "antigravity"];
+  for (const root of [FULL.root, RO.root, tempRoot()]) {
+    for (const f of files) {
+      for (const who of [undefined, "other:x"]) {
+        for (const [tool, input] of writes(root, f)) assert.equal(allowed(root, call(who, tool, input)), false, `${who ?? "human session"}: ${tool} ${f}`);
+        for (const c of shells(f)) assert.equal(allowed(root, sh(who, c)), false, `${who ?? "human session"}: ${c}`);
+      }
+      for (const host of hosts) {
+        assert.equal(allowed(root, toolCall({ host, kind: "write", tool: "create", paths: [path.join(root, f)] })), false, `${host}: write ${f}`);
+        for (const c of shells(f)) assert.equal(allowed(root, unnamed(host, c)), false, `${host}: ${c}`);
+      }
+    }
+    for (const c of cmds) {
+      assert.equal(allowed(root, sh(undefined, c)), false, `human session: ${c}`);
+      for (const host of hosts) assert.equal(allowed(root, unnamed(host, c)), false, `${host}: ${c}`);
+    }
+  }
+  // other spellings: from inside the folder (a cd, a host's cwd), another case, Windows' trailing dots and streams, 8.3
+  // short names, names split up
+  for (const c of [
+    "cd artifacts/acme/modules/contacts/testcases && echo {} > approval-confirm.json",
+    "cd artifacts/acme/state && echo {} > sweep-confirm.json",
+    "echo {} > artifacts/acme/state/SWEEP-CONFIRM.JSON",
+    "copy c.json artifacts\\acme\\state\\SWEEP-~1.JSO",
+    "echo {} > artifacts/acme/modules/contacts/TESTCA~1/approval-confirm.json",
+    "node -e \"require('fs').writeFileSync('artifacts/acme/state/sweep-'+'confirm.json','{}')\"",
+    "echo {} > artifacts/acme/state/swe''ep-confirm.json",
+  ])
+    for (const who of ["feedback-implementor-agent", undefined]) assert.equal(allowed(FULL.root, sh(who, c)), false, `${who ?? "human session"}: ${c}`);
+  for (const [cmd, cwd] of [["echo {} > approval-confirm.json", "artifacts/acme/modules/contacts/testcases"], ["cp c.json sweep-confirm.json", "artifacts/acme/state"]])
+    for (const root of [FULL.root, tempRoot()])
+      assert.equal(allowed(root, toolCall({ host: "antigravity", kind: "shell", tool: "run_command", command: cmd, cwds: [path.join(root, cwd)] })), false, `${cmd} in ${cwd}`);
+  for (const f of ["artifacts/acme/state/sweep-confirm.json.", "artifacts/acme/state/sweep-confirm.json::$DATA", "artifacts\\acme\\state\\Sweep-Confirm.json", "artifacts/acme/state/SWEEP-~1.JSO", "artifacts/acme/modules/contacts/TESTCA~1/approval-confirm.json", "artifacts/acme/modules/contacts/testcases/Approval-Confirm.json "]) {
+    const root = tempRoot();
+    assert.equal(allowed(root, call(undefined, "Write", { file_path: path.join(root, f) })), false, f);
+  }
+  // nearby names and prose stay allowed
+  const root = tempRoot();
+  assert.equal(allowed(root, sh(undefined, "echo the sweep is confirmed")), true);
+  assert.equal(allowed(root, call(undefined, "Write", { file_path: path.join(root, "notes", "confirm.json") })), true);
+  assert.equal(allowed(root, call(undefined, "Write", { file_path: path.join(root, "artifacts", "acme", "state", "scenario-answers.json") })), true);
+  assert.equal(allowed(FULL.root, sh("pw-ui-test-runner-triager", "node scripts/ledger.mjs list acme --live")), true);
 });
 
 test("readonly input (D-076): typing, selecting and key presses pass only while the browser server runs the framework's network guard", () => {

@@ -10,7 +10,9 @@
 // The env var AUTHORIZATIONS_MODE=readonly can only downgrade. No active run => readonly, no per-agent rules.
 // Two rules hold for every call, in or out of a run, whoever calls: test case approval is human-only (humanOnly()), and
 // so is the ledger sweep that deletes what ended runs left in the target (humanOnlySweep(), D-075). Both cover the atf
-// CLI's forms: `atf approve`, `atf import … --approved` and `atf sweep` (D-087).
+// CLI's forms: `atf approve`, `atf import … --approved` and `atf sweep` (D-087), and the one-time confirmation files the
+// VS Code extension's dialog writes in place of the terminal prompt (approval-confirm.json, sweep-confirm.json): no tool
+// call writes them, and the commands that read them stay refused, --confirm-file or not.
 // During a run, no caller (named or not, in any mode) writes a managed foundation file directly (managedPath(), D-054),
 // nor a file scripts/api-code.mjs generates (the API clients, types, schemas, registration and specs, D-056).
 // Agents not listed in the permissions file ("unmanaged", e.g. a human's own session) get the mode rules only.
@@ -116,7 +118,8 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // the approval sheet and its record (approval.csv, approvals.json, their 8.3 short names, anything named approv* in a
 // testcases folder). A human edits the sheet and runs the command in their own terminal. Matching code text can't be
 // complete (an in-process import can hide any name), so this is defence in depth: `approve` itself also insists on an
-// interactive terminal and a typed confirmation (scripts/lib/testcases.mjs).
+// interactive terminal and a typed confirmation (scripts/lib/testcases.mjs), or the extension dialog's confirmation
+// file, which this rule refuses every tool call to write (scripts/lib/confirm.mjs).
 // Known limit (accepted, recorded in G3's decision): an agent with `shell: project` can still write approvals.json
 // through code this match can't read -- `node -e` with String.fromCharCode, template literals, base64 or eval, or a
 // shell glob such as appro?als.json. Restricted agents can't: their allow-list never vouches for such a line.
@@ -128,8 +131,12 @@ const JOIN_CONCAT = /(['"`])\s*\+\s*(['"`])/g;
 const HUMAN_ONLY_VERB = /(?<![\w-])--approved\b|\b(?:approve|importCases)\b/i;
 const DECODED_VERB = /\b(?:approve|approved|importCases)\b/gi;
 const humanOnlyCmd = (cmd) => /testcases/i.test(cmd) && HUMAN_ONLY_VERB.test(cmd);
-const HUMAN_ONLY_FILES = /approvals?\.(csv|json)|approv~\d|testcases[\\/]+approv/i;
-const HUMAN_ONLY_PATH = /(^|[\\/])(testcases[\\/]+approv[^\\/]*|approvals?\.(csv|json)|approv~\d[^\\/]*)$/i;
+// The VS Code extension's dialog confirms approve and import --approved through a one-time file the script reads only at
+// testcases/approval-confirm.json (scripts/lib/confirm.mjs, the user's decision of 2026-10-29). testcases/approv* already
+// covers that path; the name is also matched on its own, anywhere, so a shell line run from inside the folder
+// (`echo … > approval-confirm.json`, a host's cwd) or a folder's 8.3 name (TESTCA~1) can't reach it either.
+const HUMAN_ONLY_FILES = /approvals?\.(csv|json)|approval-confirm|approv~\d|testcases[\\/]+approv/i;
+const HUMAN_ONLY_PATH = /(^|[\\/])(testcases[\\/]+approv[^\\/]*|approvals?\.(csv|json)|approval-confirm[^\\/]*|approv~\d[^\\/]*)$/i;
 const HUMAN_ONLY_REASON = "test case approval is human-only: a human edits testcases/approval.csv and runs `npx atf approve <product> <module>` (or `npx atf import <product> <module> --approved` for a file already approved) in their own terminal";
 // Quotes, a backslash or cmd.exe's caret inside a word only split it for this match (`--appr''oved`, `appr\ove`,
 // `appr^ove` reach the program whole), so they are dropped after the concatenations are joined: stricter only.
@@ -245,9 +252,15 @@ const decodedVerbs = (s) => s.match(DECODED_VERB)?.length ?? 0;
 // The ledger sweep (D-075) deletes in the target outside any run, so no tool call may start it: a line that names the
 // ledger script (or a make target, or runs the atf CLI, D-087) together with the sweep verb, read with quotes and word
 // splitters dropped (stricter only). The script itself also refuses without an interactive terminal and the typed
-// product slug.
+// product slug, or the extension dialog's confirmation file (below).
 const SWEEP_REASON = "the ledger sweep is human-only: a human runs `npx atf sweep <product>` in their own terminal, between runs";
 const SWEEP_MAKE = new RegExp(`${makeRun("")}[^;&|\\n]*\\ssweep\\b`, "i");
+// The extension dialog's one-time sweep confirmation (scripts/lib/confirm.mjs, the user's decision of 2026-10-29), read
+// only at the environment's state/sweep-confirm.json. No tool call writes a file of that name anywhere: a write tool
+// (any spelling Windows resolves to it -- trailing dots or spaces, a stream, another case -- and its 8.3 short name), or
+// a shell line naming it at all, as for the approval files (a redirect, cp, mv, tee, or code).
+const SWEEP_CONFIRM_FILES = /sweep-confirm|sweep-?~\d/i;
+const SWEEP_CONFIRM_PATH = /(^|[\\/])(sweep-confirm[^\\/]*|sweep-?~\d[^\\/]*)$/i;
 // A line that runs the atf CLI with `verb` anywhere after it (a quoted string on a line with a word that runs one, too).
 function atfVerb(verb) {
   const [any, run] = [atfThen("", verb), atfThen(`'"`, verb)];
@@ -260,8 +273,9 @@ const spellings = (command) => {
   return [joined, joined.replace(WORD_SPLITTERS, "")];
 };
 function humanOnlySweep(call) {
+  if (call.kind === "write") return call.paths.some((p) => SWEEP_CONFIRM_PATH.test(String(p)));
   if (call.kind !== "shell") return false;
-  return spellings(call.command).some((cmd) => (/\bsweep\b/i.test(cmd) && /ledger/i.test(cmd)) || SWEEP_MAKE.test(cmd) || atfSweep(cmd));
+  return spellings(call.command).some((cmd) => (/\bsweep\b/i.test(cmd) && /ledger/i.test(cmd)) || SWEEP_MAKE.test(cmd) || atfSweep(cmd) || SWEEP_CONFIRM_FILES.test(cmd));
 }
 function humanOnly(call) {
   if (call.kind === "shell") {

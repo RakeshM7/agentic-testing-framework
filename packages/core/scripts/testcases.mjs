@@ -16,6 +16,10 @@
 //                                              case's content. Works after the run ended. Needs an interactive
 //                                              terminal and the module slug typed to confirm. No agent may run it:
 //                                              the guard (scripts/lib/guard.mjs) denies it to every tool call it sees.
+//   testcases.mjs approve <product> <module> --confirm-file <artifacts/<p>/modules/<m>/testcases/approval-confirm.json>
+//                                              HUMAN ONLY, the same, confirmed in the VS Code extension's dialog
+//                                              instead of a terminal: its one-time file (scripts/lib/confirm.mjs),
+//                                              read only at that path and deleted before anything else.
 //   testcases.mjs review-check <product> <module> --round N
 //                                              the reviewer's review.json: schema, a verdict on every current case in
 //                                              round N; renders review-findings.md with the derived verdict (pass
@@ -38,10 +42,11 @@
 //                                              document -> {convert: true}: testcase-writer's import mode converts it.
 //                                              -> {file, format, imported, ids, rejected, skipped, build, unlinkedUi,
 //                                              approved?, next, problems}
-//   testcases.mjs import <product> <module> [--file <path>] --approved
+//   testcases.mjs import <product> <module> [--file <path>] --approved [--confirm-file <.../testcases/approval-confirm.json>]
 //                                              HUMAN ONLY, like approve: also records every imported case approved
 //                                              (pinned to its content). Needs an interactive terminal and the module
-//                                              slug typed to confirm; the guard denies it to every tool call it sees.
+//                                              slug typed to confirm, or the extension dialog's confirmation file
+//                                              (action import-approved); the guard denies it to every tool call it sees.
 // Exits: 0 ok, 1 problems ({problems} or {errors}), 2 usage.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -51,7 +56,7 @@ import yaml from "js-yaml";
 import { loadJson, paths, workspaceRoot, validateData } from "./lib/contract.mjs";
 import { approvalSummary, approve, build, importCases, importFormat, importSource, listItems, reviewFiles, reviewResult, runCheck, testcaseContext, testcaseTotals } from "./lib/testcases.mjs";
 
-const USAGE = "usage: testcases.mjs items|build|check|approve|review-check|status|paths|import <product> <module> [--round N] [--file <path>] [--approved]";
+const USAGE = "usage: testcases.mjs items|build|check|approve|review-check|status|paths|import <product> <module> [--round N] [--file <path>] [--approved] [--confirm-file <path>]";
 // The run-config the run started from, read from its file (run.json configPath), not the frozen resolved copy.
 function configOf(root, ctx) {
   const f = ctx.configPath ? path.resolve(root, ctx.configPath) : null;
@@ -76,16 +81,26 @@ export async function main(argv, { root = workspaceRoot, interactive } = {}) {
     if (!product || !module) return { code: 2, out: { errors: [USAGE] } };
     let v;
     try {
-      ({ values: v } = parseArgs({ args: rest, options: { file: { type: "string" }, approved: { type: "boolean" } } }));
+      ({ values: v } = parseArgs({ args: rest, options: { file: { type: "string" }, approved: { type: "boolean" }, "confirm-file": { type: "string" } } }));
     } catch (e) {
       return { code: 2, out: { errors: [e.message, USAGE] } };
     }
     const ctx = context(product, module, root, { active: false });
-    return importCases(ctx, validateData, { file: v.file, config: configOf(root, ctx), approved: !!v.approved, ...(interactive ? { interactive } : {}) });
+    return importCases(ctx, validateData, { file: v.file, config: configOf(root, ctx), approved: !!v.approved, confirmFile: v["confirm-file"], ...(interactive ? { interactive } : {}) });
+  }
+  // approve takes one option: the extension dialog's confirmation file instead of the terminal prompt
+  if (cmd === "approve") {
+    let v;
+    try {
+      ({ values: v } = parseArgs({ args: rest, options: { "confirm-file": { type: "string" } } }));
+    } catch (e) {
+      return { code: 2, out: { errors: [e.message, USAGE] } };
+    }
+    if (!product || !module) return { code: 2, out: { errors: [USAGE] } };
+    return approve(context(product, module, root, { active: false }), validateData, { confirmFile: v["confirm-file"], ...(interactive ? { interactive } : {}) });
   }
   const round = cmd === "review-check" && rest.length === 2 && rest[0] === "--round" && /^[1-9]\d*$/.test(rest[1]) ? Number(rest[1]) : null;
   if (!cmd || !product || !module || (rest.length && round === null) || (cmd === "review-check" && round === null)) return { code: 2, out: { errors: [USAGE] } };
-  if (cmd === "approve") return approve(context(product, module, root, { active: false }), validateData, interactive ? { interactive } : {});
   if (cmd === "status") {
     const c = context(product, module, root, { active: false });
     const { approved } = approvalSummary(c.productDir, module);
