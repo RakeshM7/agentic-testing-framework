@@ -6,8 +6,9 @@
 // - clarifications.csv: the Answer and Answer status cells only, as the human's own edit. No script records a human
 //   answer (clarifications.mjs is the agents' writer and says humans edit those two columns directly).
 // - approval.csv: the Approved and Comment cells only, as the human's own edit (the sheet is human-only).
-// - Nothing else. approvals.json is written only by `atf approve`, which atf.approveModule opens in a terminal the
-//   human sees and types the module slug into; the extension never answers it and never runs it in the background.
+// - Nothing else. approvals.json is written only by the framework's approve script, which atf.approveModule runs
+//   only after the human typed the module slug in its dialog, through the framework's one-time confirmation file
+//   (commands.js, cli.confirmedRun).
 // The hooks stay the only enforcement: nothing here registers, replaces or bypasses them.
 import * as cmd from "./commands.js";
 import { DIFF_SCHEME, SheetPanel } from "./panels.js";
@@ -113,8 +114,10 @@ export function registerSheets(context, deps) {
       if (!t) return;
       try {
         await cmd.approveModule(t, {
+          vscode,
           cli: deps.cli,
-          cwd: root(),
+          root: root(),
+          output,
           hasUnsaved: unsaved,
           confirmUnsaved: async (product, module) =>
             (await vscode.window.showWarningMessage(
@@ -122,6 +125,11 @@ export function registerSheets(context, deps) {
               { modal: true },
               "Approve the saved sheet"
             )) === "Approve the saved sheet",
+          // the approval view and the Runs tree (atf.refresh re-detects, which refreshes every view)
+          refresh: () => {
+            refresh();
+            void vscode.commands.executeCommand("atf.refresh");
+          },
         });
       } catch (e) {
         vscode.window.showErrorMessage(`atf approve: ${e.message}`);

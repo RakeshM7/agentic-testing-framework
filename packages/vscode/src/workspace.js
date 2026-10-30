@@ -164,6 +164,50 @@ export const stateDir = (root, product, environment = DEFAULT_ENV) =>
 export const resultsDir = (root, product, runId) => path.join(root, "artifacts", product, "results", runId);
 export const reportFile = (root, product, runId) => path.join(resultsDir(root, product, runId), "report", "index.html");
 
+// The one path the framework reads each dialog confirmation from (scripts/lib/confirm.mjs): approve's in the module's
+// testcases/ folder (shared by every environment), the sweep's in the environment's own state folder.
+export const APPROVAL_CONFIRM = "approval-confirm.json";
+export const SWEEP_CONFIRM = "sweep-confirm.json";
+export const approvalConfirmFile = (root, product, module) => path.join(root, "artifacts", product, "modules", module, "testcases", APPROVAL_CONFIRM);
+export const sweepConfirmFile = (root, product, environment = DEFAULT_ENV) => path.join(stateDir(root, product, environment), SWEEP_CONFIRM);
+
+// The environment `approve` runs in (its ATF_ENV): approve reads that environment's last run (state/run.json), which
+// must list the module. The sheets have no environment (D-081), so: the first environment, `default` first, whose last
+// run lists the module; else `default`, and the script says what is missing.
+export function approvalEnvironment(root, product, module) {
+  const p = listProducts(root).find((x) => x.product === product);
+  for (const e of p?.environments ?? []) {
+    if (!e.state) continue;
+    try {
+      if (readJson(path.join(e.state, "run.json")).modules?.includes(module)) return e.name;
+    } catch {
+      // no run there, or unreadable: not this one
+    }
+  }
+  return DEFAULT_ENV;
+}
+
+// ---- a new product ----------------------------------------------------------------------------------------------------
+
+// What `atf config <product> --url <url>` would refuse (scripts/lib/cli.mjs), checked as the human types in "New
+// product…", so the input box says it before anything runs. The CLI checks again; these only say it sooner.
+// -> the problem to show, or null. Values are trimmed, as the command trims them before running.
+export const configFileOf = (product) => `config/${product}.yaml`;
+export function productNameProblem(root, value) {
+  const s = String(value ?? "").trim();
+  if (!s) return "The product's name: a lowercase kebab-case slug, e.g. acme-crm";
+  if (!SLUG_RE.test(s)) return `'${s}' is not a lowercase kebab-case slug: lowercase letters and digits, words joined by single hyphens (acme-crm)`;
+  if (root && existsSync(path.join(root, ...configFileOf(s).split("/")))) return `${configFileOf(s)} already exists: open it from the product in the Runs view, or choose another name`;
+  return null;
+}
+export const URL_RE = /^https?:\/\/\S+$/i; // the CLI's own test of --url
+export function targetUrlProblem(value) {
+  const s = String(value ?? "").trim();
+  if (!s) return "The target's URL, e.g. https://crm.example.com";
+  if (!URL_RE.test(s)) return `'${s}' is not an http(s) URL: start it with https:// or http://, with no spaces`;
+  return null;
+}
+
 // `--env <env>` for every environment but `default` (the CLI's own flag, D-081).
 export const envArgs = (environment) => (environment && environment !== DEFAULT_ENV ? ["--env", environment] : []);
 

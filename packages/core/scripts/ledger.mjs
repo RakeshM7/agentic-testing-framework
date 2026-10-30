@@ -8,6 +8,9 @@
 //   ledger.mjs owns    <product> --ref R [--ref R2 ...]   the same for any type and any of the refs (D-074)
 //   ledger.mjs list    <product> [--live] [--all-runs]   --live = cleanup worklist (current run unless --all-runs)
 //   ledger.mjs sweep   <product> [--run RUN] [--dry-run]   HUMAN-ONLY, between runs: delete what ended runs left (D-075)
+//   ledger.mjs sweep   <product> [--run RUN] --confirm-file <state>/sweep-confirm.json
+//                      HUMAN-ONLY, the same, confirmed in the VS Code extension's dialog instead of a terminal
+//                      (scripts/lib/confirm.mjs: the environment's state folder, read there only, deleted before use)
 // Agents MUST run `owns` before any delete/cancel/remove, and `add` immediately after creating anything.
 import { existsSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
@@ -23,6 +26,7 @@ const { values: v } = parseArgs({
     agent: { type: "string" }, label: { type: "string" }, url: { type: "string" }, note: { type: "string" },
     "cleanup-endpoint": { type: "string" }, "cleanup-param": { type: "string" },
     live: { type: "boolean" }, "all-runs": { type: "boolean" }, run: { type: "string" }, "dry-run": { type: "boolean" },
+    "confirm-file": { type: "string" },
   },
 });
 if (!cmd || !product) {
@@ -65,7 +69,7 @@ try {
     console.log(JSON.stringify(v.live ? live(p.ledgerFile, scope) : read(p.ledgerFile).filter((e) => !scope || e.runId === scope), null, 2));
   } else if (cmd === "sweep") {
     const { sweep } = await import("./lib/sweep.mjs");
-    const r = await sweep(product, { root: workspaceRoot, run: v.run, dryRun: !!v["dry-run"], interactive: { isTTY: !!process.stdin.isTTY, ask } });
+    const r = await sweep(product, { root: workspaceRoot, run: v.run, dryRun: !!v["dry-run"], confirmFile: v["confirm-file"], interactive: { isTTY: !!process.stdin.isTTY, ask } });
     console.log(JSON.stringify(r, null, 2));
     process.exit(r.errors || r.failed?.length ? 1 : 0);
   } else {

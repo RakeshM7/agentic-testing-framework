@@ -54,7 +54,8 @@ import { explorePaths } from "./explore.mjs";
 import { planPaths } from "./api-plan.mjs";
 import { knowledgePaths } from "./knowledge.mjs";
 import { assignIds } from "./registry.mjs";
-import { STEPS, testcasesModeOf } from "./contract.mjs";
+import { STEPS, envName, testcasesModeOf } from "./contract.mjs";
+import { APPROVAL_CONFIRM, consumeConfirmation, discardConfirmation } from "./confirm.mjs";
 import { sha256, stampVerified, unverifiedReason } from "./verified.mjs";
 import { expandFw } from "./roots.mjs";
 
@@ -112,6 +113,8 @@ export function testcasePaths(productDir, module) {
     approvalCsv: path.join(dir, "approval.csv"),
     approvals: path.join(dir, "approvals.json"),
     approvalFindings: path.join(dir, "approval-findings.md"),
+    // the extension dialog's one-time confirmation of approve and import --approved (scripts/lib/confirm.mjs)
+    approvalConfirm: path.join(dir, APPROVAL_CONFIRM),
     file: (format) => testcasesFile(moduleDir, module, format),
   };
 }
@@ -1049,10 +1052,16 @@ function terminal() {
 // hash. A row whose Version is not the case's current content is refused (re-render with build and review it again); a
 // blank row clears an earlier decision. Human only: the guard denies it to every tool call it sees, and it refuses
 // unless it runs in an interactive terminal where the human types the module slug to confirm (interactive: injected by
-// tests). Exit 1 whenever it records nothing.
-export async function approve(ctx, validateData, { interactive = terminal() } = {}) {
+// tests), or confirmFile is the extension dialog's one-time confirmation at testcases/approval-confirm.json (checked and
+// deleted before anything else, scripts/lib/confirm.mjs). Exit 1 whenever it records nothing.
+export async function approve(ctx, validateData, { interactive = terminal(), confirmFile } = {}) {
   const { tp, module } = ctx;
   const fail = (problems, extra = {}) => ({ code: 1, out: { recorded: [], cleared: [], ...extra, problems } });
+  if (confirmFile != null) {
+    const c = consumeConfirmation(confirmFile, { file: tp.approvalConfirm, root: ctx.root, want: { action: "approve", product: ctx.product, module, environment: envName() }, slug: module });
+    if (c.problem) return fail([`${c.problem}; nothing was recorded`]);
+    interactive = c.interactive;
+  }
   const cov = readJson(tp.coverage, null);
   if (!cov) return fail(["testcases/coverage.json is missing: the test cases were never built"]);
   const sheet = readApprovalCsv(tp.approvalCsv);
@@ -1450,10 +1459,21 @@ export function importSource(ctx, { file, config }) {
 // so the cases get their TC ids (stable by key), the rendered file and approval.csv like generated ones. A document in
 // another format is refused with what to do instead (testcase-writer's import mode). approved: HUMAN ONLY, like
 // `approve` -- an interactive terminal and the module slug typed to confirm, and the guard denies it to every tool call
-// it sees; each imported case is then recorded approved in approvals.json, pinned to its content.
+// it sees; each imported case is then recorded approved in approvals.json, pinned to its content. confirmFile: the
+// extension dialog's one-time confirmation instead of the terminal, as for `approve` (action import-approved), only
+// with approved.
 // -> {code, out}
-export async function importCases(ctx, validateData, { file, config, approved = false, interactive = terminal() } = {}) {
+export async function importCases(ctx, validateData, { file, config, approved = false, interactive = terminal(), confirmFile } = {}) {
   const fail = (problems, extra = {}) => ({ code: 1, out: { imported: 0, ...extra, problems } });
+  if (confirmFile != null) {
+    if (!approved) {
+      const gone = discardConfirmation(ctx.tp.approvalConfirm);
+      return fail([`confirmation refused: --confirm-file confirms import --approved only${gone ? ` (${rel(ctx.root, ctx.tp.approvalConfirm)} was deleted)` : ""}; nothing was imported`]);
+    }
+    const c = consumeConfirmation(confirmFile, { file: ctx.tp.approvalConfirm, root: ctx.root, want: { action: "import-approved", product: ctx.product, module: ctx.module, environment: envName() }, slug: ctx.module });
+    if (c.problem) return fail([`${c.problem}; nothing was imported`]);
+    interactive = c.interactive;
+  }
   if (approved && !interactive?.isTTY) return fail(["import --approved is human-only: run it yourself in an interactive terminal (in Git Bash's mintty: winpty " + expandFw("node {fw}/scripts/testcases.mjs") + " import ... --approved); nothing was imported"]);
   const src = importSource(ctx, { file, config });
   if (src.error) return fail([src.error]);

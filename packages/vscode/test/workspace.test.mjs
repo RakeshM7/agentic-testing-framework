@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { createWorkspace, detectWorkspace, envArgs, findFramework, findWorkspaceRoot, listModules, listProducts, reportFile, stateDir, topLevelScalar } from "../src/workspace.js";
+import { URL_RE, approvalEnvironment, configFileOf, createWorkspace, detectWorkspace, envArgs, findFramework, findWorkspaceRoot, listModules, listProducts, productNameProblem, reportFile, stateDir, targetUrlProblem, topLevelScalar } from "../src/workspace.js";
 import { fakeVscode } from "./fake-vscode.mjs";
 
 const tmp = () => realpathSync.native(mkdtempSync(path.join(tmpdir(), "atf-vscode-ws-")));
@@ -137,6 +137,20 @@ test("artifact paths follow the contract's environments", () => {
   assert.deepEqual(envArgs("uat"), ["--env", "uat"]);
 });
 
+test("approve's environment: the first, default first, whose last run lists the module; else default", () => {
+  const ws = tmp();
+  put(ws, "config/acme.yaml", "product: acme\n");
+  put(ws, "config/acme-uat.yaml", "product: acme\nenvironment: uat\n");
+  assert.equal(approvalEnvironment(ws, "acme", "contacts"), "default", "no run anywhere");
+  put(ws, "artifacts/acme/envs/uat/state/run.json", JSON.stringify({ modules: ["contacts"] }));
+  put(ws, "artifacts/acme/state/run.json", JSON.stringify({ modules: ["deals"] }));
+  assert.equal(approvalEnvironment(ws, "acme", "contacts"), "uat");
+  put(ws, "artifacts/acme/state/run.json", JSON.stringify({ modules: ["deals", "contacts"] }));
+  assert.equal(approvalEnvironment(ws, "acme", "contacts"), "default");
+  put(ws, "artifacts/acme/state/run.json", "{ broken");
+  assert.equal(approvalEnvironment(ws, "acme", "contacts"), "uat", "an unreadable run is skipped");
+});
+
 test("createWorkspace sets the context keys and fires onDidRefresh when the detection changes", () => {
   const ws = tmp();
   put(ws, "atf/atf.json", "{}");
@@ -158,4 +172,27 @@ test("createWorkspace sets the context keys and fires onDidRefresh when the dete
   w.detect({ fire: true });
   assert.equal(fired, 2, "atf.refresh always fires");
   assert.equal(w.uri("config").fsPath, path.join(ws, "config"));
+});
+
+test("New product…: the name is a kebab-case slug with no config/<name>.yaml yet, the URL an http(s) one", async () => {
+  const ws = tmp();
+  put(ws, "config/acme.yaml", "product: acme\n");
+  put(ws, "config/beta-uat.yaml", "product: beta\nenvironment: uat\n");
+  assert.equal(configFileOf("acme-crm"), "config/acme-crm.yaml");
+  for (const ok of ["acme-crm", "a1", "crm2-eu", " beta "]) assert.equal(productNameProblem(ws, ok), null, ok);
+  assert.match(productNameProblem(ws, ""), /lowercase kebab-case slug/);
+  assert.match(productNameProblem(ws, "   "), /lowercase kebab-case slug/);
+  for (const bad of ["Acme", "acme_crm", "acme--crm", "-acme", "acme-", "acme crm", "../x", "acme.yaml"]) assert.match(productNameProblem(ws, bad), /is not a lowercase kebab-case slug/, bad);
+  assert.match(productNameProblem(ws, "acme"), /^config\/acme\.yaml already exists/);
+  assert.match(productNameProblem(ws, " acme "), /already exists/, "trimmed, as the command passes it");
+  assert.equal(productNameProblem(ws, "beta"), null, "only config/<name>.yaml counts, as in atf config");
+  assert.equal(productNameProblem(null, "acme"), null, "no workspace: only the slug is checked");
+
+  for (const ok of ["https://crm.example.com", "http://localhost:3000/app?x=1", "HTTPS://X.EXAMPLE.COM", " https://a.b "]) assert.equal(targetUrlProblem(ok), null, ok);
+  assert.match(targetUrlProblem(""), /The target's URL/);
+  for (const bad of ["crm.example.com", "ftp://x", "https://", "https://a b", "javascript:alert(1)"]) assert.match(targetUrlProblem(bad), /is not an http\(s\) URL/, bad);
+  // the CLI's own test, word for word (scripts/lib/cli.mjs), so the box and the command agree
+  const { readFileSync } = await import("node:fs");
+  const cliSrc = readFileSync(path.resolve(import.meta.dirname, "..", "..", "core", "scripts", "lib", "cli.mjs"), "utf8");
+  assert.ok(cliSrc.includes(`if (!${URL_RE}.test(v.url))`), "URL_RE drifted from atf config's");
 });

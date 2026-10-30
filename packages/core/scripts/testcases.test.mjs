@@ -3,6 +3,7 @@
 // (knowledge rule-facts.json) formats, and validated against those schemas first.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { main } from "./testcases.mjs";
@@ -895,6 +896,98 @@ test("import --approved is for a human at a terminal: no TTY refuses everything;
   assert.equal(ok.code, 0, JSON.stringify(ok.out));
   assert.deepEqual(ok.out.approved, ok.out.ids);
   assert.deepEqual((await s.tc("status")).out.approved, ok.out.ids);
+});
+
+// The VS Code extension's dialog confirmation (scripts/lib/confirm.mjs), written in code: no tool call may write it (the
+// guard's human-only path rule). Valid for a minute unless `over` says otherwise.
+const CONFIRM = `${MOD}/testcases/approval-confirm.json`;
+const confirmation = (root, over = {}) => {
+  const now = Date.now();
+  put(root, CONFIRM, JSON.stringify({ action: "approve", product: "acme", module: "contacts", typed: "contacts", nonce: randomUUID(), createdAt: new Date(now).toISOString(), expiresAt: new Date(now + 60_000).toISOString(), ...over }));
+};
+// No terminal: the confirmation file is the only way through, and the prompt it answers is never put to a terminal.
+const noTerminal = { isTTY: false, ask: async () => assert.fail("a terminal prompt with a confirmation file") };
+
+test("approve confirmed in the extension's dialog: the one-time file at testcases/approval-confirm.json stands in for the terminal", async () => {
+  const s = setup();
+  const items = (await s.tc("items")).out.items;
+  s.overlay(fullOverlay(items.slice(0, 2)));
+  await s.tc("build");
+  editApproval(s.tp, [["TC-contacts-1", "yes"]]);
+  const approveWith = (...args) => s.tcAs(noTerminal, "approve", "--confirm-file", ...args);
+  const t = (ms) => new Date(Date.now() + ms).toISOString();
+  for (const [over, re] of [
+    [{ typed: "deals" }, /not confirmed: the slug typed was not 'contacts'/],
+    [{ createdAt: t(-200_000), expiresAt: t(-100_000) }, /expired/],
+    [{ createdAt: t(60_000), expiresAt: t(90_000) }, /is in the future/],
+    [{ action: "import-approved" }, /is for 'import-approved', not 'approve'/],
+    [{ action: "sweep", module: undefined }, /is for 'sweep', not 'approve'/],
+    [{ product: "other" }, /is for product 'other', not 'acme'/],
+    [{ module: "deals" }, /is for module 'deals', not 'contacts'/],
+    [{ environment: "staging" }, /environment 'staging', not this session's 'default'/],
+  ]) {
+    confirmation(s.root, over);
+    const r = await approveWith(CONFIRM);
+    assert.equal(r.code, 1, JSON.stringify(over));
+    assert.match(r.out.problems.at(-1), re);
+    assert.match(r.out.problems.at(-1), /was deleted\); nothing was recorded$/);
+    assert.equal(existsSync(path.join(s.root, CONFIRM)), false, `spent: ${JSON.stringify(over)}`);
+    assert.equal(existsSync(s.tp.approvals), false, "nothing was recorded");
+  }
+  put(s.root, CONFIRM, "{not json");
+  assert.match((await approveWith(CONFIRM)).out.problems.at(-1), /is not valid JSON/);
+  assert.equal(existsSync(path.join(s.root, CONFIRM)), false);
+  // only the defined path: another one is never read (and the defined file, if any, is spent)
+  confirmation(s.root);
+  put(s.root, "data/confirm.json", "{}");
+  let r = await approveWith("data/confirm.json");
+  assert.match(r.out.problems.at(-1), /--confirm-file must be artifacts\/acme\/modules\/contacts\/testcases\/approval-confirm\.json/);
+  assert.deepEqual([existsSync(path.join(s.root, "data/confirm.json")), existsSync(path.join(s.root, CONFIRM)), existsSync(s.tp.approvals)], [true, false, false]);
+  r = await approveWith(CONFIRM);
+  assert.match(r.out.problems.at(-1), /there is no confirmation file at artifacts\/acme\/modules\/contacts\/testcases\/approval-confirm\.json/);
+  assert.equal((await s.tcAs(noTerminal, "approve", "--confirm-file")).code, 2, "the option takes a path");
+  assert.equal((await s.tcAs(noTerminal, "approve", "--confirm-file", CONFIRM, "extra")).code, 2);
+
+  // a valid confirmation: recorded, and the file is gone
+  confirmation(s.root);
+  r = await approveWith(path.join(s.root, CONFIRM));
+  assert.equal(r.code, 0, JSON.stringify(r.out));
+  assert.deepEqual(r.out.recorded, ["TC-contacts-1"]);
+  assert.equal(loadJson(s.tp.approvals).cases["TC-contacts-1"].decision, "yes");
+  assert.equal(existsSync(path.join(s.root, CONFIRM)), false, "used once");
+  // the terminal route is unchanged: without the file, no terminal still records nothing
+  editApproval(s.tp, [["TC-contacts-2", "no", "wrong"]]);
+  r = await s.tcAs({ isTTY: false }, "approve");
+  assert.match(r.out.problems.at(-1), /interactive terminal/);
+  assert.equal((await s.tc("approve")).code, 0, "and a human at a terminal still records");
+});
+
+test("import --approved confirmed in the extension's dialog: action import-approved, only with --approved", async () => {
+  const s = setup();
+  put(s.root, "data/contacts.feature", FEATURE_IMPORT.split("\n").slice(0, 8).join("\n") + "\n");
+  const imp = (...args) => s.tcAs(noTerminal, "import", "--file", "data/contacts.feature", ...args);
+  confirmation(s.root); // an approve confirmation is not an import's
+  let r = await imp("--approved", "--confirm-file", CONFIRM);
+  assert.equal(r.code, 1);
+  assert.match(r.out.problems.join("\n"), /is for 'approve', not 'import-approved'.*nothing was imported/);
+  assert.deepEqual([existsSync(path.join(s.root, CONFIRM)), existsSync(s.tp.imported), existsSync(s.tp.approvals)], [false, false, false]);
+  confirmation(s.root, { action: "import-approved" });
+  r = await imp("--confirm-file", CONFIRM);
+  assert.equal(r.code, 1);
+  assert.match(r.out.problems.join("\n"), /--confirm-file confirms import --approved only .*was deleted\); nothing was imported/);
+  assert.deepEqual([existsSync(path.join(s.root, CONFIRM)), existsSync(s.tp.imported)], [false, false]);
+  confirmation(s.root, { action: "import-approved", typed: "deals" });
+  r = await imp("--approved", "--confirm-file", CONFIRM);
+  assert.match(r.out.problems.join("\n"), /not confirmed/);
+  assert.deepEqual([existsSync(path.join(s.root, CONFIRM)), existsSync(s.tp.imported)], [false, false], "refused before anything is imported");
+
+  confirmation(s.root, { action: "import-approved" });
+  r = await imp("--approved", "--confirm-file", CONFIRM);
+  assert.equal(r.code, 0, JSON.stringify(r.out));
+  assert.deepEqual(r.out.approved, r.out.ids);
+  assert.ok(r.out.ids.length > 0);
+  assert.equal(existsSync(path.join(s.root, CONFIRM)), false, "used once");
+  assert.deepEqual((await s.tc("status")).out.approved, r.out.ids);
 });
 
 test("import mode and links: an imported case cites its document verbatim; links name cases and exploration states", async () => {

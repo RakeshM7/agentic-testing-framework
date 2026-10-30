@@ -1,11 +1,15 @@
-// The sheets' VS Code layer with a stub vscode: the tree models and their counts, the approve action (a terminal
-// running exactly `atf approve <product> <module>`, never runJson), the webview's messages validated both ways, the
-// page's CSP, and an editor's load / save / conflict round trip.
+// The sheets' VS Code layer with a stub vscode: the tree models and their counts, the approve action (the saved
+// sheet's decisions, the typed module slug, then cli.confirmedRun; never runJson, never a terminal; and once through the
+// framework's own approve script), the webview's messages validated both ways, the page's CSP, and an editor's load /
+// save / conflict round trip.
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { spawn as nodeSpawn } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { approveArgs, approveModule, targetOf } from "../src/sheets/commands.js";
+import { createCli } from "../src/cli.js";
+import * as appr from "../src/sheets/approval.js";
+import { approvalDecisions, approveArgs, approveModule, approveOutcome, decisionsText, targetOf } from "../src/sheets/commands.js";
 import { validateHostMessage, validateWebviewMessage } from "../src/sheets/messages.js";
 import { scanApprovals, scanClarifications, evidenceFiles, resolveEvidence } from "../src/sheets/scan.js";
 import { CONTEXT, SheetTree, approvalsChildren, approvalsItem, clarificationsChildren, clarificationsItem } from "../src/sheets/trees.js";
@@ -13,9 +17,13 @@ import { csp, escapeHtml, makeNonce, renderHtml } from "../src/sheets/webview.js
 import { registerSheets, rootOf } from "../src/sheets/index.js";
 import { realSheets } from "./sheets-fixtures.mjs";
 
+const CORE = path.resolve(import.meta.dirname, "..", "..", "core");
+
 // ---- a stub of the vscode API, recording what the extension does ----
-function stubVscode({ answers = [] } = {}) {
-  const calls = { terminals: [], warnings: [], executed: [], panels: [], trees: {}, commands: {}, opened: [] };
+// answers: the warnings' buttons, in order; infoAnswers: the information messages' (the approve summary); inputs: the
+// input boxes' answers (a function gets the options)
+function stubVscode({ answers = [], infoAnswers = [], inputs = [] } = {}) {
+  const calls = { terminals: [], warnings: [], infos: [], inputs: [], progress: [], executed: [], panels: [], trees: {}, commands: {}, opened: [] };
   class EventEmitter {
     constructor() {
       this.listeners = [];
@@ -29,7 +37,7 @@ function stubVscode({ answers = [] } = {}) {
   const disposable = { dispose() {} };
   const Uri = { file: (fsPath) => ({ fsPath, scheme: "file", toString: () => `file://${fsPath}` }), from: (c) => ({ ...c, toString: () => `${c.scheme}:${c.path}?${c.query}` }) };
   const vscode = {
-    EventEmitter, Uri, ViewColumn: { Active: -1 },
+    EventEmitter, Uri, ViewColumn: { Active: -1 }, ProgressLocation: { Notification: 15 },
     TreeItem: class { constructor(label, collapsibleState) { Object.assign(this, { label, collapsibleState }); } },
     TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
     ThemeIcon: class { constructor(id) { this.id = id; } },
@@ -50,8 +58,10 @@ function stubVscode({ answers = [] } = {}) {
         return panel;
       },
       showWarningMessage: async (text, _opts, ...items) => (calls.warnings.push({ text, items }), answers.shift()),
-      showInformationMessage: async () => undefined,
+      showInformationMessage: async (text, ...items) => (calls.infos.push({ text, items }), infoAnswers.shift()),
       showErrorMessage: async (text) => calls.warnings.push({ text, error: true }),
+      showInputBox: async (opts) => (calls.inputs.push(opts), typeof inputs[0] === "function" ? inputs.shift()(opts) : inputs.shift()),
+      withProgress: async (opts, task) => (calls.progress.push(opts), task({ report() {} }, { isCancellationRequested: false, onCancellationRequested: () => disposable })),
       showQuickPick: async (items) => items[0],
       showTextDocument: async (uri) => calls.opened.push(uri.fsPath),
     },
@@ -66,10 +76,18 @@ function stubVscode({ answers = [] } = {}) {
   };
   return { vscode, calls };
 }
-const stubCli = () => {
+// confirmedRun prints `answer` as the approve script would (indented JSON) and exits `code`
+const stubCli = ({ answer = { recorded: [], cleared: [], unchanged: [], approved: 0, rejected: 0, changes: 0, awaiting: 3, problems: [] }, code = 0 } = {}) => {
   const cli = {
-    terminals: [],
-    runInTerminal: async (args, opts) => void cli.terminals.push({ args, opts }),
+    confirmed: [],
+    confirmedRun: async (action, target, opts) => {
+      cli.confirmed.push({ action, target, typed: opts.typed });
+      for (const line of JSON.stringify(answer, null, 2).split("\n")) opts.onLine(line, "stdout");
+      return { code, cancelled: false };
+    },
+    runInTerminal: async () => {
+      throw new Error("the sheets never open a terminal");
+    },
     runJson: async () => {
       throw new Error("runJson must not be called by the sheets");
     },
@@ -122,17 +140,103 @@ test("an unreadable sheet is listed with its error, not hidden", async () => {
   assert.match(clarificationsItem(stubVscode().vscode, clarificationsChildren([p], { kind: "product", product: "acme" })[0]).description, /^unreadable/);
 });
 
-test("approve: a terminal running exactly [approve, product, module]; never runJson; unsaved edits ask first", async () => {
+// The saved sheet with the human's decisions: list yes, create changes, edit blank.
+async function decidedSheets() {
+  const s = await realSheets();
+  const sheet = appr.readApprovalSheet(s.texts.approval);
+  const cmp = appr.compare(sheet, JSON.parse(readFileSync(s.files.coverage, "utf8")), null);
+  writeFileSync(s.files.approval, appr.applyEdits(sheet, [{ id: s.ids.get("list"), approved: "yes", comment: "" }, { id: s.ids.get("create"), approved: "changes", comment: "Name the fields" }], cmp));
+  return s;
+}
+
+test("approve: the saved sheet's decisions, then the typed slug; a wrong slug never enables OK, a cancel runs nothing", async () => {
   assert.deepEqual(approveArgs({ product: "acme", module: "contacts" }), ["approve", "acme", "contacts"]);
   for (const bad of [{}, { product: "acme" }, { product: "acme", module: "Contacts" }, { product: "acme", module: "x; rm -rf /" }, { product: "../x", module: "m" }])
     assert.throws(() => approveArgs(bad), /needs a product and a module/);
-  const cli = stubCli();
-  assert.equal(await approveModule({ product: "acme", module: "contacts", kind: "module" }, { cli, cwd: "/ws" }), true);
-  assert.deepEqual(cli.terminals, [{ args: ["approve", "acme", "contacts"], opts: { name: "approve contacts", cwd: "/ws" } }]);
-  const declined = await approveModule({ product: "acme", module: "contacts" }, { cli, hasUnsaved: () => true, confirmUnsaved: async () => false });
-  assert.equal(declined, false);
-  assert.equal(cli.terminals.length, 1, "cancelled: no terminal");
   assert.deepEqual(targetOf({ product: "acme", module: "contacts", id: "contacts-1", extra: 1 }), { product: "acme", module: "contacts", id: "contacts-1" });
+  const { root } = await decidedSheets();
+  const target = { product: "acme", module: "contacts", kind: "module" };
+  const approve = (opts, cli = stubCli()) => {
+    const { vscode, calls } = stubVscode(opts);
+    let refreshed = 0;
+    return approveModule(target, { vscode, cli, root, refresh: () => refreshed++, ...opts.deps }).then((ran) => ({ ran, calls, cli, refreshed }));
+  };
+
+  // unsaved edits in the editor: declined, nothing asked or run
+  const unsaved = await approve({ deps: { hasUnsaved: () => true, confirmUnsaved: async () => false } });
+  assert.deepEqual([unsaved.ran, unsaved.calls.infos.length, unsaved.cli.confirmed.length], [false, 0, 0]);
+
+  // 1. the modal summary of the saved approval.csv; cancelling it runs nothing
+  const summary = await approve({ infoAnswers: [undefined] });
+  assert.equal(summary.ran, false);
+  const [modal] = summary.calls.infos;
+  assert.equal(modal.text, "Record the decisions for module contacts?");
+  assert.deepEqual(modal.items[0].modal, true);
+  assert.match(modal.items[0].detail, /^acme · contacts: the saved approval\.csv has 1 yes, 0 no, 1 changes; 1 blank row \(a blank clears an earlier decision\)\./);
+  assert.deepEqual(modal.items.slice(1), ["Continue…"]);
+  assert.deepEqual([summary.calls.inputs.length, summary.cli.confirmed.length], [0, 0]);
+
+  // 2. the typed slug: only an exact match enables OK; a cancel or a wrong answer writes and runs nothing
+  for (const answer of [undefined, "contact", "Contacts", "contacts "]) {
+    const r = await approve({ infoAnswers: ["Continue…"], inputs: [answer] });
+    assert.deepEqual([r.ran, r.cli.confirmed.length], [false, 0], String(answer));
+    const box = r.calls.inputs[0];
+    assert.equal(box.prompt, "Type the module slug contacts to record these decisions");
+    assert.equal(box.value, undefined, "never prefilled");
+    for (const wrong of ["", "contact", "Contacts", " contacts", "contacts ", "acme"]) assert.equal(box.validateInput(wrong), "Type contacts exactly to confirm", wrong);
+    assert.equal(box.validateInput("contacts"), null);
+  }
+  assert.equal(existsSync(path.join(root, "artifacts", "acme", "modules", "contacts", "testcases", "approval-confirm.json")), false);
+
+  // 3. typed: confirmedRun with the module, its environment and what was typed; 4. the result, and the views refreshed
+  const done = await approve({ infoAnswers: ["Continue…"], inputs: ["contacts"] }, stubCli({ answer: { recorded: ["TC-contacts-1", "TC-contacts-2"], cleared: [], unchanged: [], approved: 1, rejected: 0, changes: 1, awaiting: 1, problems: [] } }));
+  assert.equal(done.ran, true);
+  assert.deepEqual(done.cli.confirmed, [{ action: "approve", target: { product: "acme", module: "contacts", environment: "default" }, typed: "contacts" }]);
+  assert.equal(done.calls.progress.length, 1);
+  assert.equal(done.calls.infos.at(-1).text, "atf approve contacts: recorded 2 decisions. Now 1 approved, 0 rejected, 1 sent back for changes, 1 awaiting.");
+  assert.equal(done.refreshed, 1);
+
+  // a refusal from the script is said as an error
+  const refused = await approve({ infoAnswers: ["Continue…"], inputs: ["contacts"] }, stubCli({ answer: { errors: ["confirmation refused: the confirmation expired"] }, code: 1 }));
+  assert.match(refused.calls.warnings.at(-1).text, /^atf approve contacts: confirmation refused: the confirmation expired/);
+  assert.equal(refused.calls.warnings.at(-1).error, true);
+});
+
+test("approveOutcome and approvalDecisions: what the human reads", () => {
+  assert.match(approvalDecisions("TC ID,Title\nTC-a-1,x\n").error, /^approval\.csv has no .*'Approved'/);
+  const header = appr.APPROVAL_COLUMNS.join(",");
+  const row = (id, decision) => appr.APPROVAL_COLUMNS.map((c) => (c === "TC ID" ? id : c === "Approved" ? decision : "x")).join(",");
+  assert.deepEqual(approvalDecisions([header, row("TC-a-1", "yes"), row("TC-a-2", "maybe"), row("TC-a-3", ""), row("TC-a-4", "no")].join("\n")), { yes: 1, no: 1, changes: 0, blank: 1, invalid: 1, rows: 4 });
+  assert.deepEqual(approveOutcome("m", 1, { recorded: [], cleared: [], problems: ["approval.csv line 2: TC-m-1: changed since this row was rendered"] }), { level: "error", text: "atf approve m: nothing was recorded. approval.csv line 2: TC-m-1: changed since this row was rendered" });
+  assert.equal(approveOutcome("m", 1, { recorded: ["a"], cleared: ["b"], problems: ["x"], approved: 1, rejected: 0, changes: 0, awaiting: 0 }).level, "warning");
+  assert.equal(approveOutcome("m", 2, null).text, "atf approve m: no answer (exit 2)");
+  assert.equal(decisionsText({ yes: 2, no: 1, changes: 0, blank: 0, invalid: 1 }), "2 yes, 1 no, 0 changes; 1 unreadable decision, which approve will report");
+});
+
+test("approve through the framework's own script: the confirmation file at its path, then approvals.json recorded and the file gone", async () => {
+  const { root, ids, files } = await decidedSheets();
+  const seen = [];
+  const spawn = (cmd, argv, opts) => {
+    const file = argv[argv.indexOf("--confirm-file") + 1];
+    seen.push({ argv, file, body: JSON.parse(readFileSync(file, "utf8")), env: opts.env });
+    return nodeSpawn(cmd, argv, opts);
+  };
+  const config = { workspace: { getConfiguration: () => ({ get: (k) => (k === "nodePath" ? process.execPath : undefined) }) } };
+  const cli = createCli({ vscode: config, workspace: { root, framework: CORE }, output: { appendLine() {} }, spawn });
+  const { vscode, calls } = stubVscode({ infoAnswers: ["Continue…"], inputs: ["contacts"] });
+  assert.equal(await approveModule({ product: "acme", module: "contacts" }, { vscode, cli, root }), true);
+  const confirm = path.join(root, "artifacts", "acme", "modules", "contacts", "testcases", "approval-confirm.json");
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].file, confirm);
+  assert.deepEqual(seen[0].argv.slice(1), ["approve", "acme", "contacts", "--confirm-file", confirm]);
+  assert.equal(seen[0].argv[0], path.join(CORE, "scripts", "testcases.mjs"));
+  assert.deepEqual([seen[0].body.action, seen[0].body.product, seen[0].body.module, seen[0].body.typed, seen[0].body.environment], ["approve", "acme", "contacts", "contacts", "default"]);
+  assert.equal(seen[0].env.ATF_WORKSPACE, root);
+  assert.equal(existsSync(confirm), false, "used once");
+  const approvals = JSON.parse(readFileSync(files.approvals, "utf8"));
+  assert.deepEqual(Object.keys(approvals.cases).sort(), [ids.get("create"), ids.get("list")].sort());
+  assert.equal(approvals.cases[ids.get("list")].decision, "yes");
+  assert.match(calls.infos.at(-1).text, /^atf approve contacts: recorded 2 decisions\. Now 1 approved, 0 rejected, 1 sent back for changes, 1 awaiting\.$/);
 });
 
 test("webview -> extension: only known messages with exact fields; extension -> webview: checked before rendering", () => {
@@ -235,9 +339,10 @@ test("registerSheets: the views, the commands, an editor's load / save / conflic
   assert.doesNotMatch(readFileSync(files.approval, "utf8"), new RegExp(`${ids.get("create")},.*,yes,`));
   assert.deepEqual(panel.posted.at(-1).draft, [], "reloaded: the edits were discarded");
 
-  // approve from the editor goes through the command: a terminal, exactly [approve, product, module]
+  // approve from the editor goes through the command: the saved sheet's summary first (cancelled here: nothing runs)
   await panel.send({ type: "approveModule" });
-  assert.deepEqual(cli.terminals.map((t) => t.args), [["approve", "acme", "contacts"]]);
+  assert.equal(calls.infos.at(-1).text, "Record the decisions for module contacts?");
+  assert.deepEqual(cli.confirmed, []);
   // the editor is reused for the same sheet
   await calls.commands["atf.openApproval"]({ product: "acme", module: "contacts" });
   assert.equal(calls.panels.length, 1);
