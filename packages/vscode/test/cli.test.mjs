@@ -386,7 +386,7 @@ test("npm's spawn: an argument array with no shell on POSIX; one cmd.exe line on
 
 test("runNpm: npx with the registry's environment in the folder, streamed and cancellable like runStreaming, the token masked", async () => {
   const TOKEN = "ghp_0123456789abcdef";
-  const dir = path.resolve(path.sep, "work", "my-tests");
+  const dir = "/work/my-tests"; // a POSIX path: the platform here is linux, whatever the OS running the test
   const { cli, calls, output } = setup((child) => {
     child.stdout.emit("data", Buffer.from(`atf init: ${dir}\n  created atf/atf.json\n`));
     child.stderr.emit("data", Buffer.from(`npm notice token ${TOKEN}\n`));
@@ -434,11 +434,14 @@ test("runNpm: npx with the registry's environment in the folder, streamed and ca
 test("runNpm: npm beside an atf.nodePath Node.js, its folder first on the PATH", async () => {
   const dir = tmp();
   writeFileSync(path.join(dir, "node"), "");
-  writeFileSync(path.join(dir, "npx"), "");
-  const { cli, calls } = setup(reply(""), { config: { nodePath: path.join(dir, "node") }, platform: "linux" });
+  // the real platform: the folder is a real one (npx.cmd and one cmd.exe line on Windows)
+  const win = process.platform === "win32";
+  writeFileSync(path.join(dir, win ? "npx.cmd" : "npx"), "");
+  const { cli, calls } = setup(reply(""), { config: { nodePath: path.join(dir, "node") }, platform: process.platform });
   await cli.runNpm("npx", ["--yes", "@testagentic/atf@0.1.1", "init", dir], { cwd: dir });
-  assert.equal(calls[0].cmd, path.join(dir, "npx"));
-  assert.equal(calls[0].opts.env.PATH, `${dir}:/bin`);
+  if (win) assert.equal(calls[0].cmd, `${path.join(dir, "npx.cmd")} --yes @testagentic/atf@0.1.1 init ${dir}`);
+  else assert.equal(calls[0].cmd, path.join(dir, "npx"));
+  assert.equal(calls[0].opts.env.PATH, `${dir}${win ? ";" : ":"}/bin`);
 });
 
 test("redactLine and the registry's secret keys", () => {

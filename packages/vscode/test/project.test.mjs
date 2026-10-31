@@ -106,10 +106,18 @@ test("the pending New product… marker: run it here once, clear it when stale o
 // A fake spawn: handle(child, { cmd, argv, opts }) plays the process (npx, npm, or node for the Products view's reads).
 function fakeSpawn(handle) {
   const calls = [];
-  const spawn = (cmd, argv, opts) => {
+  const spawn = (command, args, opts) => {
     const child = new EventEmitter();
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
+    // The real platform: the folders are real ones. On Windows npm and npx run as one cmd.exe line (npmSpawnSpec),
+    // read back here as the tool and its arguments so the flows read the same on every OS (the test folders hold no
+    // spaces or quotes); a cancel there is taskkill /pid <pid>, played as the process closing.
+    if (command === "taskkill") {
+      setImmediate(() => calls.find((c) => c.child.pid === Number(args[1]))?.child.emit("close", null));
+      return child;
+    }
+    const [cmd, ...argv] = opts?.shell ? command.split(" ").map((a, i) => (i ? a : path.basename(a).replace(/\.cmd$/i, ""))) : [command, ...args];
     child.pid = 3000 + calls.length;
     child.kill = () => child.emit("close", null);
     calls.push({ cmd, argv, opts, child });
@@ -121,7 +129,7 @@ function fakeSpawn(handle) {
   };
   // a cancel kills the process group (-pid): the child closes, as a killed npx would
   const killProcess = (pid) => calls.find((c) => c.child.pid === -pid)?.child.emit("close", null);
-  return { calls, npm: () => calls.filter((c) => c.cmd !== "node"), cliOptions: { spawn, platform: "linux", killProcess } };
+  return { calls, npm: () => calls.filter((c) => c.cmd !== "node"), cliOptions: { spawn, platform: process.platform, killProcess } };
 }
 const say = (child, stream, ...lines) => child[stream].emit("data", Buffer.from(lines.map((l) => `${l}\n`).join("")));
 // what `npx … init <folder>` leaves when it works: the marker and the framework installed
@@ -189,7 +197,7 @@ test("Create new project… in this empty folder: npx init of the extension's ex
   const pick = a.vscode.rec.quickPicks[0].items.map((i) => i.label);
   assert.deepEqual(pick, [`$(folder) In this folder (${path.basename(dir)})`, "$(folder-opened) Choose another folder…"]);
   const [call] = spawn.npm();
-  assert.deepEqual([call.cmd, call.argv, call.opts.cwd, call.opts.shell], ["npx", ["--yes", `@testagentic/atf@${MANIFEST_VERSION}`, "init", dir], dir, false]);
+  assert.deepEqual([call.cmd, call.argv, call.opts.cwd, call.opts.shell], ["npx", ["--yes", `@testagentic/atf@${MANIFEST_VERSION}`, "init", dir], dir, process.platform === "win32"]);
   assert.equal(call.opts.env.ATF_NPM_TOKEN, TOKEN);
   assert.equal(call.opts.env["npm_config_@testagentic:registry"], "https://npm.pkg.github.com");
   assert.equal(call.opts.env["npm_config_//npm.pkg.github.com/:_authToken"], "${ATF_NPM_TOKEN?}");
