@@ -18,7 +18,7 @@ You need Node.js 20 or later, and a GitHub account that has been given Read acce
 Install the **atf: agentic testing** extension (`testagentic.atf-vscode`) and click the **ATF** icon in the activity bar. There is no `~/.npmrc` to edit and no shell variable to set:
 
 1. **Create new project…** asks once for a GitHub personal access token (classic) with only the **`read:packages`** scope (https://github.com/settings/tokens/new?scopes=read:packages&description=atf-install; set an expiry date). VS Code keeps it in its own secret storage. The extension gives it only to the installs it runs itself, never to an agent session, a terminal or the chat.
-2. Choose an empty folder. The extension downloads the `@testagentic/atf` of its own version and sets the project up there.
+2. Choose where to create the project. An empty folder is used as it is; any other folder gets a new folder for the project, whose name you type (`atf-tests` by default). The extension downloads the `@testagentic/atf` of its own version and sets the project up there.
 3. Give your first product a name, the target's URL, and whether it needs a login.
 4. **Start or continue a run.** Runs are `readonly` unless you set `full-run` yourself, and only do that for a target you are authorized to test.
 
@@ -61,4 +61,5 @@ An `npm` or `npx` command you run yourself in a terminal still needs the token s
 | `npm error 401` or `403` from `npm.pkg.github.com` | The token is missing or expired, or lacks `read:packages`. Check `echo $ATF_NPM_TOKEN`, then create a new token. In VS Code, choose **Replace token** in the error, or run **Connect to the package registry…**. |
 | `npm error 404` for `@testagentic/atf` | Your GitHub account hasn't been given access, or `~/.npmrc` lacks the `@testagentic:registry` line. Ask the maintainer to check **Manage access**. |
 | `npx` downloads something else called `atf` | Run `npx @testagentic/atf …` (with the scope) until the workspace exists; inside the workspace, `npx atf` uses the installed package. |
-| The agent files are missing after `npm install` | Install scripts may be disabled. Run `npx atf sync`; `npx atf doctor <product>` reports stale files. |
+| The agent files are missing after `npm install` | Install scripts may be disabled, or npm 12 didn't allow the package's (a workspace made before `atf init` added `allowScripts` to `package.json`, or an `allowScripts` entry that denies it). Run `npx atf sync`; `npx atf doctor <product>` reports stale files. |
+| `EALLOWSCRIPTS: --allow-scripts is not allowed in project-scoped installs` (npm 12) | An `allow-scripts` setting in your `~/.npmrc` was handed to the install as a flag by an older `atf`. Use the current version of the package (or the extension); it leaves that setting to your `.npmrc`. |

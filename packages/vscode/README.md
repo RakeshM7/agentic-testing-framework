@@ -16,9 +16,11 @@ You need Node.js 20 or later, and a GitHub account that has been given read acce
 1. **Install the extension**, then click the **ATF** icon in the activity bar.
 2. **Create new project…** The first time, it asks for a GitHub personal access token (classic) with only the
    `read:packages` scope ([create one](https://github.com/settings/tokens/new?scopes=read:packages&description=atf-install)).
-   VS Code keeps it in its secret storage: you don't edit `~/.npmrc` or set a shell variable. Then choose an empty
-   folder, or make one. The extension downloads the `@testagentic/atf` of its own version, sets the project up there and
-   opens it.
+   VS Code keeps it in its secret storage: you don't edit `~/.npmrc` or set a shell variable. Then **choose where to
+   create the project**. An empty folder is used as it is. Any other folder gets a new folder for the project, whose
+   name you type (`atf-tests` by default), so your other files are never mixed in. A folder inside an existing project
+   is refused, with **Open it**. The extension downloads the `@testagentic/atf` of its own version, sets the project up
+   there and opens it.
 3. **Name your first product:** a short name such as `acme-crm`, the target's URL, and whether it needs a login.
 4. **Start a run:** **Start or continue a run** on the product. Runs are `readonly` by default.
 
@@ -53,11 +55,11 @@ All commands are in the Command Palette under the **atf** category.
 | Command | What it does |
 |---|---|
 | Refresh | Refreshes every view. |
-| Create new project… | Sets up a project in a folder you choose, with the `@testagentic/atf` of the extension's version, then goes on to **New product…**. |
+| Create new project… | Sets up a project in an empty folder you choose, or in a new named folder inside a non-empty one, with the `@testagentic/atf` of the extension's version, then goes on to **New product…**. |
 | Open existing project… | Opens a folder that holds `atf/atf.json`. |
 | Connect to the package registry… | Asks for the registry token and keeps it in VS Code's secret storage. |
 | Forget the registry token | Removes the stored token. |
-| Install the framework | Runs `npm install` in the background, in a project whose package isn't installed yet. |
+| Install the framework | Runs `npm install` in the background, in a project whose package isn't installed yet, then **Sync host files**. |
 | Set up atf in this folder (init) | Runs `atf init` in the background, in an open folder that already has the package installed. |
 | Sync host files | Runs `atf sync` in the background. |
 | Check host files | Runs `atf check` in the background, and offers **Sync now** when they are out of date. |

@@ -4,11 +4,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { plan, run } from "./lib/cli.mjs";
 import { parseDecisions } from "./lib/decisions.mjs";
-import { CLIENT_GITIGNORE, DOCTOR_BASE_SCRIPT, INIT_BLOCK_END, INIT_BLOCK_START, packageName, withDeps, withInitBlock } from "./lib/init.mjs";
+import { CLIENT_GITIGNORE, DOCTOR_BASE_SCRIPT, INIT_BLOCK_END, INIT_BLOCK_START, SYNC_SCRIPT, allowScriptsWith, packageName, withDeps, withInitBlock } from "./lib/init.mjs";
 import { frameworkRoot } from "./lib/roots.mjs";
 import { CONTRACT_VERSION, workspaceContract } from "./lib/contract.mjs";
 import { SETUP_TEMPLATE, SETUP_WORKFLOW, BLOCK_START as SYNC_BLOCK_START } from "./lib/sync.mjs";
@@ -28,7 +28,9 @@ function init(argv, { cwd = tempRoot(), framework = frameworkRoot, platform = "l
   const code = run(p, { platform, spawn: spawn ?? stub, out: { log: (m) => logs.push(m), error: (m) => errors.push(m) } });
   return { code, logs, errors, calls, plan: p };
 }
-const kinds = (p) => p.steps.map((s) => (s.init ? "init" : s.sync ? "sync" : s.say ? "say" : s.cmd === process.execPath ? "doctor" : `${s.cmd} ${s.args.join(" ")}`));
+// "sync": in process; "sync child": SYNC_SCRIPT on the framework installed in the workspace
+const kinds = (p) => p.steps.map((s) => (s.init ? "init" : s.sync ? "sync" : s.say ? "say" : s.cmd === process.execPath ? (s.args[2] === SYNC_SCRIPT ? "sync child" : "doctor") : `${s.cmd} ${s.args.join(" ")}`));
+const ALLOW = { [FW_PKG.name]: true };
 const snapshot = (root) => Object.fromEntries(FILES.map((f) => [f, readFileSync(path.join(root, f), "utf8")]));
 // every `node_modules/@testagentic/atf/<path>` a committed file names is a file the package has
 const namedFrameworkPaths = (text) => [...text.matchAll(new RegExp(`${FW.replace(/[/.]/g, "\\$&")}/([\\w./-]+[\\w])`, "g"))].map((m) => m[1]);
@@ -44,9 +46,11 @@ test("atf init --no-install in a folder that doesn't exist yet: every file, {fw}
   for (const f of FILES) assert.ok(existsSync(path.join(dir, f)), f);
   assert.deepEqual(r.logs.filter((l) => /^ {2}created/.test(l)).map((l) => l.split(/\s+/)[2].replace(/:$/, "")), FILES);
 
-  // package.json: private, named after the folder, the package at the running version, its peers pinned
+  // package.json: private, named after the folder, the package at the running version, its peers pinned, and its own
+  // install script allowed by its bare name (npm 12's allowScripts, D-108)
   const pkg = JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8"));
-  assert.deepEqual(pkg, { name: "acme-tests", private: true, devDependencies: { [FW_PKG.name]: FW_PKG.version, ...FW_PKG.peerDependencies } });
+  assert.deepEqual(pkg, { name: "acme-tests", private: true, devDependencies: { [FW_PKG.name]: FW_PKG.version, ...FW_PKG.peerDependencies }, allowScripts: ALLOW });
+  assert.ok(r.logs.some((l) => l.startsWith("  created  package.json: ") && l.endsWith(`; allowScripts "${FW_PKG.name}": true, so npm 12 runs its postinstall`)), r.logs.join("\n"));
   assert.equal(pkg.devDependencies.playwright, "1.64.1");
   assert.match(readFileSync(path.join(dir, "package.json"), "utf8"), /^\{\n {2}"name"[\s\S]*\}\n$/, "2-space indent, trailing newline");
 
@@ -92,12 +96,14 @@ test("atf init --no-install in a folder that doesn't exist yet: every file, {fw}
   assert.ok(re.test(`node ${FW}/scripts/run.mjs next acme`));
   assert.ok(!re.test("node node_modules/other/scripts/run.mjs next acme") && !re.test("node scripts/run.mjs next acme"));
 
-  // the next steps: into the folder, the install --no-install skipped, then a run-config and a run
+  // the next steps: into the folder, the install and the sync --no-install skipped, then a run-config and a run
   const next = r.logs.slice(r.logs.indexOf("Next:") + 1);
   assert.match(next[0], /^ {2}1\. cd "Acme Tests!"$/);
-  assert.match(next[1], /^ {2}2\. npm install /);
-  assert.match(next[2], /^ {2}3\. npx atf config <product> --url <target url> .*npx atf interview/);
-  assert.match(next[3], /^ {2}4\. npx atf run <product> /);
+  assert.match(next[1], /^ {2}2\. npm install {2,}installs the framework and Playwright$/);
+  assert.match(next[2], /^ {2}3\. npx atf sync {2,}renders the host files/, "npm 12 may skip the postinstall");
+  assert.match(next[3], /^ {2}4\. npx atf config <product> --url <target url> .*npx atf interview/);
+  assert.match(next[4], /^ {2}5\. npx atf run <product> /);
+  assert.equal(new Set(next.slice(1, 5).map((l) => /^ {2}\d\. \S.*? {2,}(?=\S)/.exec(l)[0].length)).size, 1, "the descriptions line up");
 });
 
 test("atf init again changes nothing and reports every file as present", () => {
@@ -126,11 +132,11 @@ test("an existing package.json and .gitignore keep everything; only what is miss
   assert.equal(r.code, 0, r.errors.join("\n"));
 
   const after = readFileSync(path.join(dir, "package.json"), "utf8");
-  assert.deepEqual(JSON.parse(after), { ...JSON.parse(pkgText), devDependencies: { [FW_PKG.name]: FW_PKG.version } });
-  assert.deepEqual(Object.keys(JSON.parse(after)), ["name", "version", "scripts", "dependencies", "devDependencies"], "key order kept");
+  assert.deepEqual(JSON.parse(after), { ...JSON.parse(pkgText), devDependencies: { [FW_PKG.name]: FW_PKG.version }, allowScripts: ALLOW });
+  assert.deepEqual(Object.keys(JSON.parse(after)), ["name", "version", "scripts", "dependencies", "devDependencies", "allowScripts"], "key order kept");
   assert.match(after, /^\{\n {4}"name"/, "the file's own indentation");
   assert.ok(after.endsWith("}\n"));
-  assert.ok(r.logs.includes(`  updated  package.json: added devDependencies ${FW_PKG.name} ${FW_PKG.version}; kept playwright ^1.50.0 (the framework pins 1.64.1; the doctor checks what is installed)`), r.logs.join("\n"));
+  assert.ok(r.logs.includes(`  updated  package.json: added devDependencies ${FW_PKG.name} ${FW_PKG.version}; kept playwright ^1.50.0 (the framework pins 1.64.1; the doctor checks what is installed); added allowScripts "${FW_PKG.name}": true, so npm 12 runs its postinstall (npm 12 then takes this project's install-script policy from package.json instead of .npmrc)`), r.logs.join("\n"));
 
   // the client's lines untouched; a pattern they already have is not repeated, a negation always sits in the block
   const ignore = readFileSync(path.join(dir, ".gitignore"), "utf8");
@@ -163,6 +169,30 @@ test("the plan's readers: package names, dependencies, the .gitignore block (CRL
   assert.match(withDeps("{ not json", wanted).error, /^package\.json is not valid JSON/);
   assert.match(withDeps("[]", wanted).error, /must hold a JSON object/);
   assert.match(withDeps('{"devDependencies":"x"}', wanted).error, /"devDependencies" must be an object/);
+
+  // allowScripts: the package's own entry by its bare name, added to the client's own; the client's choice wins
+  const name = "@testagentic/atf";
+  assert.deepEqual(allowScriptsWith(undefined, name), { value: { [name]: true }, state: "created" });
+  assert.deepEqual(allowScriptsWith({ esbuild: true, "canvas@2.11.2": false }, name), { value: { esbuild: true, "canvas@2.11.2": false, [name]: true }, state: "added" }, "only that entry, theirs kept");
+  assert.deepEqual(allowScriptsWith({ [name]: true }, name), { state: "allowed" });
+  assert.deepEqual(allowScriptsWith({ [`${name}@1.2.3`]: true }, name), { state: "allowed" }, "a pinned entry is theirs too");
+  assert.deepEqual(allowScriptsWith({ [name]: false }, name), { state: "denied" });
+  assert.deepEqual(allowScriptsWith({ [name]: true, [`${name}@1.2.3`]: false }, name), { state: "denied" }, "npm lets a deny win");
+  assert.deepEqual(allowScriptsWith({ "@testagentic/atf-extra": true }, name).state, "added", "another package with the same prefix is not ours");
+  for (const bad of [null, [], "x", true]) assert.match(allowScriptsWith(bad, name).error, /"allowScripts" must be an object/);
+  const deps = JSON.stringify({ devDependencies: wanted });
+  assert.deepEqual(withDeps(deps, wanted), { added: [], kept: [] }, "without allow, allowScripts is not looked at");
+  const none = withDeps(deps, wanted, { allow: name });
+  assert.equal(none.allow, "created");
+  assert.deepEqual(JSON.parse(none.text), { devDependencies: wanted, allowScripts: { [name]: true } });
+  const theirs = withDeps(JSON.stringify({ allowScripts: { esbuild: true }, devDependencies: wanted }), wanted, { allow: name });
+  assert.deepEqual(theirs.added, []);
+  assert.equal(theirs.allow, "added");
+  assert.deepEqual(Object.entries(JSON.parse(theirs.text)), [["allowScripts", { esbuild: true, [name]: true }], ["devDependencies", wanted]], "in place, key order kept");
+  const denied = JSON.stringify({ devDependencies: wanted, allowScripts: { [name]: false } });
+  assert.deepEqual(withDeps(denied, wanted, { allow: name }), { added: [], kept: [], allow: "denied" }, "left as it is: no text");
+  assert.equal(JSON.parse(withDeps('{"allowScripts":{"@testagentic/atf":false}}', wanted, { allow: name }).text).allowScripts[name], false, "deps added, their false kept");
+  assert.match(withDeps('{"allowScripts":["@testagentic/atf"]}', wanted, { allow: name }).error, /^package\.json "allowScripts" must be an object; fix it, then run atf init again$/);
 
   assert.deepEqual(withInitBlock("", ["a/"]), { text: `${INIT_BLOCK_START}\na/\n${INIT_BLOCK_END}\n`, added: ["a/"] });
   assert.deepEqual(withInitBlock("x\r\n", ["a/"]).text, `x\r\n\r\n${INIT_BLOCK_START}\r\na/\r\n${INIT_BLOCK_END}\r\n`);
@@ -251,37 +281,67 @@ test("init in an opted-in workspace where the package is installed: init writes 
   assert.equal(run(plan(["check"], { workspace: root, framework }), { out: quiet }), 0);
 });
 
-test("init from npx's cache: npm install in the workspace (its postinstall syncs), then the doctor's base group", () => {
+test("init from npx's cache: npm install in the workspace, then atf sync on the framework installed there, then the doctor's base group", () => {
   const cwd = tempRoot();
   const dir = path.join(cwd, "ws");
   const r = init(["ws"], { cwd });
-  assert.deepEqual(kinds(r.plan), ["init", "npm install", "doctor", "say"]);
+  assert.deepEqual(kinds(r.plan), ["init", "npm install", "sync child", "doctor", "say"]);
   assert.equal(r.code, 0, r.errors.join("\n"));
-  assert.deepEqual(r.calls.map((c) => [c.cmd, c.args.slice(0, 2), c.opts.cwd]), [["npm", ["install"], dir], [process.execPath, ["--input-type=module", "-e"], dir]]);
-  assert.deepEqual(r.calls[1].args.slice(2), [DOCTOR_BASE_SCRIPT, dir, FW_PKG.name]);
+  assert.deepEqual(r.calls.map((c) => [c.cmd, c.args.slice(0, 2), c.opts.cwd]), [["npm", ["install"], dir], [process.execPath, ["--input-type=module", "-e"], dir], [process.execPath, ["--input-type=module", "-e"], dir]]);
+  // the sync: the installed package's own CLI on this workspace, whatever ATF_WORKSPACE the caller had (D-108)
+  assert.deepEqual(r.calls[1].args.slice(2), [SYNC_SCRIPT, dir, FW_PKG.name]);
+  assert.equal(r.calls[1].opts.env.ATF_WORKSPACE, dir);
+  assert.deepEqual(r.calls[2].args.slice(2), [DOCTOR_BASE_SCRIPT, dir, FW_PKG.name]);
   assert.ok(existsSync(path.join(dir, "atf/atf.json")), "the marker is in place before the install, so the postinstall finds the workspace");
-  assert.ok(!r.logs.some((l) => /\d\. npm install/.test(l)), "no install left to do");
+  assert.ok(!r.logs.some((l) => /\d\. (npm install|npx atf sync)/.test(l)), "no install or sync left to do");
 
-  // Windows: npm through cmd.exe, the doctor's node directly
+  // Windows: npm through cmd.exe, the sync's and the doctor's node directly
   const win = init([path.join(cwd, "ws2")], { cwd, platform: "win32" });
   assert.equal(win.calls[0].cmd, "npm install");
   assert.equal(win.calls[0].opts.shell, true);
   assert.equal(win.calls[0].opts.cwd, path.join(cwd, "ws2"));
   assert.equal(win.calls[1].opts.shell, undefined);
+  assert.equal(win.calls[2].opts.shell, undefined);
 
-  // a failed install stops before the doctor and says what is in place (exit 1, whatever npm's own code)
+  // a failed install stops before the sync and the doctor and says what is in place (exit 1, whatever npm's own code)
   const broken = init([path.join(cwd, "ws3")], { cwd, status: () => 7 });
   assert.equal(broken.code, 1);
   assert.equal(broken.calls.length, 1);
-  assert.match(broken.errors.at(-1), /^atf init: the workspace files above are in place, but npm install failed, .* run npm install there: its postinstall renders the host files\.$/);
+  assert.match(broken.errors.at(-1), /^atf init: the workspace files above are in place, but npm install failed, .* run npm install and npx atf sync there\.$/);
   const missing = init([path.join(cwd, "ws4")], { cwd, spawn: () => ({ error: Object.assign(new Error("spawn npm ENOENT"), { code: "ENOENT" }) }) });
   assert.equal(missing.code, 1);
   assert.deepEqual(missing.errors.slice(0, 1), ["npm not found on PATH"]);
+  // a failed sync stops before the doctor
+  const unsynced = init([path.join(cwd, "ws6")], { cwd, status: (n) => (n === 2 ? 1 : 0) });
+  assert.equal(unsynced.code, 1);
+  assert.equal(unsynced.calls.length, 2);
+  assert.match(unsynced.errors.at(-1), /^atf init: the workspace files above are in place and the framework is installed in .*, but the host files were not rendered\. Fix the error above, then run npx atf sync there\.$/);
   // a failing check: exit 1 with its note, and no next steps
-  const sick = init([path.join(cwd, "ws5")], { cwd, status: (n) => (n === 2 ? 1 : 0) });
+  const sick = init([path.join(cwd, "ws5")], { cwd, status: (n) => (n === 3 ? 1 : 0) });
   assert.equal(sick.code, 1);
   assert.match(sick.errors.at(-1), /^atf init: the workspace is set up, but the dependency check above found a problem/);
   assert.ok(!sick.logs.includes("Next:"));
+});
+
+test("init's npm install runs without the allow-scripts setting npx exported, every other variable kept (D-108)", () => {
+  const cwd = tempRoot();
+  const inherited = { npm_config_allow_scripts: "esbuild", NPM_CONFIG_ALLOW_SCRIPTS: "x", "npm_config_allow-scripts": "y", npm_config_allow_scripts_pending: "true", "npm_config_@testagentic:registry": "https://npm.pkg.github.com", "npm_config_//npm.pkg.github.com/:_authToken": "t0ken", ATF_TEST_KEEP: "1" };
+  // as if npx had exported them to this process: run() gives each step process.env, then the step's own env, so the
+  // variables ride on the steps here and process.env stays untouched (Windows' is case-insensitive)
+  const p = plan(["init", "ws"], { cwd, framework: frameworkRoot, env: {} });
+  p.steps = p.steps.map((step) => (step.cmd ? { ...step, env: { ...step.env, ...inherited } } : step));
+  const calls = [];
+  const quiet = { log() {}, error() {} };
+  const r = { code: run(p, { platform: "linux", out: quiet, spawn: (cmd, args, opts) => (calls.push({ cmd, args, opts }), { status: 0 }) }), errors: [], calls };
+  assert.equal(r.code, 0, r.errors.join("\n"));
+  const [npm, sync] = r.calls;
+  assert.equal(npm.cmd, "npm");
+  for (const k of ["npm_config_allow_scripts", "NPM_CONFIG_ALLOW_SCRIPTS", "npm_config_allow-scripts"]) assert.equal(Object.hasOwn(npm.opts.env, k), false, k);
+  for (const k of ["npm_config_allow_scripts_pending", "npm_config_@testagentic:registry", "npm_config_//npm.pkg.github.com/:_authToken", "ATF_TEST_KEEP"]) assert.equal(npm.opts.env[k], inherited[k], k);
+  // the PATH kept, under the key the OS spelled it with (Windows' is `Path`, which a copied env keeps)
+  const pathKey = Object.keys(process.env).find((k) => k.toUpperCase() === "PATH");
+  assert.equal(npm.opts.env[pathKey], process.env.PATH);
+  assert.equal(sync.opts.env.npm_config_allow_scripts, "esbuild", "only npm and npx lose it");
 });
 
 test("init in a workspace where the package is installed: the sync runs in process, the doctor passes, atf check passes", () => {
@@ -311,14 +371,50 @@ test("init in a workspace where the package is installed: the sync runs in proce
   assert.ok(again.logs.some((l) => l === "atf sync: the host files are up to date."));
 });
 
-test("installed here but package.json lacks a dependency: init adds it and runs npm install too", () => {
+test("installed here but package.json lacks a dependency: init adds it, runs npm install, then syncs once, on the installed framework", () => {
   const { root, framework } = installedWorkspace();
-  put(root, "package.json", JSON.stringify({ name: "acme-tests", private: true, devDependencies: { [FW_PKG.name]: FW_PKG.version } }, null, 2) + "\n");
+  const partial = JSON.stringify({ name: "acme-tests", private: true, devDependencies: { [FW_PKG.name]: FW_PKG.version } }, null, 2) + "\n";
+  put(root, "package.json", partial);
   const r = init(["--no-install"], { cwd: root, framework });
   assert.deepEqual(kinds(r.plan), ["init", "sync", "say"], "--no-install: the sync still runs, it installs nothing");
   assert.ok(r.logs.some((l) => /^ {2}\d\. npm install /.test(l)));
-  put(root, "package.json", JSON.stringify({ name: "acme-tests", private: true, devDependencies: { [FW_PKG.name]: FW_PKG.version } }, null, 2) + "\n");
-  assert.deepEqual(kinds(init([], { cwd: root, framework, status: () => 0 }).plan), ["init", "sync", "npm install", "doctor", "say"]);
+  assert.ok(!r.logs.some((l) => /^ {2}\d\. npx atf sync /.test(l)), "synced already");
+
+  // with the install: no in-process sync before it, one sync after it, in the child, which really renders the host
+  // files (npm itself is stubbed: the package is already in node_modules)
+  put(root, "package.json", partial);
+  for (const f of [".claude", ".github", ".mcp.json", ".vscode/hooks"]) rmSync(path.join(root, f), { recursive: true, force: true });
+  const real = (cmd, args, opts) => (cmd === "npm" ? { status: 0 } : spawnSync(cmd, args, { ...opts, stdio: "pipe", encoding: "utf8" }));
+  const full = init([], { cwd: root, framework, spawn: real });
+  assert.deepEqual(kinds(full.plan), ["init", "npm install", "sync child", "doctor", "say"]);
+  assert.equal(full.code, 0, full.errors.join("\n"));
+  for (const f of [".claude/agents/orchestrator-agent.md", ".github/agents/orchestrator-agent.agent.md", ".mcp.json", ".vscode/hooks/framework-guard.json"])
+    assert.ok(existsSync(path.join(root, f)), f);
+  const quiet = { log() {}, error() {} };
+  assert.equal(run(plan(["check"], { workspace: root, framework }), { out: quiet }), 0);
+
+  // the sync script on a workspace without the package: its own message, exit 1
+  const empty = tempRoot();
+  const missing = spawnSync(process.execPath, ["--input-type=module", "-e", SYNC_SCRIPT, empty, FW_PKG.name], { cwd: empty, encoding: "utf8" });
+  assert.equal(missing.status, 1);
+  assert.equal(missing.stderr.trim(), `atf sync: ${FW_PKG.name} is not installed in ${empty}; run npm install there, then npx atf sync.`);
+});
+
+test("an existing package.json's allowScripts: the package's entry joins the client's; their false is kept and reported", () => {
+  const dir = path.join(tempRoot(), "ws");
+  const deps = { [FW_PKG.name]: FW_PKG.version, ...FW_PKG.peerDependencies };
+  put(dir, "package.json", JSON.stringify({ name: "x", devDependencies: deps, allowScripts: { esbuild: true } }, null, 2) + "\n");
+  const r = init(["--no-install"], { cwd: dir });
+  assert.equal(r.code, 0, r.errors.join("\n"));
+  assert.deepEqual(JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")).allowScripts, { esbuild: true, [FW_PKG.name]: true });
+  assert.ok(r.logs.includes(`  updated  package.json: added allowScripts "${FW_PKG.name}": true to your allowScripts, so npm 12 runs its postinstall`), r.logs.join("\n"));
+
+  const text = JSON.stringify({ name: "x", devDependencies: deps, allowScripts: { [FW_PKG.name]: false } }, null, 2) + "\n";
+  put(dir, "package.json", text);
+  const denied = init(["--no-install"], { cwd: dir });
+  assert.equal(denied.code, 0, denied.errors.join("\n"));
+  assert.equal(readFileSync(path.join(dir, "package.json"), "utf8"), text, "left as it is");
+  assert.ok(denied.logs.includes(`  present  package.json: kept your allowScripts entry that denies ${FW_PKG.name}, so npm 12 skips its postinstall: run npx atf sync after each npm install or upgrade`), denied.logs.join("\n"));
 });
 
 test("init refuses a folder inside the framework, inside another workspace, holding the source checkout, or a file; usage is strict", () => {

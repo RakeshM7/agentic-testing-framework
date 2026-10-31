@@ -19,6 +19,7 @@ import yaml from "js-yaml";
 import { validateRunConfig } from "./run-config.mjs";
 import { STAGES, chosenStages, deriveCaseTypes, frameworkRoot, workspaceRoot } from "./lib/contract.mjs";
 import { LOGIN_NEEDS, STAGE_NEEDS, failures, groupsFor, runChecks } from "./lib/doctor.mjs";
+import { spawnEnv } from "./lib/npm-env.mjs";
 
 const USAGE = "usage: doctor.mjs <config.yaml> [--stage all|<stage>[,<stage>…]] [--for login] [--fix] [--warn-only] [--json]";
 
@@ -91,7 +92,8 @@ export async function main(argv, { root = workspaceRoot, framework = frameworkRo
   let checks = await check(cfg, sc.groups, { root, framework });
   const steps = v.fix ? autofixSteps(checks) : [];
   if (steps.length) {
-    const run = exec ?? ((s) => spawnSync(s.cmd, s.args, { cwd: s.cwd, stdio: "inherit", shell: process.platform === "win32" }).status === 0);
+    // npm and npx without an allow-scripts setting npx exported to this process (lib/npm-env.mjs, D-108)
+    const run = exec ?? ((s) => spawnSync(s.cmd, s.args, { cwd: s.cwd, env: spawnEnv(s.cmd), stdio: "inherit", shell: process.platform === "win32" }).status === 0);
     for (const s of steps) {
       log(`Fixing: ${s.cmd} ${s.args.join(" ")}  (in ${s.cwd})`);
       if (!run(s)) log(`  that command failed; see its output above`);

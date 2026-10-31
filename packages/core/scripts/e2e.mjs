@@ -19,6 +19,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symli
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { spawnEnv } from "./lib/npm-env.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PRODUCT = "demo";
@@ -48,13 +49,13 @@ function nodeModules(from) {
 }
 
 function run(cmd, args, opts) {
-  const r = spawnSync(cmd, args, { encoding: "utf8", shell: process.platform === "win32", ...opts });
+  const r = spawnSync(cmd, args, { encoding: "utf8", shell: process.platform === "win32", ...opts, env: spawnEnv(cmd, opts?.env) });
   return { code: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 }
 // The same, without blocking: the demo app answers from this process while the suite runs.
 function runAsync(cmd, args, opts) {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { shell: process.platform === "win32", ...opts });
+    const child = spawn(cmd, args, { shell: process.platform === "win32", ...opts, env: spawnEnv(cmd, opts?.env) });
     let out = "";
     child.stdout.on("data", (d) => (out += d));
     child.stderr.on("data", (d) => (out += d));

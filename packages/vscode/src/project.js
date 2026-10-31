@@ -9,11 +9,14 @@
 //                    npx and atf init processes the extension starts itself (cli.runNpm, cli.runStreaming), as
 //                    ATF_NPM_TOKEN; never to a terminal or the chat panel, where an agent could read it.
 //   Create           `npx --yes @testagentic/atf@<this extension's exact version> init <folder>` in the background,
-//                    in the folder: the one place the extension runs a framework that is not installed (D-107), pinned
-//                    so the extension and the package always match (D-105's version lock). Then the new window opens
+//                    in the folder: an empty one (dotfiles aside) as it is; in any other, a new folder whose name is
+//                    asked (default atf-tests); one that is a project or inside one, never. The one place the
+//                    extension runs a framework that is not installed (D-107), pinned so the extension and the
+//                    package always match (D-105's version lock). Then the new window opens
 //                    on the project and goes straight to New product… (a marker in globalState survives the reload).
 //   Open             a folder holding atf/atf.json (or inside one), opened in this window.
-//   Install          `npm install` in a cloned project whose framework is not installed yet (state noFramework).
+//   Install          `npm install` in a cloned project whose framework is not installed yet (state noFramework), then
+//                    `atf sync`, since npm 12 may skip the framework's postinstall that renders the host files.
 //
 // The registry, without touching ~/.npmrc and without the token in a file or argv (registryEnv). npm reads any
 // setting from an `npm_config_<key>` environment variable, scoped and nerf-darted keys included, and expands ${VAR} in
@@ -35,7 +38,7 @@
 //
 // The pure parts take no `vscode` (test/project.test.mjs); createRegistry() and createProjectFlows() are the VS Code
 // layer, given `vscode`, the extension context and activate.js's helpers.
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { CREATE_HINT, FRAMEWORK_PACKAGE, MARKER, findWorkspaceRoot } from "./workspace.js";
 
@@ -73,6 +76,15 @@ export function registryRefused(lines) {
   return lines.some(({ line }) => /^npm (?:error|ERR!)/.test(line.trim()) && /\b(?:E?40[134])\b/.test(line));
 }
 
+// npm 12 refusing an allow-scripts setting it was handed as a flag (EALLOWSCRIPTS: "--allow-scripts is not allowed
+// in project-scoped installs"). npx passes the user's ~/.npmrc allow-scripts on to the npm it starts that way (the npm
+// install init runs, a framework older than its fix); the extension's own npm runs never pass it (cli.npmEnv).
+export const ALLOW_SCRIPTS = "npm 12 refused the install because of an allow-scripts setting (your ~/.npmrc)";
+export const allowScriptsRefused = (lines) => lines.some(({ line }) => /\bEALLOWSCRIPTS\b/.test(line));
+
+// A reason as the end of a sentence: its own full stop kept, one added only when it has none (never "..").
+export const sentence = (s) => (/[.!?…]$/.test(s) ? s : `${s}.`);
+
 // A folder with nothing in it but dotfiles (.git, .DS_Store, .vscode): one a project can be created in as it is.
 export function isEmptyFolder(dir) {
   try {
@@ -80,6 +92,22 @@ export function isEmptyFolder(dir) {
   } catch {
     return false;
   }
+}
+
+// The folder a project gets inside a folder that isn't empty: a plain name of a folder that doesn't exist there yet,
+// or is empty. No path separators, no . or .., and none of the characters cmd.exe can't be handed through npx.cmd
+// (quoteNpmCmd: " % ! ^) or Windows refuses in a name (< > : | ? *), so the same names work on every OS.
+// -> problem | null
+export const DEFAULT_PROJECT_NAME = "atf-tests";
+export function projectNameProblem(parent, value) {
+  const name = String(value ?? "").trim();
+  if (!name) return "Name the project's folder";
+  if (/[\\/]/.test(name)) return "Just the folder's name: no / or \\";
+  if (name === "." || name === "..") return `${name} is not a folder of its own: choose a name`;
+  if (/["%!^<>:|?*\x00-\x1f]/.test(name)) return 'A folder name without " % ! ^ < > : | ? * or control characters';
+  const target = path.join(parent, name);
+  if (existsSync(target) && !isEmptyFolder(target)) return `${name} already exists in ${parent} and isn't an empty folder: choose another name`;
+  return null;
 }
 
 export const VERSION_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
@@ -164,15 +192,18 @@ export function createRegistry({ vscode, context, env = process.env }) {
   return { token, ensure, connect, forget, refresh };
 }
 
-// The project commands' flows. helpers: background(args, opts) and failed(text) from activate.js; newProduct() opens
-// New product…; now for tests. -> { createProject({ folder? }), openProject(), installFramework(), resumePending() }
-export function createProjectFlows({ vscode, context, workspace, output, registry, background, failed, now = Date.now, platform = process.platform }) {
+// The project commands' flows. helpers: background(args, opts), failed(text) and syncHostFiles() (atf sync in the
+// background, as atf.sync runs it) from activate.js; now for tests.
+// -> { createProject({ folder? }), openProject(), installFramework(), resumePending() }
+export function createProjectFlows({ vscode, context, workspace, output, registry, background, failed, syncHostFiles, now = Date.now, platform = process.platform }) {
   const openFolder = (folder) => vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(folder), { forceNewWindow: false });
   const pickFolder = async (openLabel, title) => (await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel, title }))?.[0]?.fsPath ?? null;
   const isWindowFolder = (folder) => workspace.folders().some((f) => samePath(f, folder, platform));
 
-  // A registry refusal: what the token lacks, with Replace token; anything else: the reason, with Show output.
-  async function npmFailed(name, run, extra = "") {
+  const lastLine = (run) => run.lines.filter((l) => l.line.trim()).at(-1)?.line.trim() ?? `exit ${run.result?.code}`;
+  // A registry refusal: what the token lacks, with Replace token; npm 12's allow-scripts refusal: why, then next (what
+  // to do; default: update and retry); anything else: the reason, then extra (" The project files…"), with Show output.
+  async function npmFailed(name, run, { extra = "", next = "Update the extension and try again." } = {}) {
     if (run.error) return failed(`atf: ${run.error.message}`);
     if (registryRefused(run.lines)) {
       const a = await vscode.window.showErrorMessage(`atf: ${name} failed: ${REGISTRY_ACCESS}.${extra}`, "Replace token", "Show output");
@@ -180,8 +211,44 @@ export function createProjectFlows({ vscode, context, workspace, output, registr
       if (a === "Show output") output.show(true);
       return;
     }
-    const last = run.lines.filter((l) => l.line.trim()).at(-1)?.line.trim();
-    return failed(`atf: ${name} failed: ${last ?? `exit ${run.result.code}`}.${extra}`);
+    if (allowScriptsRefused(run.lines)) return failed(`atf: ${name} failed: ${ALLOW_SCRIPTS}. ${next}`);
+    return failed(`atf: ${name} failed: ${sentence(lastLine(run))}${extra}`);
+  }
+
+  // A folder that is a project already, or inside one (init refuses both): offered to open that one instead. -> true
+  // when it was one
+  async function isProject(folder) {
+    const ws = findWorkspaceRoot([folder]);
+    if (!ws) return false;
+    const marker = MARKER.split(path.sep).join("/");
+    const text = samePath(ws.root, folder, platform)
+      ? `atf: ${folder} is already an atf project (it has ${marker}).`
+      : `atf: ${folder} is inside the atf project ${ws.root} (it has ${marker}), and a project can't hold another: open that one instead.`;
+    const a = await vscode.window.showWarningMessage(text, "Open it");
+    if (a === "Open it") await (isWindowFolder(ws.root) ? vscode.commands.executeCommand("atf.refresh") : openFolder(ws.root));
+    return true;
+  }
+
+  // The folder the project goes in: an empty one as it is; in any other, a new folder whose name is asked (default
+  // atf-tests), made here. -> the folder, or null (cancelled, or it can't be made)
+  async function projectFolder(chosen) {
+    if (isEmptyFolder(chosen)) return chosen;
+    const name = await vscode.window.showInputBox({
+      title: "Create new project",
+      prompt: `${chosen} isn't empty: the new project gets its own folder in it`,
+      value: DEFAULT_PROJECT_NAME,
+      ignoreFocusOut: true,
+      validateInput: (v) => projectNameProblem(chosen, v),
+    });
+    if (name === undefined || projectNameProblem(chosen, name)) return null;
+    const folder = path.join(chosen, name.trim());
+    try {
+      mkdirSync(folder, { recursive: true });
+    } catch (e) {
+      vscode.window.showErrorMessage(`atf: can't create ${folder} (${e.message}).`);
+      return null;
+    }
+    return folder;
   }
 
   // Create new project…: token, folder, then init from the registry's copy pinned to this extension's version.
@@ -193,11 +260,13 @@ export function createProjectFlows({ vscode, context, workspace, output, registr
     if (!token) return;
     if (!folder) {
       const folders = workspace.folders();
-      const here = folders.length === 1 && !findWorkspaceRoot(folders) && isEmptyFolder(folders[0]) ? folders[0] : null;
+      const here = folders.length === 1 && !findWorkspaceRoot(folders) ? folders[0] : null;
       if (here) {
         const choice = await vscode.window.showQuickPick(
           [
-            { label: `$(folder) In this folder (${path.basename(here)})`, description: here, folder: here },
+            isEmptyFolder(here)
+              ? { label: `$(folder) In this folder (${path.basename(here)})`, description: here, folder: here }
+              : { label: `$(new-folder) In a new folder in this one (${path.basename(here)})`, description: here, folder: here },
             { label: "$(folder-opened) Choose another folder…", description: "or make a new one" },
           ],
           { title: "Create new project", placeHolder: "Where to create the atf project" },
@@ -205,15 +274,13 @@ export function createProjectFlows({ vscode, context, workspace, output, registr
         if (!choice) return;
         folder = choice.folder ?? null;
       }
-      folder ??= await pickFolder("Create project here", "Create new project: choose an empty folder, or make one");
+      folder ??= await pickFolder("Choose where to create the project", "Create new project: an empty folder is used as it is; in any other, the project gets a new folder");
       if (!folder) return;
     }
-    folder = path.resolve(folder);
-    if (existsSync(path.join(folder, MARKER))) {
-      const a = await vscode.window.showWarningMessage(`atf: ${folder} is already an atf project (it has ${MARKER.split(path.sep).join("/")}).`, "Open it");
-      if (a === "Open it") return isWindowFolder(folder) ? vscode.commands.executeCommand("atf.refresh") : openFolder(folder);
-      return;
-    }
+    // a project, or inside one: refused up front, before anything else is asked
+    if (await isProject(path.resolve(folder))) return;
+    folder = await projectFolder(path.resolve(folder));
+    if (!folder) return;
     const name = `creating the project in ${path.basename(folder)}`;
     const run = await background(createArgs(version, folder), { title: `atf: ${name}`, npm: "npx", cwd: folder, env: registryEnv(token) });
     const made = existsSync(path.join(folder, MARKER));
@@ -226,7 +293,7 @@ export function createProjectFlows({ vscode, context, workspace, output, registr
         if (a === "Open it") return openFolder(folder);
         return;
       }
-      return npmFailed(name, run, after);
+      return npmFailed(name, run, { extra: after, next: made ? "Update the extension and try again; or open the folder and run Install the framework." : undefined });
     }
     if (isWindowFolder(folder)) {
       workspace.detect({ fire: true });
@@ -260,8 +327,19 @@ export function createProjectFlows({ vscode, context, workspace, output, registr
     workspace.detect({ fire: true });
     if (run.error || run.result.code !== 0) return run.result?.cancelled ? void vscode.window.showWarningMessage(`atf: ${name} was cancelled.`) : npmFailed(name, run);
     if (!workspace.ok) return failed(`atf: npm install finished, but ${workspace.message}`);
+    // npm 12 may skip the framework's postinstall, which renders the host files: atf sync renders them, then re-detect
+    const installed = `atf: the framework ${workspace.frameworkVersion} is installed in ${root}`;
+    const synced = await syncHostFiles();
+    workspace.detect({ fire: true });
+    if (synced.error) return failed(`${installed}, but ${sentence(synced.error.message)} Run Sync host files to try again.`);
+    if (synced.result.cancelled) {
+      const s = await vscode.window.showWarningMessage(`${installed}, but atf sync was cancelled: the host files may be missing.`, "Sync host files");
+      if (s === "Sync host files") return vscode.commands.executeCommand("atf.sync");
+      return;
+    }
+    if (synced.result.code !== 0) return failed(`${installed}, but atf sync failed: ${sentence(lastLine(synced))} Run Sync host files to try again.`);
     const more = workspace.hasProducts ? [] : ["New product…"];
-    const a = await vscode.window.showInformationMessage(`atf: the framework ${workspace.frameworkVersion} is installed in ${root}.`, ...more, "Show output");
+    const a = await vscode.window.showInformationMessage(`${installed}.`, ...more, "Show output");
     if (a === "New product…") return vscode.commands.executeCommand("atf.newProduct");
     if (a === "Show output") output.show(true);
   }

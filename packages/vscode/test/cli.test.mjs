@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
-import { CONFIRM_LIFETIME_MS, CliError, HUMAN_ONLY, SESSION_COMMANDS, confirmTargetProblem, confirmationBody, createCli, isHumanOnly, isRegistrySecretKey, lastJson, lineSplitter, nodeArgs, npmCommandProblem, npmSpawnSpec, plainLine, quoteCmd, quoteNpmCmd, quotePosix, quotePowerShell, redactLine, shellKind, terminalLine, writeConfirmation } from "../src/cli.js";
+import { CONFIRM_LIFETIME_MS, CliError, HUMAN_ONLY, SESSION_COMMANDS, confirmTargetProblem, confirmationBody, createCli, isAllowScriptsKey, isHumanOnly, isRegistrySecretKey, lastJson, lineSplitter, nodeArgs, npmCommandProblem, npmEnv, npmSpawnSpec, plainLine, quoteCmd, quoteNpmCmd, quotePosix, quotePowerShell, redactLine, shellKind, terminalLine, writeConfirmation } from "../src/cli.js";
 import { APPROVAL_CONFIRM, SWEEP_CONFIRM, approvalConfirmFile, sweepConfirmFile } from "../src/workspace.js";
 import { fakeVscode } from "./fake-vscode.mjs";
 
@@ -141,11 +141,11 @@ const reply = (stdout, code = 0, stderr = "") => (child) => {
   if (stdout) child.stdout.emit("data", Buffer.from(stdout));
   child.emit("close", code);
 };
-const setup = (script, { config = {}, workspace, platform, killProcess } = {}) => {
+const setup = (script, { config = {}, workspace, platform, killProcess, env = { PATH: "/bin", ATF_ENV: "inherited" } } = {}) => {
   const vscode = fakeVscode({ config });
   const output = vscode.window.createOutputChannel("atf");
   const s = fakeSpawn(script);
-  const cli = createCli({ vscode, workspace: workspace ?? { root: path.join(path.sep, "ws"), framework: FW }, output, spawn: s.spawn, env: { PATH: "/bin", ATF_ENV: "inherited" }, ...(platform ? { platform } : {}), ...(killProcess ? { killProcess } : {}) });
+  const cli = createCli({ vscode, workspace: workspace ?? { root: path.join(path.sep, "ws"), framework: FW }, output, spawn: s.spawn, env, ...(platform ? { platform } : {}), ...(killProcess ? { killProcess } : {}) });
   return { cli, output, calls: s.calls, vscode };
 };
 
@@ -442,6 +442,25 @@ test("runNpm: npm beside an atf.nodePath Node.js, its folder first on the PATH",
   if (win) assert.equal(calls[0].cmd, `${path.join(dir, "npx.cmd")} --yes @testagentic/atf@0.1.1 init ${dir}`);
   else assert.equal(calls[0].cmd, path.join(dir, "npx"));
   assert.equal(calls[0].opts.env.PATH, `${dir}${win ? ";" : ":"}/bin`);
+});
+
+test("runNpm: an inherited allow-scripts setting (npm 12's EALLOWSCRIPTS under npx) is left out, any case; the registry's keys kept", async () => {
+  for (const k of ["npm_config_allow_scripts", "NPM_CONFIG_ALLOW_SCRIPTS", "npm_config_allow-scripts", "Npm_Config_Allow_Scripts"]) assert.ok(isAllowScriptsKey(k), k);
+  for (const k of ["npm_config_allow_scripts_x", "allow_scripts", "npm_config_ignore_scripts", "npm_config_@testagentic:registry"]) assert.ok(!isAllowScriptsKey(k), k);
+  assert.deepEqual(npmEnv({ PATH: "/bin", npm_config_allow_scripts: "x", NPM_CONFIG_ALLOW_SCRIPTS: "y", npm_config_ignore_scripts: "" }), { PATH: "/bin", npm_config_ignore_scripts: "" });
+
+  const dir = "/work/my-tests";
+  const host = { PATH: "/bin", npm_config_allow_scripts: "true", "NPM_CONFIG_ALLOW-SCRIPTS": "true", npm_config_cache: "/c" };
+  const { cli, calls } = setup(reply(""), { platform: "linux", env: host });
+  const env = { ATF_NPM_TOKEN: "ghp_0123456789abcdef", "npm_config_@testagentic:registry": "https://npm.pkg.github.com", "npm_config_//npm.pkg.github.com/:_authToken": "${ATF_NPM_TOKEN?}", npm_config_Allow_Scripts: "z" };
+  await cli.runNpm("npm", ["install"], { cwd: dir, env });
+  await cli.runNpm("npx", ["--yes", "@testagentic/atf@0.1.1", "init", dir], { cwd: dir, env });
+  for (const { opts } of calls) {
+    assert.deepEqual(Object.keys(opts.env).filter(isAllowScriptsKey), [], "none, from the host or the caller");
+    assert.equal(opts.env["npm_config_@testagentic:registry"], "https://npm.pkg.github.com");
+    assert.equal(opts.env["npm_config_//npm.pkg.github.com/:_authToken"], "${ATF_NPM_TOKEN?}");
+    assert.deepEqual([opts.env.ATF_NPM_TOKEN, opts.env.PATH, opts.env.npm_config_cache, opts.env.NO_COLOR], ["ghp_0123456789abcdef", "/bin", "/c", "1"]);
+  }
 });
 
 test("redactLine and the registry's secret keys", () => {

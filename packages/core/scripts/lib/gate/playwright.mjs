@@ -18,6 +18,7 @@ import { SMOKE_FILE, SMOKE_TAG, uiCodeContext, uiCodeFindings } from "../ui-code
 import { apiCodeContext, apiCodeFindings, builtinPatchFindings, runnerImportFindings } from "../api-code.mjs";
 import { scanTs } from "../ts-scan.mjs";
 import { finding, hygiene, matches, read, run, testTitles, walk } from "./common.mjs";
+import { spawnEnv } from "../npm-env.mjs";
 import { expandFw } from "../roots.mjs";
 
 // What the side must implement: {want: Map id -> {mutates}, unapproved: Set of case ids}, or null. The API side traces
@@ -231,7 +232,7 @@ export function listFindings(tests, { idRe, unapproved, what, root, dir, setupFi
 // Runs `npx playwright test --list --reporter=json` for the module. -> {report} | {error}
 function listJson(cwd, side, module) {
   try {
-    const stdout = execFileSync("npx", ["playwright", "test", `--project=${side}`, `tests/${side}/${module}`, "--list", "--reporter=json"], { cwd, stdio: "pipe", encoding: "utf8", shell: process.platform === "win32", timeout: 300_000, maxBuffer: 64 * 1024 * 1024 });
+    const stdout = execFileSync("npx", ["playwright", "test", `--project=${side}`, `tests/${side}/${module}`, "--list", "--reporter=json"], { cwd, env: spawnEnv("npx"), stdio: "pipe", encoding: "utf8", shell: process.platform === "win32", timeout: 300_000, maxBuffer: 64 * 1024 * 1024 });
     return { report: JSON.parse(stdout.slice(stdout.indexOf("{"))) };
   } catch (e) {
     // the JSON reporter still prints the report on a failed load; its errors say why
