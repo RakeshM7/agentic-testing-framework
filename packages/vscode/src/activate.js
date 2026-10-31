@@ -9,6 +9,9 @@
 //     message ("Show output" on a failure). The doctor's checks are shown one per line, with their fixes.
 //   - The sweep (human-only) is confirmed in the extension's own dialog, the product slug typed, and runs through the
 //     framework's one-time confirmation file (cli.confirmedRun). Approval is the sheets' (src/sheets/commands.js).
+//   - A project (D-107): Create new project…, Open existing project…, the registry token (Connect, Forget) and Install
+//     the framework are src/project.js's flows, registered here; create and install run npm/npx in the background
+//     (cli.runNpm), with the token only in their environment.
 //   - An agent session (run, resume, the interview) follows atf.host: `claude` and `copilot-cli` run `npx --no atf …
 //     --host` in a terminal shown as a tab in the editor area (the agent CLI is an interactive program, the one thing
 //     that needs a terminal); `copilot-chat` runs the CLI's own pre-check in the background, then opens VS Code Chat
@@ -17,11 +20,13 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { createCli, lastJson } from "./cli.js";
+import { TOKEN_ENV, createProjectFlows, createRegistry, registryEnv } from "./project.js";
 import { registerRuns } from "./runs.js";
-import { DEFAULT_ENV, INSTALL_HINT, configFileOf, createWorkspace, envArgs, findFramework, productNameProblem, targetUrlProblem } from "./workspace.js";
+import { CREATE_HINT, DEFAULT_ENV, FRAMEWORK_PACKAGE, INIT_BUTTON, INSTALL_BUTTON, configFileOf, createWorkspace, envArgs, findFramework, productNameProblem, targetUrlProblem } from "./workspace.js";
 
-// Basil's commands (the manifest declares every command; test/manifest.test.mjs checks both ways)
-export const COMMANDS = ["atf.refresh", "atf.init", "atf.sync", "atf.check", "atf.doctor", "atf.run", "atf.resume", "atf.newProduct", "atf.openConfig", "atf.validate", "atf.sweep"];
+// Basil's commands, then D-107's project commands (the manifest declares every command; test/manifest.test.mjs checks
+// both ways)
+export const COMMANDS = ["atf.refresh", "atf.init", "atf.sync", "atf.check", "atf.doctor", "atf.run", "atf.resume", "atf.newProduct", "atf.openConfig", "atf.validate", "atf.sweep", "atf.createProject", "atf.openProject", "atf.connect", "atf.forgetToken", "atf.installFramework"];
 
 // "New product…": how the run-config is made. `how` is also the command's optional argument (the welcome view's
 // interview link passes "interview"), which skips this pick.
@@ -115,8 +120,9 @@ const walk = (nodes, fn) => {
 };
 
 // registerSheets/registerReport: the other owners' register functions (src/sheets/index.js, src/report.js).
-// cliOptions: passed on to createCli (tests give it a fake spawn).
-export function start(vscode, context, { registerSheets, registerReport, cliOptions = {} } = {}) {
+// cliOptions: passed on to createCli (tests give it a fake spawn); env: the extension host's environment (the registry
+// token it may carry); now: the clock (the pending New product… marker).
+export function start(vscode, context, { registerSheets, registerReport, cliOptions = {}, env = process.env, now = Date.now } = {}) {
   const output = vscode.window.createOutputChannel("atf");
   context.subscriptions.push(output);
   const workspace = createWorkspace(vscode);
@@ -134,7 +140,7 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
   };
   output.appendLine(workspace.ok ? `atf: workspace ${workspace.root}, ${workspace.framework} ${workspace.frameworkVersion}` : workspace.message);
 
-  const runs = guarded("the Runs view", () => registerRuns(context, deps));
+  const runs = guarded("the Products view", () => registerRuns(context, deps));
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
   status.name = "atf";
   status.command = "atf.refresh";
@@ -232,9 +238,10 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
   // ---- background commands ------------------------------------------------------------------------------------------
 
   // One command in the background behind a cancellable notification that shows its latest line. ATF_ENV is the
-  // command's own (--env, or a plan step's env), never one VS Code happened to inherit.
+  // command's own (--env, or a plan step's env), never one VS Code happened to inherit. npm: "npm" | "npx" runs that
+  // tool (cli.runNpm, D-107) instead of atf. A registry token in env is masked in every line.
   // -> { result: { code, cancelled } | undefined, error: CliError | undefined, lines: [{ line, stream }] }
-  async function background(args, { title, cwd, framework, script, env = {} }) {
+  async function background(args, { title, cwd, framework, script, env = {}, npm }) {
     const lines = [];
     let result;
     let error;
@@ -244,7 +251,8 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
         if (line.trim()) progress.report({ message: line.trim().length > 120 ? `${line.trim().slice(0, 117)}…` : line.trim() });
       };
       try {
-        result = await cli.runStreaming(args, { cwd, framework, script, env: { ATF_ENV: "", ...env }, onLine, token });
+        const opts = { cwd, env: { ATF_ENV: "", ...env }, onLine, token, redact: env[TOKEN_ENV] ? [env[TOKEN_ENV]] : [] };
+        result = npm ? await cli.runNpm(npm, args, opts) : await cli.runStreaming(args, { ...opts, framework, script });
       } catch (e) {
         error = e;
       }
@@ -444,13 +452,19 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
     return showOutput((out.failed.length ? vscode.window.showWarningMessage : vscode.window.showInformationMessage)(`atf: ${label}: ${said}.`, "Show output"));
   }
 
+  // ---- the project and the registry token (D-107) ----------------------------------------------------------------------
+
+  const registry = createRegistry({ vscode, context, env });
+  const project = createProjectFlows({ vscode, context, workspace, output, registry, background, failed, now, platform: cliOptions.platform ?? process.platform });
+
   // ---- the commands -------------------------------------------------------------------------------------------------
 
   const commands = {
     "atf.refresh": () => {
       workspace.detect({ fire: true });
     },
-    // atf init in the background, in the folder, with the framework installed there (it is not a workspace yet)
+    // atf init in the background, in the folder, with the framework installed there (it is not a workspace yet). Its
+    // npm install reads the workspace's .npmrc, so the registry token goes into its environment when there is one.
     "atf.init": async () => {
       const folders = workspace.folders();
       if (!folders.length) return void vscode.window.showWarningMessage("atf: open a folder first; atf init creates the workspace in it.");
@@ -458,8 +472,9 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
       if (!folder) folder = await vscode.window.showQuickPick(folders, { placeHolder: "The folder to create the atf workspace in" });
       if (!folder) return;
       const fw = findFramework(folder);
-      if (!fw) return void vscode.window.showWarningMessage(`atf: ${folder} has no @testagentic/atf installed. Install it first: ${INSTALL_HINT}; then create the workspace.`);
-      const run = await background(["init"], { title: `atf init in ${path.basename(folder)}`, cwd: folder, framework: fw.dir });
+      if (!fw) return project.offerCreate(`atf: ${folder} has no ${FRAMEWORK_PACKAGE} installed. ${CREATE_HINT} installs it from the registry and sets the project up.`, folder);
+      const token = await registry.token();
+      const run = await background(["init"], { title: `atf init in ${path.basename(folder)}`, cwd: folder, framework: fw.dir, env: token ? registryEnv(token) : {} });
       workspace.detect({ fire: true });
       return report("atf init", run, {
         ok: () => `the atf workspace is ready in ${folder}. Next: create a product (New product…), then start its run.`,
@@ -558,6 +573,13 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
       const chosen = items.length === 1 ? items[0] : await vscode.window.showQuickPick(items, { placeHolder: node?.product ? `The run-config of ${node.product} to open` : "The run-config to open" });
       if (chosen) return openFile(chosen.config);
     },
+    // D-107: the project and the registry token (src/project.js). No argument is taken from the command itself: a
+    // command link can't point Create new project… at a folder.
+    "atf.createProject": () => project.createProject(),
+    "atf.openProject": () => project.openProject(),
+    "atf.connect": () => registry.connect(),
+    "atf.forgetToken": () => registry.forget(),
+    "atf.installFramework": () => project.installFramework(),
   };
 
   // ---- New product…: atf config in the background --------------------------------------------------------------------
@@ -594,7 +616,10 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
       }
     });
     const created = existsSync(path.join(workspace.root, ...file.split("/")));
-    if (created) void runs?.refresh(); // the config/*.yaml watcher would too; this does not depend on it
+    if (created) {
+      void runs?.refresh(); // the config/*.yaml watcher would too; this does not depend on it
+      workspace.detect(); // atf.hasProducts
+    }
     const info = (...a) => vscode.window.showInformationMessage(...a);
     const warn = (...a) => vscode.window.showWarningMessage(...a);
     if (error) {
@@ -610,21 +635,30 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
   }
   for (const [id, fn] of Object.entries(commands)) context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
-  // the workspace appears (atf init) or its package does (npm install): check again
-  const marker = vscode.workspace.createFileSystemWatcher("**/atf/atf.json");
+  // the workspace appears (atf init) or its package does (npm install): check again; a run-config appearing or going
+  // away changes atf.hasProducts
   const redetect = () => workspace.detect();
-  marker.onDidCreate(redetect);
-  marker.onDidDelete(redetect);
-  marker.onDidChange(redetect);
-  context.subscriptions.push(marker, vscode.window.onDidCloseTerminal(redetect), vscode.workspace.onDidChangeWorkspaceFolders(redetect));
+  for (const glob of ["**/atf/atf.json", "**/config/*.{yaml,yml}"]) {
+    const w = vscode.workspace.createFileSystemWatcher(glob);
+    w.onDidCreate(redetect);
+    w.onDidDelete(redetect);
+    w.onDidChange(redetect);
+    context.subscriptions.push(w);
+  }
+  context.subscriptions.push(vscode.window.onDidCloseTerminal(redetect), vscode.workspace.onDidChangeWorkspaceFolders(redetect));
 
-  if (!workspace.ok) {
-    const actions = workspace.state === "noWorkspace" && workspace.folder ? ["Create workspace (init)"] : ["Check again"];
-    void Promise.resolve(vscode.window.showWarningMessage(workspace.message, ...actions)).then((a) => {
-      if (a === "Create workspace (init)") return vscode.commands.executeCommand("atf.init");
+  // Without a project the Products view's welcome content says so, with its buttons (Create new project…, Open existing
+  // project…): no message on top of it. The other states get one, with the button that fixes them.
+  const ACTIONS = { noWorkspace: workspace.folder ? [INIT_BUTTON] : [], noFramework: [INSTALL_BUTTON], badMarker: ["Check again"] };
+  if (ACTIONS[workspace.state]?.length) {
+    void Promise.resolve(vscode.window.showWarningMessage(workspace.message, ...ACTIONS[workspace.state])).then((a) => {
+      if (a === INIT_BUTTON) return vscode.commands.executeCommand("atf.init");
+      if (a === INSTALL_BUTTON) return vscode.commands.executeCommand("atf.installFramework");
       if (a === "Check again") return vscode.commands.executeCommand("atf.refresh");
     });
   }
+  // a project this extension just created, in the window that reloaded on it: straight to New product…
+  void project.resumePending().catch((e) => output.appendLine(`atf: the pending New product… could not start (${e.message})`));
 
   // the sheets return { refresh }: atf.refresh and a changed detection refresh their views too
   const sheets = registerSheets ? guarded("the clarifications and approval sheets", () => registerSheets(context, deps)) : null;

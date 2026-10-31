@@ -277,3 +277,23 @@ test("the view: registered as atf.runs, loaded from the snapshot, refreshed on o
   assert.equal(runs.nodes()[0].label, "acme");
   for (const d of ctx.subscriptions) d.dispose?.();
 });
+
+test("no workspace: an empty tree and no view message, so the welcome content for the state (with its buttons) shows", async () => {
+  for (const state of ["noFolder", "noWorkspace", "noFramework", "badMarker"]) {
+    const vscode = fakeVscode();
+    const refreshEmitter = new vscode.EventEmitter();
+    const workspace = { ok: false, state, root: state === "noFolder" ? null : "/w", message: `atf: ${state}`, onDidRefresh: refreshEmitter.event };
+    const asked = [];
+    const cli = { runJson: async (args) => (asked.push(args), {}) };
+    const ctx = fakeContext();
+    registerRuns(ctx, { vscode, workspace, cli, output: vscode.window.createOutputChannel("atf") });
+    const [view] = vscode.rec.treeViews;
+    assert.equal(view.message, undefined, state);
+    assert.deepEqual(await view.opts.treeDataProvider.getChildren(), [], state);
+    refreshEmitter.fire();
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(view.message, undefined, `${state}: a refresh sets none either`);
+    assert.deepEqual(asked, [], `${state}: nothing is asked of the CLI`);
+    for (const d of ctx.subscriptions) d.dispose?.();
+  }
+});

@@ -53,7 +53,7 @@ VS Code Copilot Chat can run a chat on two engines. They behave differently for 
 ## Setup
 
 ### A client workspace (D-089)
-1. Create it: `npx @testagentic/atf init <dir>`.
+1. Create it: `npx @testagentic/atf init <dir>`, with `ATF_NPM_TOKEN` and the `@testagentic` registry set up as in the access instructions (`docs/trusted-developer-access.md` in the framework's repository). In VS Code, the atf extension's **Create new project…** does the same with no `~/.npmrc` or shell variable: it asks once for the token, keeps it in VS Code's secret storage, and runs the `@testagentic/atf` of its own version (D-107).
    - **What it writes:** `package.json` with the package pinned, a commented `.npmrc` registry template, the `.gitignore` entries for run output and secrets, `atf/` with an empty decision log, `AGENTS.md`, `config/` and `.vscode/settings.json`. It never overwrites a file.
    - **Then it installs:** it runs `npm install` and the base doctor checks.
 2. **Automatic sync:** every `npm install` renders the host files (agents, MCP configs, hook registrations) through the package's postinstall `atf sync`. Those files are git-ignored. If install scripts are disabled, run `npx atf sync` yourself; `npx atf doctor <product>` reports stale files and `npx atf check` fails on them.

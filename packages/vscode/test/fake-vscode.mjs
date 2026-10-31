@@ -1,5 +1,6 @@
 // A fake of the slice of the `vscode` API that src/workspace.js, src/cli.js, src/runs.js and src/activate.js use, so
 // node:test runs them without VS Code. It records what the code did (commands, terminals, messages, context keys).
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 class EventEmitter {
@@ -47,9 +48,10 @@ class RelativePattern {
 // reports shell integration at once), messageAnswers (the button each message returns), onProgress(progress, token):
 // called as a withProgress task starts (a test cancels through token.cancel()), inspect (atf settings by scope, for
 // inspect(); config is what get() reads), external (command ids that exist outside the extension, e.g. VS Code Chat's),
-// onExternal(id, args): what running one of those does (it may throw)
-export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, inspect = null, quickPicks = [], inputs = [], shellIntegration = false, messageAnswers = [], onProgress, external = [], onExternal } = {}) {
-  const rec = { commands: new Map(), executed: [], context: {}, terminals: [], messages: [], quickPicks: [], inputs: [], progress: [], opened: [], watchers: [], treeViews: [], statusBar: [], updates: [] };
+// onExternal(id, args): what running one of those does (it may throw), openDialogs (showOpenDialog answers, in order:
+// a folder path, or undefined for a cancel)
+export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, inspect = null, quickPicks = [], inputs = [], shellIntegration = false, messageAnswers = [], onProgress, external = [], onExternal, openDialogs = [] } = {}) {
+  const rec = { commands: new Map(), executed: [], context: {}, terminals: [], messages: [], quickPicks: [], inputs: [], progress: [], opened: [], watchers: [], treeViews: [], statusBar: [], updates: [], openDialogs: [] };
   const terminalShell = new EventEmitter();
   const vscode = {
     rec,
@@ -148,6 +150,11 @@ export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, insp
         const a = inputs.shift();
         return typeof a === "function" ? a(opts) : a;
       },
+      showOpenDialog: async (opts) => {
+        rec.openDialogs.push(opts);
+        const a = openDialogs.shift();
+        return a === undefined ? undefined : [vscode.Uri.file(a)];
+      },
       showTextDocument: async (uri, opts) => (rec.opened.push([uri.fsPath, opts]), {}),
       withProgress: async (opts, task) => {
         const p = { opts, reports: [] };
@@ -166,4 +173,42 @@ export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, insp
   return vscode;
 }
 
-export const fakeContext = () => ({ subscriptions: [] });
+// The extension's own version, as context.extension.packageJSON gives it.
+export const MANIFEST_VERSION = JSON.parse(readFileSync(path.join(import.meta.dirname, "..", "package.json"), "utf8")).version;
+
+// An ExtensionContext: subscriptions, the extension's manifest, secret storage (opts.secrets: what is stored) and
+// globalState (opts.globalState: its values). rec: what was stored and updated, in order.
+export function fakeContext({ version = MANIFEST_VERSION, secrets = {}, globalState = {} } = {}) {
+  const changed = new EventEmitter();
+  const rec = { secrets: [], globalState: [] };
+  return {
+    subscriptions: [],
+    rec,
+    extension: { packageJSON: { name: "atf-vscode", version } },
+    secrets: {
+      get: async (k) => secrets[k],
+      store: async (k, v) => {
+        rec.secrets.push(["store", k]);
+        secrets[k] = v;
+        changed.fire({ key: k });
+      },
+      delete: async (k) => {
+        rec.secrets.push(["delete", k]);
+        delete secrets[k];
+        changed.fire({ key: k });
+      },
+      onDidChange: changed.event,
+      stored: secrets,
+    },
+    globalState: {
+      get: (k) => globalState[k],
+      update: async (k, v) => {
+        rec.globalState.push([k, v]);
+        if (v === undefined) delete globalState[k];
+        else globalState[k] = v;
+      },
+      keys: () => Object.keys(globalState),
+      values: globalState,
+    },
+  };
+}

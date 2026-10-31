@@ -33,20 +33,28 @@ export const vsixName = (manifest) => `atf-vscode-${manifest.version}.vsix`;
 const posix = (p) => String(p).replace(/\\/g, "/").replace(/^\.\//, "");
 
 // Every file a manifest needs at run time or on the listing: package.json, its `main`, the listing pages, the
-// Marketplace icon and every icon a contribution names (the activity-bar container, views, commands; a string or
-// { light, dark }). This is exactly what the vsix may hold, beside vsce's own generated files.
+// Marketplace icon, every icon a contribution names (the activity-bar container, views, commands; a string or
+// { light, dark }) and every walkthrough step's media (its markdown, svg, or image: a string or { light, dark, hc,
+// hcLight }). This is exactly what the vsix may hold, beside vsce's own generated files.
 export function shippedFiles(manifest) {
   const files = new Set(["package.json", "README.md", "CHANGELOG.md", "LICENSE.md"]);
   if (manifest.main) files.add(posix(manifest.main));
   if (manifest.icon) files.add(posix(manifest.icon));
-  const icon = (v) => {
+  const icon = (v, keys = ["light", "dark"]) => {
     if (typeof v === "string" && !v.startsWith("$(")) files.add(posix(v)); // $(codicon) names are not files
-    else if (v && typeof v === "object") for (const k of ["light", "dark"]) icon(v[k]);
+    else if (v && typeof v === "object") for (const k of keys) icon(v[k], keys);
   };
   const c = manifest.contributes ?? {};
   for (const list of Object.values(c.viewsContainers ?? {})) for (const x of list ?? []) icon(x.icon);
   for (const list of Object.values(c.views ?? {})) for (const x of list ?? []) icon(x.icon);
   for (const x of c.commands ?? []) icon(x.icon);
+  for (const w of c.walkthroughs ?? [])
+    for (const { media } of w.steps ?? []) {
+      if (!media) continue;
+      icon(media.markdown);
+      icon(media.svg);
+      icon(media.image, ["light", "dark", "hc", "hcLight"]);
+    }
   return [...files].sort();
 }
 

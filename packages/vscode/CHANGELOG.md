@@ -3,6 +3,24 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
+## Unreleased
+
+Start from the extension alone: no terminal, no `~/.npmrc`, no shell variable.
+
+- **Create new project…:** sets up an atf project in a folder you choose, with the `@testagentic/atf` of the
+  extension's own version, then goes straight on to **New product…** for your first product.
+- **The registry token, asked once:** a GitHub personal access token (classic) with `read:packages`, kept in VS Code's
+  secret storage. It goes only to the installs the extension runs, never to an agent session. **Connect to the package
+  registry…** and **Forget the registry token** manage it.
+- **Open existing project…** opens a folder holding `atf/atf.json`, and **Install the framework** runs `npm install`
+  in a project whose package isn't installed yet, a fresh clone for example.
+- **Get started with atf:** a walkthrough from connecting to the registry to your first run.
+- **Products view:** the Runs view is now called Products, and the activity bar's container ATF. Without a project it
+  shows **Create new project…** and **Open existing project…**; Clarifications and Test case approval appear once a
+  project with the framework installed is open.
+- **Fewer popups:** a message shows at startup only when one of its buttons fixes the problem, and no message sends you
+  to a terminal. **Create workspace (init)** is now **Set up atf in this folder (init)**.
+
 ## 0.1.1
 
 The first release of the extension (`@testagentic/atf` 0.1.0 was released without it).
