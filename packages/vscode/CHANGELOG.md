@@ -3,7 +3,7 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
-## Unreleased
+## 0.1.2
 
 Start from the extension alone: no terminal, no `~/.npmrc`, no shell variable.
 

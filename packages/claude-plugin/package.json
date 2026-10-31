@@ -1,6 +1,6 @@
 {
   "name": "@testagentic/atf-claude-plugin",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "license": "UNLICENSED",
   "description": "The atf Claude Code plugin, built from @testagentic/atf by packages/core/scripts/build-plugin.mjs into dist/ and released to the private testagentic marketplace. Never published to npm; its version is always @testagentic/atf's.",
