@@ -984,6 +984,8 @@ test("every framework script is writable by framework-implementor-agent or delib
     // the user's decision of 2026-10-29: the check of the extension dialog's confirmation of the human-only approve,
     // import --approved and sweep stands in for the terminal's, so the agent it guards against never edits it
     "scripts/lib/confirm.mjs", "scripts/confirm.test.mjs",
+    // D-109: the guard hook loads the Node.js check, so it runs in the hook's process like the hook's own code
+    "scripts/lib/node-version.mjs", "scripts/node-version.test.mjs",
   ]);
   const files = [];
   // node_modules is git-ignored and never the framework's own code, wherever an install put it; paths as the run's

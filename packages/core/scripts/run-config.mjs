@@ -17,6 +17,7 @@ import yaml from "js-yaml";
 import { CASE_TYPES, DEFAULT_ENV, SLUG_RE, STEPS, workspaceRoot } from "./lib/contract.mjs";
 import { UNRESOLVED_POLICIES } from "./lib/clarifications.mjs";
 import { VISIBILITIES, applyChanges, buildDraft, rewriteKeys } from "./lib/run-config-draft.mjs";
+import { nodeProblem } from "./lib/node-version.mjs";
 
 const MODES = ["readonly", "full-run"];
 const FORMATS = ["markdown-table", "gherkin", "csv", "testrail"];
@@ -341,6 +342,12 @@ export function parseSetArgs(args) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [cmd, file] = process.argv.slice(2);
+  // the orchestrator's first command: a session on an older Node stops here, not at its first browser (D-109)
+  const old = nodeProblem();
+  if (old) {
+    console.error(`- ${old.detail}: ${old.fix}`);
+    process.exit(1);
+  }
   if (cmd === "set" && file) {
     let r;
     try {

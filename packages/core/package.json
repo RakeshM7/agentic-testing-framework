@@ -8,6 +8,9 @@
   "bin": {
     "atf": "bin/atf.mjs"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "node --test \"scripts/**/*.test.mjs\"",
     "build": "node scripts/build-package.mjs",

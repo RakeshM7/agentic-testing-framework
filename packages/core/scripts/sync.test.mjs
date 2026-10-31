@@ -484,7 +484,7 @@ test("the setup workflow template: valid YAML, the job GitHub runs, CI's Node, n
   assert.equal(steps.length, 5);
   assert.equal(steps[0].uses, "actions/checkout@v4");
   assert.equal(steps[1].uses, "actions/setup-node@v4");
-  // the Node version CI tests the package on (this repository's CI; the package declares no engines)
+  // the Node version CI tests the package on (this repository's CI; the package declares only its minimum, engines.node)
   const ci = path.join(frameworkRoot, "..", "..", ".github", "workflows", "ci.yml");
   if (existsSync(ci)) assert.equal(steps[1].with["node-version"], yaml.load(readFileSync(ci, "utf8")).jobs.check.steps.find((s) => s.uses?.startsWith("actions/setup-node")).with["node-version"]);
   assert.deepEqual({ run: steps[2].run, env: steps[2].env }, { run: "npm ci", env: { ATF_NPM_TOKEN: "${{ secrets.ATF_NPM_TOKEN }}" } });

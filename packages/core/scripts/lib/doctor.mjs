@@ -28,6 +28,7 @@ import { INIT_PAGE } from "./browser-tools.mjs";
 import { configLocation, ejectedRel, loadConfig, overlayRel } from "./config.mjs";
 import { CONTRACT_VERSION, STAGES, UNRECORDED_CONTRACT, contractProblem, frameworkRoot, paths, workspaceContract } from "./contract.mjs";
 import { tryReadJson, writeJson } from "./files.mjs";
+import { nodeProblem } from "./node-version.mjs";
 import { PLUGIN_ID, claudeMode, pluginVersionCheck } from "./provenance.mjs";
 import { expandFw, isInstalled } from "./roots.mjs";
 
@@ -46,7 +47,6 @@ export const STAGE_NEEDS = {
   report: ["base"],
 };
 export const LOGIN_NEEDS = ["base", "login"];
-export const MIN_NODE = 20;
 
 const RECORD = "doctor.json";
 const slash = (p) => String(p ?? "").replaceAll("\\", "/").replace(/^\.\//, "");
@@ -143,10 +143,8 @@ function contractCheck({ root }) {
 // root, at the version the framework pins.
 function deps({ root, framework, nodeVersion }) {
   const out = [];
-  const major = Number(String(nodeVersion).split(".")[0]);
-  out.push(major >= MIN_NODE
-    ? { id: "node", ok: true, detail: `Node.js ${nodeVersion}` }
-    : { id: "node", ok: false, level: "fail", detail: `Node.js ${nodeVersion} is older than ${MIN_NODE}`, fix: `install Node.js ${MIN_NODE} or later (https://nodejs.org)` });
+  const old = nodeProblem(nodeVersion);
+  out.push(old ? { id: "node", ok: false, level: "fail", ...old } : { id: "node", ok: true, detail: `Node.js ${nodeVersion}` });
   const pkg = tryReadJson(path.join(framework, "package.json"));
   if (!pkg) return out;
   const wanted = { ...pkg.dependencies, ...pkg.devDependencies };

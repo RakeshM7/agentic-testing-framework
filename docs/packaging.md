@@ -73,7 +73,7 @@ A `bin` entry (`atf`) replaces the `Makefile`, because Windows clients don't hav
 
 | Command | Does | Replaces |
 |---|---|---|
-| `atf init [dir]` | Creates the workspace: `package.json` with the dependency pinned, `.npmrc` template for the registry, `.gitignore` entries, `atf/atf.json`, an empty `atf/decisions.md`, `AGENTS.md`, `config/`; then runs `sync` and `doctor` | cloning the repo |
+| `atf init [dir]` | Creates the workspace: `package.json` with the dependency pinned, `.npmrc` template for the registry, `.nvmrc` (D-109), `.gitignore` entries, `atf/atf.json`, an empty `atf/decisions.md`, `AGENTS.md`, `config/`; then runs `sync` and `doctor` | cloning the repo |
 | `atf sync` | Renders the host files from the installed version, the overlays and the fragments. It also runs as `postinstall`, where npm runs install scripts: npm 12 only when `package.json` `allowScripts` allows the package, which `atf init` adds; `atf init` also runs it itself after its install (D-108). Writes nothing on error | `npm run build-agents` |
 | `atf check` | Fails on drift between the installed version and the generated files, and runs the overlay and fragment lint | `npm run check` (client part) |
 | `atf doctor [product]` | Today's doctor, plus: package and plugin versions match, the host files are in sync, the registry is reachable | `make doctor` |

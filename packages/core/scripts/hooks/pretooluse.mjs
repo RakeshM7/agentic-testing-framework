@@ -73,6 +73,12 @@ try {
   root = roots[0];
   const call = adapter.normalize(payload, { env: process.env, host: args.host, agent: args.agent });
 
+  // A session on a Node.js older than the framework needs is refused outright (D-109): its browser server, login and
+  // tests would fail later, halfway through. The fix is a new session, so nothing it would do now is worth allowing.
+  const { nodeProblem } = await import("../lib/node-version.mjs");
+  const old = nodeProblem();
+  if (old) process.exit(adapter.emit({ decision: "deny", rule: "node-version", reason: `${old.detail}: ${old.fix}` }));
+
   const { checkTool } = await import("../lib/guard.mjs");
   let verdict;
   for (const r of roots) {

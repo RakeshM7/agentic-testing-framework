@@ -25,6 +25,7 @@ import {
   readAllowList,
   releaseErrors,
 } from "./build-package.mjs";
+import { MIN_NODE } from "./lib/node-version.mjs";
 import { installedWorkspace, startRun } from "./test-helpers.mjs";
 
 const scratch = () => mkdtempSync(path.join(tmpdir(), "atf-pkg-"));
@@ -114,13 +115,15 @@ test("allow-list globs: * stays in one folder, **/ spans any, ! lines and commen
 test("dist's package.json: what an install needs, publishable, and nothing from the monorepo", () => {
   const pkg = JSON.parse(read("package.json"));
   assert.deepEqual(pkg, distPackageJson(SOURCE_PKG));
-  assert.deepEqual(Object.keys(pkg), ["name", "version", "description", "license", "type", "bin", "scripts", "dependencies", "peerDependencies", "publishConfig"]);
+  assert.deepEqual(Object.keys(pkg), ["name", "version", "description", "license", "type", "bin", "engines", "scripts", "dependencies", "peerDependencies", "publishConfig"]);
   assert.equal(pkg.name, "@testagentic/atf");
   assert.equal(pkg.version, SOURCE_PKG.version);
   assert.equal(pkg.version, "0.1.3");
   assert.equal(pkg.license, "UNLICENSED");
   assert.equal(pkg.type, "module");
   assert.deepEqual(pkg.bin, { atf: "bin/atf.mjs" });
+  // npm warns on install under an older Node (D-109)
+  assert.deepEqual(pkg.engines, { node: `>=${MIN_NODE}` });
   assert.deepEqual(pkg.scripts, { postinstall: "node bin/atf.mjs sync --postinstall" });
   assert.deepEqual(pkg.dependencies, SOURCE_PKG.dependencies);
   assert.deepEqual(pkg.peerDependencies, { playwright: "1.64.1" });

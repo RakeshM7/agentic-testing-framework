@@ -6,17 +6,19 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import yaml from "js-yaml";
 import { plan, run } from "./lib/cli.mjs";
 import { parseDecisions } from "./lib/decisions.mjs";
 import { CLIENT_GITIGNORE, DOCTOR_BASE_SCRIPT, INIT_BLOCK_END, INIT_BLOCK_START, SYNC_SCRIPT, allowScriptsWith, packageName, withDeps, withInitBlock } from "./lib/init.mjs";
 import { frameworkRoot } from "./lib/roots.mjs";
+import { MIN_NODE } from "./lib/node-version.mjs";
 import { CONTRACT_VERSION, workspaceContract } from "./lib/contract.mjs";
 import { SETUP_TEMPLATE, SETUP_WORKFLOW, BLOCK_START as SYNC_BLOCK_START } from "./lib/sync.mjs";
 import { installedWorkspace, put, tempRoot } from "./test-helpers.mjs";
 
 const FW_PKG = JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8"));
 const FW = `node_modules/${FW_PKG.name}`;
-const FILES = ["package.json", ".npmrc", ".gitignore", "atf/atf.json", "atf/decisions.md", "AGENTS.md", "config/README.md", ".vscode/settings.json"];
+const FILES = ["package.json", ".npmrc", ".nvmrc", ".gitignore", "atf/atf.json", "atf/decisions.md", "AGENTS.md", "config/README.md", ".vscode/settings.json"];
 
 // plan + run as `atf init <argv…>` typed in `cwd`; -> { code, logs, errors, calls, plan }
 function init(argv, { cwd = tempRoot(), framework = frameworkRoot, platform = "linux", status = () => 0, spawn } = {}) {
@@ -59,6 +61,13 @@ test("atf init --no-install in a folder that doesn't exist yet: every file, {fw}
   assert.match(npmrc, /^@testagentic:registry=https:\/\/npm\.pkg\.github\.com$/m);
   assert.match(npmrc, /^\/\/npm\.pkg\.github\.com\/:_authToken=\$\{ATF_NPM_TOKEN\?\}$/m);
   assert.equal(npmrc.split("\n").filter((l) => l && !l.startsWith("#")).length, 2, "only those two lines are active");
+
+  // .nvmrc: the Node.js nvm picks there (D-109), at least the framework's minimum and the one CI tests the package on
+  const nvmrc = readFileSync(path.join(dir, ".nvmrc"), "utf8");
+  assert.match(nvmrc, /^\d+\n$/);
+  assert.ok(Number(nvmrc) >= MIN_NODE, nvmrc);
+  const ci = path.join(frameworkRoot, "..", "..", ".github", "workflows", "ci.yml");
+  if (existsSync(ci)) assert.equal(Number(nvmrc), yaml.load(readFileSync(ci, "utf8")).jobs.check.steps.find((s) => s.uses?.startsWith("actions/setup-node")).with["node-version"]);
 
   // .gitignore: the init block with the whole baseline
   assert.equal(readFileSync(path.join(dir, ".gitignore"), "utf8"), [INIT_BLOCK_START, ...CLIENT_GITIGNORE, INIT_BLOCK_END, ""].join("\n"));
@@ -115,7 +124,7 @@ test("atf init again changes nothing and reports every file as present", () => {
   assert.equal(again.code, 0, again.errors.join("\n"));
   assert.deepEqual(snapshot(dir), before);
   const report = again.logs.filter((l) => /^ {2}\S/.test(l) && !/^ {2}\d\./.test(l));
-  assert.equal(report.length, 8);
+  assert.equal(report.length, FILES.length);
   for (const l of report) assert.match(l, /^ {2}present {2}\S+: left as it is$/, l);
   assert.ok(report.some((l) => l.startsWith("  present  config/:")), "an existing config/ is left alone");
   assert.ok(!again.logs.some((l) => /^ {2}\d\. cd /.test(l)), "no cd when it ran in the folder");

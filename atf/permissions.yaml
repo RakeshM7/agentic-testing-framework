@@ -52,7 +52,7 @@ agents:
     # stay human-only.
     # Never {fw}/config/ (permissions, models, platforms, MCP servers) or this repository's atf/ and dev/agents/, the
     # safety code ({fw}/scripts/lib/{guard,permissions,ledger,hosts,tool-call,browser-tools,guard-check,decisions,
-    # hook-registrations,hook-log,agent-scope}.mjs, {fw}/scripts/hooks/, {fw}/scripts/lib/agents/),
+    # hook-registrations,hook-log,agent-scope,node-version}.mjs, {fw}/scripts/hooks/, {fw}/scripts/lib/agents/),
     # the checker it is checked by ({fw}/scripts/{feedback,ledger}.mjs, {fw}/scripts/lib/feedback.mjs,
     # {fw}/scripts/{feedback,guard,hooks,roster}.test.mjs), the hook registrations or editor settings
     # (.claude/settings.json, .github/hooks/, .vscode/) or the generated agent/MCP files (rebuilt from the sources by

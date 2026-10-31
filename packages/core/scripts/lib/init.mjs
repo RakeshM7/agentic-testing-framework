@@ -21,6 +21,8 @@
 //                          peer at another version). "allowScripts" allows the package's own install script (see
 //                          allowScriptsWith), adding only that entry to the client's own and never overriding theirs
 //   .npmrc                 the private registry template, commented out (see templates/workspace/_npmrc for why)
+//   .nvmrc                 the Node.js version nvm picks in the workspace (`nvm use`): the one CI tests on, at least the
+//                          MIN_NODE the framework needs (lib/node-version.mjs, D-109)
 //   .gitignore             run output and secrets, in a marked block init alone writes (apart from sync's block):
 //                          missing lines are added inside it, the client's lines are never touched
 //   atf/atf.json           the workspace marker, with the artifact-contract version the workspace starts on
@@ -38,6 +40,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import path from "node:path";
 import { CONTRACT_VERSION, workspaceContract } from "./contract.mjs";
 import { decisionsFile } from "./decisions.mjs";
+import { MIN_NODE } from "./node-version.mjs";
 import { claudePluginOf } from "./provenance.mjs";
 import { FW_TOKEN, WORKSPACE_MARKER, expandFw, findWorkspace, isInstalled, isWithin, readMarker } from "./roots.mjs";
 import { SETUP_TEMPLATE, SETUP_WORKFLOW, TOKEN_ENV, cloudAgent } from "./sync.mjs";
@@ -211,6 +214,7 @@ export function initPlan({ dir, framework }) {
   }
 
   create(".npmrc", tpl("_npmrc"), ["the registry template, commented out until you set your registry URL"]);
+  create(".nvmrc", tpl("_nvmrc"), [`Node.js ${tpl("_nvmrc").trim()} for nvm use (the framework needs ${MIN_NODE} or later)`]);
 
   // .gitignore
   const ignoreBefore = existsSync(at(".gitignore")) ? read(at(".gitignore")) : null;
