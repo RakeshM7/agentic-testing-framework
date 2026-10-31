@@ -3,9 +3,9 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
-## 0.1.0
+## 0.1.1
 
-The first release.
+The first release of the extension (`@testagentic/atf` 0.1.0 was released without it).
 
 Everything happens inside VS Code: no command sends you to a separate terminal.
 

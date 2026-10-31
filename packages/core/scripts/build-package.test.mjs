@@ -117,7 +117,7 @@ test("dist's package.json: what an install needs, publishable, and nothing from 
   assert.deepEqual(Object.keys(pkg), ["name", "version", "description", "license", "type", "bin", "scripts", "dependencies", "peerDependencies", "publishConfig"]);
   assert.equal(pkg.name, "@testagentic/atf");
   assert.equal(pkg.version, SOURCE_PKG.version);
-  assert.equal(pkg.version, "0.1.0");
+  assert.equal(pkg.version, "0.1.1");
   assert.equal(pkg.license, "UNLICENSED");
   assert.equal(pkg.type, "module");
   assert.deepEqual(pkg.bin, { atf: "bin/atf.mjs" });
@@ -198,23 +198,24 @@ test("inlining: import.meta.url becomes the module's own path; other import.meta
 });
 
 test("the release gate: refuses the DRAFT licence and a tag that doesn't match the version", async () => {
+  const TAG = `core-v${SOURCE_PKG.version}`;
   // the framework's own licence is the interim evaluation licence (D-104), which the gate accepts
   assert.equal(licenseIsDraft(read("LICENSE.md", CORE)), false);
   assert.equal(licenseIsDraft("DRAFT\n# EULA\n"), true);
   assert.equal(licenseIsDraft("# End-user licence agreement\nThis agreement replaces any earlier draft.\n"), false);
-  assert.deepEqual(releaseErrors(DIST, "core-v0.1.0"), []);
+  assert.deepEqual(releaseErrors(DIST, TAG), []);
   // a placeholder with the marker is refused
   const draft = copyOfDist();
   writeFileSync(path.join(draft, "LICENSE.md"), `${DRAFT_MARKER}\n\n# placeholder\n`);
-  assert.deepEqual(releaseErrors(draft, "core-v0.1.0"), [`LICENSE.md is still the placeholder (${DRAFT_MARKER}): legal's EULA must replace it before a release`]);
+  assert.deepEqual(releaseErrors(draft, TAG), [`LICENSE.md is still the placeholder (${DRAFT_MARKER}): legal's EULA must replace it before a release`]);
   const dist = copyOfDist();
   writeFileSync(path.join(dist, "LICENSE.md"), "# End-user licence agreement\nAll rights reserved.\n");
-  assert.deepEqual(releaseErrors(dist, "core-v0.1.0"), []);
-  assert.deepEqual(releaseErrors(dist, "core-v0.2.0"), ["tag core-v0.2.0 does not match the package version 0.1.0 (packages/core/package.json)"]);
+  assert.deepEqual(releaseErrors(dist, TAG), []);
+  assert.deepEqual(releaseErrors(dist, "core-v99.0.0"), [`tag core-v99.0.0 does not match the package version ${SOURCE_PKG.version} (packages/core/package.json)`]);
   assert.deepEqual(releaseErrors(dist, "v0.1.0"), ["tag 'v0.1.0' is not core-v<semver>"]);
   // the command the release workflow runs
   const gate = (out, tag) => spawnSync(process.execPath, [path.join(CORE, "scripts", "build-package.mjs"), "--release", tag, "--out", out], { encoding: "utf8" });
-  assert.equal(gate(draft, "core-v0.1.0").status, 1);
-  assert.equal(gate(dist, "core-v0.1.0").status, 0);
-  assert.equal(await main(["--release", "core-v0.1.0", "--out", path.join(scratch(), "none")]), 1);
+  assert.equal(gate(draft, TAG).status, 1);
+  assert.equal(gate(dist, TAG).status, 0);
+  assert.equal(await main(["--release", TAG, "--out", path.join(scratch(), "none")]), 1);
 });
