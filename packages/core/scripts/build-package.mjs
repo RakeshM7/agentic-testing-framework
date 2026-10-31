@@ -85,7 +85,7 @@ export const plannedFiles = (core = CORE) => [...new Set([...entryPoints(core), 
 
 // dist's package.json, from the source one: what an install needs, and nothing that only the monorepo uses.
 export function distPackageJson(pkg) {
-  const { name, version, description, license, type, bin, dependencies, peerDependencies, publishConfig } = pkg;
+  const { name, version, description, license, type, bin, engines, dependencies, peerDependencies, publishConfig } = pkg;
   return {
     name,
     version,
@@ -93,6 +93,7 @@ export function distPackageJson(pkg) {
     license,
     type,
     bin,
+    engines,
     scripts: { postinstall: "node bin/atf.mjs sync --postinstall" },
     dependencies,
     peerDependencies,

@@ -18,7 +18,7 @@ Start a run with the **orchestrator-agent** as the session's agent (Claude Code:
 ## Quick start: step by step
 
 ### 1. Set up once
-1. Install Node.js; nothing else is needed, on macOS, Windows or Linux. Install `k6` too if you want load tests.
+1. Install Node.js 20 or later (CI tests on 24; with nvm, `nvm use` picks the version in `.nvmrc`); nothing else is needed, on macOS, Windows or Linux. An agent session on an older Node is refused at its first tool call (D-109). Install `k6` too if you want load tests.
 2. Run `npm install`, then `npx atf setup`: it installs a Playwright browser too. Every command below is `npx atf <command>`, run from the repo root; `npx atf help` lists them all.
 3. Pick a host and follow its setup in [`packages/core/docs/platforms.md`](packages/core/docs/platforms.md). In VS Code, trust the workspace first, or the guard check (step 3) stops the run.
 4. Live browser work (exploration, clarifications) needs an interactive Playwright MCP session on Claude Code or VS Code.

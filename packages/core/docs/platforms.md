@@ -54,7 +54,7 @@ VS Code Copilot Chat can run a chat on two engines. They behave differently for 
 
 ### A client workspace (D-089)
 1. Create it: `npx @testagentic/atf init <dir>`, with `ATF_NPM_TOKEN` and the `@testagentic` registry set up as in the access instructions (`docs/trusted-developer-access.md` in the framework's repository). In VS Code, the atf extension's **Create new project…** does the same with no `~/.npmrc` or shell variable: it asks once for the token, keeps it in VS Code's secret storage, and runs the `@testagentic/atf` of its own version (D-107).
-   - **What it writes:** `package.json` with the package pinned and `"allowScripts": {"@testagentic/atf": true}` (npm 12 runs a dependency's install scripts only when allowed; a client's own entries are kept, and their `false` is respected and reported), a commented `.npmrc` registry template, the `.gitignore` entries for run output and secrets, `atf/` with an empty decision log, `AGENTS.md`, `config/` and `.vscode/settings.json`. It never overwrites a file.
+   - **What it writes:** `package.json` with the package pinned and `"allowScripts": {"@testagentic/atf": true}` (npm 12 runs a dependency's install scripts only when allowed; a client's own entries are kept, and their `false` is respected and reported), a commented `.npmrc` registry template, an `.nvmrc` with the Node.js version CI tests on (the framework needs 20 or later, D-109), the `.gitignore` entries for run output and secrets, `atf/` with an empty decision log, `AGENTS.md`, `config/` and `.vscode/settings.json`. It never overwrites a file.
    - **Then it installs:** it runs `npm install`, then `atf sync` itself on the framework just installed (the host files), then the base doctor checks. Every npm it starts runs without an `allow-scripts` setting npx exported, which npm 12 refuses in a project install; npm still reads yours from `.npmrc` (D-108).
 2. **Automatic sync:** every later `npm install` renders the host files (agents, MCP configs, hook registrations) through the package's postinstall `atf sync`. Those files are git-ignored. If install scripts are disabled, or npm 12 doesn't allow the package's (a workspace made before `allowScripts` was added, or your `allowScripts` denies it), run `npx atf sync` yourself after installing or upgrading; `npx atf doctor <product>` reports stale files and `npx atf check` fails on them. Once `package.json` has `allowScripts`, npm 12 ignores the `.npmrc` `allow-scripts` list for that project, with a warning.
 3. **Customize only in `atf/`:**
@@ -65,7 +65,7 @@ VS Code Copilot Chat can run a chat on two engines. They behave differently for 
    Your own Claude Code hooks in `.claude/settings.json` and your own agent files are kept by sync. Agents never write `atf/`.
 
 ### Claude Code
-1. `npm install` (the hooks themselves need only Node).
+1. `npm install` (the hooks themselves need only Node.js 20 or later: on an older one the guard refuses every tool call of the session, D-109).
 2. Start the session with `claude --agent orchestrator-agent` and give it `config/<product>.yaml`.
 3. `.claude/settings.json` registers `scripts/hooks/pretooluse.mjs` and `posttooluse.mjs` with `--host claude-code`.
 

@@ -97,6 +97,7 @@ import { diffManifests, readManifest, writeManifest } from "./lib/history.mjs";
 import { issuesPath, stampRun, writeFeedback } from "./lib/framework-issues.mjs";
 import { approvalSummary, caseTypeOf, importStatus, testcasePaths } from "./lib/testcases.mjs";
 import { SCENARIO_ANSWERS, writeScenarios } from "./lib/explore.mjs";
+import { nodeProblem } from "./lib/node-version.mjs";
 
 const now = () => new Date().toISOString();
 const rel = (root, p) => path.relative(root, p).replaceAll("\\", "/");
@@ -889,6 +890,9 @@ async function main() {
     console.error("usage: run.mjs init|guard-check|doctor|login|prereqs|steps|scenarios|status|next|stage|end|validate ... (see header comment)");
     process.exit(2);
   }
+  // every command, before it does anything: a run on an older Node fails later, at its first browser (D-109)
+  const old = nodeProblem();
+  if (old) out({ errors: [old.detail], fix: old.fix }, 1);
   try {
     if (cmd === "init") {
       const r = initRun(a, { resume: v.resume, runId: v["run-id"] });
