@@ -3,6 +3,13 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
+## 0.1.4
+
+- **Node.js 20 or later, checked up front:** an agent session on an older Node.js is refused at its first step, with
+  what to do (switch Node, then start a new session), instead of failing later when the login or a browser opens. The
+  package declares the minimum to npm, and **Create new project…** adds an `.nvmrc`, so `nvm use` in the project picks
+  the right Node.
+
 ## 0.1.3
 
 Fixes for **Create new project…**, found with npm 12.

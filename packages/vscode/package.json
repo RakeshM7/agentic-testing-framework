@@ -2,7 +2,7 @@
   "name": "atf-vscode",
   "displayName": "atf: agentic testing",
   "description": "A UI for the atf agentic testing framework: run status, the clarifications and test case approval sheets, and run reports. Requires the licensed @testagentic/atf package installed in your workspace; without it, the extension does nothing.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "testagentic",
   "private": true,
   "license": "MIT",
