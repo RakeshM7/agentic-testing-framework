@@ -56,31 +56,37 @@ test("another package, or one without bin/atf.mjs, is not the framework", () => 
 });
 
 test("detection says what is missing and how to get it", () => {
-  assert.equal(detectWorkspace([]).state, "noFolder");
+  // the messages point at the extension's own buttons (D-107), never at a terminal command
+  const nofolder = detectWorkspace([]);
+  assert.equal(nofolder.state, "noFolder");
+  assert.match(nofolder.message, /Create new project… makes one; Open existing project… opens one you have/);
 
   const empty = tmp();
   const none = detectWorkspace([empty]);
   assert.equal(none.state, "noWorkspace");
-  assert.match(none.message, /npm install --save-dev @testagentic\/atf/);
-  assert.match(none.message, /npx atf init/);
+  assert.match(none.message, /not an atf project .*Create new project… makes one.*Open existing project…/);
+  for (const d of [nofolder, none]) assert.doesNotMatch(d.message, /npx|npm install/);
 
   const installed = tmp();
   install(installed);
   const init = detectWorkspace([empty, installed]);
   assert.equal(init.state, "noWorkspace");
   assert.equal(init.folder, installed, "the folder atf init would run in");
-  assert.match(init.message, /Run npx atf init in/);
+  assert.match(init.message, /Set up atf in this folder makes it one/);
 
   const ws = tmp();
   put(ws, "atf/atf.json", "{}");
   const nofw = detectWorkspace([ws]);
   assert.equal(nofw.state, "noFramework");
   assert.equal(nofw.root, ws);
-  assert.match(nofw.message, /has no @testagentic\/atf installed\. Run npm install there/);
+  assert.match(nofw.message, /has no @testagentic\/atf installed yet .*Install the framework runs npm install there/);
 
   install(ws);
   const ok = detectWorkspace([ws]);
-  assert.deepEqual([ok.state, ok.root, ok.framework, ok.frameworkVersion, ok.message], ["ok", ws, path.join(ws, "node_modules", "@testagentic", "atf"), "0.1.0", null]);
+  assert.deepEqual([ok.state, ok.root, ok.framework, ok.frameworkVersion, ok.hasProducts, ok.message], ["ok", ws, path.join(ws, "node_modules", "@testagentic", "atf"), "0.1.0", false, null]);
+  put(ws, "config/acme.yaml", "product: acme\n");
+  assert.equal(detectWorkspace([ws]).hasProducts, true, "a product: atf.hasProducts");
+  assert.equal(nofw.hasProducts, false);
 
   put(ws, "atf/atf.json", "﻿{}");
   assert.equal(detectWorkspace([ws]).state, "ok", "a BOM is not a broken marker");
@@ -171,6 +177,11 @@ test("createWorkspace sets the context keys and fires onDidRefresh when the dete
   assert.equal(vscode.rec.context["atf.active"], true);
   w.detect({ fire: true });
   assert.equal(fired, 2, "atf.refresh always fires");
+  assert.equal(vscode.rec.context["atf.hasProducts"], false);
+  put(ws, "config/acme.yaml", "product: acme\n");
+  w.detect();
+  assert.equal(fired, 3, "the first product is a change");
+  assert.equal(vscode.rec.context["atf.hasProducts"], true);
   assert.equal(w.uri("config").fsPath, path.join(ws, "config"));
 });
 
@@ -183,7 +194,7 @@ test("New product…: the name is a kebab-case slug with no config/<name>.yaml y
   assert.match(productNameProblem(ws, ""), /lowercase kebab-case slug/);
   assert.match(productNameProblem(ws, "   "), /lowercase kebab-case slug/);
   for (const bad of ["Acme", "acme_crm", "acme--crm", "-acme", "acme-", "acme crm", "../x", "acme.yaml"]) assert.match(productNameProblem(ws, bad), /is not a lowercase kebab-case slug/, bad);
-  assert.match(productNameProblem(ws, "acme"), /^config\/acme\.yaml already exists/);
+  assert.match(productNameProblem(ws, "acme"), /^config\/acme\.yaml already exists: open it from the product in the Products view/);
   assert.match(productNameProblem(ws, " acme "), /already exists/, "trimmed, as the command passes it");
   assert.equal(productNameProblem(ws, "beta"), null, "only config/<name>.yaml counts, as in atf config");
   assert.equal(productNameProblem(null, "acme"), null, "no workspace: only the slug is checked");

@@ -49,7 +49,7 @@
       "activitybar": [
         {
           "id": "atf",
-          "title": "atf",
+          "title": "ATF",
           "icon": "media/atf.svg"
         }
       ]
@@ -58,27 +58,39 @@
       "atf": [
         {
           "id": "atf.runs",
-          "name": "Runs"
+          "name": "Products"
         },
         {
           "id": "atf.clarifications",
-          "name": "Clarifications"
+          "name": "Clarifications",
+          "when": "atf.workspaceState == ok"
         },
         {
           "id": "atf.approvals",
-          "name": "Test case approval"
+          "name": "Test case approval",
+          "when": "atf.workspaceState == ok"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "atf.runs",
-        "contents": "No atf workspace is open: no folder of this window holds atf/atf.json.\nInstall the licensed @testagentic/atf in a folder, then create the workspace there.\n[Create workspace (init)](command:atf.init)",
+        "contents": "No atf project is open.\n[Create new project…](command:atf.createProject)\n[Open existing project…](command:atf.openProject)",
+        "when": "atf.workspaceState == noFolder"
+      },
+      {
+        "view": "atf.runs",
+        "contents": "This folder isn't an atf project yet.\n[Create new project…](command:atf.createProject)\n[Open existing project…](command:atf.openProject)",
         "when": "atf.workspaceState == noWorkspace"
       },
       {
         "view": "atf.runs",
-        "contents": "This atf workspace has no @testagentic/atf installed. Run npm install in it (the package comes from your licensed registry), then refresh.\n[Refresh](command:atf.refresh)",
+        "contents": "Creating a project asks once for a GitHub token with read:packages. [Connect now](command:atf.connect)",
+        "when": "atf.workspaceState =~ /^no(Folder|Workspace)$/ && !atf.registryConnected"
+      },
+      {
+        "view": "atf.runs",
+        "contents": "The framework isn't installed in this project yet.\n[Install the framework](command:atf.installFramework)\n[Refresh](command:atf.refresh)",
         "when": "atf.workspaceState == noFramework"
       },
       {
@@ -92,6 +104,71 @@
         "when": "atf.workspaceState == ok"
       }
     ],
+    "walkthroughs": [
+      {
+        "id": "atf.getStarted",
+        "title": "Get started with atf",
+        "description": "Connect to the package registry, create a project, add a product and start your first run.",
+        "steps": [
+          {
+            "id": "connect",
+            "title": "Connect to the package registry",
+            "description": "The framework is a licensed package on GitHub's package registry. Installing it needs a GitHub classic personal access token with the read:packages scope. atf asks for it once and keeps it in VS Code's secret storage.\n[Connect](command:atf.connect)",
+            "media": {
+              "markdown": "media/walkthrough/connect.md"
+            },
+            "completionEvents": [
+              "onContext:atf.registryConnected"
+            ]
+          },
+          {
+            "id": "project",
+            "title": "Create or open a project",
+            "description": "A project is the folder that holds atf/atf.json, the framework and your products. Create one, or open one you already have.\n[Create new project…](command:atf.createProject)\n[Open existing project…](command:atf.openProject)",
+            "media": {
+              "markdown": "media/walkthrough/project.md"
+            },
+            "completionEvents": [
+              "onContext:atf.workspaceState == ok"
+            ]
+          },
+          {
+            "id": "product",
+            "title": "Add a product",
+            "description": "A product is what you test. Its run-config says what to test, and where.\n[New product…](command:atf.newProduct)",
+            "media": {
+              "markdown": "media/walkthrough/product.md"
+            },
+            "completionEvents": [
+              "onContext:atf.hasProducts"
+            ]
+          },
+          {
+            "id": "host",
+            "title": "Choose where agents run",
+            "description": "Optional: runs open in Claude Code by default. You can choose VS Code Chat with GitHub Copilot (copilot-chat) or Copilot CLI (copilot-cli) instead.\n[Choose where agents run](command:workbench.action.openSettings?%5B%22atf.host%22%5D)",
+            "media": {
+              "markdown": "media/walkthrough/host.md"
+            },
+            "completionEvents": [
+              "onSettingChanged:atf.host",
+              "onStepSelected"
+            ]
+          },
+          {
+            "id": "run",
+            "title": "Start your first run",
+            "description": "A run is readonly by default. full-run is only for a target you're authorized to test.\n[Start a run](command:atf.run)",
+            "media": {
+              "markdown": "media/walkthrough/run.md"
+            },
+            "completionEvents": [
+              "onCommand:atf.run"
+            ]
+          }
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "atf.refresh",
@@ -100,8 +177,38 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "atf.createProject",
+        "title": "Create new project…",
+        "category": "atf",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "atf.openProject",
+        "title": "Open existing project…",
+        "category": "atf",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "atf.connect",
+        "title": "Connect to the package registry…",
+        "category": "atf",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "atf.forgetToken",
+        "title": "Forget the registry token",
+        "category": "atf",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "atf.installFramework",
+        "title": "Install the framework",
+        "category": "atf",
+        "icon": "$(cloud-download)"
+      },
+      {
         "command": "atf.init",
-        "title": "Create workspace (init)",
+        "title": "Set up atf in this folder (init)",
         "category": "atf",
         "icon": "$(new-folder)"
       },
@@ -186,6 +293,18 @@
     ],
     "menus": {
       "commandPalette": [
+        {
+          "command": "atf.init",
+          "when": "atf.workspaceState == noWorkspace"
+        },
+        {
+          "command": "atf.installFramework",
+          "when": "atf.workspaceState == noFramework"
+        },
+        {
+          "command": "atf.forgetToken",
+          "when": "atf.registryConnected"
+        },
         {
           "command": "atf.sync",
           "when": "atf.active"
@@ -276,9 +395,14 @@
           "group": "2_host@2"
         },
         {
-          "command": "atf.init",
+          "command": "atf.createProject",
           "when": "view == atf.runs",
           "group": "3_setup@1"
+        },
+        {
+          "command": "atf.openProject",
+          "when": "view == atf.runs",
+          "group": "3_setup@2"
         }
       ],
       "view/item/context": [

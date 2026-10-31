@@ -1,5 +1,5 @@
 # The vsix ships exactly the extension's files: the bundle, the manifest, the listing pages and the icons the manifest
-# names. Everything else (src/, scripts/, test/, SPEC.md, node_modules) stays out. scripts/package.mjs refuses to
+# names, including each walkthrough step's media. Everything else (src/, scripts/, test/, SPEC.md, node_modules) stays out. scripts/package.mjs refuses to
 # package when what vsce would ship differs from shippedFiles(manifest), so a new icon or file must be added here too.
 **
 !dist/extension.js
@@ -9,3 +9,8 @@
 !LICENSE.md
 !media/icon.png
 !media/atf.svg
+!media/walkthrough/connect.md
+!media/walkthrough/project.md
+!media/walkthrough/product.md
+!media/walkthrough/host.md
+!media/walkthrough/run.md

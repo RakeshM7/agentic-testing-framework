@@ -1,5 +1,6 @@
-// The Runs view (P-12, packaging §3.13): every product, its environments (a level only when it has several), the
-// active run's stages with what starts next, and the ended runs with their reports.
+// The Products view (id atf.runs, P-12, packaging §3.13; titled Runs before D-107): every product, its environments
+// (a level only when it has several), the active run's stages with what starts next, and the ended runs with their
+// reports.
 //
 // Built in three layers, so the shape is tested without VS Code (test/runs.test.mjs):
 //   loadSnapshot()   what the framework says, per product and environment:
@@ -393,7 +394,7 @@ export const WATCH_GLOBS = ["artifacts/*/state/**", "artifacts/*/envs/*/state/**
 
 // ---- the VS Code layer ----------------------------------------------------------------------------------------------
 
-// The atf.runs view. -> { view, refresh(), nodes() }
+// The atf.runs view, titled Products. -> { view, refresh(), nodes() }
 export function registerRuns(context, deps) {
   const { vscode, workspace, cli, output } = deps;
   const changed = new vscode.EventEmitter();
@@ -427,7 +428,6 @@ export function registerRuns(context, deps) {
         roots = [];
       }
       loaded = true;
-      if (view) view.message = workspace.ok ? undefined : (workspace.message ?? undefined);
     })();
     try {
       await loading;
@@ -441,8 +441,9 @@ export function registerRuns(context, deps) {
     }
   }
 
+  // No view.message: when there is no workspace (noFolder, noWorkspace, noFramework, badMarker), the empty tree shows
+  // the manifest's welcome content for that state, with its buttons; a message above it would only repeat it.
   view = vscode.window.createTreeView("atf.runs", { treeDataProvider: provider, showCollapseAll: true });
-  if (!workspace.ok) view.message = workspace.message ?? undefined;
   const soon = debounce(() => void load(), 750);
   const watchers = [];
   const watch = () => {

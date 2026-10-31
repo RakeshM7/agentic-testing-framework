@@ -14,9 +14,10 @@ import { PKG, readManifest, releaseErrors, shippedErrors, shippedFiles, vsceAvai
 
 const REPO = path.resolve(PKG, "..", "..");
 const manifest = readManifest();
-const SHIPPED = ["CHANGELOG.md", "LICENSE.md", "README.md", "dist/extension.js", "media/atf.svg", "media/icon.png", "package.json"];
+const WALKTHROUGH = ["connect", "host", "product", "project", "run"].map((s) => `media/walkthrough/${s}.md`);
+const SHIPPED = ["CHANGELOG.md", "LICENSE.md", "README.md", "dist/extension.js", "media/atf.svg", "media/icon.png", ...WALKTHROUGH, "package.json"];
 
-test("shippedFiles: the manifest's main, the listing pages and every icon it names; codicons are not files", () => {
+test("shippedFiles: the manifest's main, the listing pages, every icon and walkthrough media it names; codicons are not files", () => {
   assert.deepEqual(shippedFiles(manifest), SHIPPED);
   const m = {
     main: "./out/main.js",
@@ -25,9 +26,10 @@ test("shippedFiles: the manifest's main, the listing pages and every icon it nam
       viewsContainers: { activitybar: [{ icon: "a.svg" }], panel: [{ icon: { light: "l.svg", dark: "d.svg" } }] },
       views: { x: [{ icon: "v.svg" }, {}] },
       commands: [{ icon: "$(refresh)" }, { icon: { light: "cl.svg", dark: "$(play)" } }],
+      walkthroughs: [{ steps: [{ media: { markdown: "./w/1.md" } }, { media: { svg: "w/2.svg" } }, { media: { image: { light: "w/3l.png", dark: "w/3d.png", hc: "w/3h.png", hcLight: "w/3hl.png" } } }, { media: { image: "w/4.gif" } }, {}] }],
     },
   };
-  assert.deepEqual(shippedFiles(m), ["CHANGELOG.md", "LICENSE.md", "README.md", "a.svg", "cl.svg", "d.svg", "img/big.png", "l.svg", "out/main.js", "package.json", "v.svg"]);
+  assert.deepEqual(shippedFiles(m), ["CHANGELOG.md", "LICENSE.md", "README.md", "a.svg", "cl.svg", "d.svg", "img/big.png", "l.svg", "out/main.js", "package.json", "v.svg", "w/1.md", "w/2.svg", "w/3d.png", "w/3h.png", "w/3hl.png", "w/3l.png", "w/4.gif"]);
   assert.equal(vsixName(manifest), `atf-vscode-${manifest.version}.vsix`);
 });
 

@@ -1,7 +1,7 @@
 // Where the atf workspace and its framework are (P-12, packaging §3.13). The extension holds no framework code: it
 // works only in a folder that holds atf/atf.json (the workspace marker, D-086) with the licensed @testagentic/atf
-// installed where Node would resolve it from there. Without either, it says which one is missing and how to get it,
-// and does nothing else.
+// installed where Node would resolve it from there. Without either, it says which one is missing and which of its own
+// buttons fixes it (D-107: Create new project…, Open existing project…, Install the framework), and does nothing else.
 //
 // The pure part (detection, the product and environment listing, the artifact paths) reads the disk with node:fs and
 // takes no `vscode`, so test/workspace.test.mjs runs it on temp dirs. createWorkspace() is the thin VS Code layer: the
@@ -71,26 +71,31 @@ export function findFramework(root) {
   }
 }
 
-// The fixes, in the words the listing and the docs use.
-export const INSTALL_HINT = `npm install --save-dev ${FRAMEWORK_PACKAGE} (the licensed package, from your registry)`;
-export const INIT_HINT = "npx atf init";
+// The fixes, in the words of the extension's own buttons (D-107): it creates a project and installs the framework
+// itself, so no message sends the human to a terminal.
+export const CREATE_HINT = "Create new project…";
+export const OPEN_HINT = "Open existing project…";
+export const INIT_BUTTON = "Set up atf in this folder";
+export const INSTALL_BUTTON = "Install the framework";
 
 // What the extension can do in this window. state: ok | noFolder | noWorkspace | noFramework | badMarker; every
-// state but ok carries the message to show. -> { state, root, folder, framework, frameworkVersion, message }
+// state but ok carries the message to show. hasProducts: the workspace is ok and has at least one product (the
+// welcome views and the walkthrough read it as the atf.hasProducts context key).
+// -> { state, root, folder, framework, frameworkVersion, hasProducts, message }
 export function detectWorkspace(folders) {
-  const none = { root: null, folder: null, framework: null, frameworkVersion: null };
-  if (!folders.length) return { ...none, state: "noFolder", message: "atf: open the folder of your atf workspace (the one holding atf/atf.json)." };
+  const none = { root: null, folder: null, framework: null, frameworkVersion: null, hasProducts: false };
+  if (!folders.length) return { ...none, state: "noFolder", message: `atf: no atf project is open. ${CREATE_HINT} makes one; ${OPEN_HINT} opens one you have (the atf view, or the Command Palette).` };
   const ws = findWorkspaceRoot(folders);
   if (!ws) {
-    // a folder with the package but no marker is one `atf init` away; otherwise the package comes first
+    // a folder with the package but no marker is one `atf init` away; otherwise a project is created or opened
     const installed = folders.find((f) => findFramework(f));
     return {
       ...none,
       folder: installed ?? null,
       state: "noWorkspace",
       message: installed
-        ? `atf: no atf workspace is open (no folder holds atf/atf.json). Run ${INIT_HINT} in ${installed} to create one.`
-        : `atf: no atf workspace is open (no folder holds atf/atf.json). Install ${INSTALL_HINT} in a folder, then run ${INIT_HINT} there.`,
+        ? `atf: ${installed} has ${FRAMEWORK_PACKAGE} installed but is not an atf project yet (no atf/atf.json). ${INIT_BUTTON} makes it one.`
+        : `atf: this folder is not an atf project (no atf/atf.json in it or above). ${CREATE_HINT} makes one, here or in another folder; ${OPEN_HINT} opens one you have.`,
     };
   }
   try {
@@ -100,8 +105,8 @@ export function detectWorkspace(folders) {
     return { ...none, ...ws, state: "badMarker", message: `atf: ${path.join(ws.root, MARKER)} can't be read (${e.message}). Correct it, then refresh.` };
   }
   const fw = findFramework(ws.root);
-  if (!fw) return { ...none, ...ws, state: "noFramework", message: `atf: the atf workspace ${ws.root} has no ${FRAMEWORK_PACKAGE} installed. Run npm install there (or ${INSTALL_HINT}).` };
-  return { ...ws, framework: fw.dir, frameworkVersion: fw.version, state: "ok", message: null };
+  if (!fw) return { ...none, ...ws, state: "noFramework", message: `atf: the atf project ${ws.root} has no ${FRAMEWORK_PACKAGE} installed yet (a fresh clone, say). ${INSTALL_BUTTON} runs npm install there.` };
+  return { ...ws, framework: fw.dir, frameworkVersion: fw.version, hasProducts: listProducts(ws.root).length > 0, state: "ok", message: null };
 }
 
 // A top-level scalar of a run-config, without a YAML parser: `key: value`, `key: "value"` or `key: 'value'`, with an
@@ -197,7 +202,7 @@ export function productNameProblem(root, value) {
   const s = String(value ?? "").trim();
   if (!s) return "The product's name: a lowercase kebab-case slug, e.g. acme-crm";
   if (!SLUG_RE.test(s)) return `'${s}' is not a lowercase kebab-case slug: lowercase letters and digits, words joined by single hyphens (acme-crm)`;
-  if (root && existsSync(path.join(root, ...configFileOf(s).split("/")))) return `${configFileOf(s)} already exists: open it from the product in the Runs view, or choose another name`;
+  if (root && existsSync(path.join(root, ...configFileOf(s).split("/")))) return `${configFileOf(s)} already exists: open it from the product in the Products view, or choose another name`;
   return null;
 }
 export const URL_RE = /^https?:\/\/\S+$/i; // the CLI's own test of --url
@@ -214,8 +219,9 @@ export const envArgs = (environment) => (environment && environment !== DEFAULT_
 // ---- the VS Code layer ----------------------------------------------------------------------------------------------
 
 // deps.workspace. Its fields are the latest detection (root, folder, framework: the installed package's folder,
-// frameworkVersion, state, message, ok); detect() runs it again. onDidRefresh(listener) fires after `atf.refresh` and
-// whenever the detection changes: every view refreshes on it.
+// frameworkVersion, hasProducts, state, message, ok); detect() runs it again and sets the context keys the manifest
+// reads (atf.workspaceState, atf.active, atf.hasProducts). onDidRefresh(listener) fires after `atf.refresh` and
+// whenever the detection changes (the first product appearing included): every view refreshes on it.
 export function createWorkspace(vscode) {
   const emitter = new vscode.EventEmitter();
   const folders = () => (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === "file").map((f) => f.uri.fsPath);
@@ -225,6 +231,7 @@ export function createWorkspace(vscode) {
     folder: null,
     framework: null,
     frameworkVersion: null,
+    hasProducts: false,
     message: null,
     get ok() {
       return ws.state === "ok";
@@ -232,11 +239,13 @@ export function createWorkspace(vscode) {
     folders,
     // re-detects; fires onDidRefresh when anything changed (or when `fire` is set: atf.refresh)
     detect({ fire = false } = {}) {
-      const before = JSON.stringify([ws.state, ws.root, ws.framework, ws.frameworkVersion]);
+      const seen = () => JSON.stringify([ws.state, ws.root, ws.framework, ws.frameworkVersion, ws.hasProducts]);
+      const before = seen();
       Object.assign(ws, detectWorkspace(folders()));
       void vscode.commands.executeCommand("setContext", "atf.workspaceState", ws.state);
       void vscode.commands.executeCommand("setContext", "atf.active", ws.state === "ok");
-      if (fire || before !== JSON.stringify([ws.state, ws.root, ws.framework, ws.frameworkVersion])) emitter.fire(ws);
+      void vscode.commands.executeCommand("setContext", "atf.hasProducts", ws.hasProducts);
+      if (fire || before !== seen()) emitter.fire(ws);
       return ws;
     },
     onDidRefresh: emitter.event,

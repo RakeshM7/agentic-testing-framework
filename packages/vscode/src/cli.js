@@ -15,6 +15,15 @@
 //                              action (scripts/lib/confirm.mjs), exclusively, then runs the script with --confirm-file
 //                              through runStreaming, and deletes the file afterwards whatever happened (the script
 //                              deletes it first when it reads it; a script that stopped before reading it leaves it).
+//   runNpm(tool, args, opts)   npm or npx itself (D-107), for the two things that happen before the framework is
+//                              installed: `npx --yes @testagentic/atf@<the extension's own version> init <folder>`
+//                              (Create new project…) and `npm install` (Install the framework, in a cloned project).
+//                              Nothing else: npmCommandProblem() refuses every other npm or npx command, so the only
+//                              framework the extension ever runs that is not installed is the registry's copy pinned to
+//                              its own version. Streamed, cancelled and killed exactly as runStreaming. npm is a .cmd on
+//                              Windows, which Node runs only through a shell since CVE-2024-27980, so there the line is
+//                              built here, quoted for cmd.exe (quoteNpmCmd), and an argument that can't be passed
+//                              safely is refused; elsewhere it is an argument array with no shell.
 //   runInTerminal(args, opts)  an agent session only (run, resume, interview and the stage shortcuts): a VS Code
 //                              terminal running `npx --no atf <args>`, shown as a tab in the editor area when
 //                              opts.location says so. The agent CLI (claude, copilot) is an interactive program the
@@ -32,7 +41,13 @@
 // it runs in the background like any read. init is not human-only here: it asks nothing and writes only the workspace
 // files in the folder the human picked (the guard still refuses it to agents).
 //
-// The pure parts (argument building, quoting, the shell kinds, the human-only rule, the confirmation's body) take no
+// The registry token (D-107). The extension keeps it in VS Code's secret storage (src/project.js) and hands it only to
+// the processes runStreaming and runNpm start for create, install and init, in their environment (opts.env), never in
+// argv or a file. Both mask it (opts.redact) in every line they log or pass on; runInTerminal refuses any environment
+// that carries it, so an agent session never gets it.
+//
+// The pure parts (argument building, quoting, the shell kinds, the human-only rule, the confirmation's body, the npm
+// commands allowed and their spawn line) take no
 // `vscode` and are tested in test/cli.test.mjs; createCli() gets `vscode`, the workspace and the output channel
 // injected, and `spawn` for tests.
 import { spawn as nodeSpawn } from "node:child_process";
@@ -202,6 +217,49 @@ export function terminalLine(args, { kind, platform = process.platform }) {
 // How a command shows in the output channel.
 export const displayLine = (argv) => argv.map((a) => quotePosix(a)).join(" ");
 
+// ---- npm and npx (D-107) ------------------------------------------------------------------------------------------------
+
+export const FRAMEWORK_SPEC_RE = /^@testagentic\/atf@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/; // an exact version: no range, no tag
+// The only npm commands the extension runs (runNpm): npx --yes @testagentic/atf@<exact version> init <absolute folder>,
+// and npm install with nothing else. -> the problem, or null.
+const isAbsoluteOn = (p, platform) => (platform === "win32" ? path.win32 : path.posix).isAbsolute(p);
+export function npmCommandProblem(tool, args, { platform = process.platform } = {}) {
+  const list = args.map(String);
+  if (tool === "npm") return list.length === 1 && list[0] === "install" ? null : `npm ${list.join(" ")}: the extension runs only npm install`;
+  if (tool === "npx")
+    return list.length === 4 && list[0] === "--yes" && FRAMEWORK_SPEC_RE.test(list[1]) && list[2] === "init" && isAbsoluteOn(list[3], platform)
+      ? null
+      : `npx ${list.join(" ")}: the extension runs only npx --yes @testagentic/atf@<its own version> init <folder>`;
+  return `${tool}: not npm or npx`;
+}
+
+// cmd.exe through a .cmd shim, stricter than quoteCmd: the shim's %* re-reads the line, so besides " and % (expanded even
+// inside quotes) a ! or ^ is refused too, and a quoted argument may not end in \ (it would escape the closing quote
+// for the program's own argument parser). Plain when inert, else double-quoted.
+export function quoteNpmCmd(a) {
+  const s = String(a);
+  if (/["%!^\r\n\0]/.test(s)) refuse(s, "cmd.exe");
+  if (s !== "" && !/[\s&|<>(),;=]/.test(s)) return s;
+  if (s.endsWith("\\")) refuse(s, "cmd.exe");
+  return `"${s}"`;
+}
+
+// How runNpm spawns: on POSIX the tool and an argument array with no shell; on Windows one line for cmd.exe
+// (shell: true, no separate arguments, so Node adds no quoting of its own), npm.cmd or npx.cmd named explicitly.
+// bin: the tool's full path when atf.nodePath names a Node.js with npm beside it (else the tool on the PATH).
+// -> { command, args, shell }
+export function npmSpawnSpec(tool, args, { platform = process.platform, bin } = {}) {
+  if (platform !== "win32") return { command: bin ?? tool, args: args.map(String), shell: false };
+  return { command: [bin ?? `${tool}.cmd`, ...args].map(quoteNpmCmd).join(" "), args: [], shell: true };
+}
+
+// A line as it may be shown: every secret masked (the registry token, which npm would never print, but the log is
+// not the place to find out).
+export const redactLine = (line, secrets = []) => secrets.filter((x) => typeof x === "string" && x.length >= 4).reduce((l, x) => l.split(x).join("***"), line);
+
+// An environment key that carries the registry token: ATF_NPM_TOKEN, or an npm auth setting (npm_config_…_authToken).
+export const isRegistrySecretKey = (k) => /^ATF_NPM_TOKEN$/i.test(k) || /^npm_config_.*:_auth(token)?$/i.test(k);
+
 export class CliError extends Error {
   constructor(message, { code = null, json, stderr = "", timedOut = false } = {}) {
     super(message);
@@ -281,6 +339,17 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
   const issued = new Map(); // confirmation file (resolved) -> the exact command it was written for (confirmedRun)
   const nodePath = () => (vscode?.workspace.getConfiguration("atf").get("nodePath") || "").trim() || "node";
   const log = (line) => output?.appendLine(line);
+  // npm or npx beside an atf.nodePath Node.js (its folder then leads the PATH, since npx and what it starts run node
+  // from it); else the tool on the PATH. -> { bin?, env }
+  const npmOf = (tool) => {
+    const node = nodePath();
+    if (node === "node" || !path.isAbsolute(node)) return { env: {} };
+    const dir = path.dirname(node);
+    const bin = path.join(dir, platform === "win32" ? `${tool}.cmd` : tool);
+    if (!existsSync(bin)) return { env: {} };
+    const key = Object.keys(env).find((k) => k.toUpperCase() === "PATH") ?? "PATH";
+    return { bin, env: { [key]: [dir, env[key]].filter(Boolean).join(platform === "win32" ? ";" : ":") } };
+  };
 
   // The `confirmed` rule: args carry exactly one --confirm-file whose path confirmedRun wrote for exactly this script
   // and these arguments, and the file is still there. Anything else is not a confirmation.
@@ -372,26 +441,50 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
   // -> Promise<{ code, cancelled }> once the process has exited; a CliError when it can't start. opts: cwd (default the
   // workspace), script (a framework script instead of atf's bin; absolute, or relative to the framework), framework
   // (another installed package: atf init in a folder that is not a workspace yet), env (added to the process's),
-  // onLine(line, "stdout" | "stderr"), token (a vscode CancellationToken).
-  // NO_COLOR keeps colour codes out of the output channel. On POSIX the child leads its own process group, so a
-  // cancel stops the steps it spawned too (the login's browser, an npm install among them); Windows has taskkill /T.
-  function runStreaming(args, { cwd, script, framework, env: extra = {}, onLine, token } = {}) {
+  // onLine(line, "stdout" | "stderr"), token (a vscode CancellationToken), redact (secrets masked in every line).
+  function runStreaming(args, { cwd, script, framework, env: extra = {}, onLine, token, redact } = {}) {
+    const label = script ? `node ${path.basename(script)} ${args.join(" ")}` : `atf ${args.join(" ")}`;
+    const refused = humanOnlyRefusal(label, args, { script, cwd });
+    if (refused) return Promise.reject(refused);
+    const fw = framework ?? workspace.framework;
+    if (!fw) return Promise.reject(new CliError(workspace.message ?? `atf: @testagentic/atf is not installed in this workspace`));
+    const argv = nodeArgs({ framework: fw, args, script });
+    const node = nodePath();
+    return stream({ label, command: node, argv, shown: [node, ...argv], shell: false, cwd: cwd ?? workspace.root, env: extra, onLine, token, redact, missing: `${node} not found: install Node.js, or set atf.nodePath to it` });
+  }
+
+  // npm or npx itself (D-107): only the commands npmCommandProblem allows. opts: cwd (required: the folder it works
+  // in), env (added to the process's: the registry's, with the token), onLine, token, redact. -> as runStreaming
+  function runNpm(tool, args, { cwd, env: extra = {}, onLine, token, redact } = {}) {
+    const problem = npmCommandProblem(tool, args, { platform });
+    if (problem) return Promise.reject(new CliError(`atf: ${problem}; nothing was run`));
+    // cwd is a spawn option, never part of the command line, so any folder is safe there
+    if (!cwd || !isAbsoluteOn(cwd, platform)) return Promise.reject(new CliError(`atf: ${tool} needs the folder it works in; nothing was run`));
+    const found = npmOf(tool);
+    let spec;
+    try {
+      spec = npmSpawnSpec(tool, args, { platform, bin: found.bin });
+    } catch (e) {
+      return Promise.reject(new CliError(`${e.message}; nothing was run`));
+    }
+    return stream({ label: `${tool} ${args.join(" ")}`, command: spec.command, argv: spec.args, shown: [found.bin ?? tool, ...args], shell: spec.shell, cwd, env: { ...found.env, ...extra }, onLine, token, redact, missing: `${tool} not found: install Node.js (it brings npm), or set atf.nodePath to a Node.js with npm beside it, then reload VS Code` });
+  }
+
+  // One streamed child process (runStreaming, runNpm): every line logged and passed on as it comes, masked; the exit
+  // code the answer; a cancelled token kills the process tree. NO_COLOR keeps colour codes out of the output channel.
+  // On POSIX the child leads its own process group, so a cancel stops the steps it spawned too (the login's browser, an
+  // npm install among them); Windows has taskkill /T.
+  function stream({ label, command, argv, shown, shell, cwd, env: extra, onLine, token, redact = [], missing }) {
     return new Promise((resolve, reject) => {
-      const label = script ? `node ${path.basename(script)} ${args.join(" ")}` : `atf ${args.join(" ")}`;
-      const refused = humanOnlyRefusal(label, args, { script, cwd });
-      if (refused) return reject(refused);
-      const fw = framework ?? workspace.framework;
-      if (!fw) return reject(new CliError(workspace.message ?? `atf: @testagentic/atf is not installed in this workspace`));
       if (token?.isCancellationRequested) return resolve({ code: null, cancelled: true });
-      const argv = nodeArgs({ framework: fw, args, script });
-      const node = nodePath();
+      const mask = (l) => redactLine(l, redact);
       const started = now();
-      log(`$ ${displayLine([node, ...argv])}`);
+      log(mask(`$ ${displayLine(shown)}`));
       let child;
       try {
-        child = spawn(node, argv, { cwd: cwd ?? workspace.root, env: { ...env, NO_COLOR: "1", ...extra }, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], shell: false, detached: platform !== "win32" });
+        child = spawn(command, argv, { cwd, env: { ...env, NO_COLOR: "1", ...extra }, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], shell, detached: platform !== "win32" });
       } catch (e) {
-        return reject(new CliError(`${label}: ${e.message}`));
+        return reject(new CliError(mask(`${label}: ${e.message}`)));
       }
       running.add(child);
       let cancelled = false;
@@ -400,10 +493,10 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
         log("  cancelled");
         killTree(child);
       });
-      const stream = (name) => {
+      const lines = (name) => {
         const decoder = new StringDecoder("utf8");
-        const lines = lineSplitter((raw) => {
-          const line = plainLine(raw);
+        const split = lineSplitter((raw) => {
+          const line = mask(plainLine(raw));
           log(`  ${line}`);
           try {
             onLine?.(line, name);
@@ -411,13 +504,13 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
             // a listener's mistake must not lose the process's answer
           }
         });
-        child[name].on("data", (d) => lines.push(decoder.write(d)));
+        child[name].on("data", (d) => split.push(decoder.write(d)));
         return () => {
-          lines.push(decoder.end());
-          lines.end();
+          split.push(decoder.end());
+          split.end();
         };
       };
-      const flush = [stream("stdout"), stream("stderr")];
+      const flush = [lines("stdout"), lines("stderr")];
       let settled = false;
       const finish = (fn) => {
         if (settled) return;
@@ -428,7 +521,7 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
       };
       child.on("error", (e) =>
         finish(() => {
-          const msg = e.code === "ENOENT" ? `${node} not found: install Node.js, or set atf.nodePath to it` : e.message;
+          const msg = e.code === "ENOENT" ? missing : mask(e.message);
           log(`  failed: ${msg}`);
           reject(new CliError(`${label}: ${msg}`));
         }),
@@ -502,6 +595,7 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
   async function runInTerminal(args, { name, cwd, env: extra, location, show = true } = {}) {
     if (isHumanOnly(args)) throw new CliError(`atf ${args.join(" ")}: human-only, never sent to a terminal`);
     if (!SESSION_COMMANDS.includes(String(args[0]))) throw new CliError(`atf ${args[0]}: only agent sessions open in a terminal; the extension runs everything else itself`);
+    if (Object.keys(extra ?? {}).some(isRegistrySecretKey)) throw new CliError(`atf ${args[0]}: the registry token is never given to an agent session`);
     const shell = vscode.env.shell || "";
     const kind = shellKind(shell, platform);
     const line = terminalLine(args, { kind, platform });
@@ -547,5 +641,5 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
     issued.clear();
   };
 
-  return { runJson, runStreaming, confirmedRun, cliPlan, runInTerminal, isHumanOnly, nodePath, dispose };
+  return { runJson, runStreaming, runNpm, confirmedRun, cliPlan, runInTerminal, isHumanOnly, nodePath, dispose };
 }

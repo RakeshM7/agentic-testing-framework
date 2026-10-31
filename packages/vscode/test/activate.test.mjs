@@ -31,10 +31,12 @@ function workspace({ marker = true, framework = true, products = true } = {}) {
 }
 function activate(root, opts = {}) {
   const vscode = fakeVscode({ folders: root ? [root] : [], shellIntegration: true, ...opts });
-  const ctx = fakeContext();
+  const ctx = fakeContext(opts.context);
   const got = {};
   const api = start(vscode, ctx, {
     cliOptions: opts.cliOptions,
+    env: opts.env ?? {}, // the extension host's: no ATF_NPM_TOKEN unless a test gives one
+    ...(opts.now ? { now: opts.now } : {}),
     registerSheets: (context, deps) => {
       got.sheets = { context, deps };
       return { refresh: () => (got.sheetRefreshes = (got.sheetRefreshes ?? 0) + 1) };
@@ -49,7 +51,7 @@ function activate(root, opts = {}) {
   return { vscode, ctx, got, api, run, lines };
 }
 
-test("activation registers Basil's commands and the Runs view, then hands deps to the sheets and the report", () => {
+test("activation registers Basil's commands and the Products view, then hands deps to the sheets and the report", () => {
   const root = workspace();
   const { vscode, got, api, ctx } = activate(root);
   for (const id of COMMANDS) assert.ok(vscode.rec.commands.has(id), id);
@@ -88,21 +90,30 @@ test("a missing framework or workspace is said clearly, with the fix", async () 
   assert.equal(nofw.vscode.rec.context["atf.active"], false);
   const [kind, msg, actions] = nofw.vscode.rec.messages[0];
   assert.equal(kind, "warning");
-  assert.match(msg, /has no @testagentic\/atf installed\. Run npm install there/);
-  assert.deepEqual(actions, ["Check again"]);
+  assert.match(msg, /has no @testagentic\/atf installed yet .*Install the framework runs npm install there/);
+  assert.deepEqual(actions, ["Install the framework"]);
   assert.equal(nofw.vscode.rec.statusBar[0].visible, true);
   assert.equal(nofw.vscode.rec.statusBar[0].command, "atf.refresh");
-  assert.equal(nofw.vscode.rec.treeViews[0].message, msg);
+  assert.equal(nofw.vscode.rec.treeViews[0].message, undefined, "the Products view's welcome content says it, with its buttons (D-107)");
   await nofw.run("atf.run");
   assert.equal(nofw.vscode.rec.terminals.length, 0, "nothing runs without the framework");
 
   const nows = activate(workspace({ marker: false }));
   assert.equal(nows.vscode.rec.context["atf.workspaceState"], "noWorkspace");
-  assert.match(nows.vscode.rec.messages[0][1], /Run npx atf init in/);
-  assert.deepEqual(nows.vscode.rec.messages[0][2], ["Create workspace (init)"]);
+  assert.match(nows.vscode.rec.messages[0][1], /has @testagentic\/atf installed but is not an atf project yet .*Set up atf in this folder makes it one/);
+  assert.deepEqual(nows.vscode.rec.messages[0][2], ["Set up atf in this folder"]);
 
+  // no project, or no folder: the Products view's welcome content has the buttons; no message on top of it
   const nothing = activate(tmp());
-  assert.match(nothing.vscode.rec.messages[0][1], /Install npm install --save-dev @testagentic\/atf .*then run npx atf init there/);
+  assert.equal(nothing.vscode.rec.context["atf.workspaceState"], "noWorkspace");
+  assert.match(nothing.api.workspace.message, /not an atf project .*Create new project… makes one.*Open existing project… opens one/);
+  assert.doesNotMatch(nothing.api.workspace.message, /npx|npm install/);
+  const noFolder = activate(null);
+  assert.equal(noFolder.vscode.rec.context["atf.workspaceState"], "noFolder", "set at activation through a view or a command");
+  assert.equal(noFolder.vscode.rec.context["atf.hasProducts"], false);
+  await new Promise((r) => setImmediate(r));
+  assert.equal(noFolder.vscode.rec.context["atf.registryConnected"], false);
+  assert.deepEqual([...nothing.vscode.rec.messages, ...noFolder.vscode.rec.messages], []);
 });
 
 test("run and resume (claude, copilot-cli): an editor-area terminal named for the session, the node's product, environment, stage and module, or asked", async () => {
@@ -454,9 +465,27 @@ test("init runs in the background, in the folder, on the framework installed the
   assert.deepEqual([kind, msg, actions], ["info", `atf: the atf workspace is ready in ${root}. Next: create a product (New product…), then start its run.`, ["New product…", "Show output"]]);
   assert.equal(a.vscode.rec.terminals.length, 0);
 
+  assert.equal(node.calls[0].opts.env.ATF_NPM_TOKEN, undefined, "no token, none passed");
+
+  // with a token, init's npm install gets the registry's settings in its environment, the token masked in the log
+  const root2 = workspace({ marker: false });
+  const node2 = fakeNode(root2, (child, { opts }) => {
+    put(opts.cwd, "atf/atf.json", "{}");
+    say(child, "stderr", `npm error 401 Unauthorized - GET https://npm.pkg.github.com/@testagentic%2fatf - token ${opts.env.ATF_NPM_TOKEN}`);
+    child.emit("close", 1);
+  });
+  const b = activate(root2, { cliOptions: node2.cliOptions, context: { secrets: { "atf.registryToken": "ghp_secretvalue" } } });
+  await b.run("atf.init");
+  assert.equal(node2.calls[0].opts.env.ATF_NPM_TOKEN, "ghp_secretvalue");
+  assert.equal(node2.calls[0].opts.env["npm_config_@testagentic:registry"], "https://npm.pkg.github.com");
+  assert.ok(!b.vscode.rec.output.lines.join("\n").includes("ghp_secretvalue"), "never logged");
+  assert.ok(!JSON.stringify(b.vscode.rec.messages).includes("ghp_secretvalue"), "never shown");
+
+  // no package installed: Create new project… instead of a hand install
   const bare = activate(tmp());
   await bare.run("atf.init");
-  assert.match(bare.vscode.rec.messages.at(-1)[1], /has no @testagentic\/atf installed\. Install it first/);
+  assert.match(bare.vscode.rec.messages.at(-1)[1], /has no @testagentic\/atf installed\. Create new project… installs it from the registry/);
+  assert.deepEqual(bare.vscode.rec.messages.at(-1)[2], ["Create new project…"]);
   assert.equal(bare.vscode.rec.progress.length, 0);
 });
 

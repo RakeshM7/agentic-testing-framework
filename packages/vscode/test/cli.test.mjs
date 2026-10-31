@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
-import { CONFIRM_LIFETIME_MS, CliError, HUMAN_ONLY, SESSION_COMMANDS, confirmTargetProblem, confirmationBody, createCli, isHumanOnly, lastJson, lineSplitter, nodeArgs, plainLine, quoteCmd, quotePosix, quotePowerShell, shellKind, terminalLine, writeConfirmation } from "../src/cli.js";
+import { CONFIRM_LIFETIME_MS, CliError, HUMAN_ONLY, SESSION_COMMANDS, confirmTargetProblem, confirmationBody, createCli, isHumanOnly, isRegistrySecretKey, lastJson, lineSplitter, nodeArgs, npmCommandProblem, npmSpawnSpec, plainLine, quoteCmd, quoteNpmCmd, quotePosix, quotePowerShell, redactLine, shellKind, terminalLine, writeConfirmation } from "../src/cli.js";
 import { APPROVAL_CONFIRM, SWEEP_CONFIRM, approvalConfirmFile, sweepConfirmFile } from "../src/workspace.js";
 import { fakeVscode } from "./fake-vscode.mjs";
 
@@ -236,6 +236,9 @@ test("runInTerminal refuses human-only commands and anything that is not an agen
   assert.deepEqual(SESSION_COMMANDS, ["run", "resume", "interview", "explore", "clarifications", "testcases", "k6", "report", "automate"]);
   for (const args of [["approve", "acme", "contacts"], ["sweep", "acme"], ["import", "acme", "contacts", "--approved"]]) await assert.rejects(cli.runInTerminal(args), /human-only, never sent to a terminal/, args[0]);
   for (const args of [["sync"], ["init"], ["doctor", "acme"], ["config", "acme", "--url", "https://x"]]) await assert.rejects(cli.runInTerminal(args), /only agent sessions open in a terminal/, args[0]);
+  // D-107: an agent session never gets the registry token
+  for (const env of [{ ATF_NPM_TOKEN: "ghp_x" }, { "npm_config_//npm.pkg.github.com/:_authToken": "ghp_x" }])
+    await assert.rejects(cli.runInTerminal(["run", "acme"], { env }), /the registry token is never given to an agent session/);
   assert.equal(vscode.rec.terminals.length, 0);
 });
 
@@ -340,6 +343,112 @@ test("runStreaming: a cancel kills the process tree (its group on POSIX, taskkil
   t3.isCancellationRequested = true;
   assert.deepEqual(await early.cli.runStreaming(["config", "acme", "--url", "https://x"], { token: t3 }), { code: null, cancelled: true });
   assert.equal(early.calls.length, 0);
+});
+
+// ---- npm and npx (D-107) ----------------------------------------------------------------------------------------------
+
+test("npm commands: only npx --yes @testagentic/atf@<exact version> init <absolute folder>, and a bare npm install", () => {
+  const dir = path.resolve(path.sep, "work", "my-tests");
+  assert.equal(npmCommandProblem("npx", ["--yes", "@testagentic/atf@0.1.1", "init", dir]), null);
+  assert.equal(npmCommandProblem("npx", ["--yes", "@testagentic/atf@0.1.1", "init", "C:\\work\\my-tests"], { platform: "win32" }), null);
+  assert.equal(npmCommandProblem("npx", ["--yes", "@testagentic/atf@1.2.3-rc.1", "init", dir]), null);
+  assert.equal(npmCommandProblem("npm", ["install"]), null);
+  for (const args of [
+    ["--yes", "@testagentic/atf", "init", dir], // no version: whatever is latest
+    ["--yes", "@testagentic/atf@^0.1.1", "init", dir], // a range
+    ["--yes", "@testagentic/atf@latest", "init", dir], // a tag
+    ["--yes", "@testagentic/atf@0.1.1", "run", "acme"], // anything but init
+    ["--yes", "@testagentic/atf@0.1.1", "init", "relative"],
+    ["--yes", "atf@0.1.1", "init", dir], // another package
+    ["@testagentic/atf@0.1.1", "init", dir], // would prompt
+    ["--yes", "@testagentic/atf@0.1.1", "init", dir, "--no-install"],
+  ])
+    assert.match(npmCommandProblem("npx", args), /the extension runs only npx --yes @testagentic\/atf@<its own version> init <folder>/, args.join(" "));
+  for (const args of [["install", "left-pad"], ["publish"], ["install", "--global"], []]) assert.match(npmCommandProblem("npm", args), /runs only npm install/, args.join(" "));
+  assert.match(npmCommandProblem("node", ["x"]), /not npm or npx/);
+});
+
+test("npm's spawn: an argument array with no shell on POSIX; one cmd.exe line on Windows, quoted, unsafe paths refused", () => {
+  const args = ["--yes", "@testagentic/atf@0.1.1", "init", "/home/me/my tests"];
+  assert.deepEqual(npmSpawnSpec("npx", args, { platform: "linux" }), { command: "npx", args, shell: false });
+  assert.deepEqual(npmSpawnSpec("npx", args, { platform: "darwin", bin: "/opt/node/bin/npx" }).command, "/opt/node/bin/npx");
+  assert.deepEqual(npmSpawnSpec("npx", ["--yes", "@testagentic/atf@0.1.1", "init", "C:\\Users\\Ann Lee\\my-tests (1)"], { platform: "win32" }), {
+    command: 'npx.cmd --yes @testagentic/atf@0.1.1 init "C:\\Users\\Ann Lee\\my-tests (1)"',
+    args: [],
+    shell: true,
+  });
+  assert.equal(npmSpawnSpec("npm", ["install"], { platform: "win32", bin: "C:\\Program Files\\nodejs\\npm.cmd" }).command, '"C:\\Program Files\\nodejs\\npm.cmd" install');
+  assert.equal(quoteNpmCmd("C:\\plain\\path"), "C:\\plain\\path");
+  assert.equal(quoteNpmCmd("a&b"), '"a&b"');
+  for (const bad of ['C:\\a"b', "C:\\100%", "C:\\%PATH%", "C:\\wow!", "C:\\a^b", "C:\\a\nb", "C:\\a b\\"]) assert.throws(() => quoteNpmCmd(bad), /can't pass .* to cmd\.exe safely/, bad);
+  assert.throws(() => npmSpawnSpec("npx", ["--yes", "@testagentic/atf@0.1.1", "init", "C:\\100%"], { platform: "win32" }), /cmd\.exe/);
+});
+
+test("runNpm: npx with the registry's environment in the folder, streamed and cancellable like runStreaming, the token masked", async () => {
+  const TOKEN = "ghp_0123456789abcdef";
+  const dir = "/work/my-tests"; // a POSIX path: the platform here is linux, whatever the OS running the test
+  const { cli, calls, output } = setup((child) => {
+    child.stdout.emit("data", Buffer.from(`atf init: ${dir}\n  created atf/atf.json\n`));
+    child.stderr.emit("data", Buffer.from(`npm notice token ${TOKEN}\n`));
+    child.emit("close", 0);
+  }, { platform: "linux" });
+  const lines = [];
+  const env = { ATF_NPM_TOKEN: TOKEN, "npm_config_@testagentic:registry": "https://npm.pkg.github.com", "npm_config_//npm.pkg.github.com/:_authToken": "${ATF_NPM_TOKEN?}" };
+  const r = await cli.runNpm("npx", ["--yes", "@testagentic/atf@0.1.1", "init", dir], { cwd: dir, env, redact: [TOKEN], onLine: (l) => lines.push(l) });
+  assert.deepEqual(r, { code: 0, cancelled: false });
+  const [{ cmd, argv, opts }] = calls;
+  assert.deepEqual([cmd, argv, opts.shell, opts.cwd, opts.detached], ["npx", ["--yes", "@testagentic/atf@0.1.1", "init", dir], false, dir, true]);
+  assert.equal(opts.env.ATF_NPM_TOKEN, TOKEN, "the token: in the environment only");
+  assert.equal(opts.env["npm_config_//npm.pkg.github.com/:_authToken"], "${ATF_NPM_TOKEN?}", "npm fills the placeholder");
+  assert.equal(opts.env.PATH, "/bin");
+  assert.ok(!argv.join(" ").includes(TOKEN));
+  assert.ok(!output.lines.join("\n").includes(TOKEN) && !lines.join("\n").includes(TOKEN), "masked in the log and the lines");
+  assert.ok(lines.includes("npm notice token ***"));
+  assert.equal(output.lines[0], `$ npx --yes @testagentic/atf@0.1.1 init ${dir}`);
+
+  // refused before spawning: another command, no folder, an unsafe Windows path
+  const none = setup(reply(""), { platform: "win32" });
+  await assert.rejects(none.cli.runNpm("npx", ["--yes", "some-package", "init", dir], { cwd: dir }), /nothing was run/);
+  await assert.rejects(none.cli.runNpm("npm", ["install"], {}), /needs the folder it works in/);
+  await assert.rejects(none.cli.runNpm("npx", ["--yes", "@testagentic/atf@0.1.1", "init", "C:\\100%"], { cwd: "C:\\100%" }), /cmd\.exe safely; nothing was run/);
+  assert.equal(none.calls.length, 0);
+  const win = setup(reply(""), { platform: "win32" });
+  await win.cli.runNpm("npm", ["install"], { cwd: "C:\\Users\\Ann Lee\\tests" });
+  assert.deepEqual([win.calls[0].cmd, win.calls[0].argv, win.calls[0].opts.shell, win.calls[0].opts.detached], ["npm.cmd install", [], true, false]);
+
+  // a cancel kills the tree, as runStreaming's
+  const killed = [];
+  const posix = setup((child) => (child.pid = 99), { platform: "linux", killProcess: (pid, sig) => (killed.push([pid, sig]), posix.calls[0].child.emit("close", null)) });
+  const token = fakeToken();
+  const p = posix.cli.runNpm("npm", ["install"], { cwd: dir, token });
+  await tick();
+  token.cancel();
+  assert.deepEqual(await p, { code: null, cancelled: true });
+  assert.deepEqual(killed, [[-99, "SIGTERM"]]);
+
+  // npx missing
+  const enoent = setup((child) => child.emit("error", Object.assign(new Error("spawn npx ENOENT"), { code: "ENOENT" })));
+  await assert.rejects(enoent.cli.runNpm("npm", ["install"], { cwd: dir }), /npm not found: install Node\.js \(it brings npm\)/);
+});
+
+test("runNpm: npm beside an atf.nodePath Node.js, its folder first on the PATH", async () => {
+  const dir = tmp();
+  writeFileSync(path.join(dir, "node"), "");
+  // the real platform: the folder is a real one (npx.cmd and one cmd.exe line on Windows)
+  const win = process.platform === "win32";
+  writeFileSync(path.join(dir, win ? "npx.cmd" : "npx"), "");
+  const { cli, calls } = setup(reply(""), { config: { nodePath: path.join(dir, "node") }, platform: process.platform });
+  await cli.runNpm("npx", ["--yes", "@testagentic/atf@0.1.1", "init", dir], { cwd: dir });
+  if (win) assert.equal(calls[0].cmd, `${path.join(dir, "npx.cmd")} --yes @testagentic/atf@0.1.1 init ${dir}`);
+  else assert.equal(calls[0].cmd, path.join(dir, "npx"));
+  assert.equal(calls[0].opts.env.PATH, `${dir}${win ? ";" : ":"}/bin`);
+});
+
+test("redactLine and the registry's secret keys", () => {
+  assert.equal(redactLine("a ghp_x1y2 b ghp_x1y2", ["ghp_x1y2"]), "a *** b ***");
+  assert.equal(redactLine("short ab", ["ab", undefined]), "short ab", "too short to be a token");
+  for (const k of ["ATF_NPM_TOKEN", "npm_config_//npm.pkg.github.com/:_authToken", "NPM_CONFIG_//r/:_auth"]) assert.ok(isRegistrySecretKey(k), k);
+  for (const k of ["ATF_ENV", "npm_config_@testagentic:registry", "PATH"]) assert.ok(!isRegistrySecretKey(k), k);
 });
 
 test("runStreaming refuses human-only commands and a missing framework without spawning", async () => {
