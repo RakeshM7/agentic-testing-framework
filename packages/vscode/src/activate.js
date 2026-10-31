@@ -260,6 +260,9 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
     return { result, error, lines };
   }
 
+  // atf sync in the background: the Sync host files command, and Install the framework after its npm install.
+  const syncHostFiles = () => background(["sync"], { title: "atf sync: the host files" });
+
   // The result of a background command: a CliError, a cancel, success (ok(lines) says it), or a failure with why.
   // more: extra buttons offered with the message, handled by onAction.
   async function report(name, { result, error, lines }, { ok, more = [], onAction } = {}) {
@@ -455,7 +458,7 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
   // ---- the project and the registry token (D-107) ----------------------------------------------------------------------
 
   const registry = createRegistry({ vscode, context, env });
-  const project = createProjectFlows({ vscode, context, workspace, output, registry, background, failed, now, platform: cliOptions.platform ?? process.platform });
+  const project = createProjectFlows({ vscode, context, workspace, output, registry, background, failed, syncHostFiles, now, platform: cliOptions.platform ?? process.platform });
 
   // ---- the commands -------------------------------------------------------------------------------------------------
 
@@ -484,7 +487,7 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
     },
     "atf.sync": async () => {
       if (!needWorkspace()) return;
-      return report("atf sync", await background(["sync"], { title: "atf sync: the host files" }), { ok: (lines) => lastLine(lines) ?? "the host files are up to date." });
+      return report("atf sync", await syncHostFiles(), { ok: (lines) => lastLine(lines) ?? "the host files are up to date." });
     },
     "atf.check": async () => {
       if (!needWorkspace()) return;

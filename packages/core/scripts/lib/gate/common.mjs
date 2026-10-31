@@ -4,6 +4,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
+import { spawnEnv } from "../npm-env.mjs";
 
 export const SEVERITIES = ["blocker", "major", "minor"];
 
@@ -53,10 +54,11 @@ export function hygiene(root, files) {
   return out;
 }
 
-// Runs a command in cwd; returns null on success, otherwise the first lines of its output.
+// Runs a command in cwd; returns null on success, otherwise the first lines of its output. npm and npx get no inherited
+// allow-scripts setting (../npm-env.mjs, D-108).
 export function run(cmd, args, cwd) {
   try {
-    execFileSync(cmd, args, { cwd, stdio: "pipe", encoding: "utf8", shell: process.platform === "win32", timeout: 300_000 });
+    execFileSync(cmd, args, { cwd, env: spawnEnv(cmd), stdio: "pipe", encoding: "utf8", shell: process.platform === "win32", timeout: 300_000 });
     return null;
   } catch (e) {
     const out = `${e.stdout ?? ""}${e.stderr ?? ""}`.trim() || e.message;

@@ -23,7 +23,8 @@
 //                              its own version. Streamed, cancelled and killed exactly as runStreaming. npm is a .cmd on
 //                              Windows, which Node runs only through a shell since CVE-2024-27980, so there the line is
 //                              built here, quoted for cmd.exe (quoteNpmCmd), and an argument that can't be passed
-//                              safely is refused; elsewhere it is an argument array with no shell.
+//                              safely is refused; elsewhere it is an argument array with no shell. An inherited
+//                              allow-scripts setting is left out of its environment (npmEnv: npm 12 refuses it there).
 //   runInTerminal(args, opts)  an agent session only (run, resume, interview and the stage shortcuts): a VS Code
 //                              terminal running `npx --no atf <args>`, shown as a tab in the editor area when
 //                              opts.location says so. The agent CLI (claude, copilot) is an interactive program the
@@ -257,6 +258,14 @@ export function npmSpawnSpec(tool, args, { platform = process.platform, bin } = 
 // not the place to find out).
 export const redactLine = (line, secrets = []) => secrets.filter((x) => typeof x === "string" && x.length >= 4).reduce((l, x) => l.split(x).join("***"), line);
 
+// The environment npm and npx start with (runNpm): the host's, without an inherited allow-scripts setting
+// (npm_config_allow_scripts, or allow-scripts, any case: npm reads both as allow-scripts). npx exports the user's
+// ~/.npmrc allow-scripts to the npm it starts that way, and npm 12 refuses it there as a command-line flag
+// (EALLOWSCRIPTS: --allow-scripts is not allowed in project-scoped installs); from ~/.npmrc itself npm reads it as it
+// should. Everything else, the registry's settings among them, is kept.
+export const isAllowScriptsKey = (k) => /^npm_config_allow[-_]scripts$/i.test(k);
+export const npmEnv = (env) => Object.fromEntries(Object.entries(env).filter(([k]) => !isAllowScriptsKey(k)));
+
 // An environment key that carries the registry token: ATF_NPM_TOKEN, or an npm auth setting (npm_config_…_authToken).
 export const isRegistrySecretKey = (k) => /^ATF_NPM_TOKEN$/i.test(k) || /^npm_config_.*:_auth(token)?$/i.test(k);
 
@@ -454,7 +463,8 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
   }
 
   // npm or npx itself (D-107): only the commands npmCommandProblem allows. opts: cwd (required: the folder it works
-  // in), env (added to the process's: the registry's, with the token), onLine, token, redact. -> as runStreaming
+  // in), env (added to the process's: the registry's, with the token), onLine, token, redact. The process's environment
+  // carries no allow-scripts setting (npmEnv). -> as runStreaming
   function runNpm(tool, args, { cwd, env: extra = {}, onLine, token, redact } = {}) {
     const problem = npmCommandProblem(tool, args, { platform });
     if (problem) return Promise.reject(new CliError(`atf: ${problem}; nothing was run`));
@@ -467,14 +477,14 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
     } catch (e) {
       return Promise.reject(new CliError(`${e.message}; nothing was run`));
     }
-    return stream({ label: `${tool} ${args.join(" ")}`, command: spec.command, argv: spec.args, shown: [found.bin ?? tool, ...args], shell: spec.shell, cwd, env: { ...found.env, ...extra }, onLine, token, redact, missing: `${tool} not found: install Node.js (it brings npm), or set atf.nodePath to a Node.js with npm beside it, then reload VS Code` });
+    return stream({ label: `${tool} ${args.join(" ")}`, command: spec.command, argv: spec.args, shown: [found.bin ?? tool, ...args], shell: spec.shell, cwd, base: npmEnv(env), env: npmEnv({ ...found.env, ...extra }), onLine, token, redact, missing: `${tool} not found: install Node.js (it brings npm), or set atf.nodePath to a Node.js with npm beside it, then reload VS Code` });
   }
 
   // One streamed child process (runStreaming, runNpm): every line logged and passed on as it comes, masked; the exit
   // code the answer; a cancelled token kills the process tree. NO_COLOR keeps colour codes out of the output channel.
   // On POSIX the child leads its own process group, so a cancel stops the steps it spawned too (the login's browser, an
-  // npm install among them); Windows has taskkill /T.
-  function stream({ label, command, argv, shown, shell, cwd, env: extra, onLine, token, redact = [], missing }) {
+  // npm install among them); Windows has taskkill /T. base: the environment extra is added to (default the host's).
+  function stream({ label, command, argv, shown, shell, cwd, base = env, env: extra, onLine, token, redact = [], missing }) {
     return new Promise((resolve, reject) => {
       if (token?.isCancellationRequested) return resolve({ code: null, cancelled: true });
       const mask = (l) => redactLine(l, redact);
@@ -482,7 +492,7 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
       log(mask(`$ ${displayLine(shown)}`));
       let child;
       try {
-        child = spawn(command, argv, { cwd, env: { ...env, NO_COLOR: "1", ...extra }, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], shell, detached: platform !== "win32" });
+        child = spawn(command, argv, { cwd, env: { ...base, NO_COLOR: "1", ...extra }, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], shell, detached: platform !== "win32" });
       } catch (e) {
         return reject(new CliError(mask(`${label}: ${e.message}`)));
       }

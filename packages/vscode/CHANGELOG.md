@@ -3,6 +3,20 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
+## 0.1.3
+
+Fixes for **Create new project…**, found with npm 12.
+
+- **Your folders stay yours:** an empty folder is used as it is. Any other folder gets a new folder for the project,
+  whose name you type (`atf-tests` by default), so the project's files are never mixed in with yours. A folder inside
+  an existing project is refused, with **Open it**. The folder dialog's button now reads **Choose where to create the
+  project**.
+- **npm 12 installs work:** an `allow-scripts` setting in your `~/.npmrc` no longer makes the install fail with
+  EALLOWSCRIPTS. If an older framework still hits it, the message says so and what to do.
+- **Host files after Install the framework:** it now runs **Sync host files** after `npm install`, since npm 12 may
+  skip the framework's own install script that renders them.
+- Error messages no longer end with a doubled full stop.
+
 ## 0.1.2
 
 Start from the extension alone: no terminal, no `~/.npmrc`, no shell variable.

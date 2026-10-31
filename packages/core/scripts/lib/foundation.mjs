@@ -25,6 +25,7 @@ import { citationProblem } from "./citations.mjs";
 import { csvPath, readRows } from "./clarifications.mjs";
 import { frameworkRoot, workspaceRoot } from "./contract.mjs";
 import { tryReadJson, writeAtomic } from "./files.mjs";
+import { spawnEnv } from "./npm-env.mjs";
 import { firstPartyHosts } from "./probe.mjs";
 import { parseSnapshot } from "./explore.mjs";
 import { sha256 } from "./verified.mjs";
@@ -915,10 +916,11 @@ export function ruleProblems(ctx, side, overlay) {
 
 // ---------- compile ----------
 
-// Runs a command; null on success, else the first lines of its output.
+// Runs a command; null on success, else the first lines of its output. npm and npx get no inherited allow-scripts
+// setting (npm-env.mjs, D-108): an agent session `npx atf run` started carries it, and npm 12 refuses it here.
 export function runCommand(cmd, args, cwd, { timeout = 300_000 } = {}) {
   try {
-    execFileSync(cmd, args, { cwd, stdio: "pipe", encoding: "utf8", shell: process.platform === "win32", timeout });
+    execFileSync(cmd, args, { cwd, env: spawnEnv(cmd), stdio: "pipe", encoding: "utf8", shell: process.platform === "win32", timeout });
     return null;
   } catch (e) {
     const out = `${e.stdout ?? ""}${e.stderr ?? ""}`.trim() || e.message;

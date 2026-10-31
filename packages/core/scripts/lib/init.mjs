@@ -18,7 +18,8 @@
 //   package.json           private, named after the folder; the package pinned to the running version and its peer
 //                          dependencies (playwright) at their pinned versions, as devDependencies. An existing one
 //                          gains only the missing ones; an existing version is never changed (the doctor reports a
-//                          peer at another version).
+//                          peer at another version). "allowScripts" allows the package's own install script (see
+//                          allowScriptsWith), adding only that entry to the client's own and never overriding theirs
 //   .npmrc                 the private registry template, commented out (see templates/workspace/_npmrc for why)
 //   .gitignore             run output and secrets, in a marked block init alone writes (apart from sync's block):
 //                          missing lines are added inside it, the client's lines are never touched
@@ -79,12 +80,36 @@ export function wantedDeps(fwPkg) {
   return { [fwPkg.name]: fwPkg.version, ...fwPkg.peerDependencies };
 }
 
+// npm 12 runs a dependency's install scripts only when the project's install-script policy allows them (RFC
+// npm/rfcs#868): package.json "allowScripts", else `allow-scripts` in .npmrc. @npmcli/arborist's rebuild.js blocks a
+// `false` and an unreviewed (unlisted) package alike. The package's postinstall renders the host files after every
+// install and upgrade (D-089), so a workspace allows it (D-108):
+//   - by the bare name, which script-allowed.js matches for every version, so an upgrade needs no edit. A range is
+//     refused there, and an exact pin can't be verified against a GitHub Packages tarball URL, which carries no version
+//     npm can parse (version-from-tgz), so a pin would never match;
+//   - only that entry: the client's own entries are kept as they are;
+//   - never over the client's choice: any entry for the package (the bare name, or name@version) is theirs, and a
+//     `false` among them is reported, since npm 12 then skips the postinstall and `npx atf sync` renders the host files.
+// npm 10 and 11 ignore the field. With it, npm 12 takes this project's policy from package.json and no longer from
+// .npmrc, which the note on an existing package.json says.
+// (the current "allowScripts" value, the package name) -> { value?: the new object when the entry was added, state:
+// "created" (no field before) | "added" (to the client's own entries) | "allowed" | "denied" } | { error }
+export function allowScriptsWith(current, name) {
+  if (current === undefined) return { value: { [name]: true }, state: "created" };
+  if (!current || typeof current !== "object" || Array.isArray(current)) return { error: 'package.json "allowScripts" must be an object; fix it, then run atf init again' };
+  const own = Object.entries(current).filter(([key]) => key === name || key.startsWith(`${name}@`));
+  if (own.some(([, v]) => v === false)) return { state: "denied" };
+  if (own.length) return { state: "allowed" };
+  return { value: { ...current, [name]: true }, state: "added" };
+}
+
 const indentOf = (text) => /^([ \t]+)"/m.exec(text)?.[1] ?? "  ";
 const json = (value, indent = "  ", eol = "\n") => JSON.stringify(value, null, indent).replaceAll("\n", eol) + eol;
 
-// An existing package.json -> { text?: the new text when deps were added, added: [[name, spec]], kept: [[name, have,
-// want]] (present at another version, left as it is) } | { error }. Its indentation and line ending are kept.
-export function withDeps(text, wanted) {
+// An existing package.json -> { text?: the new text when deps or the allowScripts entry were added, added: [[name,
+// spec]], kept: [[name, have, want]] (present at another version, left as it is), allow?: allowScriptsWith's state for
+// `allow` (the package name; none, nothing checked) } | { error }. Its indentation and line ending are kept.
+export function withDeps(text, wanted, { allow } = {}) {
   let pkg;
   try {
     pkg = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
@@ -94,12 +119,16 @@ export function withDeps(text, wanted) {
   if (!pkg || typeof pkg !== "object" || Array.isArray(pkg)) return { error: "package.json must hold a JSON object; fix it, then run atf init again" };
   for (const k of ["dependencies", "devDependencies"])
     if (pkg[k] !== undefined && (!pkg[k] || typeof pkg[k] !== "object" || Array.isArray(pkg[k]))) return { error: `package.json "${k}" must be an object; fix it, then run atf init again` };
+  const scripts = allow === undefined ? {} : allowScriptsWith(pkg.allowScripts, allow);
+  if (scripts.error) return { error: scripts.error };
   const have = { ...pkg.devDependencies, ...pkg.dependencies };
   const added = Object.entries(wanted).filter(([name]) => !Object.hasOwn(have, name));
   const kept = Object.entries(wanted).filter(([name, spec]) => Object.hasOwn(have, name) && have[name] !== spec).map(([name, spec]) => [name, have[name], spec]);
-  if (!added.length) return { added, kept };
-  pkg.devDependencies = { ...pkg.devDependencies, ...Object.fromEntries(added) };
-  return { text: json(pkg, indentOf(text), text.includes("\r\n") ? "\r\n" : "\n"), added, kept };
+  const r = { added, kept, ...(scripts.state ? { allow: scripts.state } : {}) };
+  if (!added.length && !scripts.value) return r;
+  if (added.length) pkg.devDependencies = { ...pkg.devDependencies, ...Object.fromEntries(added) };
+  if (scripts.value) pkg.allowScripts = scripts.value;
+  return { text: json(pkg, indentOf(text), text.includes("\r\n") ? "\r\n" : "\n"), ...r };
 }
 
 // .gitignore text -> { text?: the new text when lines were added, added: [lines] } | { error }. A pattern already
@@ -160,15 +189,22 @@ export function initPlan({ dir, framework }) {
   const wanted = wantedDeps(fwPkg);
   const listed = (deps) => deps.map(([n, v]) => `${n} ${v}`).join(", ");
   let depsAdded = false;
+  const allowed = `allowScripts "${fwPkg.name}": true`;
   if (!existsSync(at("package.json"))) {
-    create("package.json", json({ name: packageName(root), private: true, devDependencies: wanted }), [`devDependencies ${listed(Object.entries(wanted))}`]);
+    const scripts = allowScriptsWith(undefined, fwPkg.name).value;
+    create("package.json", json({ name: packageName(root), private: true, devDependencies: wanted, allowScripts: scripts }), [`devDependencies ${listed(Object.entries(wanted))}`, `${allowed}, so npm 12 runs its postinstall`]);
     depsAdded = true;
   } else {
     const before = read(at("package.json"));
-    const r = withDeps(before, wanted);
+    const r = withDeps(before, wanted, { allow: fwPkg.name });
     if (r.error) errors.push(r.error);
     else {
-      const notes = [...(r.added.length ? [`added devDependencies ${listed(r.added)}`] : []), ...r.kept.map(([n, have, want]) => `kept ${n} ${have} (the framework pins ${want}; the doctor checks what is installed)`)];
+      const allowNote = {
+        created: `added ${allowed}, so npm 12 runs its postinstall (npm 12 then takes this project's install-script policy from package.json instead of .npmrc)`,
+        added: `added ${allowed} to your allowScripts, so npm 12 runs its postinstall`,
+        denied: `kept your allowScripts entry that denies ${fwPkg.name}, so npm 12 skips its postinstall: run npx atf sync after each npm install or upgrade`,
+      }[r.allow];
+      const notes = [...(r.added.length ? [`added devDependencies ${listed(r.added)}`] : []), ...r.kept.map(([n, have, want]) => `kept ${n} ${have} (the framework pins ${want}; the doctor checks what is installed)`), ...(allowNote ? [allowNote] : [])];
       actions.push(r.text === undefined ? { file: "package.json", kind: "present", notes } : { file: "package.json", kind: "update", before, text: r.text, notes });
       depsAdded = r.added.length > 0;
     }
@@ -245,6 +281,26 @@ export function applyInit({ dir, actions }) {
   }
   return { code: 0, lines };
 }
+
+// The sync after init's npm install, in a child node on the framework now installed in the workspace (argv: the
+// workspace, the package name), as `npx atf sync` there would run it: the CLI's own main(["sync"]), with ATF_WORKSPACE
+// set to the workspace by the step. init can't leave it to the package's postinstall, which npm 12 skips unless the
+// install-script policy allows it (allowScriptsWith; D-108), nor to the framework running init, which may be another
+// version from npx's cache. Where the postinstall did run, this sync finds the host files up to date. Its exit code is
+// the sync's: 1 when it wrote nothing because of an error.
+export const SYNC_SCRIPT = `
+import { existsSync, realpathSync } from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+const [workspace, name] = process.argv.slice(1);
+const installed = path.join(workspace, "node_modules", ...name.split("/"));
+if (!existsSync(path.join(installed, "scripts", "lib", "cli.mjs"))) {
+  console.error("atf sync: " + name + " is not installed in " + workspace + "; run npm install there, then npx atf sync.");
+  process.exit(1);
+}
+const { main } = await import(pathToFileURL(path.join(realpathSync(installed), "scripts", "lib", "cli.mjs")).href);
+process.exitCode = main(["sync"]);
+`;
 
 // The doctor's base group (Node.js, the framework's dependencies and its peers from the workspace, the host files),
 // for a workspace that has no run-config yet: scripts/doctor.mjs needs one, and runChecks() is async while the CLI's

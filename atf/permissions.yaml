@@ -40,7 +40,7 @@ agents:
               "{fw}/scripts/lib/files.mjs", "{fw}/scripts/lib/history.mjs", "{fw}/scripts/lib/provenance.mjs", "{fw}/scripts/lib/bug-export.mjs", "{fw}/scripts/lib/framework-issues.mjs", "{fw}/scripts/framework-issues.mjs", "{fw}/scripts/e2e.mjs", "{fw}/scripts/pipeline.test.mjs",
               "{fw}/scripts/lib/endpoints.mjs", "{fw}/scripts/lib/explore.mjs", "{fw}/scripts/lib/fix.mjs",
               "{fw}/scripts/lib/foundation.mjs", "{fw}/scripts/lib/graphql.mjs", "{fw}/scripts/lib/k6-code.mjs",
-              "{fw}/scripts/lib/knowledge.mjs", "{fw}/scripts/lib/login.mjs", "{fw}/scripts/lib/mcp.mjs", "{fw}/scripts/lib/openapi.mjs", "{fw}/scripts/lib/probe.mjs",
+              "{fw}/scripts/lib/knowledge.mjs", "{fw}/scripts/lib/login.mjs", "{fw}/scripts/lib/mcp.mjs", "{fw}/scripts/lib/npm-env.mjs", "{fw}/scripts/npm-env.test.mjs", "{fw}/scripts/lib/openapi.mjs", "{fw}/scripts/lib/probe.mjs",
               "{fw}/scripts/lib/registry.mjs", "{fw}/scripts/lib/report.mjs", "{fw}/scripts/lib/requests.mjs", "{fw}/scripts/lib/run-config-draft.mjs",
               "{fw}/scripts/lib/review.mjs", "{fw}/scripts/lib/testcases.mjs", "{fw}/scripts/lib/triage.mjs",
               "{fw}/scripts/lib/ts-scan.mjs", "{fw}/scripts/lib/ui-code.mjs", "{fw}/scripts/lib/verified.mjs",

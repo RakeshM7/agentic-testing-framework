@@ -9,19 +9,24 @@ import path from "node:path";
 import { test } from "node:test";
 import { start } from "../src/activate.js";
 import {
+  ALLOW_SCRIPTS,
   AUTH_KEY,
+  DEFAULT_PROJECT_NAME,
   NPMRC_LINES,
   PENDING_KEY,
   PENDING_MAX_AGE_MS,
   REGISTRY_ACCESS,
   TOKEN_PAGE,
   TOKEN_SECRET,
+  allowScriptsRefused,
   createArgs,
   extensionVersion,
   isEmptyFolder,
   pendingAction,
+  projectNameProblem,
   registryEnv,
   registryRefused,
+  sentence,
   tokenProblem,
 } from "../src/project.js";
 import { MANIFEST_VERSION, fakeContext, fakeVscode } from "./fake-vscode.mjs";
@@ -72,6 +77,31 @@ test("a registry refusal: an npm error line with 401, 403 or 404 (or E-code)", (
   for (const line of ["npm error code ENOTFOUND", "atf init: 404 files later", "npm error 4013 things", "npm warn deprecated 403"]) assert.ok(!registryRefused([e(line)]), line);
 });
 
+test("npm 12's allow-scripts refusal; a reason ends one sentence, never two full stops", () => {
+  const e = (line) => ({ line, stream: "stderr" });
+  assert.ok(allowScriptsRefused([e("npm error code EALLOWSCRIPTS"), e("npm error --allow-scripts is not allowed in project-scoped installs")]));
+  assert.ok(!allowScriptsRefused([e("npm error code E403"), e("allow-scripts")]));
+  assert.equal(sentence("exit 1"), "exit 1.");
+  assert.equal(sentence("renders the host files."), "renders the host files.");
+  assert.equal(sentence("is it?"), "is it?");
+});
+
+test("the project's folder name in a folder that isn't empty: a plain, safe name of nothing there yet (or an empty folder)", () => {
+  const parent = tmp();
+  put(parent, "repo-a/README.md");
+  put(parent, "notes.txt");
+  mkdirSync(path.join(parent, "empty"));
+  put(parent, "dots/.git/HEAD");
+  assert.equal(DEFAULT_PROJECT_NAME, "atf-tests");
+  for (const ok of ["atf-tests", " atf-tests ", "my tests", "e2e_tests.v2", "empty", "dots"]) assert.equal(projectNameProblem(parent, ok), null, ok);
+  assert.match(projectNameProblem(parent, ""), /Name the project's folder/);
+  assert.match(projectNameProblem(parent, "  "), /Name the project's folder/);
+  for (const bad of ["a/b", "a\\b", "/abs", "C:\\x"]) assert.match(projectNameProblem(parent, bad), /no \/ or \\/, bad);
+  for (const bad of [".", ".."]) assert.match(projectNameProblem(parent, bad), /not a folder of its own/, bad);
+  for (const bad of ['a"b', "50%", "hi!", "a^b", "a:b", "a|b", "a?b", "a*b", "a<b", "a>b", "a\tb"]) assert.match(projectNameProblem(parent, bad), /without " % ! \^/, bad);
+  for (const taken of ["repo-a", "notes.txt"]) assert.equal(projectNameProblem(parent, taken), `${taken} already exists in ${parent} and isn't an empty folder: choose another name`);
+});
+
 test("an empty folder: nothing but dotfiles; the extension's version, exactly; npx's arguments", () => {
   const dir = tmp();
   assert.equal(isEmptyFolder(dir), true);
@@ -103,8 +133,9 @@ test("the pending New product… marker: run it here once, clear it when stale o
 
 // ---- the flows, through activate.js -----------------------------------------------------------------------------------
 
-// A fake spawn: handle(child, { cmd, argv, opts }) plays the process (npx, npm, or node for the Products view's reads).
-function fakeSpawn(handle) {
+// A fake spawn: handle(child, { cmd, argv, opts }) plays npx and npm; node(child, call) plays atf itself (atf sync after
+// Install the framework, the Products view's reads), which by default fails.
+function fakeSpawn(handle, { node = (child) => child.emit("close", 1) } = {}) {
   const calls = [];
   const spawn = (command, args, opts) => {
     const child = new EventEmitter();
@@ -122,15 +153,16 @@ function fakeSpawn(handle) {
     child.kill = () => child.emit("close", null);
     calls.push({ cmd, argv, opts, child });
     setImmediate(() => {
-      if (cmd === "node") return child.emit("close", 1); // the Products view's status reads: not this test's
-      handle(child, { cmd, argv, opts });
+      (cmd === "node" ? node : handle)(child, { cmd, argv, opts });
     });
     return child;
   };
   // a cancel kills the process group (-pid): the child closes, as a killed npx would
   const killProcess = (pid) => calls.find((c) => c.child.pid === -pid)?.child.emit("close", null);
-  return { calls, npm: () => calls.filter((c) => c.cmd !== "node"), cliOptions: { spawn, platform: process.platform, killProcess } };
+  return { calls, npm: () => calls.filter((c) => c.cmd !== "node"), atf: (sub) => calls.filter((c) => c.cmd === "node" && c.argv.at(-1) === sub), cliOptions: { spawn, platform: process.platform, killProcess } };
 }
+// atf sync works; the Products view's reads are not these tests'
+const syncWorks = (child, { argv }) => child.emit("close", argv.at(-1) === "sync" ? 0 : 1);
 const say = (child, stream, ...lines) => child[stream].emit("data", Buffer.from(lines.map((l) => `${l}\n`).join("")));
 // what `npx … init <folder>` leaves when it works: the marker and the framework installed
 const initWorks = (child, { argv }) => {
@@ -219,20 +251,81 @@ test("Create new project… elsewhere: the folder dialog, then the window opens 
   const spawn = fakeSpawn(initWorks);
   const a = activate([], { spawn, env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [dir], now: () => 42_000 });
   await a.run("atf.createProject");
-  assert.equal(a.vscode.rec.inputs.length, 0, "the host's ATF_NPM_TOKEN: not asked");
-  assert.deepEqual(a.vscode.rec.openDialogs[0], { canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: "Create project here", title: "Create new project: choose an empty folder, or make one" });
+  assert.equal(a.vscode.rec.inputs.length, 0, "the host's ATF_NPM_TOKEN: not asked; an empty folder: no name asked either");
+  assert.deepEqual(a.vscode.rec.openDialogs[0], {
+    canSelectFolders: true,
+    canSelectFiles: false,
+    canSelectMany: false,
+    openLabel: "Choose where to create the project",
+    title: "Create new project: an empty folder is used as it is; in any other, the project gets a new folder",
+  });
+  assert.deepEqual([spawn.npm()[0].argv.at(-1), spawn.npm()[0].opts.cwd], [dir, dir], "the empty folder, as it is");
   assert.equal(spawn.npm()[0].opts.env.ATF_NPM_TOKEN, TOKEN);
   assert.deepEqual(a.ctx.globalState.values[PENDING_KEY], { folder: dir, at: 42_000 });
   const [[, uri, opts]] = executed(a, "vscode.openFolder");
   assert.deepEqual([uri.fsPath, opts], [dir, { forceNewWindow: false }]);
   assert.equal(executed(a, "atf.newProduct").length, 0, "the new window does it");
 
-  // a non-empty current folder goes straight to the dialog; a cancelled dialog runs nothing
-  const busy = tmp();
-  put(busy, "README.md");
-  const b = activate([busy], { spawn: fakeSpawn(initWorks), env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [undefined] });
+  // a cancelled dialog runs nothing
+  const b = activate([], { spawn: fakeSpawn(initWorks), env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [undefined] });
   await b.run("atf.createProject");
-  assert.deepEqual([b.vscode.rec.quickPicks.length, b.vscode.rec.openDialogs.length, b.vscode.rec.progress.length], [0, 1, 0]);
+  assert.deepEqual([b.vscode.rec.openDialogs.length, b.vscode.rec.inputs.length, b.vscode.rec.progress.length], [1, 0, 0]);
+});
+
+test("Create new project… in a folder that isn't empty: its name asked (atf-tests), the project in a new folder there", async () => {
+  const parent = tmp();
+  put(parent, "repo-a/README.md");
+  put(parent, ".DS_Store");
+  const spawn = fakeSpawn(initWorks);
+  const a = activate([], { spawn, env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [parent], inputs: [(box) => box.value], now: () => 7_000 });
+  await a.run("atf.createProject");
+  const [box] = a.vscode.rec.inputs;
+  assert.deepEqual([box.title, box.prompt, box.value, box.ignoreFocusOut], ["Create new project", `${parent} isn't empty: the new project gets its own folder in it`, "atf-tests", true]);
+  assert.equal(box.validateInput("repo-a"), `repo-a already exists in ${parent} and isn't an empty folder: choose another name`);
+  assert.match(box.validateInput("../x"), /no \/ or \\/);
+  const target = path.join(parent, "atf-tests");
+  const [call] = spawn.npm();
+  assert.deepEqual([call.argv.at(-1), call.opts.cwd], [target, target]);
+  assert.equal(a.vscode.rec.progress[0].opts.title, "atf: creating the project in atf-tests");
+  assert.ok(existsSync(path.join(target, "atf", "atf.json")) && !existsSync(path.join(parent, "atf")), "nothing written into the folder itself");
+  assert.deepEqual(a.ctx.globalState.values[PENDING_KEY], { folder: target, at: 7_000 });
+  assert.equal(executed(a, "vscode.openFolder")[0][1].fsPath, target);
+
+  // the window's own folder, not empty: offered as a new folder in it, named, created there
+  const b = activate([parent], { spawn: fakeSpawn(initWorks), env: { ATF_NPM_TOKEN: TOKEN }, quickPicks: [(items) => items[0]], inputs: [" e2e-tests "] });
+  await b.run("atf.createProject");
+  assert.deepEqual(
+    b.vscode.rec.quickPicks[0].items.map((i) => i.label),
+    [`$(new-folder) In a new folder in this one (${path.basename(parent)})`, "$(folder-opened) Choose another folder…"],
+  );
+  assert.equal(b.vscode.rec.openDialogs.length, 0);
+  assert.equal(executed(b, "vscode.openFolder")[0][1].fsPath, path.join(parent, "e2e-tests"), "the new folder, trimmed");
+
+  // the name box cancelled: nothing made, nothing run
+  const nothing = fakeSpawn(initWorks);
+  const c = activate([], { spawn: nothing, env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [parent], inputs: [undefined] });
+  await c.run("atf.createProject");
+  assert.deepEqual([nothing.npm().length, existsSync(path.join(parent, DEFAULT_PROJECT_NAME, "atf"))], [0, true], "only the first run's project");
+  assert.ok(!c.vscode.rec.messages.length);
+});
+
+test("Create new project…: a folder inside a project is refused up front, before its name is asked; Open it opens that project", async () => {
+  const ws = tmp();
+  put(ws, "atf/atf.json", "{}");
+  put(ws, "playwright-tests/package.json", "{}");
+  const sub = path.join(ws, "playwright-tests");
+  const spawn = fakeSpawn(initWorks);
+  const a = activate([], { spawn, env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [sub], messageAnswers: ["Open it"] });
+  await a.run("atf.createProject");
+  assert.deepEqual(a.vscode.rec.messages[0], ["warning", `atf: ${sub} is inside the atf project ${ws} (it has atf/atf.json), and a project can't hold another: open that one instead.`, ["Open it"]]);
+  assert.deepEqual([a.vscode.rec.inputs.length, spawn.npm().length], [0, 0], "no name asked, nothing run");
+  assert.equal(executed(a, "vscode.openFolder")[0][1].fsPath, ws);
+
+  // the project itself: already one, the same refusal up front
+  const b = activate([], { spawn, env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [ws] });
+  await b.run("atf.createProject");
+  assert.deepEqual(b.vscode.rec.messages[0], ["warning", `atf: ${ws} is already an atf project (it has atf/atf.json).`, ["Open it"]]);
+  assert.deepEqual([b.vscode.rec.inputs.length, spawn.npm().length], [0, 0]);
 });
 
 test("the reloaded window: the marker for this folder opens New product… once; a stale one is cleared; another's kept", async () => {
@@ -294,6 +387,36 @@ test("Create new project…: a registry refusal says what the token needs, with 
   assert.match(b.vscode.rec.messages[0][1], /failed: atf init: .* is inside the atf workspace \/w/);
   assert.deepEqual(b.vscode.rec.messages[0][2], ["Show output"]);
 
+  // init's own sentence, then what to do: one full stop each, never ".."
+  const halfway = fakeSpawn((child, { argv }) => {
+    put(argv.at(-1), "atf/atf.json", "{}");
+    say(child, "stderr", "atf init: the workspace files above are in place, but npm install failed (exit 1). Run npm install, then atf sync renders the host files.");
+    child.emit("close", 1);
+  });
+  const h = activate([], { spawn: halfway, env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [tmp()] });
+  await h.run("atf.createProject");
+  const [, text] = h.vscode.rec.messages[0];
+  assert.match(text, /renders the host files\. The project files are in place: open the folder, then Install the framework\.$/);
+  assert.ok(!text.includes(".."), text);
+
+  // npm 12 refusing an allow-scripts setting: why, and what to do, not npm's raw line
+  const allow = (writes) =>
+    fakeSpawn((child, { argv }) => {
+      if (writes) put(argv.at(-1), "atf/atf.json", "{}");
+      say(child, "stderr", "npm error code EALLOWSCRIPTS", "npm error --allow-scripts is not allowed in project-scoped installs", "atf init: the workspace files above are in place, but npm install failed.");
+      child.emit("close", 1);
+    });
+  for (const [writes, next] of [
+    [true, "Update the extension and try again; or open the folder and run Install the framework."],
+    [false, "Update the extension and try again."],
+  ]) {
+    const d = tmp();
+    const x = activate([], { spawn: allow(writes), env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [d] });
+    await x.run("atf.createProject");
+    assert.deepEqual(x.vscode.rec.messages[0], ["error", `atf: creating the project in ${path.basename(d)} failed: ${ALLOW_SCRIPTS}. ${next}`, ["Show output"]]);
+  }
+  assert.equal(ALLOW_SCRIPTS, "npm 12 refused the install because of an allow-scripts setting (your ~/.npmrc)");
+
   // cancelled after init wrote the marker: open it, then Install the framework
   const slow = fakeSpawn((child, { argv }) => put(argv.at(-1), "atf/atf.json", "{}"));
   const c = activate([], { spawn: slow, env: { ATF_NPM_TOKEN: TOKEN }, openDialogs: [dir], onProgress: (p, token) => setTimeout(() => token.cancel(), 5) });
@@ -321,14 +444,15 @@ test("Open existing project…: a project folder (or one inside it) opens; anyth
   assert.equal(b.vscode.rec.openDialogs.length, 1);
 });
 
-test("Install the framework: npm install in a cloned project, with the registry's environment, then detected", async () => {
+test("Install the framework: npm install in a cloned project, with the registry's environment, then atf sync, then detected", async () => {
   const ws = tmp();
   put(ws, "atf/atf.json", "{}");
-  const spawn = fakeSpawn((child, { opts }) => {
+  const npmInstall = (child, { opts }) => {
     install(opts.cwd);
     say(child, "stdout", "added 42 packages");
     child.emit("close", 0);
-  });
+  };
+  const spawn = fakeSpawn(npmInstall, { node: syncWorks });
   const a = activate([ws], { spawn, context: { secrets: { [TOKEN_SECRET]: TOKEN } }, messageAnswers: [undefined, "New product…"], quickPicks: [undefined] });
   assert.deepEqual(a.vscode.rec.messages[0], ["warning", a.api.workspace.message, ["Install the framework"]], "activation offers it");
   await a.run("atf.installFramework");
@@ -336,6 +460,11 @@ test("Install the framework: npm install in a cloned project, with the registry'
   assert.deepEqual([call.cmd, call.argv, call.opts.cwd], ["npm", ["install"], ws]);
   assert.equal(call.opts.env.ATF_NPM_TOKEN, TOKEN);
   assert.equal(call.opts.env["npm_config_//npm.pkg.github.com/:_authToken"], "${ATF_NPM_TOKEN?}");
+  // npm 12 may skip the framework's postinstall: atf sync renders the host files, in the background, after the install
+  const [sync] = spawn.atf("sync");
+  assert.ok(sync && spawn.calls.indexOf(sync) > spawn.calls.indexOf(call), "atf sync, after npm install");
+  assert.deepEqual([sync.argv, sync.opts.cwd], [[path.join(ws, "node_modules", "@testagentic", "atf", "bin", "atf.mjs"), "sync"], ws]);
+  assert.ok(a.vscode.rec.progress.some((p) => p.opts.title === "atf sync: the host files"));
   assert.equal(a.api.workspace.state, "ok");
   assert.deepEqual(a.vscode.rec.messages.at(-1), ["info", `atf: the framework ${MANIFEST_VERSION} is installed in ${ws}.`, ["New product…", "Show output"]]);
   assert.equal(executed(a, "atf.newProduct").length, 1);
@@ -346,6 +475,32 @@ test("Install the framework: npm install in a cloned project, with the registry'
   await b.run("atf.installFramework");
   assert.deepEqual(b.vscode.rec.messages.at(-1), ["info", "atf: the framework is already installed.", []]);
   assert.equal(spawn.npm().length, 1);
+
+  // atf sync failing: the framework is installed, the reason, and Sync host files to try again
+  const ws2 = tmp();
+  put(ws2, "atf/atf.json", "{}");
+  const broken = fakeSpawn(npmInstall, {
+    node: (child, { argv }) => {
+      if (argv.at(-1) === "sync") say(child, "stderr", "atf sync: config/claude.yaml is not valid YAML");
+      child.emit("close", 1);
+    },
+  });
+  const c = activate([ws2], { spawn: broken, env: { ATF_NPM_TOKEN: TOKEN } });
+  await c.run("atf.installFramework");
+  assert.deepEqual(c.vscode.rec.messages.at(-1), ["error", `atf: the framework ${MANIFEST_VERSION} is installed in ${ws2}, but atf sync failed: atf sync: config/claude.yaml is not valid YAML. Run Sync host files to try again.`, ["Show output"]]);
+  assert.equal(c.api.workspace.state, "ok");
+
+  // npm install refused by npm 12's allow-scripts check: why, and what to do
+  const ws3 = tmp();
+  put(ws3, "atf/atf.json", "{}");
+  const refused = fakeSpawn((child) => {
+    say(child, "stderr", "npm error code EALLOWSCRIPTS");
+    child.emit("close", 1);
+  });
+  const d = activate([ws3], { spawn: refused, env: { ATF_NPM_TOKEN: TOKEN } });
+  await d.run("atf.installFramework");
+  assert.deepEqual(d.vscode.rec.messages.at(-1), ["error", `atf: installing the framework in ${path.basename(ws3)} failed: ${ALLOW_SCRIPTS}. Update the extension and try again.`, ["Show output"]]);
+  assert.equal(refused.atf("sync").length, 0, "no sync without the framework");
 });
 
 test("atf.hasProducts follows the products: false with none, true once a run-config appears", async () => {

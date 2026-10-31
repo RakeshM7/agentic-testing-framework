@@ -36,7 +36,8 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { CONFIG_FILES, configPath } from "./config.mjs";
 import { CONTRACT_VERSION, SLUG_RE, STAGES, UNRECORDED_CONTRACT, contractProblem, workspaceContract } from "./contract.mjs";
-import { DOCTOR_BASE_SCRIPT, applyInit, initPlan, initRefusal, installedIn } from "./init.mjs";
+import { DOCTOR_BASE_SCRIPT, SYNC_SCRIPT, applyInit, initPlan, initRefusal, installedIn } from "./init.mjs";
+import { spawnEnv } from "./npm-env.mjs";
 import { claudeAgentName, claudeMode, packageOf, pluginProvenance } from "./provenance.mjs";
 import { WORKSPACE_MARKER, expandFw, findWorkspace, frameworkRel, frameworkRoot, isInstalled, isWithin, sameDir, workspaceRoot } from "./roots.mjs";
 import { SETUP_WORKFLOW, TOKEN_ENV, claudeModeLine, sync } from "./sync.mjs";
@@ -345,13 +346,16 @@ export function versionText(info, { json = false } = {}) {
 
 // atf init's steps. `standalone`: it runs outside any workspace (main() skips workspaceError), since it makes one.
 //   1. the files (init.mjs initPlan, read here; written by run(), which reports each one)
-//   2. the host files: in process when this framework is the one installed in `dir`; otherwise npm install renders them
-//      through the package's postinstall. npm install also runs when init added a dependency to package.json.
-//   3. the doctor's base group in a child node, on the framework installed there (init.mjs DOCTOR_BASE_SCRIPT)
-//   4. the next steps
-// --no-install skips the install and the check (they need the package from the registry) and names the install as
-// the first next step instead. A step after the files that fails says what is in place and what is not (failNote), and
-// exits 1.
+//   2. npm install, unless this framework is the one installed in `dir` and init added no dependency to package.json.
+//      It runs without an allow-scripts setting npx exported (run(), npm-env.mjs; D-108)
+//   3. the host files: after an install, `atf sync` in a child node on the framework now installed there (init.mjs
+//      SYNC_SCRIPT), since npm 12 may skip the package's postinstall (D-108); with no install, in process, on this
+//      framework, which is the installed one. Either way they are rendered once by init
+//   4. the doctor's base group in a child node, on the framework installed there (init.mjs DOCTOR_BASE_SCRIPT)
+//   5. the next steps
+// --no-install skips the install, its sync and the check (they need the package from the registry) and names the
+// install and the sync as the first next steps instead; a framework installed here still syncs in process. A step
+// after the files that fails says what is in place and what is not (failNote), and exits 1.
 function initCommand({ dir, framework, cwd, noInstall }) {
   const refusal = initRefusal(dir, framework);
   if (refusal) return fail(refusal);
@@ -363,15 +367,21 @@ function initCommand({ dir, framework, cwd, noInstall }) {
   }
   const here = installedIn(dir, framework);
   const needsInstall = !here || p.depsAdded;
+  const installs = needsInstall && !noInstall;
+  const name = p.name ?? "@testagentic/atf";
   const steps = [{ init: { dir, actions: p.actions, errors: p.errors } }];
-  if (here) steps.push({ sync: { workspace: dir, framework }, failNote: `atf init: the workspace files above are in place, but the host files were not rendered. Fix the error above, then run ${SYNC_FIX} in ${dir}.` });
-  if (needsInstall && !noInstall)
-    steps.push({ cmd: "npm", args: ["install"], shell: true, cwd: dir, failNote: `atf init: the workspace files above are in place, but npm install failed, so the framework and its dependencies are not installed in ${dir} and the host files were not rendered. Fix the error above, then run npm install there: its postinstall renders the host files.` });
-  if (!noInstall) steps.push({ cmd: process.execPath, args: ["--input-type=module", "-e", DOCTOR_BASE_SCRIPT, dir, p.name ?? "@testagentic/atf"], cwd: dir, failNote: "atf init: the workspace is set up, but the dependency check above found a problem. Fix it as it says, then run npx atf check (the host files), or npx atf doctor <product> once you have a run-config." });
+  if (here && !installs) steps.push({ sync: { workspace: dir, framework }, failNote: `atf init: the workspace files above are in place, but the host files were not rendered. Fix the error above, then run ${SYNC_FIX} in ${dir}.` });
+  if (installs) {
+    steps.push({ cmd: "npm", args: ["install"], shell: true, cwd: dir, failNote: `atf init: the workspace files above are in place, but npm install failed, so the framework and its dependencies are not installed in ${dir} and the host files were not rendered. Fix the error above, then run npm install and ${SYNC_FIX} there.` });
+    steps.push({ cmd: process.execPath, args: ["--input-type=module", "-e", SYNC_SCRIPT, dir, name], cwd: dir, env: { ATF_WORKSPACE: dir }, failNote: `atf init: the workspace files above are in place and the framework is installed in ${dir}, but the host files were not rendered. Fix the error above, then run ${SYNC_FIX} there.` });
+  }
+  if (!noInstall) steps.push({ cmd: process.execPath, args: ["--input-type=module", "-e", DOCTOR_BASE_SCRIPT, dir, name], cwd: dir, failNote: "atf init: the workspace is set up, but the dependency check above found a problem. Fix it as it says, then run npx atf check (the host files), or npx atf doctor <product> once you have a run-config." });
   const rel = path.relative(cwd, dir);
   const next = [
     ...(rel ? [`cd ${/\s/.test(rel) ? JSON.stringify(rel) : rel}`] : []),
-    ...(needsInstall && noInstall ? ["npm install                                    installs the framework and Playwright, then renders the host files"] : []),
+    ...(needsInstall && noInstall ? ["npm install                                    installs the framework and Playwright"] : []),
+    // the postinstall renders them too where npm runs it; npm 12 may not (D-108). A framework installed here synced now.
+    ...(needsInstall && noInstall && !here ? [`${SYNC_FIX}                                   renders the host files (the agents, hooks and MCP config)`] : []),
     "npx atf config <product> --url <target url>    create the product's run-config, then log in (or: npx atf interview)",
     "npx atf run <product>                          start the run",
   ];
@@ -590,7 +600,8 @@ export function run(p, { workspace = workspaceRoot, platform = process.platform,
       for (const n of p.notes ?? []) out.log(n);
       continue;
     }
-    const env = { ...process.env, ...step.env };
+    // npm and npx without an allow-scripts setting npx exported to this process (npm-env.mjs, D-108)
+    const env = spawnEnv(step.cmd, { ...process.env, ...step.env });
     const shell = platform === "win32" && (step.shell || step.agent);
     let r;
     if (shell) {
