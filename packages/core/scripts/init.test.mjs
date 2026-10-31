@@ -338,7 +338,9 @@ test("init's npm install runs without the allow-scripts setting npx exported, ev
   assert.equal(npm.cmd, "npm");
   for (const k of ["npm_config_allow_scripts", "NPM_CONFIG_ALLOW_SCRIPTS", "npm_config_allow-scripts"]) assert.equal(Object.hasOwn(npm.opts.env, k), false, k);
   for (const k of ["npm_config_allow_scripts_pending", "npm_config_@testagentic:registry", "npm_config_//npm.pkg.github.com/:_authToken", "ATF_TEST_KEEP"]) assert.equal(npm.opts.env[k], inherited[k], k);
-  assert.equal(npm.opts.env.PATH, process.env.PATH);
+  // the PATH kept, under the key the OS spelled it with (Windows' is `Path`, which a copied env keeps)
+  const pathKey = Object.keys(process.env).find((k) => k.toUpperCase() === "PATH");
+  assert.equal(npm.opts.env[pathKey], process.env.PATH);
   assert.equal(sync.opts.env.npm_config_allow_scripts, "esbuild", "only npm and npx lose it");
 });
 
