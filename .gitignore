@@ -1,9 +1,6 @@
 node_modules/
 playwright-tests/*/playwright-report/
 playwright-tests/*/test-results/
-api-tests/playwright-api/playwright-report/
-api-tests/playwright-api/test-results/
-api-tests/k6/results/
 .env
 .env.*
 !.env.example
