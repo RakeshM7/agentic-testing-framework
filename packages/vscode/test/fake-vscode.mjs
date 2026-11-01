@@ -129,6 +129,10 @@ export function fakeVscode({ folders = [], shell = "/bin/zsh", config = {}, insp
       },
       onDidChangeTerminalShellIntegration: terminalShell.event,
       onDidCloseTerminal: () => ({ dispose() {} }),
+      registerWebviewViewProvider: (id, provider, opts) => {
+        rec.webviewViews = [...(rec.webviewViews ?? []), { id, provider, opts }];
+        return { dispose() {} };
+      },
       createTreeView: (id, opts) => {
         const v = { id, opts, message: undefined, dispose() {} };
         rec.treeViews.push(v);

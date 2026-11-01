@@ -12,6 +12,11 @@
 //   - A project (D-107): Create new project…, Open existing project…, the registry token (Connect, Forget) and Install
 //     the framework are src/project.js's flows, registered here; create and install run npm/npx in the background
 //     (cli.runNpm), with the token only in their environment.
+//   - the Cockpit (D-110, D-111; src/cockpit.js, src/cockpit-panel.js): the sidebar's first view (the environment
+//     checks, the products, the New product form, and the selected product's pipeline, Needs you and intents) and its
+//     editor tab (atf.openCockpit). Every session on a run's stages (GATED_COMMANDS: run, resume and the intents'
+//     commands) starts only after its check (gateSession): a Node.js the framework accepts, always; the product's
+//     dependency check, unless the human chooses Start anyway.
 //   - An agent session (run, resume, the interview) follows atf.host: `claude` and `copilot-cli` run `npx --no atf …
 //     --host` in a terminal shown as a tab in the editor area (the agent CLI is an interactive program, the one thing
 //     that needs a terminal); `copilot-chat` runs the CLI's own pre-check in the background, then opens VS Code Chat
@@ -20,6 +25,9 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { createCli, lastJson } from "./cli.js";
+import { VIEW_ID as COCKPIT_VIEW, createEnvironment, registerCockpit } from "./cockpit.js";
+import { GATED_COMMANDS, intentArgv } from "./cockpit-actions.js";
+import { COMMAND_ID as OPEN_COCKPIT, registerCockpitPanel } from "./cockpit-panel.js";
 import { TOKEN_ENV, createProjectFlows, createRegistry, registryEnv } from "./project.js";
 import { registerRuns } from "./runs.js";
 import { CREATE_HINT, DEFAULT_ENV, FRAMEWORK_PACKAGE, INIT_BUTTON, INSTALL_BUTTON, configFileOf, createWorkspace, envArgs, findFramework, productNameProblem, targetUrlProblem } from "./workspace.js";
@@ -31,6 +39,7 @@ export const COMMANDS = ["atf.refresh", "atf.init", "atf.sync", "atf.check", "at
 // "New product…": how the run-config is made. `how` is also the command's optional argument (the welcome view's
 // interview link passes "interview"), which skips this pick.
 export const NEW_PRODUCT_WAYS = [
+  { label: "$(checklist) Fill in the form", description: "in the atf panel: the product, its modules, references, login and steps; no agent", how: "form" },
   { label: "$(edit) Set it up myself", description: "the product's name and URL; atf config writes the run-config", how: "config" },
   { label: "$(comment-discussion) Let the orchestrator interview me", description: "atf interview: it asks a few questions and drafts the run-config", how: "interview" },
 ];
@@ -120,9 +129,10 @@ const walk = (nodes, fn) => {
 };
 
 // registerSheets/registerReport: the other owners' register functions (src/sheets/index.js, src/report.js).
-// cliOptions: passed on to createCli (tests give it a fake spawn); env: the extension host's environment (the registry
-// token it may carry); now: the clock (the pending New product… marker).
-export function start(vscode, context, { registerSheets, registerReport, cliOptions = {}, env = process.env, now = Date.now } = {}) {
+// cliOptions: passed on to createCli (tests give it a fake spawn); environmentOptions: to createEnvironment (tests give
+// it fake Node.js finders); env: the extension host's environment (the registry token it may carry); now: the clock (the
+// pending New product… marker).
+export function start(vscode, context, { registerSheets, registerReport, cliOptions = {}, environmentOptions, env = process.env, now = Date.now } = {}) {
   const output = vscode.window.createOutputChannel("atf");
   context.subscriptions.push(output);
   const workspace = createWorkspace(vscode);
@@ -319,10 +329,69 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
     if (chosen?.output) output.show(true);
   }
 
+  // ---- the check before a session (D-110) -----------------------------------------------------------------------------
+
+  // The product's dependency check (the CLI's `atf doctor <p>` step, its plan), with --json: { rows (doctorRows),
+  // fixable } | null after saying why it couldn't run. fix: let it run its installs first.
+  async function productChecks(t, { fix }) {
+    const label = `atf doctor ${t.product}${t.environment === DEFAULT_ENV ? "" : ` (${t.environment})`}`;
+    const plan = await planOf(["doctor", t.product, ...envArgs(t.environment), ...(fix ? [] : ["--no-fix"])]);
+    if (!plan) return null;
+    const step = plan.steps?.length === 1 && plan.steps[0].script ? plan.steps[0] : null;
+    if (!step) return void vscode.window.showErrorMessage(`atf: ${label}: the CLI's plan is not one doctor step`);
+    const run = await background([...step.args, "--json"], { title: `${label}: ${fix ? "installing what it can" : "checking what the run needs"}`, script: step.script, cwd: step.cwd, env: { ATF_ENV: step.env?.ATF_ENV ?? "" } });
+    if (run.error || run.result.cancelled) return void report(label, run);
+    const json = lastJson(run.lines);
+    if (!Array.isArray(json?.checks)) return void report(label, { ...run, result: { ...run.result, code: run.result.code || 1 } });
+    return { rows: doctorRows(json.checks), fixable: json.checks.some((c) => c.fixable && !c.ok) };
+  }
+
+  const showEnvironment = () => vscode.commands.executeCommand(`${COCKPIT_VIEW}.focus`);
+
+  // A run or resume session starts only here: on a Node.js the framework accepts (else the guard refuses every tool
+  // call of the session, D-109), and with the product's dependency check passing, unless the human chooses Start
+  // anyway (the run's own stage gate then stops exactly the stages that need what is missing) or turned the product
+  // check off (atf.checkBeforeRun: false; the Node.js check always runs). -> whether to start.
+  async function gateSession(argv, t) {
+    const title = sessionTitle(argv);
+    const { row } = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `${title}: checking Node.js…` }, () => machine.sessionNode());
+    if (!row.ok) {
+      const best = row.choices?.[0];
+      const use = best ? `Use Node ${best.version}` : null;
+      const a = await vscode.window.showErrorMessage(`atf: ${row.detail}. The session would be refused at its first step.`, { modal: true, detail: row.fix ?? undefined }, ...(use ? [use] : []), "Show environment");
+      if (use && a === use) {
+        await machine.pin(best.path);
+        return (await machine.sessionNode({ withChoices: false })).row.ok && gateSession(argv, t);
+      }
+      if (a === "Show environment") void showEnvironment();
+      return false;
+    }
+    if (config().get("checkBeforeRun") === false) return true;
+    for (let fixed = false; ; fixed = true) {
+      const checks = await productChecks(t, { fix: fixed });
+      if (!checks) return false;
+      const fails = checks.rows.filter((r) => r.status === "fail");
+      if (!fails.length) return true;
+      const fixAgain = !fixed && checks.fixable ? "Fix and check again" : null;
+      const a = await vscode.window.showWarningMessage(
+        `atf: ${title}: ${plural(fails.length, "problem")} would stop stages of this run.`,
+        { modal: true, detail: fails.map((r) => `• ${r.detail}${r.fix ? `\n  fix: ${r.fix}` : ""}`).join("\n") },
+        ...(fixAgain ? [fixAgain] : []),
+        "Start anyway",
+        "Show checks",
+      );
+      if (a === "Start anyway") return true;
+      if (a === "Show checks") void showChecks(`${title}: what the run needs`, checks.rows);
+      if (!fixAgain || a !== fixAgain) return false;
+    }
+  }
+
   // ---- agent sessions -------------------------------------------------------------------------------------------------
 
-  // argv: what `atf` runs (run, resume or interview, with --env); t: { environment } for the chat's environment check.
-  async function openSession(argv, { environment } = {}, host = currentHost()) {
+  // argv: what `atf` runs (run, resume, an intent's explore/testcases/automate/k6, or interview, with --env);
+  // t: { product, environment } (the check before a session on the run's stages, and the chat's environment check).
+  async function openSession(argv, { product, environment } = {}, host = currentHost(), { gated = false } = {}) {
+    if (!gated && GATED_COMMANDS.includes(argv[0]) && !(await gateSession(argv, { product, environment: environment ?? DEFAULT_ENV }))) return;
     const title = sessionTitle(argv);
     if (host === "copilot-chat") return chatSession(argv, { title, environment });
     try {
@@ -346,7 +415,7 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
       const host = a === "Use Claude Code" ? "claude" : a === "Use Copilot CLI" ? "copilot-cli" : null;
       if (!host) return;
       await setHost(host);
-      return openSession(argv, { environment }, host);
+      return openSession(argv, { environment }, host, { gated: true });
     }
     // The CLI gives a session ATF_ENV=<env>; a chat session can't be given it, so its agents would use `default`.
     if (environment && environment !== DEFAULT_ENV) {
@@ -355,7 +424,7 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
         { modal: true },
         "Open in Copilot CLI",
       );
-      if (a === "Open in Copilot CLI") return openSession(argv, { environment }, "copilot-cli");
+      if (a === "Open in Copilot CLI") return openSession(argv, { environment }, "copilot-cli", { gated: true });
       return;
     }
     const plan = await planOf([...argv, "--host", "copilot"]);
@@ -460,6 +529,44 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
   const registry = createRegistry({ vscode, context, env });
   const project = createProjectFlows({ vscode, context, workspace, output, registry, background, failed, syncHostFiles, now, platform: cliOptions.platform ?? process.platform });
 
+  // ---- the environment and the Cockpit (D-110) ----------------------------------------------------------------
+
+  // this machine's environment (not an atf environment such as uat): its Node.js and the framework's machine check
+  const machine = createEnvironment(deps, { platform: cliOptions.platform ?? process.platform, ...(environmentOptions ?? {}) });
+  context.subscriptions.push(machine);
+  const productNode = (t) => ({ kind: "product", product: t.product, environment: t.environment });
+  // `atf login <p>` in the background: Microsoft Edge opens on the target, the human signs in, the session is saved
+  async function login(product) {
+    const label = `atf login ${product}`;
+    const run = await background(["login", product], { title: `${label}: sign in in the browser window; it closes by itself` });
+    return report(label, run, {
+      ok: () => `${product}: your login is saved. Next: start the run.`,
+      more: run.result?.code === 0 ? ["Start run"] : [],
+      onAction: (a) => a === "Start run" && vscode.commands.executeCommand("atf.run", productNode({ product, environment: DEFAULT_ENV })),
+    });
+  }
+  const cockpit = guarded("the Cockpit", () =>
+    registerCockpit(context, deps, {
+      environment: machine,
+      actions: {
+        run: (t) => vscode.commands.executeCommand("atf.run", productNode(t)),
+        doctor: (t) => vscode.commands.executeCommand("atf.doctor", productNode(t)),
+        openConfig: (t) => vscode.commands.executeCommand("atf.openConfig", productNode(t)),
+        interview: () => openSession(["interview"]),
+        login,
+        command: (id) => vscode.commands.executeCommand(id),
+        // the pipeline's actions (D-111): src/cockpit.js has checked each target against the product list and C1
+        intent: (i) => openSession(intentArgv(i.intent, i), i),
+        resume: (t) => openSession(["resume", t.product, "--stage", t.stage, ...(t.module ? ["--module", t.module] : []), ...envArgs(t.environment)], t),
+        openSheet: (t) => vscode.commands.executeCommand(t.sheet === "approval" ? "atf.openApproval" : "atf.openClarifications", { kind: "module", product: t.product, module: t.module }),
+        openTab: (t) => vscode.commands.executeCommand(OPEN_COCKPIT, t),
+        sweep,
+      },
+    }),
+  );
+  // the Cockpit's editor tab: its sessions go through the same gated openSession, its sweep through the same flow
+  const cockpitPanel = guarded("the Cockpit's editor tab", () => registerCockpitPanel(context, deps, { actions: { session: (argv, t) => openSession(argv, t), sweep } }));
+
   // ---- the commands -------------------------------------------------------------------------------------------------
 
   const commands = {
@@ -545,8 +652,12 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
       if (!needWorkspace()) return;
       const way = NEW_PRODUCT_WAYS.find((w) => w.how === how) ?? (await vscode.window.showQuickPick(NEW_PRODUCT_WAYS, { title: "New product", placeHolder: "How to create the product's run-config" }));
       if (!way) return;
-      // the interview is an agent session, opened as atf.run opens one
+      // the interview is an agent session, opened as atf.run opens one; the form is the Cockpit's
       if (way.how === "interview") return openSession(["interview"]);
+      if (way.how === "form") {
+        await showEnvironment();
+        return cockpit?.openForm();
+      }
       const product = await vscode.window.showInputBox({
         title: "New product (1/3)",
         prompt: "The product's name: a lowercase kebab-case slug. Its run-config is config/<name>.yaml.",
@@ -667,5 +778,5 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
   const sheets = registerSheets ? guarded("the clarifications and approval sheets", () => registerSheets(context, deps)) : null;
   if (typeof sheets?.refresh === "function") context.subscriptions.push(workspace.onDidRefresh(() => guarded("the sheets' refresh", () => sheets.refresh())));
   const report_ = registerReport ? guarded("the report", () => registerReport(context, deps)) : null;
-  return { ...deps, runs, sheets, report: report_ };
+  return { ...deps, runs, sheets, report: report_, machine, cockpit, cockpitPanel };
 }

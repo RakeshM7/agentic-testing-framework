@@ -31,7 +31,8 @@
 //                              human types into, so it needs a terminal; nothing else gets one. The arguments are quoted
 //                              for that terminal's shell (POSIX shells, PowerShell, cmd.exe); one that can't be passed
 //                              safely is refused, never mangled. `--no` stops npx from fetching some other public
-//                              package named `atf` when the framework is not installed.
+//                              package named `atf` when the framework is not installed. With atf.nodePath set, the
+//                              line starts by putting that Node.js's folder first on its PATH (D-110).
 //
 // The human-only rule. approve, sweep, `import --approved`, eject, migrate and issues (and the scripts behind them) are
 // refused by runJson and runStreaming before anything is spawned, UNLESS the command carries `--confirm-file <path>`
@@ -53,9 +54,10 @@
 // injected, and `spawn` for tests.
 import { spawn as nodeSpawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { closeSync, existsSync, lstatSync, openSync, unlinkSync, writeSync } from "node:fs";
+import { closeSync, existsSync, lstatSync, openSync, realpathSync, unlinkSync, writeSync } from "node:fs";
 import path from "node:path";
 import { StringDecoder } from "node:string_decoder";
+import { pinPrefix } from "./node-env.js";
 import { DEFAULT_ENV, SLUG_RE, approvalConfirmFile, sweepConfirmFile } from "./workspace.js";
 
 export const HUMAN_ONLY = Object.freeze(["approve", "sweep", "eject", "migrate", "issues"]);
@@ -84,6 +86,17 @@ export function isHumanOnly(args, { script } = {}) {
   if (list[0] === "sweep") return !dryRunOnly(list);
   return HUMAN_ONLY.includes(list[0]);
 }
+
+// The framework's real folder. A linked install (npm workspaces, npm link) makes node_modules/@testagentic/atf a
+// symlink, and a script started through it does not see itself as the main module (process.argv[1] is the link, its
+// import.meta.url the real file), so it would run nothing and print nothing.
+export const realDir = (dir) => {
+  try {
+    return realpathSync(dir);
+  } catch {
+    return dir;
+  }
+};
 
 // node's argv for runJson and runStreaming. framework: the installed package's folder.
 export function nodeArgs({ framework, args, script, evalCode }) {
@@ -207,12 +220,13 @@ export function quoteCmd(a) {
 export const QUOTE = { posix: quotePosix, powershell: quotePowerShell, cmd: quoteCmd };
 
 // The line a terminal runs: `npx --no atf <args>`. On Windows PowerShell npx is called as npx.cmd: an execution policy
-// that blocks scripts would refuse npx.ps1.
-export function terminalLine(args, { kind, platform = process.platform }) {
+// that blocks scripts would refuse npx.ps1. nodeDir: the pinned Node.js's folder (atf.nodePath, D-110), put first on
+// that command's PATH (node-env.js pinPrefix), so the session, its hooks and its browser server run on it.
+export function terminalLine(args, { kind, platform = process.platform, nodeDir }) {
   const q = QUOTE[kind];
   if (!q) throw new Error(`atf: unknown shell kind '${kind}'`);
   const npx = kind === "powershell" && platform === "win32" ? "npx.cmd" : "npx";
-  return [npx, "--no", "atf", ...args.map(q)].join(" ");
+  return (nodeDir ? pinPrefix(nodeDir, kind) : "") + [npx, "--no", "atf", ...args.map(q)].join(" ");
 }
 
 // How a command shows in the output channel.
@@ -347,6 +361,8 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
   const running = new Set(); // runStreaming's processes, stopped with the extension (dispose)
   const issued = new Map(); // confirmation file (resolved) -> the exact command it was written for (confirmedRun)
   const nodePath = () => (vscode?.workspace.getConfiguration("atf").get("nodePath") || "").trim() || "node";
+  // the pinned Node.js's folder (an absolute atf.nodePath), else null: the terminal's own node
+  const pinnedDir = () => (path.isAbsolute(nodePath()) ? path.dirname(nodePath()) : null);
   const log = (line) => output?.appendLine(line);
   // npm or npx beside an atf.nodePath Node.js (its folder then leads the PATH, since npx and what it starts run node
   // from it); else the tool on the PATH. -> { bin?, env }
@@ -385,7 +401,7 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
       const refused = humanOnlyRefusal(label, args, { script, cwd });
       if (refused) return reject(refused);
       if (!workspace.framework) return reject(new CliError(workspace.message ?? `atf: @testagentic/atf is not installed in this workspace`));
-      const argv = nodeArgs({ framework: workspace.framework, args, script, evalCode });
+      const argv = nodeArgs({ framework: realDir(workspace.framework), args, script, evalCode });
       const node = nodePath();
       const started = now();
       log(`$ ${displayLine([node, ...(evalCode !== undefined ? ["--input-type=module", "-e", "<module>", ...args] : argv)])}`);
@@ -457,7 +473,7 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
     if (refused) return Promise.reject(refused);
     const fw = framework ?? workspace.framework;
     if (!fw) return Promise.reject(new CliError(workspace.message ?? `atf: @testagentic/atf is not installed in this workspace`));
-    const argv = nodeArgs({ framework: fw, args, script });
+    const argv = nodeArgs({ framework: realDir(fw), args, script });
     const node = nodePath();
     return stream({ label, command: node, argv, shown: [node, ...argv], shell: false, cwd: cwd ?? workspace.root, env: extra, onLine, token, redact, missing: `${node} not found: install Node.js, or set atf.nodePath to it` });
   }
@@ -608,7 +624,7 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
     if (Object.keys(extra ?? {}).some(isRegistrySecretKey)) throw new CliError(`atf ${args[0]}: the registry token is never given to an agent session`);
     const shell = vscode.env.shell || "";
     const kind = shellKind(shell, platform);
-    const line = terminalLine(args, { kind, platform });
+    const line = terminalLine(args, { kind, platform, nodeDir: pinnedDir() });
     const title = name ?? `atf ${args[0]}`;
     const terminal = vscode.window.createTerminal({
       name: title,
@@ -651,5 +667,5 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
     issued.clear();
   };
 
-  return { runJson, runStreaming, runNpm, confirmedRun, cliPlan, runInTerminal, isHumanOnly, nodePath, dispose };
+  return { runJson, runStreaming, runNpm, confirmedRun, cliPlan, runInTerminal, isHumanOnly, nodePath, pinnedDir, dispose };
 }

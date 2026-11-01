@@ -47,6 +47,9 @@ export const STAGE_NEEDS = {
   report: ["base"],
 };
 export const LOGIN_NEEDS = ["base", "login"];
+// What this machine needs for any product (doctor.mjs --machine, the VS Code extension's environment checks, D-110): no
+// run-config, so no session, product repo or target. k6 is checked too, but only a run with the k6 step needs it.
+export const MACHINE_GROUPS = ["base", "login", "browser", "k6"];
 
 const RECORD = "doctor.json";
 const slash = (p) => String(p ?? "").replaceAll("\\", "/").replace(/^\.\//, "");

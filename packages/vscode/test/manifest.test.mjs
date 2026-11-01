@@ -6,6 +6,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { COMMANDS } from "../src/activate.js";
+import { COMMAND_CONTRIBUTION } from "../src/cockpit-panel.js";
 
 const PKG = path.resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(readFileSync(path.join(PKG, "package.json"), "utf8"));
@@ -13,7 +14,7 @@ const core = JSON.parse(readFileSync(path.join(PKG, "..", "core", "package.json"
 const c = manifest.contributes;
 
 // SPEC.md "Contributions". The atf.runs view is titled Products since D-107 ("project" now means the workspace).
-const SPEC_VIEWS = { "atf.runs": "Products", "atf.clarifications": "Clarifications", "atf.approvals": "Test case approval" };
+const SPEC_VIEWS = { "atf.cockpit": "Cockpit", "atf.runs": "Products", "atf.clarifications": "Clarifications", "atf.approvals": "Test case approval" };
 // D-107's project commands: create or open a project, the registry token, installing the framework
 const PROJECT_COMMANDS = {
   "atf.createProject": "Create new project…",
@@ -39,6 +40,7 @@ const SPEC_COMMANDS = {
   "atf.openApproval": "Open approval sheet",
   "atf.approveModule": "Approve module…",
   "atf.openReport": "Open report",
+  "atf.openCockpit": "Open Cockpit",
 };
 
 const sources = (dir) =>
@@ -80,8 +82,20 @@ test("the view container and every view of the spec", () => {
 test("until a project is open, only the Products view shows: the sheets' views are hidden, not empty", () => {
   const when = Object.fromEntries(c.views.atf.map((v) => [v.id, v.when]));
   assert.equal(when["atf.runs"], undefined, "Products always shows: its welcome content is the way in");
+  assert.equal(when["atf.cockpit"], undefined, "the Cockpit always shows: without a project it offers to create or open one");
   assert.equal(when["atf.clarifications"], "atf.workspaceState == ok");
   assert.equal(when["atf.approvals"], "atf.workspaceState == ok");
+});
+
+test("the Cockpit is the main view (D-111): it opens expanded, the three trees collapsed", () => {
+  const visibility = Object.fromEntries(c.views.atf.map((v) => [v.id, v.visibility]));
+  assert.deepEqual(visibility, { "atf.cockpit": undefined, "atf.runs": "collapsed", "atf.clarifications": "collapsed", "atf.approvals": "collapsed" });
+});
+
+test("the Cockpit's editor tab: the manifest carries src/cockpit-panel.js COMMAND_CONTRIBUTION", () => {
+  for (const x of COMMAND_CONTRIBUTION.commands) assert.deepEqual(c.commands.find((y) => y.command === x.command), x);
+  for (const [menu, entries] of Object.entries(COMMAND_CONTRIBUTION.menus))
+    for (const e of entries) assert.ok(c.menus[menu].some((y) => JSON.stringify(y) === JSON.stringify(e)), `${menu}: ${JSON.stringify(e)}`);
 });
 
 // The Products view's welcome content for a workspace state; each line holding only a link is a button.
