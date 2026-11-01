@@ -1,15 +1,16 @@
 # atf for VS Code
 
-A user interface for **atf**, the agentic testing framework (`@testagentic/atf`): see your test runs, answer
-clarifications, sign off test cases and read run reports without leaving the editor. Everything happens inside VS Code:
-no command sends you to a separate terminal.
+A user interface for **atf**, the agentic testing framework (`@testagentic/atf`): check that your machine is ready,
+create a product, see your test runs, answer clarifications, sign off test cases and read run reports without leaving the
+editor. Everything happens inside VS Code: no command sends you to a separate terminal.
 
 ## Requirements
 
 This extension holds none of the framework: it works in an atf **project**, a folder holding `atf/atf.json` with the
 licensed `@testagentic/atf` package installed. It can create that project for you.
 
-You need Node.js 20 or later, and a GitHub account that has been given read access to `@testagentic/atf`.
+You need Node.js 20 or later, and a GitHub account that has been given read access to `@testagentic/atf`. The
+**Cockpit** panel checks your Node.js and can point atf at a newer one you already have installed.
 
 ## Getting started
 
@@ -21,8 +22,11 @@ You need Node.js 20 or later, and a GitHub account that has been given read acce
    name you type (`atf-tests` by default), so your other files are never mixed in. A folder inside an existing project
    is refused, with **Open it**. The extension downloads the `@testagentic/atf` of its own version, sets the project up
    there and opens it.
-3. **Name your first product:** a short name such as `acme-crm`, the target's URL, and whether it needs a login.
-4. **Start a run:** **Start or continue a run** on the product. Runs are `readonly` by default.
+3. **Check your machine:** the **Cockpit** panel, the first view, lists what atf needs (Node.js 20 or later, the
+   framework's dependencies, the browsers) and fixes what it can.
+4. **Add your first product:** in the Cockpit's **New product** form, give the product's name, its URL, the modules
+   to test, any references, whether it needs a login, and the steps to run, then **Create the run-config**.
+5. **Start a run:** **▷ Run** on the product. Runs are `readonly` by default.
 
 The **Get started with atf** walkthrough (Help, Welcome, or **Welcome: Open Walkthrough…** in the Command Palette)
 takes you through the same steps. Already have a project, such as a cloned one? **Open existing project…** opens it,
@@ -39,12 +43,13 @@ project…** installs the matching version for you.
 
 ## Views
 
-The **ATF** icon in the activity bar opens three views:
+The **ATF** icon in the activity bar opens four views:
 
+- **Cockpit:** one page with your machine's environment checks, your products, the pipeline and the New product form (below), and an editor tab with the run's timeline, traceability, failures and safety.
 - **Products:** each product's runs, with their status and the next stage. Without a project, it offers **Create new
-  project…** and **Open existing project…**.
-- **Clarifications:** the open clarification rows, by product and module.
-- **Test case approval:** the test cases awaiting your sign-off, by product and module.
+  project…** and **Open existing project…**. It starts collapsed, since the Cockpit lists the products too.
+- **Clarifications:** the open clarification rows, by product and module. Starts collapsed.
+- **Test case approval:** the test cases awaiting your sign-off, by product and module. Starts collapsed.
 
 Clarifications and Test case approval appear once a project with the framework installed is open.
 
@@ -77,6 +82,55 @@ All commands are in the Command Palette under the **atf** category.
 
 Background commands show their progress in a notification, which you can cancel; the details are in the **atf** output
 channel, and a failure offers **Show output**.
+
+## The Cockpit
+
+The Cockpit is the first view of the **ATF** sidebar: one page to get from a fresh machine to a run.
+
+- **Environment.** When it opens, and on **Check again**, it checks:
+  - which Node.js an agent session would run on, the one a new terminal finds. A session needs Node.js 20 or later. If
+    yours is older, as when a shell finds Homebrew's `node@18` before nvm's Node 24, the Cockpit lists the newer
+    Node.js installs it finds and offers **Use Node <version>**. That sets `atf.nodePath`, and every session the
+    extension opens then runs on that Node, whatever your shell finds. It never edits your shell's files. **Unpin**
+    goes back to the terminal's Node;
+  - the framework's own checks for this machine: Node.js for atf's commands, the framework's dependencies, the browser
+    the login opens, the browser the agents' browser server needs, and k6 (only needed for load tests).
+    **Fix what atf can install** runs the safe installs (npm, Playwright's browsers).
+- **Products:** each product with **▷ Run**, **Doctor** and **Config**.
+- **Pipeline.** Pick a product and environment: the page shows the run's mode (`readonly` or `full-run`) and its id,
+  then:
+  - **Needs you:** what waits for a human: clarifications to answer, test cases to approve, blocked or failed stages
+    (with **Resume**) and leftovers to sweep;
+  - **the pipeline rail:** the product's stages, then one row per module with the state of each stage, as a glyph and
+    a text label;
+  - **intents**, on the module you pick: **Explore**, **Write test cases**, **Automate**, **Load test** and **Heal**.
+    Each opens an agent session, the same one you would start with `atf explore`, `atf testcases`, `atf automate`,
+    `atf k6` or, for Heal, `atf resume` on the stage with healable failures. A button that can't start is disabled and
+    its tooltip says why. A run in progress disables none of them;
+  - links into the editor tab.
+- **Open Cockpit** (the dashboard button in the title of the Cockpit and Products views, or the command palette)
+  opens the Cockpit in an editor tab, one per window, with four tabs:
+  - **Run timeline:** each module's stages with durations, attempts and errors, and the ended runs with their reports;
+  - **Traceability:** each test case, its approval, the automated test and its last result; filter to the gaps only;
+  - **Failures & bug drafts:** failures grouped by class, their evidence, the exported bug drafts and **Heal**;
+  - **Safety & ledger:** the run's mode and what it means, the entities this run created (live or cleaned), the
+    leftover cleanup, and any customized framework config. Before a product's first run it shows the mode its
+    run-config would give the next run, marked "before the first run".
+
+  The Cockpit only reads: it opens files inside your workspace (never `.auth/`, a credentials file or a `.env` file) and
+  starts the same `atf` sessions you could type.
+- **New product:** the questions the orchestrator's interview asks, as a form: the product's name, public or internal,
+  the URL to test, a description, the modules (one per line, with `| URL` for a module's own page), references and an
+  API spec (links or files, with a file picker), whether it needs a login (the path to a credentials file, never a
+  password), the steps to run and your own test case file. **Create the run-config** writes `config/<product>.yaml`,
+  always `readonly`, through atf's own script, and lists anything to fix. Then **Log in now** (when it needs a login),
+  **Start run** or **Open config**. No AI is involved: the agents start with the run. Prefer a conversation? **let the
+  orchestrator interview me** opens the agent interview instead.
+
+**Before every session.** **Start or continue a run**, **Resume a stage** and the intents first check the session's Node.js: on one older
+than 20 the session would be refused, so it stops there, offering **Use Node <version>**. Then they run the product's
+own check. A problem stops the run with **Fix and check again**, **Start anyway** or **Show checks**. Turn that product
+check off with the `atf.checkBeforeRun` setting; the Node.js check always runs.
 
 ## Agent sessions
 
@@ -113,6 +167,7 @@ file: the framework's guard refuses both.
 A product starts with its run-config, `config/<product>.yaml`: what to test, and where. Click **New product…** (the
 **+** in the Products view's title, or the button the empty view shows) and choose:
 
+- **Fill in the form:** the Cockpit's New product form (above).
 - **Set it up myself:** type the product's name (lowercase words joined by hyphens, such as `acme-crm`) and the target's
   URL, then choose **Log in now** (Microsoft Edge opens: sign in there, and atf saves the session for the run) or
   **No login needed**. The extension creates the run-config and shows its progress in a notification, which you can

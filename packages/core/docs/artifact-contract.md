@@ -78,6 +78,7 @@ node {fw}/scripts/run.mjs stage <product> <stage> start|done|fail [--module M] [
 node {fw}/scripts/run.mjs status <product>                        # every stage with output verification
 node {fw}/scripts/run.mjs end <product> [--abandon]               # history/<run-id>.json, results/<run>/manifest.json, release the lock
 node {fw}/scripts/run.mjs diff <product> [<run-a> <run-b>]        # what changed between two ended runs (default: the last two), D-078
+node {fw}/scripts/cockpit.mjs <product> --json                    # read-only JSON for the VS Code Cockpit (D-111)
 node {fw}/scripts/run.mjs validate <product>                      # schema-check state, ledger, sitemaps, CSVs
 ```
 
@@ -87,7 +88,7 @@ node {fw}/scripts/run.mjs validate <product>                      # schema-check
 - `config/permissions.yaml` is validated and frozen into `state/permissions.resolved.json` at `init`; edits take effect on the next run.
 - `init` records `startedOnHost`.
 - Guard liveness: `init` and `--resume` clear `state/guard-check/`; the orchestrator then runs `run.mjs guard-check <product>`, which every working hook blocks — the hook entry records the blocking host/agent there; if the command runs instead, it records `absent.json`. `stage … start` refuses until a record fits the mode. Any hook's record counts, with one exception: a full-run on VS Code's local agent needs a record from an agent's own hook.
-- Dependencies (D-064): `init` and `--resume` also clear `state/doctor.json`; the orchestrator then runs `run.mjs doctor <product>`. `stage … start` refuses a stage while a check it needs fails (`STAGE_NEEDS` in `scripts/lib/doctor.mjs`), or once the product repo was built after the check. A human fixes it (`npx atf doctor <product>` applies the safe installs), then the check runs again.
+- Dependencies (D-064): `init` and `--resume` also clear `state/doctor.json`; the orchestrator then runs `run.mjs doctor <product>`. `stage … start` refuses a stage while a check it needs fails (`STAGE_NEEDS` in `scripts/lib/doctor.mjs`), or once the product repo was built after the check. A human fixes it (`npx atf doctor <product>` applies the safe installs), then the check runs again. `doctor.mjs --machine` is the same check with no run-config, for the machine alone (k6 only warns, D-110); it records nothing in `state/`.
 
 ### Stages (the main orchestrator's view — one per domain)
 

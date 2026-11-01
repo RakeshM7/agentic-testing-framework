@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { GROUPS, STAGE_NEEDS, browserBuilds, browsersDir, doctorStatus, failures, groupsFor, recordDoctor, runChecks, uncoveredStages } from "./lib/doctor.mjs";
-import { autofixSteps, main, scope } from "./doctor.mjs";
+import { GROUPS, MACHINE_GROUPS, STAGE_NEEDS, browserBuilds, browsersDir, doctorStatus, failures, groupsFor, recordDoctor, runChecks, uncoveredStages } from "./lib/doctor.mjs";
+import { autofixSteps, machineChecks, main, scope } from "./doctor.mjs";
 import { doctor, initRun, setStage } from "./run.mjs";
 import { spawnSync } from "node:child_process";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -352,6 +352,39 @@ test("doctor.mjs: scope, --fix runs each distinct install once then checks again
   assert.match(lines.at(-1), /Blocked until fixed: playwright-ui\./);
   assert.equal(await main([file, "--warn-only"], { root, log, check: async () => bad }), 0);
   assert.equal(await main([], { root, log }), 2);
+});
+
+test("doctor.mjs --machine: no run-config, the machine groups, a missing k6 only warns and is never installed (D-110)", async () => {
+  assert.deepEqual(MACHINE_GROUPS, ["base", "login", "browser", "k6"]);
+  assert.deepEqual(scope({ machine: true }), { label: "this machine", groups: MACHINE_GROUPS, stages: [], machine: true });
+  assert.match(scope({ machine: true, stage: "k6" }).error, /--machine takes no/);
+  const k6Step = { cmd: "brew", args: ["install", "k6"], cwd: "/r" };
+  const pwStep = { cmd: "npx", args: ["playwright", "install", "chromium"], cwd: "/r" };
+  const bad = [
+    { group: "browser", id: "mcp-browser", ok: false, level: "fail", detail: "chromium missing", autofix: pwStep },
+    { group: "k6", id: "k6", ok: false, level: "fail", detail: "k6 is not installed", fix: "brew install k6", autofix: k6Step },
+  ];
+  const m = machineChecks(bad);
+  assert.deepEqual(m[1], { group: "k6", id: "k6", ok: true, level: "warn", detail: "k6 is not installed (needed only for k6 load tests)", fix: "brew install k6" });
+  assert.deepEqual(autofixSteps(m), [pwStep]);
+
+  const root = tempRoot();
+  const lines = [];
+  const ran = [];
+  const seen = [];
+  let calls = 0;
+  const check = async (cfg, groups) => (seen.push([cfg.product, groups]), calls++ ? [bad[1]] : bad);
+  assert.equal(await main(["--machine", "--fix", "--json"], { root, log: (s) => lines.push(s), check, exec: (s) => ran.push(s.cmd) }), 0, "a missing k6 alone does not fail a machine check");
+  assert.deepEqual(ran, ["npx"]);
+  assert.deepEqual(seen, [[null, MACHINE_GROUPS], [null, MACHINE_GROUPS]]);
+  const json = JSON.parse(lines.at(-1));
+  assert.equal(json.scope, "this machine");
+  assert.deepEqual(json.checks.map((c) => [c.id, c.ok, c.level]), [["k6", true, "warn"]]);
+  lines.length = 0;
+  await main(["--machine", "--json"], { root, log: (s) => lines.push(s), check: async () => bad });
+  assert.deepEqual(JSON.parse(lines.at(-1)).checks.map((c) => [c.id, c.fixable]), [["mcp-browser", true], ["k6", undefined]], "--json says which checks --fix would install for");
+  assert.equal(await main(["--machine"], { root, log: () => {}, check: async () => bad }), 1);
+  assert.equal(await main(["--machine", path.join(root, "x.yaml")], { root, log: () => {} }), 2, "a run-config and --machine together");
 });
 
 test("a stage not chosen for the run is never reported as blocked: run.mjs doctor and doctor.mjs check only the chosen stages", async () => {

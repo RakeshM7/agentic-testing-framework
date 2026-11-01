@@ -9,6 +9,7 @@ import { test } from "node:test";
 import { CHAT_HINT, CHAT_MODE, CHAT_OPEN, COMMANDS, HOSTS, LOGIN_CHOICES, NEW_PRODUCT_WAYS, STAGES, configArgs, doctorRows, failureReason, hostCliArgs, hostOf, sessionPlan, sessionTitle, start } from "../src/activate.js";
 import { fakeContext, fakeVscode } from "./fake-vscode.mjs";
 
+const tick = () => new Promise((r) => setImmediate(r));
 const tmp = () => realpathSync.native(mkdtempSync(path.join(tmpdir(), "atf-vscode-act-")));
 const put = (root, rel, text = "") => {
   const f = path.join(root, ...rel.split("/"));
@@ -29,12 +30,17 @@ function workspace({ marker = true, framework = true, products = true } = {}) {
   }
   return root;
 }
+// The Node.js finders (src/node-env.js) as the cockpit's environment uses them: a Node.js 22 in the terminal unless a
+// test says otherwise. The product check before a run is off unless a test turns it on (config.checkBeforeRun).
+const NODE22 = { path: "/usr/local/bin/node", version: "22.1.0", major: 22 };
+const fakeNodes = (o = {}) => ({ terminalNode: async () => o.terminal ?? NODE22, probeNode: async (p) => o.probe?.(p) ?? { version: "22.1.0", major: 22 }, findNodes: async () => o.nodes ?? [] });
 function activate(root, opts = {}) {
-  const vscode = fakeVscode({ folders: root ? [root] : [], shellIntegration: true, ...opts });
+  const vscode = fakeVscode({ folders: root ? [root] : [], shellIntegration: true, ...opts, config: { checkBeforeRun: false, ...opts.config } });
   const ctx = fakeContext(opts.context);
   const got = {};
   const api = start(vscode, ctx, {
     cliOptions: opts.cliOptions,
+    environmentOptions: fakeNodes(opts.nodes),
     env: opts.env ?? {}, // the extension host's: no ATF_NPM_TOKEN unless a test gives one
     ...(opts.now ? { now: opts.now } : {}),
     registerSheets: (context, deps) => {
@@ -552,7 +558,7 @@ test("copilot-chat: the CLI's pre-check, then its first prompt in VS Code Chat w
   const a = activate(root, { cliOptions: node.cliOptions, config: { host: "copilot-chat" }, external: [CHAT_OPEN], onExternal: (id, args) => void chats.push(args) });
   await a.run("atf.run", { kind: "product", product: "acme", environment: "default" });
   assert.deepEqual(node.calls.map((c) => c.plan ?? c.argv), [["run", "acme", "--host", "copilot"], [doctorScript, "config/acme.yaml", "--fix", "--warn-only"]], "the plan, then its pre-check");
-  assert.equal(a.vscode.rec.progress[0].opts.title, "atf run acme: checking what it needs");
+  assert.deepEqual(a.vscode.rec.progress.map((p) => p.opts.title), ["atf run acme: checking Node.js…", "atf run acme: checking what it needs"], "the Node.js check before the session, then the CLI's own");
   assert.deepEqual(chats, [{ query: PROMPT, isPartialQuery: true, mode: CHAT_MODE }], "the CLI's prompt, put in the chat, not sent");
   assert.equal(CHAT_MODE, "orchestrator-agent");
   assert.deepEqual(a.vscode.rec.messages.map((m) => m.slice(0, 2)), [
@@ -719,4 +725,146 @@ test("sweep: nothing to delete asks nothing; a refusal, a cancel or a wrong slug
     assert.deepEqual(n.ledger().map((c) => c.argv.includes("--dry-run")), [true], `case ${i}: the dry run only`);
     assert.equal(existsSync(confirm), false, `case ${i}: no confirmation written`);
   }
+});
+
+// ---- the check before a session (D-110) ------------------------------------------------------------------------------
+
+test("before a run: a Node.js older than 20 stops it; Use Node pins one found, and the session's line puts it first on its PATH", async () => {
+  const root = workspace();
+  const old = { path: "/opt/homebrew/opt/node@18/bin/node", version: "18.20.8", major: 18 };
+  const nodes = [{ path: "/Users/me/.nvm/versions/node/v24.19.0/bin/node", version: "24.19.0", major: 24, source: "nvm" }, { ...old, source: "Homebrew node@18" }];
+  const a = activate(root, { nodes: { terminal: old, nodes, probe: () => ({ version: "24.19.0", major: 24 }) }, messageAnswers: ["Use Node 24.19.0"] });
+  await a.run("atf.run", { kind: "product", product: "acme", environment: "default" });
+  const [kind, msg, actions] = a.vscode.rec.messages[0];
+  assert.equal(kind, "error");
+  assert.equal(msg, "atf: Node.js 18.20.8 in a new terminal, older than 20: /opt/homebrew/opt/node@18/bin/node. The session would be refused at its first step.");
+  assert.equal(actions[0].modal, true);
+  assert.deepEqual(actions.slice(1), ["Use Node 24.19.0", "Show environment"]);
+  assert.deepEqual(a.vscode.rec.updates, [["nodePath", "/Users/me/.nvm/versions/node/v24.19.0/bin/node", a.vscode.ConfigurationTarget.Global]]);
+  assert.deepEqual(a.lines(), [`PATH='/Users/me/.nvm/versions/node/v24.19.0/bin':"$PATH" npx --no atf run acme`]);
+
+  // Show environment: the Cockpit, and no session
+  const b = activate(root, { nodes: { terminal: old, nodes }, messageAnswers: ["Show environment"] });
+  await b.run("atf.resume", { kind: "stage", product: "acme", environment: "default", stage: "explore" });
+  assert.ok(b.vscode.rec.executed.some((e) => e[0] === "atf.cockpit.focus"), "the panel is shown");
+  assert.equal(b.vscode.rec.terminals.length, 0);
+  // no Node.js 20 or later anywhere: only Show environment
+  const c = activate(root, { nodes: { terminal: { missing: true }, nodes: [] } });
+  await c.run("atf.run", { kind: "product", product: "acme", environment: "default" });
+  assert.deepEqual(c.vscode.rec.messages[0][2].slice(1), ["Show environment"]);
+  assert.equal(c.vscode.rec.terminals.length, 0);
+  // the interview is not a run: no check
+  const d = activate(root, { nodes: { terminal: old, nodes } });
+  await d.run("atf.newProduct", "interview");
+  assert.deepEqual(d.lines(), ["npx --no atf interview"]);
+});
+
+test("before a run: the product's check; a problem stops it, with Fix and check again, Start anyway and Show checks", async () => {
+  const root = workspace();
+  const doctorScript = path.join(FW_OF(root), "scripts", "doctor.mjs");
+  const plans = {
+    "doctor acme --no-fix": { steps: [{ script: doctorScript, args: ["config/acme.yaml"], env: {} }] },
+    "doctor acme": { steps: [{ script: doctorScript, args: ["config/acme.yaml", "--fix"], env: {} }] },
+  };
+  const bad = [{ id: "node", group: "base", ok: true, detail: "Node.js 22.1.0" }, { id: "mcp-browser", group: "browser", ok: false, level: "fail", detail: "chromium build 1247 is not downloaded", fix: "npx playwright install chromium", fixable: true }];
+  let healthy = false;
+  const node = fakeNode(root, (child, { argv }) => json(child, { scope: "every chosen stage", checks: healthy || argv.includes("--fix") ? bad.slice(0, 1) : bad, fixed: argv.includes("--fix") ? ["npx playwright install chromium"] : [] }, 0), plans);
+  const target = { kind: "product", product: "acme", environment: "default" };
+
+  // Fix and check again: the CLI's doctor with its installs, then the session
+  const a = activate(root, { cliOptions: node.cliOptions, config: { checkBeforeRun: true }, messageAnswers: ["Fix and check again"] });
+  await a.run("atf.run", target);
+  const [kind, msg, actions] = a.vscode.rec.messages[0];
+  assert.deepEqual([kind, msg], ["warning", "atf: atf run acme: 1 problem would stop stages of this run."]);
+  assert.deepEqual(actions, [{ modal: true, detail: "• chromium build 1247 is not downloaded\n  fix: npx playwright install chromium" }, "Fix and check again", "Start anyway", "Show checks"]);
+  assert.deepEqual(node.calls.filter((c) => c.plan).map((c) => c.plan), [["doctor", "acme", "--no-fix"], ["doctor", "acme"]]);
+  assert.deepEqual(node.calls.filter((c) => !c.plan).map((c) => c.argv.slice(1)), [["config/acme.yaml", "--json"], ["config/acme.yaml", "--fix", "--json"]]);
+  assert.deepEqual(a.lines(), ["npx --no atf run acme"]);
+
+  // Start anyway: the session, as the run's own stage gate stops what needs the missing thing
+  const b = activate(root, { cliOptions: node.cliOptions, config: { checkBeforeRun: true }, messageAnswers: ["Start anyway"] });
+  await b.run("atf.run", target);
+  assert.deepEqual(b.lines(), ["npx --no atf run acme"]);
+  // Show checks: the checks listed, no session
+  const c = activate(root, { cliOptions: node.cliOptions, config: { checkBeforeRun: true }, messageAnswers: ["Show checks"] });
+  await c.run("atf.run", target);
+  await tick();
+  assert.equal(c.vscode.rec.terminals.length, 0);
+  assert.equal(c.vscode.rec.quickPicks[0].opts.title, "atf run acme: what the run needs");
+  // dismissed: nothing
+  const d = activate(root, { cliOptions: node.cliOptions, config: { checkBeforeRun: true }, messageAnswers: [undefined] });
+  await d.run("atf.run", target);
+  assert.equal(d.vscode.rec.terminals.length, 0);
+  // all well: straight to the session, nothing asked
+  healthy = true;
+  const e = activate(root, { cliOptions: node.cliOptions, config: { checkBeforeRun: true } });
+  await e.run("atf.run", target);
+  assert.deepEqual([e.vscode.rec.messages.length, e.lines()], [0, ["npx --no atf run acme"]]);
+});
+
+test("New product…: the form is the first way, and opens the Cockpit's form; the activation registers the panel", async () => {
+  assert.deepEqual(NEW_PRODUCT_WAYS.map((w) => w.how), ["form", "config", "interview"]);
+  const a = activate(workspace(), { quickPicks: [way("form")] });
+  assert.deepEqual(a.vscode.rec.webviewViews.map((v) => v.id), ["atf.cockpit"]);
+  assert.ok(a.api.cockpit && a.api.machine, "the panel and the machine's environment are part of the API");
+  await a.run("atf.newProduct");
+  assert.ok(a.vscode.rec.executed.some((e) => e[0] === "atf.cockpit.focus"), "the panel is shown");
+  assert.equal(a.vscode.rec.terminals.length, 0);
+  assert.equal(a.vscode.rec.inputs.length, 0, "the form asks nothing in boxes");
+});
+
+// ---- the Cockpit's pipeline actions (D-111) ---------------------------------------------------------------------------
+
+test("the Cockpit's intents and Resume open sessions behind the same check; its sheets, tab and leftovers run the extension's commands", async () => {
+  const root = workspace();
+  const c1 = {
+    schemaVersion: 1,
+    product: "acme",
+    environment: "default",
+    run: { runId: "acme-run-1", mode: "readonly", active: true, modules: ["contacts"], steps: ["explore", "testcases", "automate"] },
+    overview: {
+      stages: [{ stage: "playwright-ui", module: "contacts", status: "failed" }],
+      next: [],
+      needsYou: [],
+      intents: { contacts: { explore: { enabled: true, why: null }, testcases: { enabled: true, why: null }, automate: { enabled: true, why: null }, k6: { enabled: false, why: "the k6 step was not chosen for this run" }, heal: { enabled: true, why: null, stage: "playwright-ui" } } },
+    },
+    missing: [],
+  };
+  const node = fakeNode(root, (child, { argv }) => (String(argv[0]).endsWith("cockpit.mjs") ? json(child, c1) : json(child, {})));
+  const t = { product: "acme", environment: "default" };
+
+  const a = activate(root, { cliOptions: node.cliOptions });
+  assert.ok(a.vscode.rec.commands.has("atf.openCockpit"), "the editor tab's command is registered");
+  await a.api.cockpit.loadCockpit();
+  for (const intent of ["explore", "testcases", "automate", "heal", "k6"]) await a.api.cockpit.onMessage({ type: "intent", ...t, module: "contacts", intent });
+  await a.api.cockpit.onMessage({ type: "resume", ...t, stage: "playwright-ui", module: "contacts" });
+  assert.deepEqual(a.lines(), [
+    "npx --no atf explore acme --module contacts",
+    "npx --no atf testcases acme --module contacts",
+    "npx --no atf automate acme --module contacts",
+    "npx --no atf resume acme --stage playwright-ui --module contacts",
+    "npx --no atf resume acme --stage playwright-ui --module contacts",
+  ], "an active run disables nothing; k6, not chosen, opens nothing");
+  assert.deepEqual(a.vscode.rec.progress.filter((p) => /checking Node\.js/.test(p.opts.title)).length, 5, "every session was checked first");
+
+  // the sheets and the editor tab: the extension's own commands, with the checked target
+  const tabs = [];
+  a.vscode.rec.commands.set("atf.openCockpit", (args) => void tabs.push(args));
+  await a.api.cockpit.onMessage({ type: "openSheet", product: "acme", module: "contacts", sheet: "approval" });
+  await a.api.cockpit.onMessage({ type: "openSheet", product: "acme", module: "contacts", sheet: "clarifications" });
+  await a.api.cockpit.onMessage({ type: "openTab", ...t, tab: "failures", focus: { module: "contacts" } });
+  const ran = a.vscode.rec.executed.filter((e) => /^atf\.open(Approval|Clarifications)$/.test(e[0]));
+  assert.deepEqual(ran, [
+    ["atf.openApproval", { kind: "module", product: "acme", module: "contacts" }],
+    ["atf.openClarifications", { kind: "module", product: "acme", module: "contacts" }],
+  ]);
+  assert.deepEqual(tabs, [{ ...t, tab: "failures", focus: { module: "contacts" } }]);
+
+  // an old Node.js stops an intent exactly as it stops a run
+  const old = { path: "/opt/homebrew/opt/node@18/bin/node", version: "18.20.8", major: 18 };
+  const b = activate(root, { cliOptions: node.cliOptions, nodes: { terminal: old, nodes: [] } });
+  await b.api.cockpit.loadCockpit();
+  await b.api.cockpit.onMessage({ type: "intent", ...t, module: "contacts", intent: "explore" });
+  assert.equal(b.vscode.rec.terminals.length, 0);
+  assert.equal(b.vscode.rec.messages[0][0], "error");
 });

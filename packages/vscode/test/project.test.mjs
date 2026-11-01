@@ -510,8 +510,7 @@ test("atf.hasProducts follows the products: false with none, true once a run-con
   const a = activate([ws]);
   assert.equal(a.vscode.rec.context["atf.hasProducts"], false);
   put(ws, "config/acme.yaml", "product: acme\n");
-  const w = a.vscode.rec.watchers.find((x) => String(x.pattern).includes("config"));
-  w.create.fire({ fsPath: path.join(ws, "config", "acme.yaml") });
+  for (const w of a.vscode.rec.watchers.filter((x) => String(x.pattern).includes("config"))) w.create.fire({ fsPath: path.join(ws, "config", "acme.yaml") });
   assert.equal(a.vscode.rec.context["atf.hasProducts"], true);
   assert.ok(existsSync(path.join(ws, "config", "acme.yaml")));
 });

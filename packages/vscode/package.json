@@ -57,18 +57,26 @@
     "views": {
       "atf": [
         {
+          "id": "atf.cockpit",
+          "type": "webview",
+          "name": "Cockpit"
+        },
+        {
           "id": "atf.runs",
-          "name": "Products"
+          "name": "Products",
+          "visibility": "collapsed"
         },
         {
           "id": "atf.clarifications",
           "name": "Clarifications",
-          "when": "atf.workspaceState == ok"
+          "when": "atf.workspaceState == ok",
+          "visibility": "collapsed"
         },
         {
           "id": "atf.approvals",
           "name": "Test case approval",
-          "when": "atf.workspaceState == ok"
+          "when": "atf.workspaceState == ok",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -289,6 +297,12 @@
         "title": "Open report",
         "category": "atf",
         "icon": "$(graph)"
+      },
+      {
+        "command": "atf.openCockpit",
+        "title": "Open Cockpit",
+        "category": "atf",
+        "icon": "$(dashboard)"
       }
     ],
     "menus": {
@@ -296,6 +310,10 @@
         {
           "command": "atf.init",
           "when": "atf.workspaceState == noWorkspace"
+        },
+        {
+          "command": "atf.openCockpit",
+          "when": "atf.active"
         },
         {
           "command": "atf.installFramework",
@@ -368,6 +386,11 @@
           "command": "atf.run",
           "when": "view == atf.runs && atf.active",
           "group": "navigation@1"
+        },
+        {
+          "command": "atf.openCockpit",
+          "when": "(view == atf.cockpit || view == atf.runs) && atf.active",
+          "group": "navigation@3"
         },
         {
           "command": "atf.refresh",
@@ -495,7 +518,12 @@
           "type": "string",
           "default": "",
           "scope": "machine-overridable",
-          "markdownDescription": "The Node.js the extension runs the installed `@testagentic/atf` scripts with. Empty: `node` on the PATH."
+          "markdownDescription": "The Node.js atf runs on: the extension's own commands, and every agent session it opens (its folder goes first on the session's `PATH`, so the agent, the guard hooks, the browser server and the tests use it). Empty: `node` on the PATH. the Cockpit's **Use Node …** sets it."
+        },
+        "atf.checkBeforeRun": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Before **Start or continue a run** and **Resume a stage**, run the product's dependency check and stop on a problem (you can still choose **Start anyway**). The Node.js check runs either way: a session on Node.js older than 20 is refused."
         },
         "atf.host": {
           "type": "string",
