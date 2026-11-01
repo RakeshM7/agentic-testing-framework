@@ -3,6 +3,12 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
+## Unreleased
+
+- **Choose the AI host in the Cockpit:** an **AI host** picker at the top of the Cockpit (Claude Code, GitHub Copilot in VS Code Chat, Copilot CLI, OpenAI Codex, Google Antigravity) sets `atf.host` for the workspace. Choosing another host shows a short warning first, with **Switch** and **Cancel** (D-124).
+- **Switch hosts in the middle of a run,** when one runs out of credits: close the old session, switch, then **▷ Run** continues the run from its files on the new host. Finished stages stay done; a stage cut off mid-way counts as one of its two attempts and runs again (D-071).
+- **`atf.host` accepts `antigravity`:** an agent session in an editor terminal (`--host antigravity`, `agy`). Not yet verified on a real Antigravity (D-099).
+
 ## 0.1.7
 
 A smoother first run: none of the earlier test sessions got past setup, for the reasons below.

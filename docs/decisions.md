@@ -179,6 +179,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-121 | `atf run` installs what the chosen stages safely need and offers the login before the session opens | Accepted | 2026-11-01 |
 | D-122 | The orchestrator asks one question at a time with a default, never re-asks set steps, and keeps its messages short | Accepted | 2026-11-01 |
 | D-123 | On a machine whose default Node.js is older than 20, atf finds a newer one and uses it for hooks, the browser server, the CLI and agents' scripts | Accepted | 2026-11-01 |
+| D-124 | The Cockpit has an AI host picker that sets atf.host, mid-run included, behind a short warning; atf.host gains antigravity | Accepted | 2026-11-02 |
 
 ## Decisions
 
@@ -2503,3 +2504,15 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
   - **build-agents.mjs isn't gated.**
 - **Affects:** `packages/core/scripts/lib/node-version.mjs`, `packages/core/scripts/lib/node-gate.mjs`, `packages/core/bin/atf.mjs`, `packages/core/scripts/lib/sync.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/hook-registrations.mjs`, `packages/core/scripts/lib/mcp.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/cli.mjs`
 - **Extends:** D-109, D-089, D-092, D-093, D-110 · **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("Auto-pin a Node ≥20 (Recommended)").
+
+### D-124 · The Cockpit has an AI host picker that sets atf.host, mid-run included, behind a short warning; atf.host gains antigravity
+- **Status:** Accepted · **Date:** 2026-11-02 · **Source:** conversation with the user, 2026-11-02 ("i want an option to choose my AI host like - Claude, Antigravity, Codex, Github Copilot, Copilot CLI etc in the AI pane, and i want to able to change it in the middle of the run incase i run out of credits from one client. show a small warning message on what happens when i change the ai host").
+- **Decision:**
+  - **The picker.** The Cockpit (`atf.cockpit`, D-110) shows an **AI host** select at its top once the project is ready: Claude Code, GitHub Copilot (VS Code Chat), Copilot CLI, OpenAI Codex, Google Antigravity. It shows `atf.host` as it is, refreshed when the setting changes anywhere.
+  - **The warning, then the switch.** Choosing another host only shows a short inline warning (`hostSwitchNotice` in `packages/vscode/src/hosts.js`) with **Switch to <host>** and **Cancel**. It says what the next session does and gives the new host's one-line note (who the guard can name, what the human must do first, what is unverified). With a run in progress (any product's `lock.json`) it says instead: close the old session first, so two sessions don't drive one run; **▷ Run** then continues on the new host from the run's files, done stages stay done and a stage cut off mid-way is an interrupted attempt (D-071); only what was saved carries over. Only **Switch** sends anything: `setHost` with a host from `HOSTS`, which the page validator and the extension check again. The extension writes the workspace's `atf.host` (as the chat fallback already did, D-106) and closes no session.
+  - **Nothing in the run changes.** The run records no host and the CLI's `--host` already resumes on any host (`run.mjs init --resume`). The new session runs the guard check again (D-037), so a host whose hooks aren't active stops before its first stage.
+  - **`atf.host` gains `antigravity`** (`--host antigravity`, `agy`; D-099), a terminal session like `claude`, `copilot-cli` and `codex`. The hosts, their labels, notes and CLI flags live in one module, `packages/vscode/src/hosts.js`, shared by the session path and the page.
+- **Why:** the user wants to change hosts from the extension's own pane, also mid-run when one host's credits run out, and to see what a switch does before it happens. The hosts are not equal for safety (D-035: only Claude Code and VS Code's local agent name the calling agent), and a second live session on one run would mark the first one's stage interrupted (D-071), so the switch is a confirmed step with those facts, not a silent setting.
+- **Known limits:** the extension can't tell whether the old host's session is still running (a terminal or a chat it didn't open stays as it is), so closing it is the human's step the warning names. Antigravity's and Codex's notes repeat their spikes' open points (D-099, D-115).
+- **Affects:** `packages/vscode/src/hosts.js`, `packages/vscode/src/cockpit.js`, `packages/vscode/src/cockpit-sidebar-page.js`, `packages/vscode/src/activate.js`, `packages/vscode/package.json`, `packages/vscode/SPEC.md`
+- **Extends:** D-106, D-110, D-115, D-099 · **Supersedes:** — · **Confirmed by the user on:** 2026-11-02 (the request above).

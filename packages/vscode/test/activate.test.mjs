@@ -160,11 +160,12 @@ test("a product node with several environments asks which; run's picker offers N
 
 // ---- the host setting ------------------------------------------------------------------------------------------------
 
-test("atf.host: claude, copilot-chat or copilot-cli; the old copilot reads as copilot-cli and is rewritten where it is set", async () => {
-  assert.deepEqual(HOSTS, ["claude", "copilot-chat", "copilot-cli", "codex"]);
+test("atf.host: claude, copilot-chat, copilot-cli, codex or antigravity; the old copilot reads as copilot-cli and is rewritten where it is set", async () => {
+  assert.deepEqual(HOSTS, ["claude", "copilot-chat", "copilot-cli", "codex", "antigravity"]);
   assert.deepEqual([hostOf("copilot"), hostOf("copilot-cli"), hostOf("copilot-chat"), hostOf("claude"), hostOf(undefined), hostOf("nonsense")], ["copilot-cli", "copilot-cli", "copilot-chat", "claude", "claude", "claude"]);
-  assert.deepEqual([hostCliArgs("claude"), hostCliArgs("copilot-cli"), hostCliArgs("codex")], [[], ["--host", "copilot"], ["--host", "codex"]]);
+  assert.deepEqual([hostCliArgs("claude"), hostCliArgs("copilot-cli"), hostCliArgs("codex"), hostCliArgs("antigravity"), hostCliArgs("copilot-chat")], [[], ["--host", "copilot"], ["--host", "codex"], ["--host", "antigravity"], []]);
   assert.equal(hostOf("codex"), "codex");
+  assert.equal(hostOf("antigravity"), "antigravity");
   const a = activate(workspace(), { config: { host: "copilot" }, inspect: { host: { workspaceValue: "copilot", globalValue: "claude" } } });
   await new Promise((r) => setImmediate(r));
   assert.deepEqual(a.vscode.rec.updates, [["host", "copilot-cli", a.vscode.ConfigurationTarget.Workspace]]);
@@ -174,6 +175,35 @@ test("atf.host: claude, copilot-chat or copilot-cli; the old copilot reads as co
   const fresh = activate(workspace(), { inspect: { host: {} } });
   await new Promise((r) => setImmediate(r));
   assert.deepEqual(fresh.vscode.rec.updates, [], "nothing to migrate");
+});
+
+test("the Cockpit's AI host picker (D-124): mid-run, it sets the workspace's atf.host and the next session opens there", async () => {
+  const root = workspace();
+  put(root, "artifacts/acme/state/lock.json", "{}"); // a run in progress
+  const a = activate(root, { config: { host: "claude" } });
+  await a.run("atf.run", { kind: "product", product: "acme", environment: "default" });
+  const view = { webview: { options: null, html: "", postMessage: async (m) => void posted.push(m), onDidReceiveMessage: (fn) => ((send = fn), { dispose() {} }) }, onDidChangeVisibility: () => ({ dispose() {} }), onDidDispose: () => ({ dispose() {} }), visible: true };
+  const posted = [];
+  let send;
+  a.vscode.rec.webviewViews.find((v) => v.id === "atf.cockpit").provider.resolveWebviewView(view);
+  await send({ type: "ready" });
+  assert.equal(posted.filter((m) => m.type === "state").at(-1).state.host, "claude");
+
+  for (const [host, line] of [["antigravity", "npx --no atf run acme --host antigravity"], ["codex", "npx --no atf run acme --host codex"]]) {
+    await send({ type: "setHost", host });
+    assert.deepEqual(a.vscode.rec.updates.at(-1), ["host", host, a.vscode.ConfigurationTarget.Workspace]);
+    assert.equal(posted.filter((m) => m.type === "state").at(-1).state.host, host, "the picker shows it");
+    await a.run("atf.run", { kind: "product", product: "acme", environment: "default" });
+    assert.equal(a.lines().at(-1), line, "the run continues on the new host");
+  }
+  assert.equal(a.lines()[0], "npx --no atf run acme");
+  assert.ok(a.vscode.rec.output.lines.some((l) => l.includes("the AI host is now OpenAI Codex (atf.host codex)")));
+
+  const updates = a.vscode.rec.updates.length;
+  await send({ type: "setHost", host: "codex" });
+  await send({ type: "setHost", host: "cursor" });
+  assert.equal(a.vscode.rec.updates.length, updates, "the same host, or an unknown one, writes nothing");
+  assert.ok(a.vscode.rec.output.lines.some((l) => l.includes("setHost: host is one of")));
 });
 
 // ---- New product… and Open config ------------------------------------------------------------------------------------
