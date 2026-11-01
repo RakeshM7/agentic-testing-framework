@@ -5,6 +5,8 @@ matches the package installed in your workspace.
 
 ## Unreleased
 
+- **Every attempt in the Run timeline:** a retried stage shows its earlier attempts (when, how long, how each ended
+  and why), and each ended run lists its stages' times, not only its report (D-113).
 - **No token prompt when npm already has one:** a `npm.pkg.github.com` token in your `~/.npmrc` (or the file
   `npm_config_userconfig` names) is used for Create new project… and Install the framework, unasked. It is read when
   needed and never copied (D-112).

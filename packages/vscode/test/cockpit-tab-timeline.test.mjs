@@ -107,3 +107,32 @@ test("is self-contained", () => {
     assert.match(root.textContent, /Run history/);
   } finally { uninstall(); }
 });
+
+test("D-113: a stage's earlier attempts and an ended run's stage times, as text, with no button", () => {
+  const kit = setup();
+  try {
+    const d = fixture();
+    d.timeline.stages[1].previous = [{ attempt: 1, status: "failed", startedAt: "2026-01-01T09:00:00Z", finishedAt: "2026-01-01T09:05:00Z", durationMs: 300000, error: "first <i>crash</i>", interrupted: true }];
+    d.timeline.history[0].stages = [
+      { stage: "explore", module: "login", status: "done", attempts: 2, startedAt: "a", finishedAt: "b", durationMs: 60000, error: null, previous: [{ attempt: 1, status: "failed", durationMs: 1000, error: "timeout" }] },
+      { stage: "knowledge", module: null, status: "done", attempts: 1, startedAt: "a", finishedAt: "b", durationMs: 1000, error: null, previous: [] },
+    ];
+    const posts = [];
+    const root = renderTimeline(d, {}, kit, (m) => posts.push(m));
+    const blocks = root.findAll("details.attempts");
+    assert.equal(blocks.length, 2, "one on the failed stage, one in the ended run");
+    const first = blocks[0];
+    assert.equal(first.find("summary").textContent, "Earlier attempts (1)");
+    assert.match(first.textContent, /Attempt 1/);
+    assert.match(first.textContent, /first <i>crash<\/i>/, "the error as text, never markup");
+    assert.match(first.textContent, /interrupted/);
+    assert.equal(first.findAll("button").length, 0);
+    const runStages = root.find("details.run-stages");
+    assert.equal(runStages.find("summary").textContent, "Stages (2)");
+    assert.match(runStages.textContent, /login · explore/);
+    assert.match(runStages.textContent, /×2/);
+    assert.match(runStages.textContent, /timeout/);
+    assert.equal(root.findAll("details.run-stages").length, 1, "a run with no stage times has none");
+    assert.equal(posts.length, 0);
+  } finally { uninstall(); }
+});

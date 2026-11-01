@@ -1017,3 +1017,43 @@ test("framework issues in a client's workspace (P-8): end keeps them in the run'
   assert.deepEqual(end2.frameworkIssues, { file: "artifacts/acme/results/acme-run-2/framework-issues.json", count: 0 });
   assert.deepEqual(JSON.parse(readFileSync(path.join(root, end2.frameworkIssues.file), "utf8")).issues, []);
 });
+
+// ---- a stage's ended attempts (D-113) ---------------------------------------------------------------------------------
+
+import { PREVIOUS_MAX, endedAttempts } from "./run.mjs";
+
+test("D-113: a new attempt keeps the one that ended in `previous`; the schema accepts it and the ended run's summary carries the times", async () => {
+  const { root } = startRun();
+  await setStage("acme", "knowledge", undefined, "start", undefined, { root });
+  await setStage("acme", "knowledge", undefined, "fail", "the docs site timed out", { root });
+  const second = await setStage("acme", "knowledge", undefined, "start", undefined, { root });
+  assert.equal(second.attempts, 2);
+  assert.equal(second.previous.length, 1);
+  const [p] = second.previous;
+  assert.deepEqual([p.attempt, p.status, p.error], [1, "failed", "the docs site timed out"]);
+  assert.ok(p.startedAt && p.finishedAt && p.startedAt <= p.finishedAt);
+  assert.notEqual(second.startedAt, undefined, "the new attempt has its own start");
+  assert.deepEqual(await validateProduct("acme", { root }), [], "the run schema accepts previous");
+
+  const summary = await endRun("acme", { root, abandon: true });
+  const k = summary.stages.find((s) => s.stage === "knowledge");
+  assert.equal(k.attempts, 2);
+  assert.equal(k.startedAt, second.startedAt);
+  assert.deepEqual(k.previous, second.previous);
+  const m = summary.stages.find((s) => s.stage === "explore");
+  assert.equal(m.previous, undefined, "a stage that never ran has no times");
+  assert.equal(m.startedAt, undefined);
+});
+
+test("D-113: endedAttempts keeps what ended, oldest first, bounded, with a cut error; a record that never started adds nothing", () => {
+  assert.deepEqual(endedAttempts(undefined), []);
+  assert.deepEqual(endedAttempts({ status: "pending", reopened: "x" }), []);
+  const rec = { status: "failed", attempts: 2, startedAt: "2026-11-01T10:00:00Z", finishedAt: "2026-11-01T10:05:00Z", error: "e".repeat(900), interrupted: true, findings: [{ id: 1 }], previous: [{ attempt: 1, status: "failed", startedAt: "2026-11-01T09:00:00Z" }] };
+  const out = endedAttempts(rec);
+  assert.deepEqual(out.map((a) => a.attempt), [1, 2]);
+  assert.deepEqual(Object.keys(out[1]), ["attempt", "status", "startedAt", "finishedAt", "error", "interrupted"], "no findings or other fields");
+  assert.equal(out[1].error.length, 500);
+  const many = { status: "done", attempts: 1, startedAt: "t", previous: Array.from({ length: PREVIOUS_MAX }, (_, i) => ({ attempt: i + 1, status: "done", startedAt: "t" })) };
+  assert.equal(endedAttempts(many).length, PREVIOUS_MAX);
+  assert.equal(endedAttempts(many).at(-1).attempt, 1, "the newest kept, the oldest dropped");
+});

@@ -217,3 +217,37 @@ test("the CLI: usage is exit 2, an unknown product is exit 1 with an error", () 
   assert.equal(unknown.status, 1);
   assert.match(JSON.parse(unknown.stdout).error, /unknown product 'nope'/);
 });
+
+test("D-113: the timeline carries each stage's ended attempts with their durations, and each ended run's stage times", async () => {
+  const root = workspace();
+  withResults(root);
+  const runFile = path.join(root, "artifacts", "acme", "state", "run.json");
+  const run = readJson(runFile);
+  run.stages["contacts/explore"] = {
+    ...run.stages["contacts/explore"],
+    attempts: 2,
+    previous: [{ attempt: 1, status: "failed", startedAt: "2026-10-01T08:00:00.000Z", finishedAt: "2026-10-01T08:05:00.000Z", error: "the browser crashed", interrupted: true }],
+  };
+  writeJson(runFile, run);
+  const histFile = path.join(root, "artifacts", "acme", "state", "history", "acme-run-0.json");
+  writeJson(histFile, {
+    runId: "acme-run-0",
+    outcome: "failed",
+    createdAt: "2026-09-01T09:00:00.000Z",
+    endedAt: "2026-09-01T10:00:00.000Z",
+    stages: [
+      { stage: "explore", module: "contacts", status: "failed", attempts: 2, startedAt: "2026-09-01T09:10:00.000Z", finishedAt: "2026-09-01T09:40:00.000Z", error: "boom", previous: [{ attempt: 1, status: "failed", startedAt: "2026-09-01T09:00:00.000Z", finishedAt: "2026-09-01T09:05:00.000Z" }] },
+      { stage: "testcases", module: "contacts", status: "pending", complete: false },
+    ],
+  });
+  const before = listing(root);
+  const d = await cockpitData("acme", { root });
+  const ex = d.timeline.stages.find((s) => s.key === "contacts/explore");
+  assert.deepEqual(ex.previous, [{ attempt: 1, status: "failed", startedAt: "2026-10-01T08:00:00.000Z", finishedAt: "2026-10-01T08:05:00.000Z", durationMs: 300000, error: "the browser crashed", interrupted: true }]);
+  assert.deepEqual(d.timeline.stages.find((s) => s.key === "_product/knowledge").previous, [], "none: an empty list");
+  const h = d.timeline.history.find((x) => x.runId === "acme-run-0");
+  assert.deepEqual(h.stages.map((s) => [s.stage, s.module, s.attempts, s.durationMs, s.previous.length]), [["explore", "contacts", 2, 1800000, 1]], "only stages that ran");
+  assert.equal(h.stages[0].previous[0].durationMs, 300000);
+  assert.deepEqual(d.timeline.history.find((x) => x.runId === "acme-run-1").stages, [], "an older summary has no times");
+  assert.deepEqual(listing(root), before, "still read-only");
+});

@@ -1,6 +1,7 @@
 // Cockpit tab: Run timeline (D-110, docs/cockpit-plan.md W7a). Embedded in the editor tab's page by source, so it is
 // self-contained: browser globals only, no imports, no module-scope references. Reads C1's `timeline`, `run` and
-// `missing` only; posts only C3 messages (resume, openReport). All text goes in as textContent via the kit.
+// `missing` only (a stage's and an ended run's earlier attempts, D-113, included); posts only C3 messages (resume,
+// openReport). All text goes in as textContent via the kit.
 export function renderTimeline(data, ctx, kit, post) {
   const { el, btn, glyph, idChip, modeBadge, rail, empty, dur } = kit;
   const d = data || {};
@@ -41,6 +42,29 @@ export function renderTimeline(data, ctx, kit, post) {
     return el("div", { class: "timeline" }, empty("No run yet. Start one from the sidebar and its stages show here."), noteEls);
   }
 
+  // a stage's ended attempts (D-113), oldest first: how each ended, how long it took, when, and its error
+  const attemptsBlock = (previous) => {
+    const list = Array.isArray(previous) ? previous.filter((a) => a && typeof a === "object") : [];
+    if (!list.length) return null;
+    return el(
+      "details",
+      { class: "attempts" },
+      el("summary", { text: `Earlier attempts (${list.length})` }),
+      list.map((a) =>
+        el(
+          "div",
+          { class: "toolbar", dataset: { attempt: String(a.attempt ?? "") } },
+          glyph(stateOf({ status: a.status })),
+          el("span", { text: `Attempt ${a.attempt ?? "?"}` }),
+          el("span", { class: "muted", text: dur(a.durationMs) }),
+          a.startedAt ? el("span", { class: "muted", text: a.startedAt }) : null,
+          a.interrupted ? el("span", { class: "chip", text: "interrupted", title: "the session running it ended before it was marked done or failed" }) : null,
+          a.error ? el("span", { text: a.error }) : null,
+        ),
+      ),
+    );
+  };
+
   const stageCard = (s) => {
     const st = stateOf(s);
     const focused = isFocus(s);
@@ -57,6 +81,7 @@ export function renderTimeline(data, ctx, kit, post) {
     const findings = Array.isArray(s.findings) ? s.findings : [];
     const steps = Array.isArray(s.steps) ? s.steps : [];
     const errorBlock = s.error ? el("details", { open: true }, el("summary", { text: "Error" }), el("div", { text: s.error })) : null;
+    const earlier = attemptsBlock(s.previous);
     const findingsBlock = findings.length ? el("details", {}, el("summary", { text: `Review findings (${findings.length})` }), findings.map((f) => el("div", { text: text(f) }))) : null;
     const stepsBlock = steps.length
       ? el("details", {}, el("summary", { text: `Steps (${steps.length})` }), steps.map((p) => el("div", { class: "toolbar" }, glyph(stateOf({ status: p.status })), el("span", { text: p.name }), el("span", { class: "muted", text: dur(p.durationMs) }))))
@@ -66,6 +91,7 @@ export function renderTimeline(data, ctx, kit, post) {
       { class: focused ? "card needs" : "card", dataset: { stage: s.stage, module: s.module || "", focus: focused ? "true" : "false" }, aria: focused ? { current: "true" } : {} },
       head,
       errorBlock,
+      earlier,
       findingsBlock,
       stepsBlock,
     );
@@ -131,6 +157,32 @@ export function renderTimeline(data, ctx, kit, post) {
           h.report ? btn("Open report", () => post({ type: "openReport", runId: h.runId }), "secondary") : el("span", { class: "muted", text: "no report" }),
         ),
       );
+      // the ended run's stage times (D-113): the stages that ran, with their earlier attempts
+      const ran = (Array.isArray(h.stages) ? h.stages : []).filter((x) => x && typeof x === "object");
+      if (ran.length)
+        root.append(
+          el(
+            "details",
+            { class: "run-stages", dataset: { run: h.runId } },
+            el("summary", { text: `Stages (${ran.length})` }),
+            ran.map((x) =>
+              el(
+                "div",
+                {},
+                el(
+                  "div",
+                  { class: "toolbar" },
+                  glyph(stateOf({ status: x.status })),
+                  el("span", { text: x.module ? `${x.module} · ${x.stage}` : x.stage }),
+                  el("span", { class: "muted", text: dur(x.durationMs) }),
+                  x.attempts > 1 ? el("span", { class: "chip", text: `×${x.attempts}`, title: `${x.attempts} attempts` }) : null,
+                  x.error ? el("span", { class: "muted", text: x.error }) : null,
+                ),
+                attemptsBlock(x.previous),
+              ),
+            ),
+          ),
+        );
     }
   }
   return root;
