@@ -118,7 +118,7 @@ test("dist's package.json: what an install needs, publishable, and nothing from 
   assert.deepEqual(Object.keys(pkg), ["name", "version", "description", "license", "type", "bin", "engines", "scripts", "dependencies", "peerDependencies", "publishConfig"]);
   assert.equal(pkg.name, "@testagentic/atf");
   assert.equal(pkg.version, SOURCE_PKG.version);
-  assert.equal(pkg.version, "0.1.6");
+  assert.equal(pkg.version, "0.1.7");
   assert.equal(pkg.license, "UNLICENSED");
   assert.equal(pkg.type, "module");
   assert.deepEqual(pkg.bin, { atf: "bin/atf.mjs" });
