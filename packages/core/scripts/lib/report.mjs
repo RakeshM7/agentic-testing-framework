@@ -282,7 +282,8 @@ ${safetyNotice(report.customConfig)}${provenanceLine(report.provenance, report.c
     const dur = (ms) => (ms === null || ms === undefined ? "&mdash;" : ms >= 3_600_000 ? `${Math.floor(ms / 3_600_000)}h ${String(Math.floor((ms % 3_600_000) / 60_000)).padStart(2, "0")}m` : ms >= 60_000 ? `${Math.floor(ms / 60_000)}m ${String(Math.floor((ms % 60_000) / 1000)).padStart(2, "0")}s` : `${Math.round(ms / 1000)}s`);
     slides.push(slide("s-effort", "Time and effort",
       `<p>Stages took ${dur(e.totals.stageMs)} in all; ${esc(num(e.totals.spawns))} agent spawns were recorded${e.totals.tokens ? `, using ${esc(num(e.totals.tokens))} tokens where the host reported them` : ""}.</p>` +
-      table("Stages", ["Stage", "Status", "Attempts", "Duration"], e.stages.map((s) => [code(s.key), esc(s.status), String(s.attempts), dur(s.durationMs)]), { numeric: [2, 3] }) +
+      // every attempt's time (D-114), and the last attempt's when it differs; a report that predates totalMs shows the last
+      table("Stages", ["Stage", "Status", "Attempts", "Duration", "Last attempt"], e.stages.map((s) => [code(s.key), esc(s.status), String(s.attempts), dur(s.totalMs === undefined ? s.durationMs : s.totalMs), s.totalMs !== undefined && s.totalMs !== s.durationMs ? dur(s.durationMs) : "&mdash;"]), { numeric: [2, 3, 4] }) +
       table("Domain steps", ["Domain", "Module", "Steps", "Duration", "Longest step"], e.steps.map((s) => [esc(s.domain), esc(s.module ?? "product"), String(s.steps), dur(s.durationMs), s.longest ? code(s.longest) : "&mdash;"]), { numeric: [2, 3] }) +
       (e.spawnsRecorded ? table("Agent spawns", ["Agent", "Spawns", "Duration", "Tokens"], e.agents.map((a) => [code(a.agent), String(a.spawns), dur(a.durationMs || null), a.tokens ? esc(num(a.tokens)) : "&mdash;"]), { numeric: [1, 2, 3] }) : `<p class="muted">Agent spawns were not recorded (see Data gaps).</p>`)));
   }

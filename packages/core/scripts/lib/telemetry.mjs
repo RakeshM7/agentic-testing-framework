@@ -1,5 +1,5 @@
 // Time and effort of a run (D-079). Three sources, all recorded as the run goes:
-//   - stages: run.json startedAt / finishedAt / attempts (run.mjs);
+//   - stages: run.json startedAt / finishedAt / attempts, and the ended attempts in `previous` (run.mjs, D-113);
 //   - domain steps: state/orchestration/<domain>-<module>.json startedAt / at per step (orchestration.mjs);
 //   - agent spawns: one line per spawn in the active run's state/telemetry.jsonl, appended by the PostToolUse hook
 //     (scripts/hooks/posttooluse.mjs) with the caller, the agent started and whatever the host's response reports:
@@ -47,10 +47,18 @@ export function readSpawns(stateDir, runId) {
 
 const ms = (a, b) => (a && b ? Math.max(0, Date.parse(b) - Date.parse(a)) : null);
 
-// -> {stages: [{key, status, attempts, durationMs}], steps: [{domain, module, steps, durationMs, longest}], agents:
-//     [{agent, spawns, durationMs, tokens, toolUses}], totals: {stageMs, stepMs, spawns, tokens}, spawnsRecorded}
+// A stage's time over every attempt (D-114): the ended attempts run.mjs keeps in `previous` (D-113) plus the current
+// one. An attempt with no finish (still running, or ended with no time) adds nothing; none timed at all -> null.
+export function stageTotalMs(s) {
+  const times = [...(Array.isArray(s?.previous) ? s.previous : []).map((a) => ms(a.startedAt, a.finishedAt)), s?.status === "running" ? null : ms(s?.startedAt, s?.finishedAt)].filter((t) => t !== null);
+  return times.length ? times.reduce((n, t) => n + t, 0) : null;
+}
+
+// -> {stages: [{key, status, attempts, durationMs (the last attempt), totalMs (every attempt, D-114)}], steps: [{domain,
+//     module, steps, durationMs, longest}], agents: [{agent, spawns, durationMs, tokens, toolUses}], totals: {stageMs
+//     (every attempt of every stage), stepMs, spawns, tokens}, spawnsRecorded}
 export function effort({ run, stateDir }) {
-  const stages = Object.entries(run.stages ?? {}).map(([key, s]) => ({ key, status: s.status, attempts: s.attempts ?? 0, durationMs: s.status === "running" ? null : ms(s.startedAt, s.finishedAt) }));
+  const stages = Object.entries(run.stages ?? {}).map(([key, s]) => ({ key, status: s.status, attempts: s.attempts ?? 0, durationMs: s.status === "running" ? null : ms(s.startedAt, s.finishedAt), totalMs: stageTotalMs(s) }));
   const steps = [];
   const dir = path.join(stateDir, "orchestration");
   for (const f of existsSync(dir) ? readdirSync(dir).filter((n) => n.endsWith(".json") && !n.startsWith("_")).sort() : []) {
@@ -82,7 +90,7 @@ export function effort({ run, stateDir }) {
     agents,
     spawnsRecorded: spawns !== null,
     totals: {
-      stageMs: stages.reduce((n, s) => n + (s.durationMs ?? 0), 0),
+      stageMs: stages.reduce((n, s) => n + (s.totalMs ?? 0), 0),
       stepMs: steps.reduce((n, s) => n + s.durationMs, 0),
       spawns: agents.reduce((n, a) => n + a.spawns, 0),
       tokens: agents.reduce((n, a) => n + a.tokens, 0),
