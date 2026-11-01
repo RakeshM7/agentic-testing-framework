@@ -20,6 +20,8 @@ import {
   TOKEN_SECRET,
   allowScriptsRefused,
   createArgs,
+  npmrcToken,
+  userNpmrcPath,
   extensionVersion,
   isEmptyFolder,
   pendingAction,
@@ -216,6 +218,66 @@ test("Connect: a password box with the token's scope and link, kept in secret st
   await tick();
   assert.equal(c.vscode.rec.context["atf.registryConnected"], true);
   assert.match(c.vscode.rec.messages.at(-1)[1], /ATF_NPM_TOKEN from VS Code's own environment is still used/);
+});
+
+test("the user's npm config (D-112): its file, and the npm.pkg.github.com token in it as npm reads it", () => {
+  assert.equal(userNpmrcPath({ HOME: "/home/me" }), path.join("/home/me", ".npmrc"));
+  assert.equal(userNpmrcPath({ USERPROFILE: "C:\\Users\\me" }), path.join("C:\\Users\\me", ".npmrc"));
+  assert.equal(userNpmrcPath({ HOME: "/home/me", npm_config_userconfig: "/etc/my.npmrc" }), "/etc/my.npmrc");
+  assert.equal(userNpmrcPath({ NPM_CONFIG_USERCONFIG: "/etc/my.npmrc" }), "/etc/my.npmrc");
+  assert.equal(userNpmrcPath({}), null, "never the real home folder from os.homedir()");
+
+  const other = "registry=https://registry.npmjs.org/\n//registry.npmjs.org/:_authToken=npm_OTHER\n";
+  assert.equal(npmrcToken(`${other}//npm.pkg.github.com/:_authToken=${TOKEN}\n`), TOKEN);
+  assert.equal(npmrcToken(`//npm.pkg.github.com:_authToken = "${TOKEN}"`), TOKEN, "no slash before the colon, spaces, quotes");
+  assert.equal(npmrcToken(`//npm.pkg.github.com/:_authToken=ghp_old\r\n//npm.pkg.github.com/:_authToken=${TOKEN}\r\n`), TOKEN, "the last one, as npm keeps it");
+  assert.equal(npmrcToken(`; //npm.pkg.github.com/:_authToken=${TOKEN}\n# //npm.pkg.github.com/:_authToken=${TOKEN}`), null, "comments");
+  assert.equal(npmrcToken(other), null, "another registry's token is never used");
+  assert.equal(npmrcToken("//npm.pkg.github.com/:_authToken=${GH_PACKAGES}", { GH_PACKAGES: TOKEN }), TOKEN);
+  assert.equal(npmrcToken("//npm.pkg.github.com/:_authToken=${GH_PACKAGES?}", {}), null, "an unset variable");
+  assert.equal(npmrcToken("//npm.pkg.github.com/:_authToken=${ATF_NPM_TOKEN?}", { ATF_NPM_TOKEN: TOKEN }), null, "the template's own line");
+  assert.equal(npmrcToken("//npm.pkg.github.com/:_authToken="), null);
+  assert.equal(npmrcToken(null), null);
+});
+
+test("a token already in the user's npm config is used unasked, never copied; secret storage and ATF_NPM_TOKEN come first", async () => {
+  const home = tmp();
+  put(home, ".npmrc", `//npm.pkg.github.com/:_authToken=${TOKEN}\n`);
+  const here = (items) => items.find((i) => i.folder);
+  // -> the ATF_NPM_TOKEN Create new project… gave npx, and the run
+  const create = async (opts) => {
+    const spawn = fakeSpawn(initWorks);
+    const a = activate([tmp()], { spawn, quickPicks: [here, undefined], ...opts });
+    await tick();
+    await a.run("atf.createProject");
+    return { a, call: spawn.npm()[0] };
+  };
+
+  const { a, call } = await create({ env: { HOME: home } });
+  assert.equal(a.vscode.rec.context["atf.registryConnected"], true);
+  assert.equal(a.vscode.rec.inputs.length, 0, "no token box");
+  assert.equal(call.opts.env.ATF_NPM_TOKEN, TOKEN, "the token only in the process's environment");
+  assert.ok(!call.argv.join(" ").includes(TOKEN), "never in argv");
+  assert.deepEqual(a.ctx.rec.secrets, [], "not copied into secret storage");
+  assert.ok(!JSON.stringify([a.vscode.rec.messages, a.vscode.rec.output.lines]).includes(TOKEN), "never shown or logged");
+  await a.run("atf.forgetToken");
+  assert.match(a.vscode.rec.messages.at(-1)[1], /token in your npm config \(.*\.npmrc\) is still used; atf never changes that file/);
+  assert.equal(readFileSync(path.join(home, ".npmrc"), "utf8"), `//npm.pkg.github.com/:_authToken=${TOKEN}\n`, "the file is untouched");
+
+  // the order: secret storage, then ATF_NPM_TOKEN, then the npm config
+  const b = await create({ env: { HOME: home, ATF_NPM_TOKEN: "ghp_FROMENV" }, context: { secrets: { [TOKEN_SECRET]: "ghp_STORED" } } });
+  assert.equal(b.call.opts.env.ATF_NPM_TOKEN, "ghp_STORED");
+  const c = await create({ env: { HOME: home, ATF_NPM_TOKEN: "ghp_FROMENV" } });
+  assert.equal(c.call.opts.env.ATF_NPM_TOKEN, "ghp_FROMENV");
+  // npm_config_userconfig names the file npm reads, as it does for npm
+  const elsewhere = path.join(tmp(), "work.npmrc");
+  writeFileSync(elsewhere, "//npm.pkg.github.com/:_authToken=ghp_WORK\n");
+  const d = await create({ env: { HOME: home, npm_config_userconfig: elsewhere } });
+  assert.equal(d.call.opts.env.ATF_NPM_TOKEN, "ghp_WORK");
+  // none anywhere: asked, as before
+  const e = await create({ env: { HOME: tmp() }, inputs: [undefined] });
+  assert.equal(e.a.vscode.rec.inputs[0].password, true);
+  assert.equal(e.call, undefined);
 });
 
 test("Create new project… in this empty folder: npx init of the extension's exact version, the token only in its environment, then New product…", async () => {

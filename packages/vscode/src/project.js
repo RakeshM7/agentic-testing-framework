@@ -4,7 +4,9 @@
 //
 //   The token        a GitHub personal access token (classic) with only read:packages, asked once (atf.connect) and
 //                    kept in VS Code's secret storage under atf.registryToken (atf.forgetToken deletes it). Without
-//                    one stored, an ATF_NPM_TOKEN in the extension host's own environment is used, unasked. It is never
+//                    one stored, an ATF_NPM_TOKEN in the extension host's own environment is used, unasked; without
+//                    that, the npm.pkg.github.com token in the user's own npm config (~/.npmrc, or the file
+//                    npm_config_userconfig names), read when needed and never copied anywhere (D-112). It is never
 //                    logged, shown, put in argv or written to a file, and goes only into the environment of the npm,
 //                    npx and atf init processes the extension starts itself (cli.runNpm, cli.runStreaming), as
 //                    ATF_NPM_TOKEN; never to a terminal or the chat panel, where an agent could read it.
@@ -38,7 +40,7 @@
 //
 // The pure parts take no `vscode` (test/project.test.mjs); createRegistry() and createProjectFlows() are the VS Code
 // layer, given `vscode`, the extension context and activate.js's helpers.
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { CREATE_HINT, FRAMEWORK_PACKAGE, MARKER, findWorkspaceRoot } from "./workspace.js";
 
@@ -59,6 +61,41 @@ export const registryEnv = (token) => ({
   [`npm_config_${REGISTRY_SCOPE}:registry`]: REGISTRY_URL,
   [`npm_config_${AUTH_KEY}`]: `\${${TOKEN_ENV}?}`,
 });
+
+// The user's npm config file, as npm finds it (D-112): the file npm_config_userconfig names (either case), else
+// .npmrc in the home folder. Only from the given environment (HOME, USERPROFILE), never os.homedir(), so a test never
+// reads the real one. -> path | null
+export function userNpmrcPath(env = {}) {
+  const set = env.npm_config_userconfig || env.NPM_CONFIG_USERCONFIG;
+  if (set) return set;
+  const home = env.HOME || env.USERPROFILE;
+  return home ? path.join(home, ".npmrc") : null;
+}
+
+// The registry's token in an npmrc's text (D-112): the value of the last `//npm.pkg.github.com/:_authToken=` line (the
+// one npm keeps; the key without the slash before the colon too), quotes stripped, `${VAR}` and `${VAR?}` expanded
+// from env as npm expands them. A reference to ATF_NPM_TOKEN (the workspace template's own line, which the extension
+// already read) or to a variable that is not set is no token; so is a value tokenProblem refuses. -> token | null
+export function npmrcToken(text, env = {}) {
+  const keys = [AUTH_KEY, AUTH_KEY.replace("/:_authToken", ":_authToken")];
+  let value = null;
+  for (const raw of String(text ?? "").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith(";") || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq > 0 && keys.includes(line.slice(0, eq).trim())) value = line.slice(eq + 1).trim().replace(/^(["'])(.*)\1$/, "$2");
+  }
+  if (value === null) return null;
+  let unresolved = false;
+  const t = value
+    .replace(/\$\{([^}?]+)\??\}/g, (_, name) => {
+      const v = name === TOKEN_ENV ? "" : String(env[name] ?? "");
+      if (!v) unresolved = true;
+      return v;
+    })
+    .trim();
+  return unresolved || tokenProblem(t) ? null : t;
+}
 
 // A light check of a pasted token: something, with no whitespace inside (the ends are trimmed). -> problem | null
 export function tokenProblem(value) {
@@ -136,11 +173,22 @@ export function pendingAction(marker, { root, ok }, now = Date.now(), platform =
 
 // ---- the VS Code layer ----------------------------------------------------------------------------------------------
 
-// The token store: secret storage first, else the host's ATF_NPM_TOKEN. Keeps atf.registryConnected set.
+// The token store: secret storage first, else the host's ATF_NPM_TOKEN, else the token already in the user's npm config
+// (D-112), so a machine npm can already install from npm.pkg.github.com is never asked. Keeps atf.registryConnected set.
 // -> { token(), ensure(), connect(), forget(), refresh() }
 export function createRegistry({ vscode, context, env = process.env }) {
   const secrets = context.secrets;
   const fromEnv = () => String(env[TOKEN_ENV] ?? "").trim() || null;
+  // read each time it is needed (a token rotated in ~/.npmrc is picked up), never stored or copied to a file
+  const fromNpmrc = () => {
+    const file = userNpmrcPath(env);
+    if (!file) return null;
+    try {
+      return npmrcToken(readFileSync(file, "utf8"), env);
+    } catch {
+      return null; // no such file, or one VS Code can't read: as if it held no token
+    }
+  };
   const stored = async () => {
     try {
       return (await secrets?.get(TOKEN_SECRET)) || null;
@@ -149,7 +197,7 @@ export function createRegistry({ vscode, context, env = process.env }) {
     }
   };
   const setConnected = (on) => vscode.commands.executeCommand("setContext", "atf.registryConnected", on);
-  const token = async () => (await stored()) ?? fromEnv();
+  const token = async () => (await stored()) ?? fromEnv() ?? fromNpmrc();
   const refresh = async () => void (await setConnected(Boolean(await token())));
 
   // asks for the token (password box), stores it. -> the token, or null when cancelled
@@ -182,7 +230,11 @@ export function createRegistry({ vscode, context, env = process.env }) {
     }
     await refresh();
     vscode.window.showInformationMessage(
-      fromEnv() ? `atf: the stored token is forgotten. ${TOKEN_ENV} from VS Code's own environment is still used.` : "atf: the registry token is forgotten.",
+      fromEnv()
+        ? `atf: the stored token is forgotten. ${TOKEN_ENV} from VS Code's own environment is still used.`
+        : fromNpmrc()
+          ? `atf: the stored token is forgotten. The npm.pkg.github.com token in your npm config (${userNpmrcPath(env)}) is still used; atf never changes that file.`
+          : "atf: the registry token is forgotten.",
     );
   }
   // the token, asked for when there is none. -> the token, or null (cancelled)
