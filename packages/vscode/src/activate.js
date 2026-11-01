@@ -17,10 +17,11 @@
 //     editor tab (atf.openCockpit). Every session on a run's stages (GATED_COMMANDS: run, resume and the intents'
 //     commands) starts only after its check (gateSession): a Node.js the framework accepts, always; the product's
 //     dependency check, unless the human chooses Start anyway.
-//   - An agent session (run, resume, the interview) follows atf.host: `claude`, `copilot-cli` and `codex` run `npx --no atf …
-//     --host` in a terminal shown as a tab in the editor area (the agent CLI is an interactive program, the one thing
-//     that needs a terminal); `copilot-chat` runs the CLI's own pre-check in the background, then opens VS Code Chat
-//     with the CLI's own first prompt, for the human to send.
+//   - An agent session (run, resume, the interview) follows atf.host, which the Cockpit's AI host picker also sets (D-124):
+//     `claude`, `copilot-cli`, `codex` and `antigravity` run `npx --no atf … --host` in a terminal shown as a tab in
+//     the editor area (the agent CLI is an interactive program, the one thing that needs a terminal); `copilot-chat`
+//     runs the CLI's own pre-check in the background, then opens VS Code Chat with the CLI's own first prompt, for the
+//     human to send.
 // The extension never registers, replaces or bypasses the hooks (no safety role, P-12).
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -28,6 +29,7 @@ import { createCli, lastJson } from "./cli.js";
 import { VIEW_ID as COCKPIT_VIEW, createEnvironment, registerCockpit } from "./cockpit.js";
 import { GATED_COMMANDS, intentArgv } from "./cockpit-actions.js";
 import { COMMAND_ID as OPEN_COCKPIT, registerCockpitPanel } from "./cockpit-panel.js";
+import { HOSTS, HOST_INFO, LEGACY_HOSTS, hostCliArgs, hostOf } from "./hosts.js";
 import { TOKEN_ENV, createProjectFlows, createRegistry, registryEnv } from "./project.js";
 import { registerRuns } from "./runs.js";
 import { CREATE_HINT, DEFAULT_ENV, FRAMEWORK_PACKAGE, INIT_BUTTON, INSTALL_BUTTON, configFileOf, createWorkspace, envArgs, findFramework, productNameProblem, targetUrlProblem } from "./workspace.js";
@@ -65,17 +67,8 @@ export const STAGES = ["knowledge", "module-knowledge", "explore", "clarificatio
 
 // ---- the host an agent session opens on (atf.host) --------------------------------------------------------------------
 
-// claude: Claude Code's CLI (its panel can't pick the agent, so `claude --agent orchestrator-agent` in an editor-area
-// terminal); copilot-cli: Copilot CLI the same way; copilot-chat: VS Code Chat with the orchestrator-agent.
-export const HOSTS = ["claude", "copilot-chat", "copilot-cli", "codex"];
-export const LEGACY_HOSTS = { copilot: "copilot-cli" }; // the setting's value before 2026-10-29: `atf … --host copilot`
-// The setting as read: an old value migrated, anything unknown the default.
-export const hostOf = (value) => {
-  const v = String(value ?? "").trim();
-  return LEGACY_HOSTS[v] ?? (HOSTS.includes(v) ? v : "claude");
-};
-// The CLI's --host for a terminal session (claude is its default).
-export const hostCliArgs = (host) => (host === "copilot-cli" ? ["--host", "copilot"] : host === "codex" ? ["--host", "codex"] : []);
+// The hosts, how the setting reads and the CLI's --host for each: src/hosts.js (shared with the Cockpit's picker).
+export { HOSTS, LEGACY_HOSTS, hostCliArgs, hostOf };
 // VS Code Chat: the command that opens it with a query, and the custom agent (mode) to start it in.
 export const CHAT_OPEN = "workbench.action.chat.open";
 export const CHAT_MODE = "orchestrator-agent";
@@ -186,12 +179,15 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
     }
   }
   void migrateHostSetting();
+  // The workspace's atf.host (the chat's fallback offer, and the Cockpit's picker); the Cockpit shows it either way.
   const setHost = async (host) => {
     try {
       await config().update?.("host", host, (vscode.ConfigurationTarget ?? { Workspace: 2 }).Workspace);
+      output.appendLine(`atf: the AI host is now ${HOST_INFO[host]?.label ?? host} (atf.host ${host}): the next agent session opens there`);
     } catch (e) {
       output.appendLine(`atf: atf.host could not be set (${e.message})`);
     }
+    cockpit?.refresh();
   };
 
   // ---- picking what a command works on --------------------------------------------------------------------------------
@@ -549,7 +545,9 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
   const cockpit = guarded("the Cockpit", () =>
     registerCockpit(context, deps, {
       environment: machine,
+      host: currentHost,
       actions: {
+        setHost,
         run: (t) => vscode.commands.executeCommand("atf.run", productNode(t)),
         doctor: (t) => vscode.commands.executeCommand("atf.doctor", productNode(t)),
         openConfig: (t) => vscode.commands.executeCommand("atf.openConfig", productNode(t)),

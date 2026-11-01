@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { STAGES as CORE_STAGES } from "../../core/scripts/lib/contract.mjs";
 import { cockpitKit } from "../src/cockpit-style.js";
 import { INTENTS, SHEETS, STAGES, TABS, cockpitClient, renderCockpitHtml, stageStateCopy, validatePanelMessage } from "../src/cockpit-sidebar-page.js";
+import { HOSTS, HOST_INFO, hostSwitchNotice } from "../src/hosts.js";
 import { stageState } from "../src/runs.js";
 import { install, uninstall } from "./fake-dom.mjs";
 
@@ -81,7 +82,80 @@ test("the page embeds the kit, the stage copy and the cockpit CSS", () => {
   assert.match(html, /--atf-accent/);
   assert.match(html, /var __name=function\(t\)\{return t\};/);
   assert.match(html, /GLYPHS/);
+  assert.match(html, /"HOSTS":\["claude","copilot-chat","copilot-cli","codex","antigravity"\]/);
+  assert.match(html, /Switch the AI host to/, "the notice, by source");
   assert.doesNotMatch(html, /innerHTML/);
+});
+
+// ---- the AI host picker (D-124) ----
+test("setHost: only a known host, and nothing else", () => {
+  for (const host of HOSTS) assert.deepEqual(validatePanelMessage({ type: "setHost", host }).message, { type: "setHost", host });
+  for (const m of [{ type: "setHost" }, { type: "setHost", host: "cursor" }, { type: "setHost", host: "copilot" }, { type: "setHost", host: "codex", product: "acme" }]) no(m);
+  assert.deepEqual(Object.keys(HOST_INFO), HOSTS, "every host has a label and a note");
+  for (const h of HOSTS) assert.ok(HOST_INFO[h].label && HOST_INFO[h].note, h);
+});
+
+test("hostSwitchNotice: what the next session does; with a run in progress, close the old session and continue from the files", () => {
+  const idle = hostSwitchNotice(HOST_INFO, "claude", "codex", []);
+  assert.equal(idle.title, "Switch the AI host to OpenAI Codex?");
+  assert.deepEqual(idle.lines, ["The next session (Run, Resume, an intent or the interview) opens on OpenAI Codex. A session already open stays where it is.", HOST_INFO.codex.note]);
+  const busy = hostSwitchNotice(HOST_INFO, "claude", "antigravity", ["acme", "beta (staging)"]);
+  assert.equal(busy.lines.length, 4);
+  assert.match(busy.lines[0], /^acme, beta \(staging\) have runs in progress\. Close the Claude Code session first/);
+  assert.match(busy.lines[1], /continues on Google Antigravity from the run's files: done stages stay done; a stage cut off mid-way uses one of its 2 attempts/);
+  assert.match(busy.lines[2], /old chat carries over only where it was saved/);
+  assert.equal(busy.lines[3], HOST_INFO.antigravity.note);
+  assert.match(hostSwitchNotice(HOST_INFO, "codex", "claude", ["acme"]).lines[0], /^acme has a run in progress\. Close the OpenAI Codex session first/);
+});
+
+test("client: the AI host picker warns before it switches; Cancel sends nothing, Switch sends setHost", () => {
+  const h = mount({ ...baseState(fixture), host: "claude" }, { hosts: true });
+  try {
+    const picker = () => h.app.findAll("select").find((s) => s.attributes["aria-label"] === "AI host");
+    const banner = () => h.app.find("div.hostswitch");
+    assert.deepEqual(picker().findAll("option").map(text), HOSTS.map((x) => HOST_INFO[x].label));
+    assert.equal(picker().value, "claude");
+    assert.equal(picker().title, HOST_INFO.claude.note);
+    assert.equal(banner(), null, "no warning until another host is chosen");
+    h.posted.length = 0;
+
+    picker().value = "codex";
+    picker().dispatch("change");
+    assert.equal(banner().dataset.host, "codex");
+    assert.match(text(banner()), /Switch the AI host to OpenAI Codex\?/);
+    assert.match(text(banner()), /acme has a run in progress\. Close the Claude Code session first/, "the products' active run");
+    assert.equal(picker().value, "codex");
+    byText(banner(), "button", "Cancel").dispatch("click");
+    assert.equal(banner(), null);
+    assert.equal(picker().value, "claude");
+    assert.deepEqual(h.posted, [], "Cancel sends nothing");
+
+    picker().value = "antigravity";
+    picker().dispatch("change");
+    byText(banner(), "button", "Switch to Google Antigravity").dispatch("click");
+    assert.deepEqual(h.posted, [{ type: "setHost", host: "antigravity" }]);
+    ok(h.posted[0]);
+    h.send({ ...baseState(fixture), host: "antigravity" });
+    assert.equal(banner(), null, "the host now set: the warning is gone");
+    assert.equal(picker().value, "antigravity");
+
+    picker().value = "antigravity";
+    picker().dispatch("change");
+    assert.equal(banner(), null, "the current host: nothing to warn about");
+  } finally {
+    h.done();
+  }
+});
+
+test("client: no AI host picker without the host's state (an older host) or without a ready project", () => {
+  for (const [state, hosts] of [[baseState(fixture), true], [{ ...baseState(fixture), host: "claude" }, false], [{ ...baseState(fixture), host: "claude", workspace: { state: "noFramework", message: "x" } }, true]]) {
+    const h = mount(state, { hosts });
+    try {
+      assert.equal(h.app.findAll("select").find((s) => s.attributes["aria-label"] === "AI host"), undefined);
+    } finally {
+      h.done();
+    }
+  }
 });
 
 // ---- the client on the fake DOM ----
@@ -138,7 +212,8 @@ const baseState = (cockpit) => ({
   ...(cockpit === undefined ? {} : { cockpit }),
 });
 
-function mount(state) {
+// hosts: the page gets the AI host picker's data and notice, as renderCockpitHtml embeds them
+function mount(state, { hosts = false } = {}) {
   const doc = install();
   const app = doc.createElement("div");
   doc.getElementById = () => app;
@@ -146,7 +221,7 @@ function mount(state) {
   let listener;
   globalThis.acquireVsCodeApi = () => ({ getState: () => null, setState() {}, postMessage: (m) => posted.push(m) });
   globalThis.window = { addEventListener: (_t, fn) => (listener = fn) };
-  cockpitClient({ STEPS: ["explore"], STEP_LABELS: { explore: "Explore" }, CASE_TYPES: ["ui"], AUTOMATION: { ui: "playwright-ui" } }, cockpitKit(), stageStateCopy);
+  cockpitClient({ STEPS: ["explore"], STEP_LABELS: { explore: "Explore" }, CASE_TYPES: ["ui"], AUTOMATION: { ui: "playwright-ui" }, ...(hosts ? { HOSTS, HOST_INFO } : {}) }, cockpitKit(), stageStateCopy, hosts ? hostSwitchNotice : undefined);
   const send = (s) => listener({ data: { type: "state", state: s } });
   send(state);
   return {
@@ -281,6 +356,33 @@ test("client: no run yet shows Start run, and no Needs you, Pipeline or Intents"
     assert.deepEqual(h.posted, [{ type: "run", product: "acme", environment: "default" }]);
   } finally {
     h.done();
+  }
+});
+
+const formSection = (app) => app.findAll("details").find((d) => text(d.find("summary")).startsWith("New product"));
+
+test("client: with a product, Cancel dismisses an opened New product form; Close dismisses its result; with none, neither is offered", () => {
+  const h = mount({ ...baseState(fixture), form: { open: true } });
+  try {
+    assert.equal(formSection(h.app).open, true);
+    h.posted.length = 0;
+    byText(h.app, "button", "Cancel").dispatch("click");
+    assert.deepEqual(h.posted, [{ type: "closeForm" }]);
+    ok(h.posted[0]);
+    assert.equal(formSection(h.app).open, false);
+    h.send({ ...baseState(fixture), form: { result: { file: "config/beta.yaml", product: "beta", warnings: [], loginNeeded: false } } });
+    h.posted.length = 0;
+    byText(h.app, "button", "Close").dispatch("click");
+    assert.deepEqual(h.posted, [{ type: "closeForm" }]);
+  } finally {
+    h.done();
+  }
+  const none = mount({ ...baseState(fixture), products: [] });
+  try {
+    assert.equal(formSection(none.app).open, true);
+    assert.equal(byText(none.app, "button", "Cancel"), undefined);
+  } finally {
+    none.done();
   }
 });
 

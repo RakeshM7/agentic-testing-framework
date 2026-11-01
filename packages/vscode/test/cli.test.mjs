@@ -174,14 +174,20 @@ test("runJson uses atf.nodePath when set", async () => {
 test("runJson: a refusal's JSON on an allowed exit is the answer; otherwise a CliError with it", async () => {
   const refusal = JSON.stringify({ errors: ["no run state for product 'acme' (run.mjs init first)"] });
   assert.deepEqual(await setup(reply(refusal, 1)).cli.runJson(["status", "acme"], { allowExit: [0, 1] }), JSON.parse(refusal));
-  await assert.rejects(setup(reply(refusal, 1)).cli.runJson(["status", "acme"]), (e) => e instanceof CliError && e.code === 1 && /no run state/.test(e.message) && e.json.errors.length === 1);
+  await assert.rejects(setup(reply(refusal, 1)).cli.runJson(["status", "acme"]), (e) => e instanceof CliError && e.code === 1 && /no run state/.test(e.message) && e.json.errors.length === 1 && e.reason === "no run state for product 'acme' (run.mjs init first)");
+});
+
+test("runJson: a script's {error} on a refused exit is the reason, never a bare exit code", async () => {
+  const said = JSON.stringify({ error: "unknown product 'acme': no artifacts/acme" });
+  await assert.rejects(setup(reply(said, 1)).cli.runJson(["acme", "--json"], { script: "scripts/cockpit.mjs" }), (e) => e instanceof CliError && e.reason === "unknown product 'acme': no artifacts/acme" && /cockpit\.mjs acme --json: unknown product/.test(e.message));
+  await assert.rejects(setup(reply("{}", 1)).cli.runJson(["acme", "--json"]), (e) => e.reason === "it failed without saying why" && /: exit 1$/.test(e.message));
 });
 
 test("runJson: output that is not JSON, a timeout and a missing node are clear errors", async () => {
-  await assert.rejects(setup(reply("Usage: …", 2, "bad args")).cli.runJson(["status"]), /printed no JSON \(exit 2\): bad args/);
-  await assert.rejects(setup(() => {}).cli.runJson(["status", "acme"], { timeoutMs: 20 }), (e) => e.timedOut && /no answer in 0 s; stopped/.test(e.message));
+  await assert.rejects(setup(reply("Usage: …", 2, "bad args")).cli.runJson(["status"]), (e) => /printed no JSON \(exit 2\): bad args/.test(e.message) && e.reason === "it stopped without a result");
+  await assert.rejects(setup(() => {}).cli.runJson(["status", "acme"], { timeoutMs: 20 }), (e) => e.timedOut && /no answer in 0 s; stopped/.test(e.message) && /^it gave no answer in 0 s/.test(e.reason));
   const enoent = (child) => child.emit("error", Object.assign(new Error("spawn node ENOENT"), { code: "ENOENT" }));
-  await assert.rejects(setup(enoent).cli.runJson(["status", "acme"]), /node not found: install Node\.js, or set atf\.nodePath/);
+  await assert.rejects(setup(enoent).cli.runJson(["status", "acme"]), (e) => /node not found: install Node\.js, or set atf\.nodePath/.test(e.message) && /^node not found/.test(e.reason));
 });
 
 const REFUSED = /human-only, so the extension runs it only after you confirm it in its dialog/;

@@ -8,6 +8,7 @@
 // - the page is untrusted input: validatePanelMessage accepts only the known messages with bounded fields, and the
 //   extension checks each target again (a product it lists, a Node.js it offered) before acting on it.
 import { COCKPIT_CSS, cockpitKit } from "./cockpit-style.js";
+import { HOSTS, HOST_INFO, hostSwitchNotice } from "./hosts.js";
 import { csp, escapeHtml } from "./sheets/webview.js";
 
 // The run-config's steps and test case types (packages/core/scripts/lib/contract.mjs STEPS, CASE_TYPES; the cockpit
@@ -71,9 +72,12 @@ export function validatePanelMessage(m) {
     case "interview":
     case "openOutput":
     case "newForm":
+    case "closeForm":
       return only(m, ["type"]) ? { ok: true, message: { type: m.type } } : bad("takes no fields");
     case "useNode":
       return only(m, ["type", "path"]) && str(m.path, PANEL_LIMITS.path) && m.path ? { ok: true, message: { type: m.type, path: m.path } } : bad("needs the path of an offered Node.js");
+    case "setHost":
+      return only(m, ["type", "host"]) && HOSTS.includes(m.host) ? { ok: true, message: { type: m.type, host: m.host } } : bad(`host is one of ${HOSTS.join(", ")}`);
     case "run":
     case "doctor":
     case "openConfig":
@@ -187,7 +191,7 @@ button.stagecell:hover{background:var(--vscode-list-hoverBackground)}
 export function renderCockpitHtml({ nonce }) {
   if (!/^[A-Za-z0-9+/=]{16,}$/.test(String(nonce))) throw new Error("a nonce of at least 16 base64 characters is required");
   // esbuild's keepNames wraps functions in __name(); the shim keeps the embedded script independent of the bundle.
-  const script = `var __name=function(t){return t};(${cockpitClient.toString()})(${JSON.stringify({ STEPS, STEP_LABELS, CASE_TYPES, AUTOMATION })},(${cockpitKit.toString()})(),${stageStateCopy.toString()});`;
+  const script = `var __name=function(t){return t};(${cockpitClient.toString()})(${JSON.stringify({ STEPS, STEP_LABELS, CASE_TYPES, AUTOMATION, HOSTS, HOST_INFO })},(${cockpitKit.toString()})(),${stageStateCopy.toString()},${hostSwitchNotice.toString()});`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -207,12 +211,13 @@ export function renderCockpitHtml({ nonce }) {
 // ---------------------------------------------------------------------------------------------------------------
 // The page's script. Runs in the webview, not in the extension: browser globals only. It renders the extension's
 // "state" and sends the human's clicks; the form's own values stay here (and in the webview's saved state) until sent.
-export function cockpitClient(K, kit, stageState) {
+export function cockpitClient(K, kit, stageState, hostNotice) {
   const vscode = acquireVsCodeApi();
   const app = document.getElementById("app");
   const saved = vscode.getState() || {};
   let state = null;
-  let form = saved.form || { visibility: "public", steps: K.STEPS.slice(), testcasesTypes: ["ui"], loginNeeded: false };
+  const blankForm = () => ({ visibility: "public", steps: K.STEPS.slice(), testcasesTypes: ["ui"], loginNeeded: false });
+  let form = saved.form || blankForm();
   const open = saved.open || { products: true, form: false };
   let intentModule = null;
   const keep = () => vscode.setState({ form, open });
@@ -340,6 +345,23 @@ export function cockpitClient(K, kit, stageState) {
     return out;
   }
 
+  // ---- the AI host (D-124): where the next agent session opens. Choosing another shows a small warning (what happens,
+  // and to a run in progress) with Switch and Cancel; only Switch sends it. ----
+  let hostPending = null;
+  function hostBlock(current) {
+    const name = (h) => (K.HOST_INFO[h] ? K.HOST_INFO[h].label : h);
+    if (hostPending === current) hostPending = null;
+    const select = el("select", { aria: { label: "AI host" }, title: K.HOST_INFO[current] ? K.HOST_INFO[current].note : "", on: { change: (e) => { hostPending = e.target.value === current ? null : e.target.value; render(); } } }, K.HOSTS.map((h) => el("option", { value: h, text: name(h) })));
+    select.value = hostPending || current;
+    const out = [el("div", { class: "hdr host" }, el("span", { class: "muted", text: "AI host" }), select)];
+    if (!hostPending) return out;
+    const n = hostNotice(K.HOST_INFO, current, hostPending, (state.products || []).filter((p) => p.active).map(label));
+    const to = hostPending;
+    out.push(el("div", { class: "banner warning hostswitch", dataset: { host: to } }, el("div", { text: n.title }), el("ul", {}, n.lines.map((l) => el("li", { text: l }))),
+      el("div", {}, btn(`Switch to ${name(to)}`, () => post({ type: "setHost", host: to })), btn("Cancel", () => { hostPending = null; render(); }, "secondary"))));
+    return out;
+  }
+
   // ---- environment ----
   function envSection(env) {
     const rows = env.rows || [];
@@ -391,12 +413,21 @@ export function cockpitClient(K, kit, stageState) {
       : el("input", { type: "text", value: form[key] || "", placeholder: o.placeholder || "", on: { input: (e) => set(key, e.target.value) } });
     return el("div", {}, el("label", { text: label }), input, o.files ? btn(o.files, () => post({ type: "pickFiles", field: key }), "link") : null, o.hint ? el("div", { class: "hint", text: o.hint }) : null);
   }
-  function formSection(fs) {
+  // Cancel (the form) or Close (its result): empty fields, the section collapsed, the host's errors and result dropped.
+  // Only while the project has a product: with none the form stays open, it is the one way on.
+  function dismiss() {
+    form = blankForm();
+    open.form = false;
+    keep();
+    post({ type: "closeForm" });
+    render();
+  }
+  function formSection(fs, canDismiss) {
     const body = el("div", {});
     if (fs.result) {
       const r = fs.result;
       add(body, el("div", { class: "banner" }, el("div", { text: `${r.file} is ready (readonly). Review it, then start the run.` }), r.warnings && r.warnings.length ? el("ul", {}, r.warnings.map((w) => el("li", { text: w }))) : null,
-        el("div", {}, r.loginNeeded ? btn("Log in now", () => post({ type: "login", product: r.product })) : null, btn("▷ Start run", () => post({ type: "run", product: r.product, environment: "default" }), r.loginNeeded ? "secondary" : ""), btn("Open config", () => post({ type: "openConfig", product: r.product, environment: "default" }), "secondary"), btn("Another product", () => post({ type: "newForm" }), "link"))));
+        el("div", {}, r.loginNeeded ? btn("Log in now", () => post({ type: "login", product: r.product })) : null, btn("▷ Start run", () => post({ type: "run", product: r.product, environment: "default" }), r.loginNeeded ? "secondary" : ""), btn("Open config", () => post({ type: "openConfig", product: r.product, environment: "default" }), "secondary"), btn("Another product", () => post({ type: "newForm" }), "link"), canDismiss ? btn("Close", dismiss, "link") : null)));
       return section("form", "New product", "", body);
     }
     if (fs.errors && fs.errors.length) add(body, el("div", { class: "banner error" }, el("div", { text: "Fix these, then create it again:" }), el("ul", {}, fs.errors.map((e) => el("li", { text: e })))));
@@ -419,7 +450,7 @@ export function cockpitClient(K, kit, stageState) {
     if (askTypes)
       add(body, el("label", { text: "Test case types (without their automation step)" }), el("div", {}, K.CASE_TYPES.filter((t) => steps.indexOf(K.AUTOMATION[t]) < 0).map((t) => el("label", { class: "inline" }, el("input", { type: "checkbox", checked: (form.testcasesTypes || []).indexOf(t) >= 0, on: { change: (e) => set("testcasesTypes", K.CASE_TYPES.filter((x) => (x === t ? e.target.checked : (form.testcasesTypes || []).indexOf(x) >= 0))) } }), t === "ui" ? "UI" : t === "api" ? "API" : "Performance"))));
     add(body, field("Your own test cases (optional)", "testcasesImport", { files: "Choose…", hint: "A file of test cases you already have." }));
-    add(body, el("div", {}, btn(fs.busy ? "Creating…" : "Create the run-config", () => post({ type: "draft", form }), "", { disabled: !!fs.busy }), el("span", { class: "hint" }, " or ", btn("let the orchestrator interview me", () => post({ type: "interview" }), "link"))));
+    add(body, el("div", {}, btn(fs.busy ? "Creating…" : "Create the run-config", () => post({ type: "draft", form }), "", { disabled: !!fs.busy }), canDismiss ? btn("Cancel", dismiss, "secondary", { disabled: !!fs.busy }) : null, el("span", { class: "hint" }, " or ", btn("let the orchestrator interview me", () => post({ type: "interview" }), "link"))));
     return section("form", "New product", "", body);
   }
 
@@ -428,6 +459,7 @@ export function cockpitClient(K, kit, stageState) {
     const kids = [];
     const c = state.cockpit;
     if (state.workspace.state !== "ok") kids.push(workspaceBlock(state.workspace));
+    if (typeof state.host === "string" && K.HOSTS && hostNotice && state.workspace.state === "ok") kids.push(hostBlock(state.host));
     if (c && typeof c === "object" && state.workspace.state === "ok") kids.push(cockpitBlocks(c));
     // with the cockpit above it, the environment stays out of the way while every row is ok
     if (open.env === undefined) open.env = !(c && state.env.rows && state.env.rows.length && state.env.rows.every((r) => r.status === "ok"));
@@ -435,7 +467,7 @@ export function cockpitClient(K, kit, stageState) {
     if (state.workspace.state === "ok") {
       kids.push(productsSection(state.products));
       if (!state.products.length) open.form = true;
-      kids.push(formSection(state.form));
+      kids.push(formSection(state.form, state.products.length > 0));
     }
     app.replaceChildren(...kids.flat(Infinity));
   }
@@ -445,7 +477,7 @@ export function cockpitClient(K, kit, stageState) {
     if (!m || typeof m !== "object") return;
     if (m.type === "state" && m.state && typeof m.state === "object") {
       state = m.state;
-      if (state.form && state.form.reset) form = { visibility: "public", steps: K.STEPS.slice(), testcasesTypes: ["ui"], loginNeeded: false };
+      if (state.form && state.form.reset) form = blankForm();
       if (state.form && state.form.open) open.form = true;
       keep();
       render();

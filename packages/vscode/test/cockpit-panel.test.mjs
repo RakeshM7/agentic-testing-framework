@@ -238,7 +238,7 @@ test("an unknown product is refused; a failed load and an unknown C1 format are 
   await f.vscode.commands.executeCommand(COMMAND_ID, { product: "acme" });
   f.panels[0].send({ type: "ready" });
   await tick();
-  assert.deepEqual(f.last("error"), { type: "error", message: "unknown product" });
+  assert.deepEqual(f.last("error"), { type: "error", message: "Couldn't load acme: unknown product. The atf output has the details." });
   const g = fixture({ runJson: async () => ({ schemaVersion: 9 }) });
   await g.vscode.commands.executeCommand(COMMAND_ID, {});
   g.panels[0].send({ type: "ready" });

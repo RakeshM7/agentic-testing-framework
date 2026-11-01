@@ -60,6 +60,13 @@ export function sessionRow(found, { pinned, nodes = [], nodePath } = {}) {
   };
 }
 
+// Why the Cockpit could not load a product, in words: the script's own reason (a CliError's), never the command line
+// and its exit code, which the atf output channel keeps.
+export function loadError(product, e) {
+  const why = String(e?.reason ?? e?.message ?? e).trim().replace(/[.;:\s]+$/, "");
+  return `Couldn't load ${product}: ${why}. The atf output has the details.`;
+}
+
 // The products as the panel lists them: [{ product, environment, config, active, status }].
 export function productRows(workspace) {
   if (!workspace.ok) return [];
@@ -156,7 +163,9 @@ export function createEnvironment({ vscode, workspace, cli, output }, { findNode
 // The Cockpit's own actions (activate.js adds them in W9): intent({product, environment, module, intent, healStage}),
 // resume({product, environment, stage, module}), openSheet({product, module, sheet}), openTab({product, environment,
 // tab, focus}), sweep({product, environment}); one that is missing is logged and ignored. debounceMs: the reload delay.
-export function registerCockpit(context, { vscode, workspace, output, cli }, { environment, actions = {}, debounceMs = 750 }) {
+// host: () => the atf.host a session opens on (activate.js currentHost), and actions.setHost(host) the AI host picker's
+// change (D-124); without them the page shows no picker.
+export function registerCockpit(context, { vscode, workspace, output, cli }, { environment, host, actions = {}, debounceMs = 750 }) {
   // open: the form section is shown opened (New product… → Fill in the form); reset: the page clears its fields. Both
   // are sent once, to a view that is there.
   const form = { busy: false, errors: [], result: null, reset: false, open: false };
@@ -184,14 +193,15 @@ export function registerCockpit(context, { vscode, workspace, output, cli }, { e
     Object.assign(cock, { loading: true, error: null });
     send();
     try {
-      const json = await cli.runJson([sel.product, "--json"], { script: COCKPIT_SCRIPT, env: { ATF_ENV: sel.environment } });
+      // exit 1 carries the script's {"error"} (cockpit.mjs), shown as it is, as the editor tab does
+      const json = await cli.runJson([sel.product, "--json"], { script: COCKPIT_SCRIPT, env: { ATF_ENV: sel.environment }, allowExit: [0, 1] });
       if (seq !== loadSeq) return;
       if (json?.error) throw new Error(String(json.error));
       cock.data = { run: json.run ?? null, overview: json.overview ?? null, missing: json.missing ?? [] };
       cock.error = null;
     } catch (e) {
       if (seq !== loadSeq) return;
-      cock.error = e.message;
+      cock.error = loadError(sel.product, e);
       cock.data = null;
     }
     cock.loading = false;
@@ -204,6 +214,7 @@ export function registerCockpit(context, { vscode, workspace, output, cli }, { e
     products: productRows(workspace),
     form: { ...form },
     cockpit: { selected: selected(), loading: cock.loading, error: cock.error, data: cock.data },
+    ...(typeof host === "function" ? { host: host() } : {}),
   });
   const send = () => {
     if (!view) return;
@@ -313,10 +324,21 @@ export function registerCockpit(context, { vscode, workspace, output, cli }, { e
         return draft(m.form);
       case "interview":
         return actions.interview();
+      // the AI host picker, once the human confirmed its warning: the next session opens there (a run in progress
+      // continues from its files; the page said so)
+      case "setHost":
+        if (typeof actions.setHost !== "function") return refuse("the AI host can't be set here");
+        if (typeof host === "function" && host() === m.host) return send();
+        return actions.setHost(m.host);
       case "command":
         return actions.command(m.id);
       case "newForm":
         return openForm();
+      case "closeForm":
+        // the page has collapsed it; a draft still running keeps its result
+        if (form.busy) return;
+        Object.assign(form, { result: null, errors: [] });
+        return send();
       case "openOutput":
         return output.show(true);
       case "pickFiles": {
@@ -354,6 +376,9 @@ export function registerCockpit(context, { vscode, workspace, output, cli }, { e
       if (view && workspace.ok && environment.state.status === "idle") void environment.check();
     }),
   );
+  // atf.host changed anywhere (the Settings editor, the chat's fallback offer): the picker shows it
+  const hostChanged = vscode.workspace.onDidChangeConfiguration?.((e) => e.affectsConfiguration?.("atf.host") && send());
+  if (hostChanged) context.subscriptions.push(hostChanged);
   // a run-config or a run's lock appearing changes the product list
   for (const glob of ["**/config/*.{yaml,yml}", "**/artifacts/*/state/lock.json", "**/artifacts/*/envs/*/state/lock.json"]) {
     const w = vscode.workspace.createFileSystemWatcher(glob);

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { CASE_TYPES as CORE_CASE_TYPES, STEPS as CORE_STEPS } from "../../core/scripts/lib/contract.mjs";
-import { createCli } from "../src/cli.js";
+import { CliError, createCli } from "../src/cli.js";
 import { CASE_TYPES, FILE_FIELDS, PANEL_COMMANDS, STEPS, formAnswers, renderCockpitHtml, validatePanelMessage } from "../src/cockpit-sidebar-page.js";
 import { DRAFT_SCRIPT, VIEW_ID, checkRows, createEnvironment, draftResult, productRows, registerCockpit, sessionRow } from "../src/cockpit.js";
 import { createWorkspace } from "../src/workspace.js";
@@ -30,7 +30,7 @@ test("the form's steps and test case types are the framework's", () => {
 test("validatePanelMessage: only the known messages, with bounded fields; anything else is refused", () => {
   const ok = (m) => assert.equal(validatePanelMessage(m).ok, true, JSON.stringify(m));
   const no = (m) => assert.equal(validatePanelMessage(m).ok, false, JSON.stringify(m));
-  for (const type of ["ready", "check", "fix", "unpinNode", "interview", "openOutput", "newForm"]) ok({ type }), no({ type, extra: 1 });
+  for (const type of ["ready", "check", "fix", "unpinNode", "interview", "openOutput", "newForm", "closeForm"]) ok({ type }), no({ type, extra: 1 });
   ok({ type: "run", product: "acme", environment: "default" });
   no({ type: "run", product: "../etc", environment: "default" });
   no({ type: "doctor", product: "acme" });
@@ -293,6 +293,9 @@ test("New product form: the real run-config.mjs drafts config/<product>.yaml, re
   // the obvious gaps: said before anything runs
   await p.v.send({ type: "draft", form: { name: "", url: "" } });
   assert.deepEqual(p.v.last().state.form.errors.slice(0, 2), ["Give the product's name.", "Give the URL to test (http or https)."]);
+  // Cancel: the errors go with the form
+  await p.v.send({ type: "closeForm" });
+  assert.deepEqual([p.v.last().state.form.errors, p.v.last().state.form.result], [[], null]);
 });
 
 test("the view's actions: run, doctor and config only for products it lists; files picked come back relative; the rest are ignored", async () => {
@@ -411,18 +414,22 @@ test("cockpit state: the first product with an active run is selected, else the 
   assert.match(p.output.lines.at(-1), /ghost .*not a product/);
 });
 
-test("cockpit state: a runJson error (or C1's own error object) becomes the error, with no data", async () => {
-  const p = cockpitFixture({ runJson: async () => Promise.reject(new Error("cockpit.mjs printed no JSON (exit 1)")) });
+test("cockpit state: a runJson error (or C1's own error object) becomes the error in words, with no data", async () => {
+  const failed = new CliError("node cockpit.mjs acme --json printed no JSON (exit 1)", { code: 1, reason: "it stopped without a result" });
+  const p = cockpitFixture({ runJson: async () => Promise.reject(failed) });
   await p.v.send({ type: "ready" });
   await tick();
   const c = p.v.last().state.cockpit;
-  assert.equal(c.error, "cockpit.mjs printed no JSON (exit 1)");
+  assert.equal(c.error, "Couldn't load acme: it stopped without a result. The atf output has the details.");
   assert.equal(c.data, null);
   assert.equal(c.loading, false);
-  const q = cockpitFixture({ runJson: async () => ({ error: "unknown product" }) });
+  // cockpit.mjs exits 1 with its {"error"}: allowed, so the script's own words are shown, never "exit 1"
+  const q = cockpitFixture({ runJson: async () => ({ error: "unknown product 'acme'" }) });
   await q.v.send({ type: "ready" });
   await tick();
-  assert.equal(q.v.last().state.cockpit.error, "unknown product");
+  assert.deepEqual(q.calls[0][1].allowExit, [0, 1]);
+  assert.equal(q.v.last().state.cockpit.error, "Couldn't load acme: unknown product 'acme'. The atf output has the details.");
+  assert.doesNotMatch(q.v.last().state.cockpit.error, /cockpit\.mjs|exit \d/);
 });
 
 test("cockpit state: a relevant file change reloads C1 (debounced); an irrelevant one does not", async () => {

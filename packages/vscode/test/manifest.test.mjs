@@ -288,11 +288,12 @@ test("a product's context menu: start or continue, resume, doctor and Open confi
   assert.equal(palette["atf.validate"], "atf.active");
 });
 
-test("atf.host: claude (the default), copilot-chat or copilot-cli, as the code reads it", () => {
+test("atf.host: claude (the default), copilot-chat, copilot-cli, codex or antigravity, as the code reads it", () => {
   const host = c.configuration.properties["atf.host"];
-  assert.deepEqual(host.enum, ["claude", "copilot-chat", "copilot-cli", "codex"]);
+  assert.deepEqual(host.enum, ["claude", "copilot-chat", "copilot-cli", "codex", "antigravity"]);
   assert.equal(host.enumDescriptions.length, host.enum.length);
   assert.equal(host.default, "claude");
   assert.match(host.markdownDescription, /`copilot` is read as `copilot-cli`/);
-  assert.match(code["src/activate.js"], /HOSTS = \["claude", "copilot-chat", "copilot-cli", "codex"\]/);
+  assert.match(host.markdownDescription, /\*\*AI host\*\* picker/);
+  assert.match(code["src/hosts.js"], /HOSTS = \["claude", "copilot-chat", "copilot-cli", "codex", "antigravity"\]/);
 });

@@ -145,10 +145,25 @@ orchestrator-agent:
   this one.
 - **`codex`**: OpenAI Codex, `codex "<prompt>"`, the same way (`--host codex`). Codex must trust the project and its
   hooks (`/hooks`) before the guard runs.
+- **`antigravity`**: Google Antigravity's CLI, `agy --agent orchestrator-agent`, the same way (`--host antigravity`).
+  Not yet verified on a real Antigravity.
 - **`copilot-chat`**: VS Code Chat. The extension runs atf's own check of what the run needs, then opens the chat with
   the run's first prompt. Choose **orchestrator-agent** in the chat's Agent dropdown if it is not already chosen, then
   press Enter: nothing is sent for you. A product's other environments (`--env`) open in Copilot CLI instead, since a
   chat can't be given its environment. Without Copilot Chat, the extension says so and offers the other two.
+
+### Switching the AI host, even mid-run
+
+The **AI host** picker at the top of the Cockpit sets `atf.host` for the workspace. Choosing another host first shows a
+short warning with **Switch** and **Cancel**. Use it when one host runs out of credits in the middle of a run:
+
+1. Close the old host's session, so two sessions don't drive the same run.
+2. Switch, then press **▷ Run**. The run continues from its files on the new host. Finished stages stay done. A stage
+   that was cut off mid-way counts as one of its two attempts and runs again, from its last saved step where it has one.
+3. Only what was saved carries over (answers, approvals, the run's files), not the old chat.
+
+The hosts are not equal: on every host but Claude Code and VS Code's local agent, the guard can't tell the run's
+agents apart, so a `full-run` gives every call the run's combined limits. The warning says what the new host needs.
 
 ## Decisions only you can make
 

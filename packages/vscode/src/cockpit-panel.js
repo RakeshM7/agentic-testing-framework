@@ -8,7 +8,7 @@ import { readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { intentArgv } from "./cockpit-actions.js";
 import { TABS, renderCockpitPanelHtml, validatePanelPageMessage, validateTabMessage } from "./cockpit-panel-page.js";
-import { productRows } from "./cockpit.js";
+import { loadError, productRows } from "./cockpit.js";
 import { WATCH_GLOBS, debounce, relevantChange } from "./runs.js";
 import { makeNonce } from "./sheets/webview.js";
 import { DEFAULT_ENV, configFileOf, envArgs } from "./workspace.js";
@@ -133,7 +133,7 @@ export function registerCockpitPanel(context, { vscode, workspace, output, cli }
     } catch (e) {
       if (mine !== seq) return;
       data = null;
-      send({ type: "error", message: String(e.message ?? e).slice(0, 4000) });
+      send({ type: "error", message: loadError(current.product, e).slice(0, 4000) });
     }
   }
 

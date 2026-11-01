@@ -117,7 +117,7 @@ Built from Antigravity's documentation; not yet verified live. Until the spike (
 2. **Trust the workspace** when Antigravity asks, so it loads the hooks and the MCP servers. Without the hooks, the guard check stops every run.
 3. **Choose Claude Opus 5.5 in the model picker** before you start. The generated agents have `model: inherit` and run the session's model (D-100).
 4. **Permission preset.** Keep a preset that still runs the hooks and shows you an `ask`; the spike records which presets do. Don't run with `agy --dangerously-skip-permissions` until the spike shows the guard still blocks under it.
-5. **Start the run.** `npx atf run <product> --host antigravity` opens `agy --agent orchestrator-agent` (flag unverified). In the App or the IDE, pick **orchestrator-agent** and give it `config/<product>.yaml`.
+5. **Start the run.** `npx atf run <product> --host antigravity` opens `agy --agent orchestrator-agent` (flag unverified). In the App or the IDE, pick **orchestrator-agent** and give it `config/<product>.yaml`. The VS Code extension's `atf.host` setting, and the AI host picker at the top of its Cockpit, also offer `antigravity` (D-124).
 6. **The live browser is the Playwright MCP server** from `.agents/mcp_config.json`, Playwright's own Chromium (D-070). Never use Antigravity's built-in browser: it drives your own Chrome, outside the init page's readonly guard (D-076). The guard denies its tools, and every other unmapped tool, during any run (D-101).
 7. **The guard can't tell which agent is calling** yet, so a full-run gets the run's combined ceiling (D-035). Agents' commands run in Antigravity's sandbox (`commandExecutionPolicy: sandbox`) unless their permissions reach the live target (browser, HTTP or load) or their shell allow-list runs a command that needs the network (`npm`, `npx`, `playwright`, `k6`, `foundation.mjs install`). pw-repo-owner, for example, is `auto` for its installs.
 
@@ -132,7 +132,7 @@ Built from Codex's documentation; not yet verified live. Until the spike ([Verif
    ```
    Spawn the orchestrator-agent subagent and give it this task word for word, then relay its questions to me and my answers to it: <the run's usual prompt>
    ```
-   In the Codex app or the IDE extension, open the project and paste the same prompt, with the run-config path (`config/<product>.yaml`) as its task. The VS Code extension's `atf.host` setting also offers `codex`.
+   In the Codex app or the IDE extension, open the project and paste the same prompt, with the run-config path (`config/<product>.yaml`) as its task. The VS Code extension's `atf.host` setting, and the AI host picker at the top of its Cockpit, also offer `codex` (D-124).
 4. **The live browser is the Playwright MCP server** from `.codex/config.toml`, Playwright's own Chromium (D-070). Hosted web search is off because the guard can't see it (D-116), so on Codex agents have no web search. Computer use and every other unmapped tool are denied during any run, readonly included (D-101).
 5. **The guard can't tell which agent is calling** (the payload doesn't name it), so a full-run gets the run's combined ceiling (D-035).
 6. **Confirmations become denials.** Codex hooks can't ask, so an `ask` decision (an edit to a decision-governed file, for example) is a deny whose reason says a human must make the edit.
