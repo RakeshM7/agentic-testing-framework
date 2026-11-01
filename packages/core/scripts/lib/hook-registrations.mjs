@@ -5,9 +5,11 @@
 //   .vscode/hooks/framework-guard.json   VS Code's local agent (a dedicated file, rendered whole)
 //   .agents/hooks.json                   Antigravity: only the framework's named hook set, `atf-guard` (below); every
 //                                        other set is kept as it is
+//   .codex/hooks.json                    Codex: only the framework's own entries in its `hooks` key, merged like Claude's
+//                                        (below); every other key and hook entry is kept as it is
 // The PreToolUse guard is always registered, synchronously, on every host. Only the PostToolUse hook is configurable:
-//   async  Claude Code runs it in the background (`async: true`); Copilot, VS Code and Antigravity have no background
-//          hooks, so there it stays synchronous
+//   async  Claude Code runs it in the background (`async: true`); Copilot, VS Code, Antigravity and Codex have no
+//          background hooks, so there it stays synchronous
 //   sync   every host waits for it
 //   off    not registered: every governed edit asks again, the session never remembers a confirmation
 // Every command runs the framework's hook script by its path from the workspace (`{fw}`, D-085: nothing in this repo).
@@ -41,6 +43,15 @@
 // Its commands run cwd-relative, from the workspace root (`{fw}` as for Copilot and VS Code).
 // UNVERIFIED (Antigravity spike pending, docs/antigravity-spike/): that the hook runs from the workspace root, and that
 // the sets run in key order, so the guard listed first runs first.
+//
+// .codex/hooks.json is shared with the workspace's own Codex hooks in Claude's shape ({ "hooks": { event: [matcher
+// groups] } }), and merged by the same rules (mergeCodexHooks = the Claude merge, generalised by host): the framework
+// owns only the hooks whose command runs scripts/hooks/pretooluse.mjs or posttooluse.mjs with `--host codex`, in any
+// `{fw}` form; a Claude entry is never taken for a Codex one, nor the reverse. Entries: matcher `.*`, timeout 30 s,
+// PostToolUse omitted when off, async rendered as sync (Codex has no background hooks). Its commands run from the
+// session's cwd (`{fw}` as for Copilot and VS Code).
+// UNVERIFIED (Codex spike pending, docs/codex-spike/): that the command's cwd-relative path works, and what happens
+// when a session starts from a subfolder of the workspace.
 // Dependency-free.
 import { isDeepStrictEqual } from "node:util";
 import { expandFw } from "./roots.mjs";
@@ -50,6 +61,7 @@ export const POST_MODES = ["async", "sync", "off"];
 export const CLAUDE_SETTINGS = ".claude/settings.json";
 export const ANTIGRAVITY_HOOKS = ".agents/hooks.json";
 export const ANTIGRAVITY_SET = "atf-guard";
+export const CODEX_HOOKS = ".codex/hooks.json";
 
 const CLAUDE_PRE_MATCHER = "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|WebSearch|Agent|Task|mcp__.*playwright.*";
 // Agent and Task: the spawns the PostToolUse hook records for the report's time and effort (D-079)
@@ -89,6 +101,12 @@ function claudeHooks(mode, fw) {
   return hooks;
 }
 
+// Codex's hooks: no background hooks, so async renders as sync; off omits PostToolUse.
+function codexHooks(mode, fw) {
+  const group = (name) => [{ matcher: ".*", hooks: [{ type: "command", command: command(name, "codex", fw), timeout: 30 }] }];
+  return { PreToolUse: group("pretooluse"), ...(mode !== "off" ? { PostToolUse: group("posttooluse") } : {}) };
+}
+
 const isMap = (v) => Object.prototype.toString.call(v) === "[object Object]";
 // an own, enumerable key even when it is `__proto__` (a JSON key is data, never the object's prototype)
 const put = (o, k, v) => Object.defineProperty(o, k, { value: v, enumerable: true, writable: true, configurable: true });
@@ -101,21 +119,26 @@ const PROJECT_DIR = /^(?:\$\{CLAUDE_PROJECT_DIR(?::?[-+=?][^}]*)?\}|\$CLAUDE_PRO
 // shape, not by today's exact text: `node <path> … --host claude-code`, the path (quoted or not, either separator,
 // after any project-dir prefix) ending in the segment scripts/hooks/<entry>.mjs. `--host claude-code` is what keeps a
 // client's own scripts/hooks/pretooluse.mjs out: only the framework's registration passes it.
-export function frameworkHook(hook) {
+export function frameworkHook(hook, host = "claude-code") {
   if (!isMap(hook) || hook.type !== "command" || typeof hook.command !== "string") return null;
   const m = hook.command.trim().match(/^node\s+(?:"([^"]+)"|(\S+))((?:\s+\S+)*)$/);
   if (!m) return null;
   const args = m[3].trim().split(/\s+/);
-  const host = args.indexOf("--host");
-  if (host < 0 || args[host + 1] !== "claude-code") return null;
+  const hostAt = args.indexOf("--host");
+  if (hostAt < 0 || args[hostAt + 1] !== host) return null;
   const script = (m[1] ?? m[2]).replaceAll("\\", "/").replace(PROJECT_DIR, "");
   return script.match(HOOK_SCRIPT)?.[1] ?? null;
 }
 
 // The current `hooks` value of .claude/settings.json (or undefined) -> the merged `hooks` (see the header). Throws on
 // a shape it can't merge safely, naming where.
-export function mergeClaudeHooks(current, mode, fw = "") {
-  const ours = claudeHooks(mode, fw);
+export const mergeClaudeHooks = (current, mode, fw = "") => mergeHostHooks(current, claudeHooks(mode, fw), "claude-code", fw);
+
+// The same merge for .codex/hooks.json's `hooks` value.
+export const mergeCodexHooks = (current, mode, fw = "") => mergeHostHooks(current, codexHooks(mode, fw), "codex", fw);
+
+// The merge both share: `ours` is the framework's rendered `hooks`, `host` the --host its entries carry.
+function mergeHostHooks(current, ours, host) {
   if (current === undefined) return ours;
   if (!isMap(current)) throw new Error(`'hooks' must be an object (event -> list of matcher groups), not ${describe(current)}; fix it, nothing was written`);
   const kept = {};
@@ -126,7 +149,7 @@ export function mergeClaudeHooks(current, mode, fw = "") {
     groups.forEach((group, i) => {
       if (!isMap(group) || !Array.isArray(group.hooks))
         throw new Error(`hooks.${event}[${i}] must be an object with a 'hooks' list, not ${describe(group)}; fix it, nothing was written`);
-      const own = group.hooks.filter((h) => !frameworkHook(h));
+      const own = group.hooks.filter((h) => !frameworkHook(h, host));
       if (own.length === group.hooks.length) rest.push(group);
       else {
         removed = true;
@@ -138,14 +161,14 @@ export function mergeClaudeHooks(current, mode, fw = "") {
   const merged = {};
   for (const [event, groups] of Object.entries(ours)) put(merged, event, [...groups, ...(kept[event] ?? [])]);
   for (const [event, groups] of Object.entries(kept)) if (!Object.hasOwn(merged, event)) put(merged, event, groups);
-  assertGuard(merged, fw);
+  assertGuard(merged, ours);
   return merged;
 }
 
 // The PreToolUse guard is mandatory (D-042): the first PreToolUse group is the framework's, matcher and command as
 // rendered. A merge that ever lost it is a bug, so it throws rather than write a settings file without the guard.
-function assertGuard(hooks, fw) {
-  const [want] = claudeHooks("off", fw).PreToolUse;
+function assertGuard(hooks, ours) {
+  const [want] = ours.PreToolUse;
   if (!isDeepStrictEqual(hooks.PreToolUse?.[0], want)) throw new Error("internal: the merged hooks lost the PreToolUse guard; nothing was written");
 }
 
@@ -217,17 +240,36 @@ function inFile(file, render) {
 
 // -> Map(workspace-relative path -> file content). `claudeSettings` is the current .claude/settings.json text (or
 // undefined); its keys other than `hooks` are kept, in their order, and in `hooks` everything but the framework's own
-// entries (mergeClaudeHooks). `antigravityHooks` is the current .agents/hooks.json text (or undefined); every set but
+// entries (mergeClaudeHooks). `codexHooks` is the current .codex/hooks.json text (or undefined), merged the same way
+// for `--host codex` (mergeCodexHooks). `antigravityHooks` is the current .agents/hooks.json text (or undefined); every set but
 // `atf-guard` is kept (mergeAntigravityHooks). When nothing of ours differs, a shared file's text comes back unchanged.
 // `fw`: the framework's path from the workspace. Throws on a shared file it can't merge safely (not JSON, not an object,
 // a malformed `hooks` or set), with `e.file` naming that file.
-export function renderHookRegistrations(mode, claudeSettings, fw = "", { antigravityHooks } = {}) {
+export function renderHookRegistrations(mode, claudeSettings, fw = "", opts = {}) {
+  const { antigravityHooks, codexHooks: codexHooksText } = opts;
   return new Map([
     [CLAUDE_SETTINGS, inFile(CLAUDE_SETTINGS, () => renderClaudeSettings(mode, claudeSettings, fw))],
     [".github/hooks/framework-guard.json", formatJson(copilotHooks(mode, fw)) + "\n"],
     [".vscode/hooks/framework-guard.json", formatJson(vscodeHooks(mode, fw)) + "\n"],
     [ANTIGRAVITY_HOOKS, inFile(ANTIGRAVITY_HOOKS, () => renderAntigravityHooks(mode, antigravityHooks, fw))],
+    // Codex's file is rendered only when the caller names it (even as `codexHooks: undefined` for a missing file)
+    ...("codexHooks" in opts ? [[CODEX_HOOKS, inFile(CODEX_HOOKS, () => renderCodexHooks(mode, codexHooksText, fw))]] : []),
   ]);
+}
+
+// .codex/hooks.json: { hooks }, the file's other keys kept (the Claude settings rules, with --host codex)
+function renderCodexHooks(mode, text, fw) {
+  let file = {};
+  if (text !== undefined && text.trim() !== "") {
+    try {
+      file = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`not valid JSON (${e.message}); fix it, nothing was written`);
+    }
+  }
+  if (!isMap(file)) throw new Error(`must be a JSON object, not ${describe(file)}; fix it, nothing was written`);
+  const merged = { ...file, hooks: mergeCodexHooks(file.hooks, mode, fw) };
+  return text?.trim() && isDeepStrictEqual(merged, file) ? text : formatJson(merged) + "\n";
 }
 
 function renderClaudeSettings(mode, text, fw) {

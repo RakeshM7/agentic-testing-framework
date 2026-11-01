@@ -1,0 +1,15 @@
+{
+  "session_id": "cx-sess-0001",
+  "transcript_path": "{root}/.codex/sessions/rollout.jsonl",
+  "cwd": "{root}",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-5-codex",
+  "turn_id": "turn-0001",
+  "tool_name": "exec_command",
+  "tool_use_id": "call-0001",
+  "tool_input": {
+    "command": "node scripts/run.mjs status acme",
+    "workdir": "{root}"
+  },
+  "permission_mode": "default"
+}

@@ -154,7 +154,7 @@
           {
             "id": "host",
             "title": "Choose where agents run",
-            "description": "Optional: runs open in Claude Code by default. You can choose VS Code Chat with GitHub Copilot (copilot-chat) or Copilot CLI (copilot-cli) instead.\n[Choose where agents run](command:workbench.action.openSettings?%5B%22atf.host%22%5D)",
+            "description": "Optional: runs open in Claude Code by default. You can choose VS Code Chat with GitHub Copilot (copilot-chat) or Copilot CLI (copilot-cli) or Codex (codex) instead.\n[Choose where agents run](command:workbench.action.openSettings?%5B%22atf.host%22%5D)",
             "media": {
               "markdown": "media/walkthrough/host.md"
             },
@@ -530,15 +530,17 @@
           "enum": [
             "claude",
             "copilot-chat",
-            "copilot-cli"
+            "copilot-cli",
+            "codex"
           ],
           "enumDescriptions": [
             "Claude Code: `claude --agent orchestrator-agent` in a terminal tab in the editor area (Claude Code's panel can't pick the agent).",
             "VS Code Chat (GitHub Copilot): the chat opens with the run's first prompt, for you to send to the orchestrator-agent.",
-            "Copilot CLI: `copilot --agent orchestrator-agent` in a terminal tab in the editor area."
+            "Copilot CLI: `copilot --agent orchestrator-agent` in a terminal tab in the editor area.",
+            "OpenAI Codex: `codex` in a terminal tab in the editor area. Codex must trust the project and its hooks (`/hooks`) before the guard runs."
           ],
           "default": "claude",
-          "markdownDescription": "Where **Start or continue a run**, **Resume a stage** and the interview open the orchestrator-agent session. The earlier value `copilot` is read as `copilot-cli`. For `claude` and `copilot-cli`, the `ATF_AGENT` environment variable still overrides the command (`atf run --host`)."
+          "markdownDescription": "Where **Start or continue a run**, **Resume a stage** and the interview open the orchestrator-agent session. The earlier value `copilot` is read as `copilot-cli`. For `codex`, Codex must trust the project and its hooks (`/hooks`) before the guard runs. For `claude`, `copilot-cli` and `codex`, the `ATF_AGENT` environment variable still overrides the command (`atf run --host`)."
         }
       }
     }

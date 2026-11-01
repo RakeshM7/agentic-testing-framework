@@ -6,9 +6,13 @@ import {
   ANTIGRAVITY_HOOKS,
   ANTIGRAVITY_SET,
   CLAUDE_SETTINGS,
+  CODEX_HOOKS,
   POST_MODES,
   formatJson,
+  frameworkHook,
   mergeAntigravityHooks,
+  mergeClaudeHooks,
+  mergeCodexHooks,
   renderHookRegistrations,
 } from "./lib/hook-registrations.mjs";
 
@@ -163,6 +167,10 @@ test("the three-argument call still renders every host file, Antigravity's fresh
     [...files.keys()],
     [CLAUDE_SETTINGS, ".github/hooks/framework-guard.json", ".vscode/hooks/framework-guard.json", ANTIGRAVITY_HOOKS],
   );
+  // Codex's file only when asked for, even as undefined (no file yet)
+  const withCodex = renderHookRegistrations("async", undefined, FW, { codexHooks: undefined });
+  assert.equal([...withCodex.keys()].at(-1), CODEX_HOOKS);
+  assert.equal(withCodex.size, 5);
   assert.equal(files.get(ANTIGRAVITY_HOOKS), render("async", undefined));
 });
 
@@ -172,4 +180,126 @@ test("a .claude/settings.json error names that file, its message unchanged", () 
   assert.equal(e.message, "must be a JSON object, not a list; fix it, nothing was written");
   const bad = thrown(() => renderHookRegistrations("async", "{ nope", FW));
   assert.equal(bad.file, CLAUDE_SETTINGS);
+});
+
+// ---- Codex: .codex/hooks.json ----
+const cgroup = (entry, fw = FW) => [
+  { matcher: ".*", hooks: [{ type: "command", command: `node ${fw}/scripts/hooks/${entry}.mjs --host codex`, timeout: 30 }] },
+];
+const codexHooks = (mode, fw = FW) => ({ PreToolUse: cgroup("pretooluse", fw), ...(mode !== "off" ? { PostToolUse: cgroup("posttooluse", fw) } : {}) });
+const crender = (mode, text, fw = FW) => renderHookRegistrations(mode, undefined, fw, { codexHooks: text }).get(CODEX_HOOKS);
+const lint = { matcher: "Bash", hooks: [{ type: "command", command: "./lint.sh", timeout: 5 }] };
+
+test("codex: a fresh render is { hooks } with the guard, for every mode and empty input", () => {
+  for (const mode of POST_MODES)
+    for (const text of [undefined, "", " \n", "{}"]) {
+      const out = crender(mode, text);
+      assert.deepEqual(parse(out), { hooks: codexHooks(mode) }, `${mode} ${JSON.stringify(text)}`);
+      assert.equal(out, formatJson({ hooks: codexHooks(mode) }) + "\n");
+    }
+});
+
+test("codex: matcher .*, --host codex, timeout 30, {fw} expanded; async is sync; off has no PostToolUse", () => {
+  const hooks = parse(crender("sync", undefined)).hooks;
+  assert.equal(hooks.PreToolUse[0].matcher, ".*");
+  assert.deepEqual(hooks.PreToolUse[0].hooks, [{ type: "command", command: `node ${FW}/scripts/hooks/pretooluse.mjs --host codex`, timeout: 30 }]);
+  assert.deepEqual(hooks.PostToolUse[0].hooks, [{ type: "command", command: `node ${FW}/scripts/hooks/posttooluse.mjs --host codex`, timeout: 30 }]);
+  assert.equal(crender("async", undefined), crender("sync", undefined));
+  assert.ok(!("PostToolUse" in parse(crender("off", undefined)).hooks));
+  const own = parse(crender("sync", undefined, "")).hooks;
+  assert.equal(own.PreToolUse[0].hooks[0].command, "node scripts/hooks/pretooluse.mjs --host codex");
+  assert.ok(!JSON.stringify(own).includes("{fw}"));
+});
+
+test("codex: the client's other keys, events and groups are kept in order, ours first", () => {
+  const current = {
+    model: "x",
+    hooks: { SubagentStop: [lint], PreToolUse: [lint], PostToolUse: [{ matcher: "Edit", hooks: [{ type: "command", command: "./fmt.sh" }] }] },
+    tail: 1,
+  };
+  const merged = parse(crender("sync", JSON.stringify(current)));
+  assert.deepEqual(Object.keys(merged), ["model", "hooks", "tail"]);
+  assert.deepEqual(Object.keys(merged.hooks), ["PreToolUse", "PostToolUse", "SubagentStop"]);
+  assert.deepEqual(merged.hooks.PreToolUse, [...cgroup("pretooluse"), lint]);
+  assert.deepEqual(merged.hooks.PostToolUse, [...cgroup("posttooluse"), current.hooks.PostToolUse[0]]);
+  assert.deepEqual(merged.hooks.SubagentStop, [lint]);
+  // off drops our PostToolUse but keeps the client's
+  const off = parse(crender("off", JSON.stringify(current))).hooks;
+  assert.deepEqual(off.PostToolUse, current.hooks.PostToolUse);
+});
+
+test("codex: a stale codex entry (old {fw}, other mode) is replaced, never duplicated; a shared group keeps the client's hook", () => {
+  const stale = {
+    hooks: {
+      PreToolUse: [
+        { matcher: ".*", hooks: [{ type: "command", command: "node old/fw/scripts/hooks/pretooluse.mjs --host codex", timeout: 30 }, lint.hooks[0]] },
+      ],
+      PostToolUse: cgroup("posttooluse", "other/fw"),
+    },
+  };
+  const out = parse(crender("sync", JSON.stringify(stale))).hooks;
+  assert.deepEqual(out.PreToolUse, [...cgroup("pretooluse"), { matcher: ".*", hooks: [lint.hooks[0]] }]);
+  assert.deepEqual(out.PostToolUse, cgroup("posttooluse"));
+  // switching to off removes the old PostToolUse entirely (the event is left empty, so it goes)
+  const off = parse(crender("off", JSON.stringify(stale))).hooks;
+  assert.ok(!("PostToolUse" in off));
+});
+
+test("codex: a client's own pretooluse.mjs (other host or none) is not ours; claude and codex entries never cross", () => {
+  const claudeEntry = { type: "command", command: 'node "${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}scripts/hooks/pretooluse.mjs" --host claude-code' };
+  const mine = { type: "command", command: "node scripts/hooks/pretooluse.mjs" };
+  const other = { type: "command", command: "node scripts/hooks/pretooluse.mjs --host antigravity" };
+  const codexEntry = { type: "command", command: "node scripts/hooks/pretooluse.mjs --host codex", timeout: 30 };
+  assert.equal(frameworkHook(claudeEntry), "pretooluse");
+  assert.equal(frameworkHook(claudeEntry, "codex"), null);
+  assert.equal(frameworkHook(codexEntry), null);
+  assert.equal(frameworkHook(codexEntry, "codex"), "pretooluse");
+  const cur = { hooks: { PreToolUse: [{ matcher: "x", hooks: [claudeEntry, mine, other] }] } };
+  const out = parse(crender("sync", JSON.stringify(cur))).hooks.PreToolUse;
+  assert.deepEqual(out[1], cur.hooks.PreToolUse[0]);
+  // Claude's merge leaves a codex entry alone
+  const claudeSide = mergeClaudeHooks({ PreToolUse: [{ matcher: "x", hooks: [codexEntry] }] }, "sync", FW);
+  assert.deepEqual(claudeSide.PreToolUse[1], { matcher: "x", hooks: [codexEntry] });
+});
+
+test("codex: a malformed file is an error naming .codex/hooks.json; nothing is rendered", () => {
+  const cases = [
+    ["{ nope", /not valid JSON/],
+    ["[]", /must be a JSON object, not a list/],
+    ["null", /must be a JSON object, not null/],
+    [JSON.stringify({ hooks: [] }), /'hooks' must be an object/],
+    [JSON.stringify({ hooks: { PreToolUse: {} } }), /hooks\.PreToolUse must be a list/],
+    [JSON.stringify({ hooks: { PreToolUse: [{ matcher: "x" }] } }), /hooks\.PreToolUse\[0\] must be an object with a 'hooks' list/],
+  ];
+  for (const [text, message] of cases) {
+    const e = thrown(() => crender("sync", text));
+    assert.match(e.message, message, text);
+    assert.match(e.message, /nothing was written/);
+    assert.equal(e.file, CODEX_HOOKS, text);
+  }
+});
+
+test("codex: unchanged JSON keeps the file's text as it is; the output is stable", () => {
+  for (const mode of POST_MODES) {
+    const file = { hooks: { ...codexHooks(mode), Other: [lint] }, extra: true };
+    for (const text of [JSON.stringify(file), JSON.stringify(file, null, 4) + "\n\n"]) assert.equal(crender(mode, text), text);
+  }
+  const once = crender("async", JSON.stringify({ hooks: { PreToolUse: [lint] } }));
+  assert.equal(crender("async", once), once);
+});
+
+test("codex: mergeCodexHooks takes the parsed hooks value; the guard is first in PreToolUse for every mode", () => {
+  assert.deepEqual(mergeCodexHooks(undefined, "off", FW), codexHooks("off"));
+  assert.throws(() => mergeCodexHooks([], "sync", FW), /'hooks' must be an object/);
+  for (const mode of POST_MODES) assert.deepEqual(mergeCodexHooks({ PreToolUse: [lint] }, mode, FW).PreToolUse[0], cgroup("pretooluse")[0]);
+});
+
+test("the Claude settings path is unaffected by the codex option", () => {
+  const withCodex = renderHookRegistrations("async", undefined, FW, { codexHooks: "[]".replace("[]", "{}") });
+  const without = renderHookRegistrations("async", undefined, FW);
+  assert.equal(withCodex.get(CLAUDE_SETTINGS), without.get(CLAUDE_SETTINGS));
+  assert.ok(parse(without.get(CLAUDE_SETTINGS)).hooks.PreToolUse[0].hooks[0].command.endsWith("--host claude-code"));
+  // a bad codex file reports .codex/hooks.json, not the Claude file
+  const e = thrown(() => renderHookRegistrations("async", undefined, FW, { codexHooks: "[]" }));
+  assert.equal(e.file, CODEX_HOOKS);
 });

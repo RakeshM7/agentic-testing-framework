@@ -986,6 +986,9 @@ test("every framework script is writable by framework-implementor-agent or delib
     "scripts/lib/confirm.mjs", "scripts/confirm.test.mjs",
     // D-109: the guard hook loads the Node.js check, so it runs in the hook's process like the hook's own code
     "scripts/lib/node-version.mjs", "scripts/node-version.test.mjs",
+    // D-115, D-116: Codex's project config turns hosted web search off (the guard can't see it) and holds the subagent
+    // depth; the Codex adapter's tests check the guard on that host, like hooks.test
+    "scripts/lib/codex-config.mjs", "scripts/codex-config.test.mjs", "scripts/codex-hooks.test.mjs",
   ]);
   const files = [];
   // node_modules is git-ignored and never the framework's own code, wherever an install put it; paths as the run's

@@ -1,0 +1,11 @@
+# Codex spike workspace config (dev-only).
+
+# VALUE UNDER TEST: does this key turn hosted web search off? (README check 6)
+web_search = "disabled"
+
+[agents]
+max_depth = 3 # main (0) -> spike-parent (1) -> spike-child (2) -> spike-grandchild (3)
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@0.0.83", "--browser", "chromium", "--isolated"]

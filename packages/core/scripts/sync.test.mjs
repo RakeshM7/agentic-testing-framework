@@ -127,7 +127,7 @@ test("the .gitignore block lists each of the framework's agent files and no fold
   const lines = read(ws.root, ".gitignore").split("\n");
   const block = lines.slice(lines.indexOf(BLOCK_START), lines.indexOf(BLOCK_END) + 1);
   // every agent file the build wrote, each on its own line, with the other whole files as before, sorted
-  const generated = [".claude/agents", ".github/agents", ".agents/agents"].flatMap((dir) => listed(ws.root, dir).map((f) => `${dir}/${f}`)).filter((rel) => !Object.hasOwn(mine, rel));
+  const generated = [".claude/agents", ".github/agents", ".agents/agents", ".codex/agents"].flatMap((dir) => listed(ws.root, dir).map((f) => `${dir}/${f}`)).filter((rel) => !Object.hasOwn(mine, rel));
   assert.ok(generated.length > 60, `${generated.length} agent files`);
   assert.deepEqual(block.slice(1, -1), [...generated, ...CLIENT_IGNORED].map((e) => `/${e}`).sort());
   assert.deepEqual(block, blockOf(ws), "the roster's files, both hosts");
@@ -739,4 +739,12 @@ test("doctor, in plugin mode: the plugin's recorded version must be the package'
     assert.deepEqual([c["plugin-version"].ok, c["plugin-version"].level], [false, "fail"], bad);
     assert.match(c["plugin-version"].detail, /^artifacts\/\.atf-plugin\.json (could not be read as JSON|must hold)/, bad);
   }
+});
+
+test("a platform whose output is .codex/agents/{name}.toml lists those files; .codex/config.toml and hooks.json stay client-owned", () => {
+  const files = ["a", "b"].map((n) => ".codex/agents/{name}.toml".replaceAll("{name}", n));
+  const entries = ignoredEntries(files);
+  assert.ok(files.every((f) => entries.includes(f)));
+  assert.ok(!entries.includes(".codex/config.toml") && !entries.includes(".codex/hooks.json"));
+  assert.ok(!CLIENT_IGNORED.some((e) => e.startsWith(".codex/")), "no shared .codex file is in the ignore list");
 });

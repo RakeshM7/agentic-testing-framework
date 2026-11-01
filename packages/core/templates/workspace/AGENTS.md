@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Brief for any agent working in this repository: Claude Code, every GitHub Copilot surface (VS Code Copilot Chat, Copilot CLI, the cloud coding agent) and Google Antigravity (the App, the `agy` CLI and the IDE) read this file at session start. It is a pointer, not a copy of the pipeline's rules.
+Brief for any agent working in this repository: Claude Code, every GitHub Copilot surface (VS Code Copilot Chat, Copilot CLI, the cloud coding agent), Google Antigravity (the App, the `agy` CLI and the IDE) and OpenAI Codex (the CLI, the app and the IDE extension) read this file at session start. It is a pointer, not a copy of the pipeline's rules.
 
 ## What this repo is
 
@@ -25,7 +25,7 @@ The agent files, hooks and MCP config (`.claude/agents/`, `.github/agents/`, `.a
 - `readonly` (the default) is non-mutating everywhere, whatever the permissions say.
 - `full-run` must be set explicitly, per target, by a human authorized to test that target, and is never inferred. Then each agent gets exactly its ceiling in the effective `permissions.yaml`: the package's, or this workspace's overlay `atf/permissions.yaml` or ejected `atf/config/permissions.yaml`.
 - Even under `full-run`, destructive actions (delete/cancel/remove) are scoped to entities this run created, recorded in the run's ledger (`state/ledger.jsonl`). Never pre-existing data, and never another user's.
-- Copilot CLI, VS Code chat on its Copilot CLI engine, the cloud coding agent and Antigravity can't tell the guard which agent is calling. On those hosts a `full-run` call gets the run's combined ceiling instead: what at least one of the run's agents may do.
+- Copilot CLI, VS Code chat on its Copilot CLI engine, the cloud coding agent, Antigravity and Codex can't tell the guard which agent is calling. On those hosts a `full-run` call gets the run's combined ceiling instead: what at least one of the run's agents may do.
 
 The framework's guard enforces all of this in code on every tool call, through the hooks `npx atf sync` registers. Do not bypass or weaken it.
 

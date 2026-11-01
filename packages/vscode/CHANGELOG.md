@@ -3,6 +3,10 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
+## Unreleased
+
+- **`atf.host` accepts `codex`:** an agent session in an editor terminal like `claude` and `copilot-cli` (`--host codex`); Codex must trust the project and its hooks (`/hooks`) before the guard runs.
+
 ## 0.1.5
 
 - **The run report counts every attempt:** a retried stage's time includes its earlier attempts, so "Stages took … in

@@ -161,9 +161,10 @@ test("a product node with several environments asks which; run's picker offers N
 // ---- the host setting ------------------------------------------------------------------------------------------------
 
 test("atf.host: claude, copilot-chat or copilot-cli; the old copilot reads as copilot-cli and is rewritten where it is set", async () => {
-  assert.deepEqual(HOSTS, ["claude", "copilot-chat", "copilot-cli"]);
+  assert.deepEqual(HOSTS, ["claude", "copilot-chat", "copilot-cli", "codex"]);
   assert.deepEqual([hostOf("copilot"), hostOf("copilot-cli"), hostOf("copilot-chat"), hostOf("claude"), hostOf(undefined), hostOf("nonsense")], ["copilot-cli", "copilot-cli", "copilot-chat", "claude", "claude", "claude"]);
-  assert.deepEqual([hostCliArgs("claude"), hostCliArgs("copilot-cli")], [[], ["--host", "copilot"]]);
+  assert.deepEqual([hostCliArgs("claude"), hostCliArgs("copilot-cli"), hostCliArgs("codex")], [[], ["--host", "copilot"], ["--host", "codex"]]);
+  assert.equal(hostOf("codex"), "codex");
   const a = activate(workspace(), { config: { host: "copilot" }, inspect: { host: { workspaceValue: "copilot", globalValue: "claude" } } });
   await new Promise((r) => setImmediate(r));
   assert.deepEqual(a.vscode.rec.updates, [["host", "copilot-cli", a.vscode.ConfigurationTarget.Workspace]]);

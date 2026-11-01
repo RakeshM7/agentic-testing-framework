@@ -23,6 +23,7 @@ agents:
               "{fw}/scripts/api-code.test.mjs", "{fw}/scripts/api-plan.mjs", "{fw}/scripts/api-plan.test.mjs",
               "{fw}/scripts/build-agents.mjs", "{fw}/scripts/build-agents.test.mjs", "{fw}/scripts/clarifications.mjs",
               "{fw}/scripts/clarifications.test.mjs", "{fw}/scripts/cockpit.mjs", "{fw}/scripts/cockpit.test.mjs",
+              "{fw}/scripts/codex-renderer.test.mjs",
               "{fw}/scripts/decisions.test.mjs", "{fw}/scripts/doctor.mjs",
               "{fw}/scripts/doctor.test.mjs", "{fw}/scripts/domains.test.mjs",
               "{fw}/scripts/endpoints.mjs", "{fw}/scripts/endpoints.test.mjs", "{fw}/scripts/explore.mjs", "{fw}/scripts/explore.test.mjs",

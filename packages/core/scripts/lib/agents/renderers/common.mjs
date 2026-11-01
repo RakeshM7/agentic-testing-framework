@@ -22,7 +22,9 @@ export const generatedNote = (name, fw = "", installed = false, dev = undefined)
 // earlier version wrote it, `# GENERATED from …`). The build tells its own outputs from a client's own agent files by it
 // (scripts/build-agents.mjs): a marked file with no source is a stray of ours, an unmarked one is the client's.
 const MARKER = /^﻿?---\r?\n# GENERATED (from |by atf sync )/;
-export const isGenerated = (text) => MARKER.test(text);
+// A TOML agent file (Codex, renderers/codex.mjs) carries the note as its first line instead.
+const TOML_MARKER = /^﻿?# GENERATED (from |by atf sync )/;
+export const isGenerated = (text) => MARKER.test(text) || TOML_MARKER.test(text);
 
 // Frontmatter lines + body -> file text, in the source's line endings.
 export const assemble = (lines, body, eol) => ["---", ...lines, "---"].join(eol) + eol + body;
