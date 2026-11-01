@@ -325,6 +325,11 @@ export function registerCockpit(context, { vscode, workspace, output, cli }, { e
         return actions.command(m.id);
       case "newForm":
         return openForm();
+      case "closeForm":
+        // the page has collapsed it; a draft still running keeps its result
+        if (form.busy) return;
+        Object.assign(form, { result: null, errors: [] });
+        return send();
       case "openOutput":
         return output.show(true);
       case "pickFiles": {

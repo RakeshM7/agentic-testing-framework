@@ -30,7 +30,7 @@ test("the form's steps and test case types are the framework's", () => {
 test("validatePanelMessage: only the known messages, with bounded fields; anything else is refused", () => {
   const ok = (m) => assert.equal(validatePanelMessage(m).ok, true, JSON.stringify(m));
   const no = (m) => assert.equal(validatePanelMessage(m).ok, false, JSON.stringify(m));
-  for (const type of ["ready", "check", "fix", "unpinNode", "interview", "openOutput", "newForm"]) ok({ type }), no({ type, extra: 1 });
+  for (const type of ["ready", "check", "fix", "unpinNode", "interview", "openOutput", "newForm", "closeForm"]) ok({ type }), no({ type, extra: 1 });
   ok({ type: "run", product: "acme", environment: "default" });
   no({ type: "run", product: "../etc", environment: "default" });
   no({ type: "doctor", product: "acme" });
@@ -293,6 +293,9 @@ test("New product form: the real run-config.mjs drafts config/<product>.yaml, re
   // the obvious gaps: said before anything runs
   await p.v.send({ type: "draft", form: { name: "", url: "" } });
   assert.deepEqual(p.v.last().state.form.errors.slice(0, 2), ["Give the product's name.", "Give the URL to test (http or https)."]);
+  // Cancel: the errors go with the form
+  await p.v.send({ type: "closeForm" });
+  assert.deepEqual([p.v.last().state.form.errors, p.v.last().state.form.result], [[], null]);
 });
 
 test("the view's actions: run, doctor and config only for products it lists; files picked come back relative; the rest are ignored", async () => {

@@ -284,6 +284,33 @@ test("client: no run yet shows Start run, and no Needs you, Pipeline or Intents"
   }
 });
 
+const formSection = (app) => app.findAll("details").find((d) => text(d.find("summary")).startsWith("New product"));
+
+test("client: with a product, Cancel dismisses an opened New product form; Close dismisses its result; with none, neither is offered", () => {
+  const h = mount({ ...baseState(fixture), form: { open: true } });
+  try {
+    assert.equal(formSection(h.app).open, true);
+    h.posted.length = 0;
+    byText(h.app, "button", "Cancel").dispatch("click");
+    assert.deepEqual(h.posted, [{ type: "closeForm" }]);
+    ok(h.posted[0]);
+    assert.equal(formSection(h.app).open, false);
+    h.send({ ...baseState(fixture), form: { result: { file: "config/beta.yaml", product: "beta", warnings: [], loginNeeded: false } } });
+    h.posted.length = 0;
+    byText(h.app, "button", "Close").dispatch("click");
+    assert.deepEqual(h.posted, [{ type: "closeForm" }]);
+  } finally {
+    h.done();
+  }
+  const none = mount({ ...baseState(fixture), products: [] });
+  try {
+    assert.equal(formSection(none.app).open, true);
+    assert.equal(byText(none.app, "button", "Cancel"), undefined);
+  } finally {
+    none.done();
+  }
+});
+
 test("client: loading and error states; an older host (no cockpit) renders as before", () => {
   let h = mount(baseState({ selected: fixture.selected, loading: true, error: "cockpit.mjs failed", data: null }));
   try {
