@@ -17,7 +17,8 @@ You need Node.js 20 or later, and a GitHub account that has been given read acce
 1. **Install the extension**, then click the **ATF** icon in the activity bar.
 2. **Create new project…** The first time, it asks for a GitHub personal access token (classic) with only the
    `read:packages` scope ([create one](https://github.com/settings/tokens/new?scopes=read:packages&description=atf-install)).
-   VS Code keeps it in its secret storage: you don't edit `~/.npmrc` or set a shell variable. Then **choose where to
+   VS Code keeps it in its secret storage: you don't edit `~/.npmrc` or set a shell variable. If your `~/.npmrc`
+   already has a token for `npm.pkg.github.com`, that one is used and nothing is asked. Then **choose where to
    create the project**. An empty folder is used as it is. Any other folder gets a new folder for the project, whose
    name you type (`atf-tests` by default), so your other files are never mixed in. A folder inside an existing project
    is refused, with **Open it**. The extension downloads the `@testagentic/atf` of its own version, sets the project up

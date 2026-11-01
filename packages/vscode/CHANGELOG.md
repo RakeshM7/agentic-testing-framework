@@ -5,6 +5,9 @@ matches the package installed in your workspace.
 
 ## Unreleased
 
+- **No token prompt when npm already has one:** a `npm.pkg.github.com` token in your `~/.npmrc` (or the file
+  `npm_config_userconfig` names) is used for Create new project… and Install the framework, unasked. It is read when
+  needed and never copied (D-112).
 - **the Cockpit:** a new first view in the ATF sidebar, one page from a fresh machine to a run.
   - **Environment checks:** the Node.js an agent session would run on, and the framework's checks for this machine
     (Node.js, dependencies, the login browser, the agents' browser, k6), each with its fix. **Fix what atf can
