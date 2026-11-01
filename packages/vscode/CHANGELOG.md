@@ -3,8 +3,12 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
-## Unreleased
+## 0.1.6
 
+- **Codex is a supported host** (the CLI, the app and the IDE extension): `atf sync` generates `.codex/` (an agent
+  file per agent, the guard's hooks, and an atf block in `.codex/config.toml` with the Playwright browser and hosted
+  web search off), and `npx atf run <product> --host codex` opens Codex on the orchestrator. Built from Codex's
+  documentation and not yet verified on a real Codex (D-115, D-116).
 - **`atf.host` accepts `codex`:** an agent session in an editor terminal like `claude` and `copilot-cli` (`--host codex`); Codex must trust the project and its hooks (`/hooks`) before the guard runs.
 
 ## 0.1.5
