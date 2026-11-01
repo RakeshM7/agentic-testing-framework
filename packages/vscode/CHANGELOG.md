@@ -3,8 +3,10 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
-## Unreleased
+## 0.1.5
 
+- **The run report counts every attempt:** a retried stage's time includes its earlier attempts, so "Stages took … in
+  all" is the real total; the Stages table shows the last attempt beside it when they differ (D-114).
 - **Every attempt in the Run timeline:** a retried stage shows its earlier attempts (when, how long, how each ended
   and why), and each ended run lists its stages' times, not only its report (D-113).
 - **No token prompt when npm already has one:** a `npm.pkg.github.com` token in your `~/.npmrc` (or the file
