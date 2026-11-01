@@ -168,6 +168,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-110 | The VS Code Cockpit: machine environment checks (`doctor.mjs --machine`), a pinned Node.js for sessions (`atf.nodePath`), a check before every session, and a New product form that drafts the run-config with no agent | Accepted | 2026-10-31 |
 | D-111 | The Cockpit's pipeline view: a sidebar and an editor tab, with no chat, over one read-only JSON from `scripts/cockpit.mjs` built from the data the scripts already decide | Accepted | 2026-10-31 |
 | D-112 | The VS Code extension uses the npm.pkg.github.com token already in the user's npm config before asking for one | Accepted | 2026-11-01 |
+| D-113 | A stage keeps its ended attempts in run.json (`previous`), and an ended run's summary keeps each stage's times, for the Cockpit's Run timeline | Accepted | 2026-11-01 |
 
 ## Decisions
 
@@ -2313,3 +2314,15 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Known gaps:** the global npmrc (`<prefix>/etc/npmrc`) and a project-level `.npmrc` above the folder are not read; `_auth` / `username` + `_password` basic auth is not used. The token is not checked against the registry before use; a refusal is reported as for D-107, with Replace token.
 - **Affects:** `packages/vscode/src/project.js`, `packages/vscode/test/project.test.mjs`
 - **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("yes do it", to using the token npm already has before asking). This extends D-107 without weakening it: the token still never reaches a terminal, the chat, argv, a log or a file.
+
+### D-113 · A stage keeps its ended attempts in run.json (`previous`), and an ended run's summary keeps each stage's times, for the Cockpit's Run timeline
+- **Status:** Accepted · **Date:** 2026-11-01 · **Source:** conversation with the user, 2026-11-01: told that the Cockpit's Run timeline (D-111) shows only a retried stage's last attempt, because each new attempt overwrites the stage's record, and that an ended run keeps no stage times, the user chose to build it rather than record the gap.
+- **Decision:**
+  - **`previous` on a stage's record.** When `run.mjs stage … start` begins a new attempt, or `steps --reopen` sends a completed testcases stage back to pending, the record that is replaced is kept first as one entry of the stage's `previous` list: `{attempt, status, startedAt, finishedAt?, error?, interrupted?}` (`endedAttempts` in `scripts/run.mjs`). Oldest first, the last 20 (`PREVIOUS_MAX`), the error cut to 500 characters; review findings and other fields are not copied. A record that never started (pending, reopened, carried from an earlier run) adds nothing. The schema (`run.schema.json`) accepts it.
+  - **History only.** Nothing decides on `previous`: attempts, exhaustion, blocking, `next` and the report read the record's own fields as before, so a run's behaviour is unchanged. Older runs simply have no `previous`; nothing is migrated.
+  - **The ended run's summary.** `run.mjs end` writes, for each stage of `history/<run-id>.json`, its `attempts`, `startedAt`, `finishedAt`, `error` and `previous` beside the status it had, so an ended run's stage times outlive its `run.json`.
+  - **The Cockpit.** `cockpit.mjs` (D-111, read-only) gives each timeline stage its `previous` with each attempt's `durationMs`, and each history entry its `stages` (only those that ran). The Run timeline shows **Earlier attempts (n)** under a stage and **Stages (n)** under an ended run, all as text.
+- **Why:** a stage that failed twice and then passed hid how long the failed attempts took and why they failed; the only trace was in the session's own log. Keeping the ended record where the stage's state already lives costs a few hundred bytes per retry and needs no new file or script.
+- **Known gaps:** the effort telemetry (`lib/telemetry.mjs effort`, the report's stage durations) still counts the last attempt only. The orchestration steps of an earlier attempt are not kept (a domain's loop state is per run, domain and module).
+- **Affects:** `packages/core/scripts/run.mjs`, `packages/core/schemas/run.schema.json`, `packages/core/scripts/lib/cockpit.mjs`, `packages/vscode/src/cockpit-tabs/timeline.js`
+- **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("no build it", to keeping every attempt's times instead of recording the gap). This adds history to run state without changing any rule that reads it: attempts, `MAX_ATTEMPTS`, D-071's interrupted attempts and the guard are untouched.

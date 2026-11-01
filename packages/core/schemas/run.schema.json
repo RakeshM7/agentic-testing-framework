@@ -85,7 +85,25 @@
           "interrupted": { "type": "boolean", "description": "init --resume found the stage still running: the session that ran it ended, so the attempt counts as failed and next offers it again while attempts remain (D-071)" },
           "reused": { "type": "boolean", "description": "done by run.mjs next: the knowledge was reused" },
           "carriedFrom": { "type": "string", "description": "adopted from this earlier run, which ended awaiting-approval" },
-          "reopened": { "type": "string", "description": "why run.mjs steps --reopen sent this completed testcases stage back to pending (new case types, or import mode turning into generate); the human approvals of unchanged cases stand" }
+          "reopened": { "type": "string", "description": "why run.mjs steps --reopen sent this completed testcases stage back to pending (new case types, or import mode turning into generate); the human approvals of unchanged cases stand" },
+          "previous": {
+            "type": "array",
+            "maxItems": 20,
+            "description": "the stage's ended attempts, oldest first (D-113): kept when a new attempt starts or the stage is reopened; history only, nothing decides on it",
+            "items": {
+              "type": "object",
+              "required": ["attempt", "status", "startedAt"],
+              "additionalProperties": false,
+              "properties": {
+                "attempt": { "type": "integer", "minimum": 0 },
+                "status": { "enum": ["running", "done", "failed"] },
+                "startedAt": { "type": "string" },
+                "finishedAt": { "type": "string" },
+                "error": { "type": "string", "maxLength": 500 },
+                "interrupted": { "type": "boolean" }
+              }
+            }
+          }
         }
       }
     }

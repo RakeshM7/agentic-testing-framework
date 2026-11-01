@@ -369,6 +369,30 @@ export async function status(product, { root = workspaceRoot } = {}) {
 
 export const MAX_ATTEMPTS = 2;
 
+// A stage's ended attempts (D-113): a new attempt (start), or a reopened testcases stage (steps --reopen), replaces the
+// stage's record, so the attempt that ended is kept first in `previous`: when it ran, how it ended and why. Oldest
+// first, the last PREVIOUS_MAX, an error cut to ERROR_MAX characters. Nothing reads it to decide anything; it is the
+// run's history (the Cockpit's timeline, the ended run's summary).
+export const PREVIOUS_MAX = 20;
+const ERROR_MAX = 500;
+export function endedAttempts(rec) {
+  const before = Array.isArray(rec?.previous) ? rec.previous : [];
+  if (!rec?.startedAt) return before;
+  const ended = {
+    attempt: rec.attempts ?? before.length + 1,
+    status: rec.status,
+    startedAt: rec.startedAt,
+    ...(rec.finishedAt ? { finishedAt: rec.finishedAt } : {}),
+    ...(rec.error ? { error: String(rec.error).slice(0, ERROR_MAX) } : {}),
+    ...(rec.interrupted ? { interrupted: true } : {}),
+  };
+  return [...before, ended].slice(-PREVIOUS_MAX);
+}
+const withPrevious = (rec) => {
+  const previous = endedAttempts(rec);
+  return previous.length ? { previous } : {};
+};
+
 // The agent and the exact prompt of a stage: the run id, the mode, the module and the test case format come from the
 // run's own state, so the orchestrator-agent passes nothing it decided itself (G10).
 const kv = (o) => Object.entries(o).map(([k, v]) => `${k}=${v}`).join(" ");
@@ -607,7 +631,7 @@ function applySteps(product, { add, remove, importMode, reopen, root }) {
     if (rec?.status === "running") return { errors: [`cannot reopen ${key}: it is running`] };
     if (rec?.status !== "done") continue; // not completed: it runs with the new types or mode anyway
     if (!stageChosen(next, "testcases", m)) return { errors: [`cannot reopen ${key}: the testcases stage does not run for ${m} this run (add the testcases step, or --import-mode ${m})`] };
-    next.stages[key] = { status: "pending", reopened: reason };
+    next.stages[key] = { status: "pending", reopened: reason, ...withPrevious(rec) };
     // the domain loop starts again (orchestration.mjs keeps its state per run, domain and module)
     const orch = path.join(ctx.p.orchestrationDir, `testcases-${m}.json`);
     if (existsSync(orch)) unlinkSync(orch);
@@ -699,7 +723,7 @@ async function applyStage(product, stage, module, action, error, { root, reused 
     if (!deps.ready) return { errors: [`dependencies not ready: ${deps.reason}`] };
     if (prev.status === "failed" && prev.reviewFailed) return { errors: [`${key} failed its review this run (${prev.error}); its dependants are blocked`] };
     if (prev.status === "failed" && (prev.attempts ?? 0) >= MAX_ATTEMPTS) return { errors: [`${key} already failed ${MAX_ATTEMPTS} times this run`] };
-    ctx.run.stages[key] = { status: "running", startedAt: now(), attempts: (prev.attempts ?? 0) + 1 };
+    ctx.run.stages[key] = { status: "running", startedAt: now(), attempts: (prev.attempts ?? 0) + 1, ...withPrevious(prev) };
   }
   else if (action === "fail") ctx.run.stages[key] = { ...prev, status: "failed", finishedAt: now(), error: error ?? "unspecified" };
   else if (action === "done") {
@@ -752,7 +776,12 @@ export async function endRun(product, { abandon = false, root = workspaceRoot, f
     createdAt: ctx.run.createdAt,
     endedAt: now(),
     ...(({ outcome, ...rest }) => ({ outcome: abandon ? "abandoned" : outcome, ...rest }))(endInfo(st, ctx)),
-    stages: st.stages.map(({ stage, module, status: s, complete }) => ({ stage, module, status: s, complete })),
+    // with each stage's times and ended attempts (D-113), so an ended run's timeline needs no run.json
+    stages: st.stages.map(({ stage, module, status: s, complete }) => {
+      const rec = ctx.run.stages[stageKey(stage, module)] ?? {};
+      const times = Object.fromEntries(["attempts", "startedAt", "finishedAt", "error"].filter((k) => rec[k] !== undefined).map((k) => [k, rec[k]]));
+      return { stage, module, status: s, complete, ...times, ...withPrevious({ previous: rec.previous }) };
+    }),
     // the package versions the run was resumed on within its breaking line (docs/packaging.md §3.10)
     ...(ctx.run.packageChanges?.length ? { packageChanges: ctx.run.packageChanges } : {}),
   };

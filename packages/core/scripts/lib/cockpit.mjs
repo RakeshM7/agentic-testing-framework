@@ -89,10 +89,19 @@ function history(p) {
     const h = tryReadJson(path.join(p.historyDir, f));
     if (!h?.runId) continue;
     const rep = path.join(p.results(h.runId), "report", "index.html");
-    out.push({ runId: h.runId, outcome: h.outcome ?? null, createdAt: h.createdAt ?? null, endedAt: h.endedAt ?? null, report: existsSync(rep) ? slash(path.relative(p.root, rep)) : null });
+    // each stage's times and ended attempts, from the summary run.mjs end wrote (D-113; none in an older summary)
+    const stages = arr(h.stages)
+      .filter((s) => s && s.startedAt)
+      .map((s) => ({ stage: s.stage, module: s.module ?? null, status: s.status ?? null, attempts: s.attempts ?? 0, startedAt: s.startedAt, finishedAt: s.finishedAt ?? null, durationMs: ms(s.startedAt, s.finishedAt), error: s.error ?? null, previous: attemptsOf(s) }));
+    out.push({ runId: h.runId, outcome: h.outcome ?? null, createdAt: h.createdAt ?? null, endedAt: h.endedAt ?? null, report: existsSync(rep) ? slash(path.relative(p.root, rep)) : null, stages });
   }
   return out.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)) || b.runId.localeCompare(a.runId)).slice(0, 20);
 }
+
+// A stage's ended attempts (run.mjs endedAttempts, D-113), each with its duration. -> [{attempt, status, startedAt,
+// finishedAt, durationMs, error, interrupted}]
+const attemptsOf = (s) =>
+  arr(s?.previous).map((a) => ({ attempt: a.attempt ?? null, status: a.status ?? null, startedAt: a.startedAt ?? null, finishedAt: a.finishedAt ?? null, durationMs: ms(a.startedAt, a.finishedAt), error: a.error ?? null, interrupted: !!a.interrupted }));
 
 // The run's stages with their orchestration steps (state/orchestration/<stage>-<module>.json of this run).
 function timelineStages(p, run) {
@@ -101,7 +110,7 @@ function timelineStages(p, run) {
     const module = scope === "_product" ? null : scope;
     const orch = tryReadJson(path.join(p.orchestrationDir, `${stage}-${module}.json`));
     const steps = orch && orch.runId === run.runId ? Object.entries(orch.steps ?? {}).map(([name, x]) => ({ name, status: x.status ?? null, at: x.at ?? null, durationMs: x.status === "running" ? null : ms(x.startedAt, x.at) })) : [];
-    return { key, stage, module, status: s.status, attempts: s.attempts ?? 0, startedAt: s.startedAt ?? null, finishedAt: s.finishedAt ?? null, durationMs: s.status === "running" ? null : ms(s.startedAt, s.finishedAt), error: s.error ?? null, reviewFailed: !!s.reviewFailed, findings: s.findings ?? [], steps };
+    return { key, stage, module, status: s.status, attempts: s.attempts ?? 0, startedAt: s.startedAt ?? null, finishedAt: s.finishedAt ?? null, durationMs: s.status === "running" ? null : ms(s.startedAt, s.finishedAt), error: s.error ?? null, reviewFailed: !!s.reviewFailed, findings: s.findings ?? [], steps, previous: attemptsOf(s) };
   });
 }
 
