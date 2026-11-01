@@ -17,6 +17,7 @@
 //   orchestration.mjs step  <product> <domain> <module> <step> start|done|fail|skip [--note TEXT]
 //   orchestration.mjs round <product> <domain> <module> review|heal
 //        -> {round, limit, allowed}; exit 1 (allowed: false) once the limit is used up -- stop looping and report
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

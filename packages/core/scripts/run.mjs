@@ -75,6 +75,7 @@
 //
 // All commands print JSON; exit 1 = refused/invalid, 2 = usage error.
 
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { parseArgs } from "node:util";
 import path from "node:path";

@@ -8,6 +8,7 @@
 //   requests.mjs list <product> <domain> <module>      -> the file's requests
 //   requests.mjs check <product> <domain> <module>     -> schema-check requests.json
 // <domain>: playwright-ui | playwright-api | k6. Kinds: repo-change, missing-method, lib-export, foundation-gap.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

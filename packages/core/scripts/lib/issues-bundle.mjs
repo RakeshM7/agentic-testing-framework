@@ -4,7 +4,9 @@
 //
 // export (any workspace; a source checkout too, so maintainers can try it on their own runs):
 //   - collects framework-issues.json from every product's ended runs, every environment (state/history/), or one run
-//     (--run), or those ended on or after a UTC date (--since); a run still active is left out and named;
+//     (--run), or those ended on or after a UTC date (--since); a run still active is left out and named. An unfiltered
+//     export also takes the product-level file of issues recorded with no run active (artifacts/<product>/, see
+//     lib/framework-issues.mjs preRunIssuesPath), as a pseudo-run marked noRun;
 //   - redacts every text field (Redactor below): each distinct value gets a stable placeholder for the whole bundle
 //     (<host-1>, <email-2>, <secret-1>, <product-1>), and the manifest lists each placeholder's kind, count and where it
 //     occurred, never the value. Left as they are: the client name, agent names, issue ids, kinds and severities,
@@ -32,7 +34,7 @@ import os from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { CONTRACT_VERSION, DEFAULT_ENV, SLUG_RE } from "./contract.mjs";
-import { ISSUES_FILE, ISSUE_KINDS, SEVERITIES, renderFeedback } from "./framework-issues.mjs";
+import { ISSUES_FILE, ISSUE_KINDS, SEVERITIES, preRunIssuesPath, renderFeedback } from "./framework-issues.mjs";
 import { packageOf } from "./provenance.mjs";
 import { isInstalled, isWithin, readMarker, realOrSelf } from "./roots.mjs";
 import { readZip, writeZip } from "./zip.mjs";
@@ -239,7 +241,14 @@ export function collectRuns(workspace, { run, since } = {}) {
       }
     }
   }
-  let chosen = ended;
+  // the product-level files of issues met with no run active (preRunIssuesPath): one pseudo-run per product, in an
+  // unfiltered export only (they have no run to choose by or date from)
+  const preRun = [];
+  for (const product of dirs(artifacts).filter((d) => SLUG_RE.test(d))) {
+    const file = preRunIssuesPath(path.join(artifacts, product));
+    if (existsSync(file)) preRun.push({ product, environment: DEFAULT_ENV, runId: `pre-run-${product}`, createdAt: null, endedAt: null, outcome: null, noRun: true, file });
+  }
+  let chosen = [...ended, ...preRun];
   if (run !== undefined) {
     chosen = ended.filter((r) => r.runId === run);
     if (!chosen.length) return { error: active.includes(run) ? `run ${run} is still active: end it first (its issues are exported once it has ended)` : `no ended run ${run} in ${artifacts}` };
@@ -432,6 +441,8 @@ export function buildBundle({ workspace, framework, runs, includeEvidence = fals
       outcome: r.outcome,
       // false: the run ended before end stamped its metadata (P-8), so its versions and config are unknown here
       recorded: Boolean(r.data.run),
+      // issues recorded with no run active (no run's versions to stamp)
+      noRun: r.noRun === true,
       host: meta.startedOnHost ?? null,
       package: prov?.package ?? null,
       contract: meta.contract ?? null,
@@ -592,6 +603,7 @@ const oneLine = (s) => String(s ?? "").replace(/\s+/g, " ").replace(/--+>/g, "->
 // The run line every imported finding carries: the versions, host and customized config the client ran.
 function runContext(m, meta) {
   const custom = (meta.config ?? []).filter((c) => c.source && c.source !== "framework").map((c) => `${c.name} (${c.source})`);
+  if (meta.noRun) return `client ${m.client}, recorded with no run active (before the first run, or between runs); versions not recorded; config: ${custom.length ? custom.join(", ") : "the package's own"}`;
   return [
     `client ${m.client}, run ${meta.runId} (${meta.environment}, ended ${meta.endedAt ?? "?"}, ${meta.outcome ?? "?"})`,
     meta.recorded === false ? "versions not recorded (the run ended before they were stamped)" : `${meta.package ? `${meta.package.name} ${meta.package.version}` : "package unknown"}, contract ${meta.contract ?? "?"}, Node ${meta.node ?? "?"}, host ${meta.host ?? "not recorded"}`,

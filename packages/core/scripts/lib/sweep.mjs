@@ -18,6 +18,7 @@ import { loadJson, paths } from "./contract.mjs";
 import { SWEEP_CONFIRM, consumeConfirmation, discardConfirmation } from "./confirm.mjs";
 import { readJson } from "./files.mjs";
 import { append, live } from "./ledger.mjs";
+import { netFetch } from "./net.mjs";
 import { firstPartyHosts, loadAuth } from "./probe.mjs";
 import { validateRunConfig } from "../run-config.mjs";
 import { expandFw } from "./roots.mjs";
@@ -83,7 +84,7 @@ export const sweepConfirmFile = (product, root) => path.join(paths(product, root
 
 // interactive: {isTTY, ask(question) -> answer}; confirmFile: the --confirm-file path, which stands in for the terminal.
 // -> {errors} | {dryRun, deleted, failed, manual}
-export async function sweep(product, { root, run, dryRun = false, interactive, confirmFile, fetchImpl = globalThis.fetch, sleep = defaultSleep, delayMs = 200, timeoutMs = 15000 } = {}) {
+export async function sweep(product, { root, run, dryRun = false, interactive, confirmFile, fetchImpl = netFetch, sleep = defaultSleep, delayMs = 200, timeoutMs = 15000 } = {}) {
   if (confirmFile != null) {
     const file = sweepConfirmFile(product, root);
     if (dryRun) return { errors: [`confirmation refused: a dry run sends nothing and needs no confirmation${discardConfirmation(file) ? ` (${path.relative(root, file).replaceAll("\\", "/")} was deleted)` : ""}`] };

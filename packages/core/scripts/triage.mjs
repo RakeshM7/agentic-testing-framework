@@ -12,6 +12,7 @@
 //                                                              fresh build, every row classified, product-bug evidence and
 //                                                              expectation, overrides cited, bug drafts; stamps `verified`
 //   triage.mjs paths   <product> <module> --domain ...         the triage's file paths
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

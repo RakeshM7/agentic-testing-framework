@@ -235,7 +235,7 @@ test("New product…, set up myself, with a login: atf config in the background,
   assert.deepEqual([atf.calls[0].opts.shell, atf.calls[0].opts.cwd, atf.calls[0].opts.env.ATF_ENV], [false, root, ""]);
   const [progress] = a.vscode.rec.progress;
   assert.deepEqual([progress.opts.location, progress.opts.cancellable, progress.opts.title], [a.vscode.ProgressLocation.Notification, true, "New product acme-crm"]);
-  assert.deepEqual(progress.reports, ["Creating config/acme-crm.yaml…", "Opening Microsoft Edge for the login…", "Waiting for you to sign in in Microsoft Edge… It closes by itself when the time is up."]);
+  assert.deepEqual(progress.reports, ["Creating config/acme-crm.yaml…", "Opening the browser for the login…", "Waiting for you to sign in in Microsoft Edge… It closes by itself once you are signed in."]);
   assert.ok(a.vscode.rec.output.lines.some((l) => l.includes("Microsoft Edge is open on")), "the output is in the atf channel");
 
   // done: the message offers the config and the run; Start run runs atf.run for the new product

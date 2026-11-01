@@ -35,6 +35,7 @@ import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { createLedger } from "./coverage.mjs";
 import { readJson, withFileLock, writeAtomic, writeJson } from "./files.mjs";
+import { netFetch } from "./net.mjs";
 import { firstPartyHosts } from "./probe.mjs";
 import { assignIds } from "./registry.mjs";
 import { stampVerified, unverifiedReason } from "./verified.mjs";
@@ -464,7 +465,7 @@ async function scriptText(src, { cfg, root, fetchImpl }) {
 //     its old text is kept and marked `stale`
 //   - fromFile (a capture under knowledge/captures/, captured_by: agent) only for a live-product source, or for a
 //     source whose own fetch by the script failed in this run (the failure is in the cache entry)
-export async function snapshot(kp, cfg, { id, fromFile, root, runId, fetchImpl = globalThis.fetch }) {
+export async function snapshot(kp, cfg, { id, fromFile, root, runId, fetchImpl = netFetch }) {
   const src = readRegistry(kp).find((s) => s.id === id);
   if (!src) throw new Error(`${id} is not in sources.json (register it with add-source first)`);
   const entry = readCacheIndex(kp)[id];

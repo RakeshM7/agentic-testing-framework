@@ -37,14 +37,34 @@
 // what the build no longer writes (.claude/agents/<name>.md, .mcp.json) and keeps the rest; with a customization it is
 // the full block. sync reports the mode and why (claudeModeLine), naming the customization.
 //
+// A pinned Node.js (the friction plan's K2): hosts run the hook commands and the MCP servers with the `node` and `npx`
+// their PATH finds first. When that node is older than MIN_NODE (Homebrew's node@18 ahead of nvm's 24), the guard
+// refuses every call (D-109) and the browser server crashes. So, in a client's workspace only, sync finds the newest
+// Node.js of MIN_NODE or later on the machine (node-version.mjs findNode) and renders it by its absolute path into the
+// hook commands and the MCP servers (build-agents.mjs nodePin), recording it as "node": { path, version, pinnedAt } in
+// atf/machine.json (node-version.mjs NODE_PIN_FILE): a machine-local file, listed in the block, so a team that commits
+// atf/ never shares one machine's path; under atf/, so only a human (sync) writes it, since the framework's scripts
+// run what it names when an agent starts them on an older Node (lib/node-gate.mjs). Its "node" goes with the pin, and
+// the file with its last key. findNode prefers the workspace's .nvmrc major. Every sync decides again: a PATH node new
+// enough removes the pin, and the commands are plain `node` again. "The PATH's node" is the first node in PATH, or, when bin/atf.mjs
+// switched to a newer Node itself, the one it was started on (REEXEC_ENV). `atf check` and the doctor never decide:
+// they render with the recorded pin, so a check from a terminal or session with another PATH reports no drift, and a
+// recorded Node.js that is gone is an error. Never in a source checkout (its files are committed, D-018), and never in
+// what the cloud-agent opt-in commits (.github/: GitHub's runner sets up its own Node).
+//
 // sync() checks everything before it writes anything: a malformed block, an unreadable .gitignore or atf.json, a bad
 // "cloud_agent" or "claude_plugin" or any build error (a bad overlay or fragment, a stray or missing source) leaves every file as it was
 // (D-018).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import yaml from "js-yaml";
 import { build, pluginSupplies } from "../build-agents.mjs";
 import { loadConfig } from "./config.mjs";
+import { nodeWord } from "./hook-registrations.mjs";
+import { mcpNodePin } from "./mcp.mjs";
+import { MIN_NODE, NODE_PIN_FILE, NODE_PIN_KEY, REEXEC_ENV, findNode, installHint, nodeMajor, pathNode, probeNode, readLocalNode } from "./node-version.mjs";
 import { CLAUDE_PLUGIN_KEY, PLUGIN, PLUGIN_ID, claudeAgentName, claudeMode } from "./provenance.mjs";
 import { WORKSPACE_MARKER, frameworkRel, isInstalled, readMarker } from "./roots.mjs";
 
@@ -89,10 +109,11 @@ const hostEntries = (agentFiles) => [...new Set([...agentFiles, ...CLIENT_IGNORE
 // What the cloud agent reads from git: the build's files under .github/ (its Copilot agents, its hook registration).
 const forCloudAgent = (entry) => entry.startsWith(".github/");
 // Everything the block lists: all of it, or with the cloud-agent opt-in all but what the cloud agent reads; never what
-// the plugin supplies (`supplied`, pluginSuppliedFiles in plugin mode), which the build doesn't write.
+// the plugin supplies (`supplied`, pluginSuppliedFiles in plugin mode), which the build doesn't write. And always the
+// machine-local record of the pinned Node.js (NODE_PIN_FILE, see the header), whether or not there is one yet.
 export const ignoredEntries = (agentFiles, { cloudAgent = false, supplied = [] } = {}) => {
   const skip = new Set(supplied);
-  return hostEntries(agentFiles).filter((e) => !(cloudAgent && forCloudAgent(e)) && !skip.has(e));
+  return [...hostEntries(agentFiles).filter((e) => !(cloudAgent && forCloudAgent(e)) && !skip.has(e)), NODE_PIN_FILE].sort();
 };
 
 // What sync says about the Claude Code plugin's mode (lib/provenance.mjs claudeMode), and why; null without the opt-in.
@@ -160,6 +181,94 @@ function setupWorkflow({ workspace, framework }) {
   return { problem: { detail: `${SETUP_WORKFLOW} ${problem}: without the framework installed, the cloud agent's guard denies every tool call`, fix } };
 }
 
+// ---- the pinned Node.js (see the header) ----------------------------------------------------------------------------
+
+// what the cloud-agent opt-in commits, so it keeps `node`: GitHub's runner has its own Node.js
+export const PLAIN_WITH_CLOUD_AGENT = [".github/"];
+const isMap = (v) => Object.prototype.toString.call(v) === "[object Object]";
+const validRecord = (r) => isMap(r) && typeof r.path === "string" && r.path !== "" && typeof r.version === "string";
+const PIN_KEY = `${NODE_PIN_FILE} "${NODE_PIN_KEY}"`;
+
+// The machine as the decision sees it; each part injectable (tests: another OS's layout, a PATH node of any version).
+export const nodeSystem = (sys = {}) => ({ env: process.env, platform: process.platform, home: os.homedir(), exists: existsSync, readdir: readdirSync, probe: probeNode, execPath: process.execPath, current: process.versions.node, now: Date.now(), ...sys });
+
+// The machine-local file's content -> { text: as read (null: no file), record: its "node" (undefined: none) } |
+// { error } (it isn't a JSON object).
+export function readNodeRecord(workspace) {
+  const file = path.join(workspace, ...NODE_PIN_FILE.split("/"));
+  if (!existsSync(file)) return { text: null, record: undefined };
+  let text, doc;
+  try {
+    text = readFileSync(file, "utf8");
+    doc = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+  } catch (e) {
+    return { error: `${NODE_PIN_FILE} could not be read as JSON (${e.message}): run npx atf sync (in the workspace), which writes it again` };
+  }
+  if (!isMap(doc)) return { error: `${NODE_PIN_FILE} must hold a JSON object: run npx atf sync (in the workspace), which writes it again` };
+  return { text, record: doc[NODE_PIN_KEY] };
+}
+
+// The recorded "node" (undefined without one) -> { pin: the Node.js to render, or null; record: what "node" should hold
+// (undefined: no key); pathNode: the PATH's node as found ({ path?, version }, null: none), in sync only; problem: why
+// nothing could be pinned, when the PATH's node needs it } | { error }. check: render with the recorded pin, never
+// decide (see the header). nvmrc: the workspace's .nvmrc major, which findNode prefers.
+export function nodePinFor(recorded, { check = false, sys, nvmrc = null } = {}) {
+  const s = nodeSystem(sys);
+  const key = PIN_KEY;
+  if (check) {
+    if (recorded === undefined) return { pin: null, record: undefined };
+    if (!validRecord(recorded)) return { error: `${key} must be { "path", "version", "pinnedAt" } as atf sync writes it, not ${JSON.stringify(recorded)}: run npx atf sync (in the workspace)` };
+    if (!s.exists(recorded.path)) return { error: `${key} pins Node.js ${recorded.version} at ${recorded.path}, which is gone: run npx atf sync (in the workspace), which finds another` };
+    try {
+      nodeWord(recorded.path);
+    } catch (e) {
+      return { error: `${key}: ${e.message}: run npx atf sync (in the workspace)` };
+    }
+    return { pin: recorded, record: recorded };
+  }
+  // the node the hosts find: the one bin/atf.mjs was started on when it switched, else the PATH's first (this process
+  // when it is that file, so the usual case starts nothing)
+  const first = s.env[REEXEC_ENV] ? { version: String(s.env[REEXEC_ENV]) } : pathNode({ ...s, probe: (f) => (f === s.execPath ? s.current : s.probe(f)) });
+  if (first?.version && nodeMajor(first.version) >= MIN_NODE) return { pin: null, record: undefined, pathNode: first };
+  const was = !first ? "your PATH has no node" : first.version ? `your PATH's node is Node.js ${first.version}` : `your PATH's node (${first.path}) doesn't answer`;
+  // the one findNode prefers (the .nvmrc's major, the newest LTS line, the newest); else the one recorded before, when
+  // it is somewhere findNode doesn't look and still runs
+  const kept = validRecord(recorded) && s.exists(recorded.path) ? s.probe(recorded.path) : null;
+  const found = findNode({ ...s, nvmrc }) ?? (kept && nodeMajor(kept) >= MIN_NODE ? { path: recorded.path, version: kept, source: NODE_PIN_FILE } : null);
+  if (!found)
+    return { pin: null, record: undefined, pathNode: first, problem: `${was}, older than ${MIN_NODE}, and no newer Node.js is installed, so the guard hook refuses every call and the browser server can't start: install one (${installHint(s)}), then run npx atf sync` };
+  try {
+    nodeWord(found.path);
+  } catch (e) {
+    return { pin: null, record: undefined, pathNode: first, problem: `${was}, older than ${MIN_NODE}, and ${e.message} (Node.js ${found.version}): put a Node.js ${MIN_NODE} or later first in your PATH, then run npx atf sync` };
+  }
+  const same = validRecord(recorded) && recorded.path === found.path && recorded.version === found.version && typeof recorded.pinnedAt === "string";
+  const pin = { path: found.path, version: found.version, pinnedAt: same ? recorded.pinnedAt : new Date(s.now).toISOString() };
+  return { pin, record: pin, pathNode: first, source: found.source };
+}
+
+// The machine-local file's text (null: no file) -> the same with "node" set to `record` (or removed when undefined): its
+// other keys in their order, its indent, line ending and BOM kept; null when nothing is left (the file goes).
+export function withNodeRecord(text, record) {
+  const bom = text?.charCodeAt(0) === 0xfeff ? "﻿" : "";
+  const body = text === null ? "{}" : bom ? text.slice(1) : text;
+  const next = { ...JSON.parse(body) };
+  if (record === undefined) delete next[NODE_PIN_KEY];
+  else next[NODE_PIN_KEY] = record;
+  if (!Object.keys(next).length) return null;
+  const eol = body.includes("\r\n") ? "\r\n" : "\n";
+  const indent = /^([ \t]+)"/m.exec(body)?.[1] ?? "  ";
+  return bom + JSON.stringify(next, null, indent).replaceAll("\n", eol) + eol;
+}
+
+// What sync says about the pinned Node.js; null when there is nothing to say (the PATH's node is new enough).
+export function nodePinLine(node) {
+  if (node?.problem) return `warning: ${node.problem}.`;
+  if (!node?.pin) return null;
+  const was = node.pathNode?.version ? `your PATH's node is Node.js ${node.pathNode.version}` : "your PATH has no usable node";
+  return `${was}, older than ${MIN_NODE}: the hooks and the browser server run Node.js ${node.pin.version} (${node.pin.path}), recorded in ${NODE_PIN_FILE} (this machine's, kept out of git); each sync checks again.`;
+}
+
 // a literal path as a gitignore pattern: its glob characters escaped (agent names are plain today; the roster isn't ours
 // to trust blindly once a workspace overlay can add to it)
 const literal = (p) => p.replace(/[\\*?[]/g, "\\$&");
@@ -187,13 +296,16 @@ export function withGitignoreBlock(text, entries) {
 // -> { errors, changed: [workspace-relative paths that differ (or would, with check)], created: [the setup workflow,
 // written (or missing, with check)], problems: [{ detail, fix }] (what sync reports and never fixes), installed,
 // cloudAgent, committed: [what the opt-in commits for the cloud agent], claude: the plugin's mode (provenance.mjs
-// claudeMode: { on: false } | { on, agents, customizations, marketplace }) }
-export function sync({ workspace, framework, check = false }) {
+// claudeMode: { on: false } | { on, agents, customizations, marketplace }), node: the pinned Node.js (nodePinFor: { pin,
+// pathNode, problem? }; null in a source checkout) }. nodeSys: nodeSystem's injections, for tests.
+export function sync({ workspace, framework, check = false, nodeSys }) {
   const installed = isInstalled(framework);
-  const result = { errors: [], changed: [], created: [], problems: [], installed, cloudAgent: false, committed: [], claude: { on: false } };
+  const result = { errors: [], changed: [], created: [], problems: [], installed, cloudAgent: false, committed: [], claude: { on: false }, node: null };
   const fail = (errors, changed = []) => ({ ...result, errors, changed });
   let ignore = null;
   let setup = {};
+  let nodePin = null;
+  let machine = null;
   // the plugin's mode, in either kind of workspace: a source checkout's opt-in is an error (the build's too)
   const claude = claudeMode({ workspace, framework });
   if (claude.error) return fail([claude.error]);
@@ -221,8 +333,25 @@ export function sync({ workspace, framework, check = false }) {
     if (next.error) return fail([`${GITIGNORE}: ${next.error}`]);
     if (next.text !== current) ignore = { file, text: next.text };
     if (opt.on) result.committed = cloudAgentFiles(agentFiles);
+    // the pinned Node.js: decided by sync, read back by check (see the header); sync rewrites a broken record file
+    const { cfg } = readMarker(workspace); // cloudAgent() above already refused an unreadable one
+    const local = readNodeRecord(workspace);
+    if (local.error && check) return fail([local.error]);
+    const recorded = local.error ? undefined : local.record;
+    let node = nodePinFor(recorded, { check, sys: nodeSys, nvmrc: readLocalNode(workspace).nvmrc });
+    if (node.error) return fail([node.error]);
+    if (node.pin && !cfg) node = { pin: null, record: undefined, pathNode: node.pathNode, problem: `the PATH's node is older than ${MIN_NODE}, and there is no ${WORKSPACE_MARKER} here: run npx atf init here first` };
+    result.node = { pin: node.pin, pathNode: node.pathNode ?? null, ...(node.problem ? { problem: node.problem } : {}) };
+    if (node.pin) {
+      const sys = nodeSystem(nodeSys);
+      nodePin = { hook: nodeWord(node.pin.path), mcp: mcpNodePin(node.pin.path, sys), plain: opt.on ? PLAIN_WITH_CLOUD_AGENT : [] };
+    }
+    if (!check && (local.error || !isDeepStrictEqual(recorded, node.record))) {
+      const file = path.join(workspace, ...NODE_PIN_FILE.split("/"));
+      machine = { file, text: withNodeRecord(local.error ? null : local.text, node.record) };
+    }
   }
-  const r = build({ root: workspace, framework, check });
+  const r = build({ root: workspace, framework, check, nodePin });
   if (r.errors.length) return fail(r.errors);
   const changed = [...r.changed];
   if (ignore) {
@@ -233,6 +362,18 @@ export function sync({ workspace, framework, check = false }) {
       } catch (e) {
         return fail([`${GITIGNORE}: ${e.message} (the host files were written)`], r.changed);
       }
+    }
+  }
+  if (machine && (machine.text !== null || existsSync(machine.file))) {
+    changed.push(NODE_PIN_FILE);
+    try {
+      if (machine.text === null) rmSync(machine.file, { force: true });
+      else {
+        mkdirSync(path.dirname(machine.file), { recursive: true });
+        writeFileSync(machine.file, machine.text, "utf8");
+      }
+    } catch (e) {
+      return fail([`${NODE_PIN_FILE}: ${e.message} (the host files were written)`], changed.slice(0, -1));
     }
   }
   if (setup.create !== undefined && !check) {

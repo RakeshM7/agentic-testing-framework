@@ -52,6 +52,12 @@
 // session's cwd (`{fw}` as for Copilot and VS Code).
 // UNVERIFIED (Codex spike pending, docs/codex-spike/): that the command's cwd-relative path works, and what happens
 // when a session starts from a subfolder of the workspace.
+//
+// The pinned Node.js (lib/sync.mjs, atf/machine.json "node"): in a client's workspace whose PATH node is older than
+// MIN_NODE, sync renders every hook command with that Node's absolute path in place of `node` (`node` option, a
+// nodeWord), except in the files `plainNode` names (what the cloud-agent opt-in commits: GitHub's runner has its own
+// Node). This repository's committed files never get one: the build passes no `node` here. frameworkHook() knows a
+// framework entry under either program word, so a sync that pins or unpins replaces the entries, never adds to them.
 // Dependency-free.
 import { isDeepStrictEqual } from "node:util";
 import { expandFw } from "./roots.mjs";
@@ -71,8 +77,18 @@ const CLAUDE_POST_MATCHER = "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|A
 // variable, the path became /scripts/hooks/... and node crashed before the guard ran, so the host denied every matched
 // call as "hook errored". `${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}` means the same in bash (Claude Code, which sets
 // the variable) and is empty in PowerShell, leaving the cwd-relative path those hosts run from the repo root.
-const claudeCommand = (entry, fw) => expandFw(`node "\${CLAUDE_PROJECT_DIR:+\$CLAUDE_PROJECT_DIR/}{fw}/scripts/hooks/${entry}.mjs" --host claude-code`, fw);
-const command = (entry, host, fw) => expandFw(`node {fw}/scripts/hooks/${entry}.mjs --host ${host}`, fw);
+const claudeCommand = (entry, fw, node = "node") => `${node} ${expandFw(`"\${CLAUDE_PROJECT_DIR:+\$CLAUDE_PROJECT_DIR/}{fw}/scripts/hooks/${entry}.mjs"`, fw)} --host claude-code`;
+const command = (entry, host, fw, node = "node") => `${node} ${expandFw(`{fw}/scripts/hooks/${entry}.mjs`, fw)} --host ${host}`;
+
+// A pinned Node.js's absolute path as a hook command's program word: `/` separators on every OS (bash, PowerShell and
+// Git Bash all take them), bare when it holds only characters no shell reads specially, else in double quotes. A path
+// with a quote, `$`, a backtick, `%`, `!` or a control character can't be written safely for every shell the hosts run
+// hooks in: it throws, and sync leaves the commands as `node`.
+export function nodeWord(file) {
+  const p = String(file ?? "").replaceAll("\\", "/");
+  if (!p || /["$`%!\x00-\x1f]/.test(p)) throw new Error(`the Node.js path ${JSON.stringify(String(file ?? ""))} can't be written into a hook command safely`);
+  return /^[A-Za-z0-9_/.:@+,=~-]+$/.test(p) ? p : `"${p}"`;
+}
 
 // config/hooks.yaml (parsed) -> { mode } | { error }
 export function postModeOf(doc) {
@@ -94,16 +110,16 @@ export function formatJson(value, indent = "") {
   return JSON.stringify(value);
 }
 
-function claudeHooks(mode, fw) {
-  const hooks = { PreToolUse: [{ matcher: CLAUDE_PRE_MATCHER, hooks: [{ type: "command", command: claudeCommand("pretooluse", fw) }] }] };
+function claudeHooks(mode, fw, node) {
+  const hooks = { PreToolUse: [{ matcher: CLAUDE_PRE_MATCHER, hooks: [{ type: "command", command: claudeCommand("pretooluse", fw, node) }] }] };
   if (mode !== "off")
-    hooks.PostToolUse = [{ matcher: CLAUDE_POST_MATCHER, hooks: [{ type: "command", ...(mode === "async" ? { async: true } : {}), command: claudeCommand("posttooluse", fw) }] }];
+    hooks.PostToolUse = [{ matcher: CLAUDE_POST_MATCHER, hooks: [{ type: "command", ...(mode === "async" ? { async: true } : {}), command: claudeCommand("posttooluse", fw, node) }] }];
   return hooks;
 }
 
 // Codex's hooks: no background hooks, so async renders as sync; off omits PostToolUse.
-function codexHooks(mode, fw) {
-  const group = (name) => [{ matcher: ".*", hooks: [{ type: "command", command: command(name, "codex", fw), timeout: 30 }] }];
+function codexHooks(mode, fw, node) {
+  const group = (name) => [{ matcher: ".*", hooks: [{ type: "command", command: command(name, "codex", fw, node), timeout: 30 }] }];
   return { PreToolUse: group("pretooluse"), ...(mode !== "off" ? { PostToolUse: group("posttooluse") } : {}) };
 }
 
@@ -115,13 +131,19 @@ const HOOK_SCRIPT = /(?:^|\/)scripts\/hooks\/(pretooluse|posttooluse)\.mjs$/;
 // ${CLAUDE_PROJECT_DIR:-.}/ (before the PowerShell fix), and a plain $CLAUDE_PROJECT_DIR/
 const PROJECT_DIR = /^(?:\$\{CLAUDE_PROJECT_DIR(?::?[-+=?][^}]*)?\}|\$CLAUDE_PROJECT_DIR)\/?/;
 
+// The program word of a framework hook command: `node`, or a pinned Node.js by its path (nodeWord: bare or quoted,
+// either separator, `node` or `node.exe` as its last segment).
+const NODE_PROGRAM = String.raw`(?:node(?:\.exe)?|"[^"]*[\\/]node(?:\.exe)?"|[^\s"]*[\\/]node(?:\.exe)?)`;
+const FRAMEWORK_COMMAND = new RegExp(String.raw`^${NODE_PROGRAM}\s+(?:"([^"]+)"|(\S+))((?:\s+\S+)*)$`, "i");
+
 // A Claude Code hook -> "pretooluse" | "posttooluse" when it runs the framework's hook entry, else null. Recognised by
-// shape, not by today's exact text: `node <path> … --host claude-code`, the path (quoted or not, either separator,
-// after any project-dir prefix) ending in the segment scripts/hooks/<entry>.mjs. `--host claude-code` is what keeps a
-// client's own scripts/hooks/pretooluse.mjs out: only the framework's registration passes it.
+// shape, not by today's exact text: `node <path> … --host claude-code` (or a pinned Node.js's path in place of `node`),
+// the path (quoted or not, either separator, after any project-dir prefix) ending in the segment
+// scripts/hooks/<entry>.mjs. `--host claude-code` is what keeps a client's own scripts/hooks/pretooluse.mjs out: only
+// the framework's registration passes it.
 export function frameworkHook(hook, host = "claude-code") {
   if (!isMap(hook) || hook.type !== "command" || typeof hook.command !== "string") return null;
-  const m = hook.command.trim().match(/^node\s+(?:"([^"]+)"|(\S+))((?:\s+\S+)*)$/);
+  const m = hook.command.trim().match(FRAMEWORK_COMMAND);
   if (!m) return null;
   const args = m[3].trim().split(/\s+/);
   const hostAt = args.indexOf("--host");
@@ -131,11 +153,11 @@ export function frameworkHook(hook, host = "claude-code") {
 }
 
 // The current `hooks` value of .claude/settings.json (or undefined) -> the merged `hooks` (see the header). Throws on
-// a shape it can't merge safely, naming where.
-export const mergeClaudeHooks = (current, mode, fw = "") => mergeHostHooks(current, claudeHooks(mode, fw), "claude-code", fw);
+// a shape it can't merge safely, naming where. `node`: the commands' program word (nodeWord of a pinned Node.js).
+export const mergeClaudeHooks = (current, mode, fw = "", node = "node") => mergeHostHooks(current, claudeHooks(mode, fw, node), "claude-code");
 
 // The same merge for .codex/hooks.json's `hooks` value.
-export const mergeCodexHooks = (current, mode, fw = "") => mergeHostHooks(current, codexHooks(mode, fw), "codex", fw);
+export const mergeCodexHooks = (current, mode, fw = "", node = "node") => mergeHostHooks(current, codexHooks(mode, fw, node), "codex");
 
 // The merge both share: `ours` is the framework's rendered `hooks`, `host` the --host its entries carry.
 function mergeHostHooks(current, ours, host) {
@@ -174,46 +196,46 @@ function assertGuard(hooks, ours) {
 
 const describe = (v) => (v === null ? "null" : Array.isArray(v) ? "a list" : typeof v === "object" ? "an object" : `a ${typeof v}`);
 
-function copilotHooks(mode, fw) {
-  const entry = (name) => ({ type: "command", command: command(name, "copilot", fw), cwd: ".", timeoutSec: 30 });
+function copilotHooks(mode, fw, node) {
+  const entry = (name) => ({ type: "command", command: command(name, "copilot", fw, node), cwd: ".", timeoutSec: 30 });
   return { version: 1, hooks: { PreToolUse: [entry("pretooluse")], ...(mode !== "off" ? { PostToolUse: [entry("posttooluse")] } : {}) } };
 }
 
-function vscodeHooks(mode, fw) {
-  const entry = (name) => ({ type: "command", command: command(name, "vscode", fw), cwd: ".", timeout: 30 });
+function vscodeHooks(mode, fw, node) {
+  const entry = (name) => ({ type: "command", command: command(name, "vscode", fw, node), cwd: ".", timeout: 30 });
   return { hooks: { PreToolUse: [entry("pretooluse")], ...(mode !== "off" ? { PostToolUse: [entry("posttooluse")] } : {}) } };
 }
 
 // Antigravity's set. It has no background hooks: async renders as sync, off omits PostToolUse.
-function antigravitySet(mode, fw) {
-  const group = (name) => [{ matcher: ".*", hooks: [{ type: "command", command: command(name, "antigravity", fw), timeout: 30 }] }];
+function antigravitySet(mode, fw, node) {
+  const group = (name) => [{ matcher: ".*", hooks: [{ type: "command", command: command(name, "antigravity", fw, node), timeout: 30 }] }];
   return { enabled: true, PreToolUse: group("pretooluse"), ...(mode !== "off" ? { PostToolUse: group("posttooluse") } : {}) };
 }
 
 // The parsed .agents/hooks.json (or undefined) -> the merged sets (see the header). Throws on a shape it can't merge
 // safely, naming where.
-export function mergeAntigravityHooks(current, mode, fw = "") {
+export function mergeAntigravityHooks(current, mode, fw = "", node = "node") {
   if (current !== undefined && !isMap(current))
     throw new Error(`must be a JSON object (set name -> hook set), not ${describe(current)}; fix it, nothing was written`);
   const merged = {};
-  put(merged, ANTIGRAVITY_SET, antigravitySet(mode, fw));
+  put(merged, ANTIGRAVITY_SET, antigravitySet(mode, fw, node));
   for (const [name, set] of Object.entries(current ?? {})) {
     if (name === ANTIGRAVITY_SET) continue; // ours: replaced, whatever it held
     if (!isMap(set)) throw new Error(`set '${name}' must be an object, not ${describe(set)}; fix it, nothing was written`);
     put(merged, name, set);
   }
-  assertAntigravityGuard(merged, fw);
+  assertAntigravityGuard(merged, fw, node);
   return merged;
 }
 
 // The guard is mandatory (D-042, D-092): `atf-guard` is the first set and its first PreToolUse group is as rendered.
-function assertAntigravityGuard(sets, fw) {
-  const [want] = antigravitySet("off", fw).PreToolUse;
+function assertAntigravityGuard(sets, fw, node) {
+  const [want] = antigravitySet("off", fw, node).PreToolUse;
   if (Object.keys(sets)[0] !== ANTIGRAVITY_SET || sets[ANTIGRAVITY_SET]?.enabled !== true || !isDeepStrictEqual(sets[ANTIGRAVITY_SET].PreToolUse?.[0], want))
     throw new Error(`internal: the merged hook sets lost the '${ANTIGRAVITY_SET}' guard; nothing was written`);
 }
 
-function renderAntigravityHooks(mode, text, fw) {
+function renderAntigravityHooks(mode, text, fw, node) {
   let current;
   if (text !== undefined && text.trim() !== "") {
     try {
@@ -222,7 +244,7 @@ function renderAntigravityHooks(mode, text, fw) {
       throw new Error(`not valid JSON (${e.message}); fix it, nothing was written`);
     }
   }
-  const merged = mergeAntigravityHooks(current, mode, fw);
+  const merged = mergeAntigravityHooks(current, mode, fw, node);
   // unchanged only when it is the same as JSON AND the guard is already first: the position is ours, so a moved guard is drift
   const same = current !== undefined && isDeepStrictEqual(merged, current) && Object.keys(current)[0] === ANTIGRAVITY_SET;
   return same ? text : formatJson(merged) + "\n";
@@ -243,22 +265,26 @@ function inFile(file, render) {
 // entries (mergeClaudeHooks). `codexHooks` is the current .codex/hooks.json text (or undefined), merged the same way
 // for `--host codex` (mergeCodexHooks). `antigravityHooks` is the current .agents/hooks.json text (or undefined); every set but
 // `atf-guard` is kept (mergeAntigravityHooks). When nothing of ours differs, a shared file's text comes back unchanged.
-// `fw`: the framework's path from the workspace. Throws on a shared file it can't merge safely (not JSON, not an object,
-// a malformed `hooks` or set), with `e.file` naming that file.
+// `fw`: the framework's path from the workspace. `node`: the commands' program word, `node` unless sync pins a Node.js
+// (nodeWord); `plainNode`: the files that keep `node` even then. Throws on a shared file it can't merge safely (not
+// JSON, not an object, a malformed `hooks` or set), with `e.file` naming that file.
+export const COPILOT_HOOKS = ".github/hooks/framework-guard.json";
+export const VSCODE_HOOKS = ".vscode/hooks/framework-guard.json";
 export function renderHookRegistrations(mode, claudeSettings, fw = "", opts = {}) {
-  const { antigravityHooks, codexHooks: codexHooksText } = opts;
+  const { antigravityHooks, codexHooks: codexHooksText, node = "node", plainNode = [] } = opts;
+  const word = (file) => (plainNode.includes(file) ? "node" : node);
   return new Map([
-    [CLAUDE_SETTINGS, inFile(CLAUDE_SETTINGS, () => renderClaudeSettings(mode, claudeSettings, fw))],
-    [".github/hooks/framework-guard.json", formatJson(copilotHooks(mode, fw)) + "\n"],
-    [".vscode/hooks/framework-guard.json", formatJson(vscodeHooks(mode, fw)) + "\n"],
-    [ANTIGRAVITY_HOOKS, inFile(ANTIGRAVITY_HOOKS, () => renderAntigravityHooks(mode, antigravityHooks, fw))],
+    [CLAUDE_SETTINGS, inFile(CLAUDE_SETTINGS, () => renderClaudeSettings(mode, claudeSettings, fw, word(CLAUDE_SETTINGS)))],
+    [COPILOT_HOOKS, formatJson(copilotHooks(mode, fw, word(COPILOT_HOOKS))) + "\n"],
+    [VSCODE_HOOKS, formatJson(vscodeHooks(mode, fw, word(VSCODE_HOOKS))) + "\n"],
+    [ANTIGRAVITY_HOOKS, inFile(ANTIGRAVITY_HOOKS, () => renderAntigravityHooks(mode, antigravityHooks, fw, word(ANTIGRAVITY_HOOKS)))],
     // Codex's file is rendered only when the caller names it (even as `codexHooks: undefined` for a missing file)
-    ...("codexHooks" in opts ? [[CODEX_HOOKS, inFile(CODEX_HOOKS, () => renderCodexHooks(mode, codexHooksText, fw))]] : []),
+    ...("codexHooks" in opts ? [[CODEX_HOOKS, inFile(CODEX_HOOKS, () => renderCodexHooks(mode, codexHooksText, fw, word(CODEX_HOOKS)))]] : []),
   ]);
 }
 
 // .codex/hooks.json: { hooks }, the file's other keys kept (the Claude settings rules, with --host codex)
-function renderCodexHooks(mode, text, fw) {
+function renderCodexHooks(mode, text, fw, node) {
   let file = {};
   if (text !== undefined && text.trim() !== "") {
     try {
@@ -268,14 +294,14 @@ function renderCodexHooks(mode, text, fw) {
     }
   }
   if (!isMap(file)) throw new Error(`must be a JSON object, not ${describe(file)}; fix it, nothing was written`);
-  const merged = { ...file, hooks: mergeCodexHooks(file.hooks, mode, fw) };
+  const merged = { ...file, hooks: mergeCodexHooks(file.hooks, mode, fw, node) };
   return text?.trim() && isDeepStrictEqual(merged, file) ? text : formatJson(merged) + "\n";
 }
 
-function renderClaudeSettings(mode, text, fw) {
+function renderClaudeSettings(mode, text, fw, node) {
   const settings = text === undefined || text.trim() === "" ? {} : JSON.parse(text);
   if (!isMap(settings)) throw new Error(`must be a JSON object, not ${describe(settings)}; fix it, nothing was written`);
-  const merged = { ...settings, hooks: mergeClaudeHooks(settings.hooks, mode, fw) };
+  const merged = { ...settings, hooks: mergeClaudeHooks(settings.hooks, mode, fw, node) };
   return text?.trim() && isDeepStrictEqual(merged, settings) ? text : formatJson(merged) + "\n";
 }
 

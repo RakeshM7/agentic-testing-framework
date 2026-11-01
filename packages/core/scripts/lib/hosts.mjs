@@ -58,6 +58,10 @@ export const identityOf = (host) => (HOSTS[host] ?? HOSTS.unknown).identity;
 export const canIdentify = (host) => identityOf(host) !== "none";
 export const labelOf = (host) => (HOSTS[host] ?? HOSTS.unknown).label;
 
+// The text every adapter (scripts/hooks/hosts/*.mjs) shows for a deny, in its own protocol. The guard-check canary's
+// block is the check passing (D-037), so it shows as its reason alone, never as a refusal; it stays a deny everywhere.
+export const denyMessage = (rule, reason) => (rule === "canary" ? reason : `Blocked by the framework guard (${rule}): ${reason}`);
+
 // The host a registration asserted, checked against the environment:
 //   claude-code   only when Claude Code's own CLAUDE_PROJECT_DIR is set (Copilot CLI also reads .claude/settings.json)
 //   vscode        as asserted (only VS Code's local agent reads .vscode/hooks/ and runs custom-agent hooks)

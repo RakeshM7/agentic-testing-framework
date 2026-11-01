@@ -10,6 +10,7 @@
 //   decisions.mjs index                    every Accepted decision: id and title (and which file the log is)
 //   decisions.mjs show <D-NNN...>          the full entries
 // Output is JSON, except the entry texts (`--full`, `show`), which are the log's own Markdown.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

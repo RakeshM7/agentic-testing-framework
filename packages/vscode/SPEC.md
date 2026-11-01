@@ -176,8 +176,8 @@ Every command a menu runs takes the tree node as its argument (its `product`, `e
   1. a pick: **Fill in the form** (the Cockpit's form, above), **Set it up myself** or **Let the orchestrator interview me** (the command's optional argument, `"form"`, `"config"` or `"interview"`, skips it);
   2. the product's name, checked as it is typed against what `atf config` refuses: a lowercase kebab-case slug with no `config/<product>.yaml` yet;
   3. the target URL, checked the same way (http or https, the CLI's own test);
-  4. a pick: **Log in now** (the default; Microsoft Edge opens) or **No login needed** (`--no-login`).
+  4. a pick: **Log in now** (the default; the login browser opens: the default one when Chromium-based, else Microsoft Edge, D-118) or **No login needed** (`--no-login`).
 
-  `atf config` runs in the background ("Creating config/<product>.yaml…", then "Waiting for you to sign in in Microsoft Edge…" while the login runs). Success shows **Open config** and **Start run**; a failure shows why, with **Show output**. The interview is an agent session, opened as `atf.run` opens one. The CLI checks every argument again; the extension's checks only say it sooner.
+  `atf config` runs in the background ("Creating config/<product>.yaml…", then "Waiting for you to sign in in <browser>… It closes by itself once you are signed in." while the login runs). Success shows **Open config** and **Start run**; a failure shows why, with **Show output**. The interview is an agent session, opened as `atf.run` opens one. The CLI checks every argument again; the extension's checks only say it sooner.
 - **Text only:** the extension never shows or sends secret values (the credentials files, `.auth/`, the registry token).
 - **Platforms:** Windows, macOS and Linux. Use `path` and `vscode.Uri`, with no shell-string concatenation; arguments go to `cli.js` as arrays.

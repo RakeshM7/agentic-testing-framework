@@ -7,12 +7,15 @@ import {
   ANTIGRAVITY_SET,
   CLAUDE_SETTINGS,
   CODEX_HOOKS,
+  COPILOT_HOOKS,
   POST_MODES,
+  VSCODE_HOOKS,
   formatJson,
   frameworkHook,
   mergeAntigravityHooks,
   mergeClaudeHooks,
   mergeCodexHooks,
+  nodeWord,
   renderHookRegistrations,
 } from "./lib/hook-registrations.mjs";
 
@@ -292,6 +295,77 @@ test("codex: mergeCodexHooks takes the parsed hooks value; the guard is first in
   assert.deepEqual(mergeCodexHooks(undefined, "off", FW), codexHooks("off"));
   assert.throws(() => mergeCodexHooks([], "sync", FW), /'hooks' must be an object/);
   for (const mode of POST_MODES) assert.deepEqual(mergeCodexHooks({ PreToolUse: [lint] }, mode, FW).PreToolUse[0], cgroup("pretooluse")[0]);
+});
+
+// ---- a pinned Node.js (lib/sync.mjs, atf/machine.json "node") ----
+
+test("nodeWord: a pinned Node.js's path as the program word, `/` on every OS, quoted only when it must be, refused when no shell takes it", () => {
+  assert.equal(nodeWord("/Users/ann/.nvm/versions/node/v24.19.0/bin/node"), "/Users/ann/.nvm/versions/node/v24.19.0/bin/node");
+  assert.equal(nodeWord("C:\\nvm4w\\nodejs\\node.exe"), "C:/nvm4w/nodejs/node.exe");
+  assert.equal(nodeWord("C:\\Program Files\\nodejs\\node.exe"), '"C:/Program Files/nodejs/node.exe"');
+  assert.equal(nodeWord("/Users/Ann Lee/.volta/tools/image/node/24.0.0/bin/node"), '"/Users/Ann Lee/.volta/tools/image/node/24.0.0/bin/node"');
+  for (const bad of ['/a"b/node', "/a$b/node", "/a`b/node", "C:\\a%b%\\node.exe", "/a!b/node", "/a\nb/node", "", undefined])
+    assert.throws(() => nodeWord(bad), /can't be written into a hook command safely/, String(bad));
+});
+
+test("frameworkHook knows a framework entry under a pinned Node.js too, quoted or not, either separator; still nothing else", () => {
+  const hook = (command) => ({ type: "command", command });
+  for (const program of ["/Users/ann/.nvm/versions/node/v24.19.0/bin/node", '"C:/Program Files/nodejs/node.exe"', "C:/nvm4w/nodejs/node.exe", "C:\\nvm4w\\nodejs\\node.exe", "NODE.EXE"]) {
+    assert.equal(frameworkHook(hook(`${program} "\${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}${FW}/scripts/hooks/pretooluse.mjs" --host claude-code`)), "pretooluse", program);
+    assert.equal(frameworkHook(hook(`${program} ${FW}/scripts/hooks/posttooluse.mjs --host codex`), "codex"), "posttooluse", program);
+  }
+  for (const command of [
+    "/usr/bin/nodemon scripts/hooks/pretooluse.mjs --host claude-code",
+    '"C:/x/notnode.exe" scripts/hooks/pretooluse.mjs --host claude-code',
+    "/usr/bin/node-x scripts/hooks/pretooluse.mjs --host claude-code",
+    "/usr/bin/node scripts/hooks/pretooluse.mjs --host copilot",
+    "/usr/bin/node myscripts/hooks/pretooluse.mjs --host claude-code",
+  ])
+    assert.equal(frameworkHook(hook(command)), null, command);
+});
+
+test("a pinned Node.js renders into every host's hook commands, except the files plainNode names", () => {
+  const node = "/n/v24/bin/node";
+  const files = renderHookRegistrations("async", undefined, FW, { codexHooks: undefined, node });
+  const commands = (rel) => {
+    const doc = parse(files.get(rel));
+    const groups = rel === ANTIGRAVITY_HOOKS ? doc[ANTIGRAVITY_SET] : doc.hooks;
+    return ["PreToolUse", "PostToolUse"].flatMap((e) => groups[e].flatMap((g) => (g.hooks ? g.hooks : [g]).map((h) => h.command)));
+  };
+  const all = [CLAUDE_SETTINGS, COPILOT_HOOKS, VSCODE_HOOKS, ANTIGRAVITY_HOOKS, CODEX_HOOKS];
+  for (const rel of all) {
+    assert.equal(commands(rel).length, 2, rel);
+    for (const c of commands(rel)) assert.ok(c.startsWith(`${node} `), `${rel}: ${c}`);
+  }
+  assert.equal(commands(CLAUDE_SETTINGS)[0], `${node} "\${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}${FW}/scripts/hooks/pretooluse.mjs" --host claude-code`);
+  assert.equal(commands(COPILOT_HOOKS)[0], `${node} ${FW}/scripts/hooks/pretooluse.mjs --host copilot`);
+  // the cloud agent's committed file keeps node
+  const plain = renderHookRegistrations("async", undefined, FW, { codexHooks: undefined, node, plainNode: [COPILOT_HOOKS] });
+  assert.equal(parse(plain.get(COPILOT_HOOKS)).hooks.PreToolUse[0].command, `node ${FW}/scripts/hooks/pretooluse.mjs --host copilot`);
+  assert.equal(plain.get(VSCODE_HOOKS), files.get(VSCODE_HOOKS));
+  // without the option: exactly as before
+  const none = renderHookRegistrations("async", undefined, FW, { codexHooks: undefined });
+  for (const rel of all) assert.ok(!none.get(rel).includes(node), rel);
+});
+
+test("pinning and unpinning replace the framework's entries in the shared files, never duplicate them; the client's hooks stay", () => {
+  const node = '"/Users/Ann Lee/n/bin/node"';
+  const client = { matcher: "Bash", hooks: [{ type: "command", command: "./lint.sh" }] };
+  const start = { hooks: { PreToolUse: [client] }, model: "x" };
+  const pinned = renderHookRegistrations("sync", JSON.stringify(start), FW, { codexHooks: JSON.stringify(start), antigravityHooks: JSON.stringify({ mine: { enabled: true } }), node });
+  const unpinned = renderHookRegistrations("sync", pinned.get(CLAUDE_SETTINGS), FW, { codexHooks: pinned.get(CODEX_HOOKS), antigravityHooks: pinned.get(ANTIGRAVITY_HOOKS) });
+  const fresh = renderHookRegistrations("sync", JSON.stringify(start), FW, { codexHooks: JSON.stringify(start), antigravityHooks: JSON.stringify({ mine: { enabled: true } }) });
+  for (const rel of [CLAUDE_SETTINGS, CODEX_HOOKS, ANTIGRAVITY_HOOKS]) assert.equal(unpinned.get(rel), fresh.get(rel), rel);
+  const settings = parse(pinned.get(CLAUDE_SETTINGS));
+  assert.equal(settings.hooks.PreToolUse.length, 2);
+  assert.deepEqual(settings.hooks.PreToolUse[1], client);
+  // and back: pinning a plain file gives the pinned one
+  const again = renderHookRegistrations("sync", unpinned.get(CLAUDE_SETTINGS), FW, { codexHooks: unpinned.get(CODEX_HOOKS), node });
+  assert.equal(again.get(CLAUDE_SETTINGS), pinned.get(CLAUDE_SETTINGS));
+  assert.equal(again.get(CODEX_HOOKS), pinned.get(CODEX_HOOKS));
+  // the guard check holds under the pin too
+  assert.deepEqual(mergeClaudeHooks({ PreToolUse: [client] }, "off", FW, node).PreToolUse[0].hooks[0].command, `${node} "\${CLAUDE_PROJECT_DIR:+$CLAUDE_PROJECT_DIR/}${FW}/scripts/hooks/pretooluse.mjs" --host claude-code`);
+  assert.equal(mergeAntigravityHooks(undefined, "off", FW, node)[ANTIGRAVITY_SET].PreToolUse[0].hooks[0].command, `${node} ${FW}/scripts/hooks/pretooluse.mjs --host antigravity`);
 });
 
 test("the Claude settings path is unaffected by the codex option", () => {

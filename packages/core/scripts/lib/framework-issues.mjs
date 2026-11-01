@@ -36,6 +36,10 @@ export function issueProblems(e, from) {
 }
 
 export const issuesPath = (resultsDir) => path.join(resultsDir, ISSUES_FILE);
+// An issue an agent meets with no run active (during setup, before the first run): kept beside the product's runs,
+// artifacts/<product>/framework-issues.json, and exported with them (issues-bundle.mjs collectRuns). Not a run's file:
+// a run's end never reads or stamps it.
+export const preRunIssuesPath = (productDir) => path.join(productDir, ISSUES_FILE);
 export const readIssues = (file) => readJson(file, { version: 1, issues: [] });
 
 // -> {id, added: true} | {id, duplicate: true} | {errors}
@@ -51,7 +55,7 @@ export function addIssue(file, entry, { from, runId, now = () => new Date().toIS
       writeJson(file, d);
       return { id, duplicate: true };
     }
-    d.runId = runId;
+    if (runId) d.runId = runId;
     d.issues.push({ id, kind: entry.kind, target: entry.target.trim(), summary: entry.summary.trim(), evidence: entry.evidence.trim(), ...(entry.fix ? { fix: entry.fix.trim() } : {}), severity: entry.severity ?? "medium", from, reporters: [from], at: now() });
     writeJson(file, d);
     return { id, added: true };

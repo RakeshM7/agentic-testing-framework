@@ -10,8 +10,12 @@ import { USAGE, main, plan, postinstall, run, versionInfo, versionText } from ".
 import { runChecks } from "./lib/doctor.mjs";
 import { frameworkRoot, workspaceRoot } from "./lib/roots.mjs";
 import yaml from "js-yaml";
-import { BLOCK_END, BLOCK_START, CLIENT_IGNORED, SETUP_TEMPLATE, SETUP_WORKFLOW, claudeModeLine, cloudAgentFiles, cloudAgentOf, generatedAgentFiles, gitignoreBlock, ignoredEntries, pluginSuppliedFiles, setupWorkflowProblem, sync, withGitignoreBlock } from "./lib/sync.mjs";
+import { BLOCK_END, BLOCK_START, CLIENT_IGNORED, SETUP_TEMPLATE, SETUP_WORKFLOW, claudeModeLine, cloudAgentFiles, cloudAgentOf, generatedAgentFiles, gitignoreBlock, ignoredEntries, nodePinFor, nodePinLine, pluginSuppliedFiles, readNodeRecord, setupWorkflowProblem, sync, withGitignoreBlock, withNodeRecord } from "./lib/sync.mjs";
 import { build, pluginSettings } from "./build-agents.mjs";
+import { tomlString } from "./lib/codex-config.mjs";
+import { nodeWord } from "./lib/hook-registrations.mjs";
+import { mcpNodePin, pinnedServers } from "./lib/mcp.mjs";
+import { NODE_PIN_FILE, REEXEC_ENV } from "./lib/node-version.mjs";
 import { PLUGIN_RECORD, claudeCustomizations, claudeMode, claudePluginOf, marketplaceSource } from "./lib/provenance.mjs";
 import { INSTALLED_PACKAGE, installedWorkspace, put, tempRoot } from "./test-helpers.mjs";
 
@@ -99,9 +103,9 @@ test("withGitignoreBlock: an empty file, an existing block, and a malformed bloc
   assert.equal(withGitignoreBlock(withGitignoreBlock("a\n", E).text, E).text, withGitignoreBlock("a\n", E).text, "idempotent");
   assert.deepEqual(gitignoreBlock(["x.json"]), [BLOCK_START, "/x.json", BLOCK_END], "one list, filtered by phase 3c's opt-in");
   assert.deepEqual(gitignoreBlock(["a*b?[c]\\d.md"]), [BLOCK_START, "/a\\*b\\?\\[c]\\\\d.md", BLOCK_END], "a literal path, its glob characters escaped");
-  assert.deepEqual(ignoredEntries(["z.md", ".mcp.json", ".claude/a.md"]), [".agents/mcp_config.json", ".claude/a.md", ".github/hooks/framework-guard.json", ".mcp.json", ".vscode/hooks/framework-guard.json", ".vscode/mcp.json", "z.md"], "sorted, without duplicates");
+  assert.deepEqual(ignoredEntries(["z.md", ".mcp.json", ".claude/a.md"]), [".agents/mcp_config.json", ".claude/a.md", ".github/hooks/framework-guard.json", ".mcp.json", ".vscode/hooks/framework-guard.json", ".vscode/mcp.json", "atf/machine.json", "z.md"], "sorted, without duplicates, the machine-local Node.js record always");
   // the cloud-agent opt-in commits only what is under .github/: Antigravity's files stay in the block
-  assert.deepEqual(ignoredEntries([".agents/agents/a.md", ".github/agents/a.agent.md"], { cloudAgent: true }), [".agents/agents/a.md", ".agents/mcp_config.json", ".mcp.json", ".vscode/hooks/framework-guard.json", ".vscode/mcp.json"]);
+  assert.deepEqual(ignoredEntries([".agents/agents/a.md", ".github/agents/a.agent.md"], { cloudAgent: true }), [".agents/agents/a.md", ".agents/mcp_config.json", ".mcp.json", ".vscode/hooks/framework-guard.json", ".vscode/mcp.json", "atf/machine.json"]);
   for (const bad of [`${BLOCK_START}\n/x\n`, `/x\n${BLOCK_END}\n`, `${BLOCK_END}\n${BLOCK_START}\n`, `${BLOCK_START}\n${BLOCK_END}\n${BLOCK_START}\n${BLOCK_END}\n`])
     assert.match(withGitignoreBlock(bad, E).error, /the atf sync block is malformed/, JSON.stringify(bad));
 });
@@ -129,7 +133,7 @@ test("the .gitignore block lists each of the framework's agent files and no fold
   // every agent file the build wrote, each on its own line, with the other whole files as before, sorted
   const generated = [".claude/agents", ".github/agents", ".agents/agents", ".codex/agents"].flatMap((dir) => listed(ws.root, dir).map((f) => `${dir}/${f}`)).filter((rel) => !Object.hasOwn(mine, rel));
   assert.ok(generated.length > 60, `${generated.length} agent files`);
-  assert.deepEqual(block.slice(1, -1), [...generated, ...CLIENT_IGNORED].map((e) => `/${e}`).sort());
+  assert.deepEqual(block.slice(1, -1), [...generated, ...CLIENT_IGNORED, NODE_PIN_FILE].map((e) => `/${e}`).sort());
   assert.deepEqual(block, blockOf(ws), "the roster's files, both hosts");
   assert.ok(block.slice(1, -1).every((e) => !e.endsWith("/")), "no folder");
   // the client's own agents: kept by the build, and not ignored
@@ -747,4 +751,212 @@ test("a platform whose output is .codex/agents/{name}.toml lists those files; .c
   assert.ok(files.every((f) => entries.includes(f)));
   assert.ok(!entries.includes(".codex/config.toml") && !entries.includes(".codex/hooks.json"));
   assert.ok(!CLIENT_IGNORED.some((e) => e.startsWith(".codex/")), "no shared .codex file is in the ignore list");
+});
+
+// ---- a pinned Node.js (the friction plan's K2: atf/machine.json "node", machine-local) -----------------------------
+
+// A machine whose PATH node is 18 and whose only newer Node.js is this process's: findNode finds this one, and nothing
+// else of the real machine is looked at (no version manager, no Homebrew).
+const OLD_NODE = path.join(tempRoot(), "old", process.platform === "win32" ? "node.exe" : "node");
+const oldPathNode = (extra = {}) => ({
+  env: { PATH: path.dirname(OLD_NODE) },
+  platform: process.platform,
+  home: tempRoot(),
+  exists: (f) => f === OLD_NODE || (path.dirname(f) === path.dirname(process.execPath) && existsSync(f)),
+  readdir: () => [],
+  probe: (f) => (f === OLD_NODE ? "18.20.8" : f === process.execPath ? process.versions.node : null),
+  execPath: process.execPath,
+  current: process.versions.node,
+  now: Date.parse("2026-11-01T10:00:00Z"),
+  ...extra,
+});
+// every hook command sync renders, per file
+const HOOK_FILES = [".claude/settings.json", ".github/hooks/framework-guard.json", ".vscode/hooks/framework-guard.json", ".agents/hooks.json", ".codex/hooks.json"];
+function hookCommands(root, rel) {
+  const doc = JSON.parse(read(root, rel));
+  const events = rel === ".agents/hooks.json" ? doc["atf-guard"] : doc.hooks;
+  return ["PreToolUse", "PostToolUse"].flatMap((e) => (events[e] ?? []).flatMap((g) => (g.hooks ? g.hooks : [g]).map((h) => h.command)).filter((c) => /scripts\/hooks\//.test(c)));
+}
+const identityHook = (program) => JSON.stringify(`${program} ${INSTALLED_PACKAGE}/scripts/hooks/pretooluse.mjs --host vscode --agent pw-ui-fixer`);
+// the machine-local record (null: no file); atf/atf.json, which a team commits, is never touched
+const machine = (root) => (existsSync(path.join(root, NODE_PIN_FILE)) ? JSON.parse(read(root, NODE_PIN_FILE)) : null);
+const syncOn = (ws, nodeSys) => sync({ workspace: ws.root, framework: ws.framework, nodeSys });
+
+test("a PATH node older than 20: sync pins the newest Node.js found into every hook command and MCP server, records it, and check agrees", async () => {
+  const ws = installedWorkspace();
+  const markerBefore = read(ws.root, "atf/atf.json");
+  const r = syncOn(ws, oldPathNode());
+  assert.deepEqual(r.errors, []);
+  const pin = { path: process.execPath, version: process.versions.node, pinnedAt: "2026-11-01T10:00:00.000Z" };
+  assert.deepEqual(r.node, { pin, pathNode: { path: OLD_NODE, version: "18.20.8" } });
+  assert.deepEqual(machine(ws.root), { node: pin });
+  assert.ok(r.changed.includes(NODE_PIN_FILE));
+  assert.equal(read(ws.root, "atf/atf.json"), markerBefore, "the committed marker stays as it was");
+  assert.ok(read(ws.root, ".gitignore").split("\n").includes(`/${NODE_PIN_FILE}`), "the record is kept out of git");
+  // every hook command, on every host, the Copilot agents' identity hook included
+  const word = nodeWord(process.execPath);
+  for (const rel of HOOK_FILES) {
+    const commands = hookCommands(ws.root, rel);
+    assert.equal(commands.length, 2, rel);
+    for (const c of commands) assert.ok(c.startsWith(`${word} `) && c.includes(`${INSTALLED_PACKAGE}/scripts/hooks/`), `${rel}: ${c}`);
+  }
+  assert.ok(read(ws.root, ".github/agents/pw-ui-fixer.agent.md").includes(`command: ${identityHook(word)}`));
+  // every MCP server: that Node's npx, its folder first in the server's PATH, the arguments as they were
+  const want = mcpNodePin(process.execPath, oldPathNode());
+  assert.equal(want.path.split(path.delimiter)[0], path.dirname(process.execPath));
+  for (const [rel, key] of [[".mcp.json", "mcpServers"], [".vscode/mcp.json", "servers"], [".agents/mcp_config.json", "mcpServers"]]) {
+    const server = JSON.parse(read(ws.root, rel))[key].playwright;
+    assert.equal(server.command, want.npx, rel);
+    assert.deepEqual(server.env, { PATH: want.path }, rel);
+    assert.ok(server.args.includes(`${INSTALLED_PACKAGE}/scripts/browser/init-page.cjs`), rel);
+  }
+  assert.ok(read(ws.root, ".codex/config.toml").includes(`command = ${tomlString(want.npx)}`));
+  assert.ok(read(ws.root, ".codex/config.toml").includes(`env = { PATH = ${tomlString(want.path)} }`));
+  // check (and the doctor) read the record instead of deciding, so any terminal's PATH agrees with it
+  assert.deepEqual(atf(["check"], ws), IN_SYNC);
+  const checks = await runChecks({ product: "acme" }, ["base"], { root: ws.root, framework: ws.framework });
+  assert.equal(checks.find((c) => c.id === "host-files").ok, true);
+  const node = checks.find((c) => c.id === "node");
+  assert.equal(node.ok, true);
+  assert.equal(node.detail, `Node.js ${process.versions.node}; atf/machine.json pins Node.js ${pin.version} (${pin.path}) for the hooks, the browser server and the scripts, since your PATH's node is older than 20`);
+  // the same machine again: nothing changes, the record's time kept
+  const again = syncOn(ws, oldPathNode({ now: Date.parse("2026-12-01T00:00:00Z") }));
+  assert.deepEqual(again.changed, []);
+  assert.equal(machine(ws.root).node.pinnedAt, pin.pinnedAt);
+  // what sync says
+  assert.equal(nodePinLine(r.node), `your PATH's node is Node.js 18.20.8, older than 20: the hooks and the browser server run Node.js ${pin.version} (${pin.path}), recorded in atf/machine.json (this machine's, kept out of git); each sync checks again.`);
+  // the PATH node is new enough now: the next sync unpins everything and removes the record, its only key
+  const fixed = syncOn(ws, oldPathNode({ probe: (f) => (f === OLD_NODE ? "24.0.0" : null) }));
+  assert.deepEqual(fixed.errors, []);
+  assert.equal(fixed.node.pin, null);
+  assert.equal(nodePinLine(fixed.node), null);
+  assert.ok(fixed.changed.includes(NODE_PIN_FILE) && fixed.changed.includes(".claude/settings.json") && fixed.changed.includes(".mcp.json"));
+  assert.equal(machine(ws.root), null);
+  assert.equal(read(ws.root, "atf/atf.json"), markerBefore);
+  for (const rel of HOOK_FILES) for (const c of hookCommands(ws.root, rel)) assert.ok(c.startsWith("node "), `${rel}: ${c}`);
+  assert.ok(read(ws.root, ".github/agents/pw-ui-fixer.agent.md").includes(`command: ${identityHook("node")}`));
+  assert.deepEqual(JSON.parse(read(ws.root, ".mcp.json")).mcpServers.playwright.command, "npx");
+  assert.equal(JSON.parse(read(ws.root, ".mcp.json")).mcpServers.playwright.env, undefined);
+  assert.deepEqual(atf(["check"], ws), IN_SYNC);
+});
+
+test("after bin/atf.mjs switched Node itself, the PATH's node is the one it was started on", () => {
+  const ws = installedWorkspace();
+  // the switched process's PATH starts with the newer Node's folder; the old version comes in REEXEC_ENV
+  const r = syncOn(ws, oldPathNode({ env: { PATH: path.dirname(process.execPath), [REEXEC_ENV]: "18.20.8" } }));
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(r.node.pathNode, { version: "18.20.8" });
+  assert.equal(r.node.pin.path, process.execPath);
+});
+
+test("the cloud-agent opt-in keeps .github/ on plain node: GitHub's runner sets up its own Node", () => {
+  const ws = installedWorkspace();
+  optIn(ws.root);
+  const r = syncOn(ws, oldPathNode());
+  assert.deepEqual(r.errors, []);
+  const word = nodeWord(process.execPath);
+  for (const c of hookCommands(ws.root, ".github/hooks/framework-guard.json")) assert.ok(c.startsWith("node "), c);
+  assert.ok(read(ws.root, ".github/agents/pw-ui-fixer.agent.md").includes(`command: ${identityHook("node")}`));
+  for (const rel of HOOK_FILES.filter((f) => !f.startsWith(".github/"))) for (const c of hookCommands(ws.root, rel)) assert.ok(c.startsWith(`${word} `), `${rel}: ${c}`);
+  assert.equal(JSON.parse(read(ws.root, "atf/atf.json")).cloud_agent, true, "the opt-in kept");
+  assert.equal(machine(ws.root).node.path, process.execPath);
+  assert.deepEqual(atf(["check"], ws), IN_SYNC);
+});
+
+test("sync pins the Node.js of the workspace's .nvmrc major when it is installed, else the newest even (LTS) major", () => {
+  const ws = installedWorkspace();
+  const at = (v) => path.join(tempRoot(), `v${v}`, "bin", process.platform === "win32" ? "node.exe" : "node");
+  const [n22, n24, n25] = [at("22.1.0"), at("24.2.0"), at("25.0.0")];
+  const versions = { [OLD_NODE]: "18.20.8", [n22]: "22.1.0", [n24]: "24.2.0", [n25]: "25.0.0" };
+  const sys = oldPathNode({
+    env: { PATH: [OLD_NODE, n25, n22, n24].map((f) => path.dirname(f)).join(path.delimiter) },
+    exists: (f) => Object.hasOwn(versions, f),
+    probe: (f) => versions[f] ?? null,
+    execPath: OLD_NODE,
+    current: "18.20.8",
+  });
+  assert.equal(syncOn(ws, sys).node.pin.path, n24, "no .nvmrc: the newest LTS line, not 25");
+  put(ws.root, ".nvmrc", "22\n");
+  assert.equal(syncOn(ws, sys).node.pin.path, n22);
+  assert.equal(machine(ws.root).node.version, "22.1.0");
+});
+
+test("a recorded Node.js that is gone fails check and the doctor; with nothing newer installed sync says how to install one and pins nothing", async () => {
+  const ws = installedWorkspace();
+  const gone = path.join(ws.root, "gone", "node");
+  put(ws.root, NODE_PIN_FILE, `${JSON.stringify({ node: { path: gone, version: "24.0.0", pinnedAt: "2026-10-01T00:00:00.000Z" } })}\n`);
+  const check = atf(["check"], ws);
+  assert.equal(check.code, 1);
+  assert.ok(check.lines.includes(`stderr: atf check: error: atf/machine.json "node" pins Node.js 24.0.0 at ${gone}, which is gone: run npx atf sync (in the workspace), which finds another`), check.lines.join("\n"));
+  const node = (await runChecks({ product: "acme" }, ["base"], { root: ws.root, framework: ws.framework })).find((c) => c.id === "node");
+  assert.deepEqual({ ok: node.ok, level: node.level, fix: node.fix }, { ok: false, level: "fail", fix: "npx atf sync (in the workspace) finds another" });
+  // a malformed record or file is check's error too
+  put(ws.root, NODE_PIN_FILE, `${JSON.stringify({ node: "/usr/bin/node" })}\n`);
+  assert.match(atf(["check"], ws).lines.join("\n"), /atf\/machine\.json "node" must be \{ "path", "version", "pinnedAt" \}/);
+  put(ws.root, NODE_PIN_FILE, "{");
+  assert.match(atf(["check"], ws).lines.join("\n"), /atf\/machine\.json could not be read as JSON .*: run npx atf sync/);
+  // nothing new enough on this machine: no pin, the record dropped, a warning with the install command
+  const none = { execPath: OLD_NODE, current: "18.20.8", exists: (f) => f === OLD_NODE, probe: (f) => (f === OLD_NODE ? "18.20.8" : null) };
+  const r = syncOn(ws, oldPathNode(none));
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.node.pin, null);
+  assert.match(r.node.problem, /^your PATH's node is Node\.js 18\.20\.8, older than 20, and no newer Node\.js is installed, so the guard hook refuses every call and the browser server can't start: install one \(.+\), then run npx atf sync$/);
+  assert.match(nodePinLine(r.node), /^warning: /);
+  assert.equal(machine(ws.root), null, "the broken file replaced by nothing, since nothing is pinned");
+  for (const rel of HOOK_FILES) for (const c of hookCommands(ws.root, rel)) assert.ok(c.startsWith("node "), `${rel}: ${c}`);
+});
+
+test("a source checkout never pins: its generated files are committed and the same on every machine (D-018)", () => {
+  const root = tempRoot();
+  put(root, "atf/atf.json", "{}\n");
+  const r = sync({ workspace: root, framework: frameworkRoot, nodeSys: oldPathNode() });
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.node, null);
+  assert.equal(read(root, "atf/atf.json"), "{}\n");
+  assert.equal(machine(root), null);
+  for (const rel of HOOK_FILES) for (const c of hookCommands(root, rel)) assert.ok(c.startsWith("node "), `${rel}: ${c}`);
+  // and the build ignores a pin passed to it there
+  const b = build({ root, framework: frameworkRoot, check: true, nodePin: { hook: "/x/node", mcp: { node: "/x/node", npx: "/x/npx", path: "/x" }, plain: [] } });
+  assert.deepEqual(b, { errors: [], changed: [] });
+});
+
+test("nodePinFor, withNodeRecord, readNodeRecord: check reads the record as it is; the record file is written, kept beside other keys, or removed", () => {
+  assert.deepEqual(nodePinFor(undefined, { check: true }), { pin: null, record: undefined });
+  const rec = { path: process.execPath, version: "24.0.0", pinnedAt: "t" };
+  assert.deepEqual(nodePinFor(rec, { check: true }), { pin: rec, record: rec });
+  for (const bad of [null, "x", { path: "" }, { path: "/n" }, { version: "24.0.0" }]) assert.match(nodePinFor(bad, { check: true }).error, /^atf\/machine\.json "node" must be \{ "path", "version", "pinnedAt" \}/, JSON.stringify(bad));
+  assert.match(nodePinFor({ path: '/a"b/node', version: "24.0.0" }, { check: true, sys: { exists: () => true } }).error, /can't be written into a hook command safely/);
+  // no file yet: just the record; removing the last key removes the file (null)
+  const fresh = withNodeRecord(null, rec);
+  assert.equal(fresh, `{\n  "node": {\n    "path": ${JSON.stringify(rec.path)},\n    "version": "24.0.0",\n    "pinnedAt": "t"\n  }\n}\n`);
+  assert.equal(withNodeRecord(fresh, undefined), null);
+  // a file's other keys, indent, CRLF and BOM kept; removing the record leaves the rest
+  const text = '\ufeff{\r\n    "other": 2\r\n}\r\n';
+  const withRec = withNodeRecord(text, rec);
+  assert.equal(withRec, `\ufeff{\r\n    "other": 2,\r\n    "node": {\r\n        "path": ${JSON.stringify(rec.path)},\r\n        "version": "24.0.0",\r\n        "pinnedAt": "t"\r\n    }\r\n}\r\n`);
+  assert.equal(withNodeRecord(withRec, undefined), text);
+  // reading it: none, a record, or an error naming the file
+  const root = tempRoot();
+  assert.deepEqual(readNodeRecord(root), { text: null, record: undefined });
+  put(root, NODE_PIN_FILE, fresh);
+  assert.deepEqual(readNodeRecord(root), { text: fresh, record: rec });
+  put(root, NODE_PIN_FILE, "[]");
+  assert.match(readNodeRecord(root).error, /^atf\/machine\.json must hold a JSON object/);
+});
+
+test("mcpNodePin and pinnedServers: npx and node commands run the pinned Node.js, with its folder then the system's in PATH; other servers untouched", () => {
+  const posix = mcpNodePin("/n/v24/bin/node", { platform: "linux", env: {}, exists: (f) => f === "/n/v24/bin/npx" });
+  assert.deepEqual(posix, { node: "/n/v24/bin/node", npx: "/n/v24/bin/npx", path: "/n/v24/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" });
+  assert.equal(mcpNodePin("/n/v24/bin/node", { platform: "linux", env: {}, exists: () => false }).npx, "npx", "no npx beside it: PATH finds one, run by the pinned node");
+  assert.equal(mcpNodePin("/usr/local/bin/node", { platform: "darwin", env: {}, exists: () => true }).path, "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin");
+  const win = mcpNodePin("C:\\Program Files\\nodejs\\node.exe", { platform: "win32", env: { SystemRoot: "D:\\Win" }, exists: () => true });
+  assert.deepEqual(win, { node: "C:\\Program Files\\nodejs\\node.exe", npx: "C:\\Program Files\\nodejs\\npx.cmd", path: "C:\\Program Files\\nodejs;D:\\Win\\System32;D:\\Win;D:\\Win\\System32\\Wbem;D:\\Win\\System32\\WindowsPowerShell\\v1.0" });
+  const servers = { playwright: { command: "npx", args: ["-y", "x"] }, script: { command: "node", args: ["s.js"], env: { A: "1" } }, other: { command: "uvx", args: ["y"] } };
+  assert.equal(pinnedServers(servers, null), servers);
+  assert.deepEqual(pinnedServers(servers, posix), {
+    playwright: { command: "/n/v24/bin/npx", args: ["-y", "x"], env: { PATH: posix.path } },
+    script: { command: "/n/v24/bin/node", args: ["s.js"], env: { A: "1", PATH: posix.path } },
+    other: servers.other,
+  });
+  assert.deepEqual(Object.keys(pinnedServers(servers, posix).playwright), ["command", "args", "env"], "env after the rest, as a host file lists it");
 });

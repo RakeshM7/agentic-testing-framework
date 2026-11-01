@@ -682,7 +682,7 @@ test("cliPlan through the real atf: the doctor pre-check and the first prompt, e
   assert.equal(run.steps.length, 2, JSON.stringify(run));
   const [doctor, agent] = run.steps;
   assert.equal(doctor.script, path.join(framework, "scripts", "doctor.mjs"));
-  assert.deepEqual(doctor.args, ["config/acme.yaml", "--fix", "--warn-only"]);
+  assert.deepEqual(doctor.args, ["config/acme.yaml", "--preflight"]);
   assert.deepEqual(doctor.env, {});
   assert.equal(agent.agent, true);
   assert.match(agent.prompt, /^Start or resume the run for config\/acme\.yaml: node node_modules\/@testagentic\/atf\/scripts\/run\.mjs init config\/acme\.yaml/);

@@ -40,7 +40,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stateDirs } from "../../lib/guard.mjs";
-import { resolveHost } from "../../lib/hosts.mjs";
+import { denyMessage, resolveHost } from "../../lib/hosts.mjs";
 import { hookWorkspaceRoot } from "../../lib/roots.mjs";
 import { toolCall } from "../../lib/tool-call.mjs";
 
@@ -165,7 +165,7 @@ export function normalize(payload, { env = process.env, host = "antigravity", ag
 
 export function emit({ decision, rule, reason }) {
   if (decision === "allow") return 0;
-  const message = decision === "deny" ? `Blocked by the framework guard (${rule}): ${reason}` : reason;
+  const message = decision === "deny" ? denyMessage(rule, reason) : reason;
   process.stdout.write(JSON.stringify({ decision, reason: message }));
   if (decision === "deny") process.stderr.write(`${message}\n`);
   return 0;

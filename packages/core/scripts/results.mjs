@@ -6,6 +6,7 @@
 //   results.mjs k6 <product> <module> <summary.json>...                          (written by lib/summary.js handleSummary;
 //                                                                                 <script>.retry.summary.json = the smoke re-run)
 //   results.mjs not-run <product> <module> playwright-ui|playwright-api|k6 --reason TEXT
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

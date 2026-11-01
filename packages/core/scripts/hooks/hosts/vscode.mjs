@@ -4,11 +4,12 @@
 // On Windows it runs the hook through `powershell.exe -Command`, which turns a native exit 2 into 1, so a block by exit
 // code becomes a warning and the tool runs anyway. Every verdict is therefore a decision on stdout with exit 0, which
 // VS Code honours on every OS. Never block here by exit code.
+import { denyMessage } from "../../lib/hosts.mjs";
 export { normalize, rootOf } from "./copilot.mjs";
 
 export function emit({ decision, rule, reason }) {
   if (decision === "allow") return 0;
-  const message = decision === "deny" ? `Blocked by the framework guard (${rule}): ${reason}` : reason;
+  const message = decision === "deny" ? denyMessage(rule, reason) : reason;
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: decision, permissionDecisionReason: message } }));
   return 0;
 }

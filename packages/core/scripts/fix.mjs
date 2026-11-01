@@ -13,6 +13,7 @@
 //        needs-product-change | needs-human | out-of-scope) and a text; no managed or generated file changed.
 //   fix.mjs paths <product> <module> <domain>   the report and snapshot files
 // domain: playwright-ui | playwright-api | k6. Exits: 0 ok, 1 problems, 2 usage.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

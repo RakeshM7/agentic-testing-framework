@@ -9,6 +9,7 @@
 //                                                        changed, steps}; an empty path clears a file (null); exit 1 with errors
 // Exports validateRunConfig for run.mjs and tests. See config/run-config.example.yaml for the format.
 
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -248,6 +249,13 @@ export function validateRunConfig(cfg, { root = workspaceRoot } = {}) {
   if (cfg.feedback_loop?.auto_invoke_implementor !== undefined)
     warnings.push("feedback_loop.auto_invoke_implementor has no effect (D-083): run.mjs end writes the framework issues agents recorded to feedback/run-<run-id>/; start feedback-implementor-agent on them yourself");
   if (cfg.git?.auto_commit !== undefined) warnings.push("git.auto_commit has no effect: the framework never commits; a human does");
+  // A module that swallowed a whole list ("Home, Events and Bookings") gets a long slug and a comma in its nav_path
+  (Array.isArray(cfg.modules) ? cfg.modules : []).forEach((m, i) => {
+    if (typeof m?.slug === "string" && m.slug.length > 40)
+      warnings.push(`modules[${i}].slug '${m.slug}' is longer than 40 characters: if it holds several modules, split it into one item per module`);
+    for (const e of Array.isArray(m?.nav_path) ? m.nav_path : [])
+      if (typeof e === "string" && e.includes(",")) warnings.push(`modules[${i}].nav_path entry '${e}' contains a comma: one entry per menu label, and one module per item`);
+  });
   return {
     errors,
     warnings,

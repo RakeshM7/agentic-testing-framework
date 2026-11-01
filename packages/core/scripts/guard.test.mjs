@@ -1090,6 +1090,152 @@ test("the extension dialog's confirmation files are human-only: no tool call wri
   assert.equal(allowed(FULL.root, sh("pw-ui-test-runner-triager", "node scripts/ledger.mjs list acme --live")), true);
 });
 
+// The guard check's proof (D-037): its records are written by the hook entry and the canary command alone, so no tool
+// call writes, moves or deletes one, and none runs a hook script by hand on a payload it makes up.
+const AGENTS = () => Object.keys(JSON.parse(readFileSync(paths("acme", FULL.root).permissionsFile, "utf8")).agents);
+const HOSTS_ALL = ["copilot-cli", "vscode", "vscode-agent-host", "claude-code", "copilot-cloud", "antigravity", "codex"];
+const unnamedShell = (host, command) => toolCall({ host, kind: "shell", tool: "bash", command });
+const refusedBy = (rule) => (root, c, what) => {
+  const v = checkTool(c, root, {}, { framework: root });
+  assert.deepEqual([v.allowed, v.rule], [false, rule], what);
+};
+
+test("the guard check's records are the hook's alone: no tool call writes, moves or deletes one, for any caller, mode or host, in or out of a run (D-037)", (t) => {
+  const refused = refusedBy("guard-record");
+  // any product's and environment's folder; the record the hook writes and the one the canary command writes
+  const files = ["artifacts/acme/state/guard-check/claude-code--orchestrator-agent.json", "artifacts/acme/state/guard-check/absent.json",
+    "artifacts/acme/envs/staging/state/guard-check/vscode--orchestrator-agent.json", "artifacts/other/state/guard-check/codex--unidentified.json"];
+  const writes = (root, f) => ["Write", "Edit"].map((tool) => [tool, { file_path: path.join(root, f) }]);
+  const shells = (f) => [`echo {} > ${f}`, `cp /tmp/c.json ${f}`, `rm -f ${f}`, `touch ${f}`, `node -e "require('fs').writeFileSync('${f}', '{}')"`, `rm -rf ${path.dirname(f)}`, `mv ${path.dirname(f)} /tmp/old`];
+  // the framework's agents, in a readonly and a full-run run
+  for (const { root } of [RO, FULL])
+    for (const agent of AGENTS())
+      for (const f of files) {
+        for (const [tool, input] of writes(root, f)) refused(root, call(agent, tool, input), `${agent}: ${tool} ${f}`);
+        for (const c of shells(f)) refused(root, sh(agent, c), `${agent}: ${c}`);
+      }
+  // the human's own session, another plugin's agent, and every host's unattributed calls, in and out of a run
+  for (const root of [FULL.root, RO.root, tempRoot()])
+    for (const f of files) {
+      for (const who of [undefined, "other:x"]) {
+        for (const [tool, input] of writes(root, f)) refused(root, call(who, tool, input), `${who ?? "human session"}: ${tool} ${f}`);
+        for (const c of shells(f)) refused(root, sh(who, c), `${who ?? "human session"}: ${c}`);
+      }
+      for (const host of HOSTS_ALL) {
+        refused(root, toolCall({ host, kind: "write", tool: "create", paths: [path.join(root, f)] }), `${host}: write ${f}`);
+        for (const c of shells(f)) refused(root, unnamedShell(host, c), `${host}: ${c}`);
+      }
+    }
+  // other spellings: from inside the folder or its state folder (a cd, a later call there), globs, another case,
+  // Windows' separators, trailing dots and 8.3 names, names split up
+  for (const c of [
+    "cd artifacts/acme/state && rm -rf guard-check",
+    "cd artifacts/acme/state/guard-check && rm absent.json",
+    "rm absent.json",
+    "echo {} > claude-code--orchestrator-agent.json",
+    "rm -rf artifacts/acme/state/guard-*",
+    "rm -rf artifacts/acme/state/*",
+    "del artifacts\\acme\\state\\guard-check\\absent.json",
+    "echo {} > artifacts/acme/state/GUARD-~1/absent.json",
+    "echo {} > artifacts/acme/state/Guard-Check/claude-code--orchestrator-agent.json",
+    "echo {} > artifacts/acme/state/guard-check./x.json",
+    "node -e \"require('fs').rmSync('artifacts/acme/state/guard-'+'check', { recursive: true })\"",
+    "echo {} > artifacts/acme/state/gua''rd-check/absent.json",
+  ])
+    for (const who of ["feedback-implementor-agent", undefined]) refused(FULL.root, sh(who, c), `${who ?? "human session"}: ${c}`);
+  for (const [cmd, cwd] of [["rm -f absent.json", "artifacts/acme/state/guard-check"], ["rm -rf guard-check", "artifacts/acme/state"], ["cp c.json x.json", "artifacts/acme/state/guard-check"]])
+    refused(FULL.root, toolCall({ host: "antigravity", kind: "shell", tool: "run_command", command: cmd, cwds: [path.join(FULL.root, cwd)] }), `${cmd} in ${cwd}`);
+  for (const f of ["artifacts/acme/state/guard-check./x.json", "artifacts/acme/state/guard-check::$INDEX_ALLOCATION/x.json", "artifacts\\acme\\state\\Guard-Check\\absent.json", "artifacts/acme/state/GUARD-~1/absent.json", "artifacts/acme/state/guard-check /x.json"])
+    refused(FULL.root, call(undefined, "Write", { file_path: path.join(FULL.root, f) }), f);
+  // reading the records, the canary itself, the guard-check module and nearby names stay as they were
+  assert.equal(allowed(FULL.root, call("orchestrator-agent", "Read", { file_path: path.join(FULL.root, files[0]) })), true, "a read tool reads them");
+  assert.equal(checkTool(sh("orchestrator-agent", "node scripts/run.mjs guard-check acme"), FULL.root, {}, { framework: FULL.root }).rule, "canary");
+  assert.equal(allowed(FULL.root, sh("orchestrator-agent", "node scripts/run.mjs status acme")), true);
+  // a grep alternation after the name (`guard-check\|…`) is a regex, not a Windows path into the folder
+  refused(FULL.root, sh(undefined, "cat artifacts\\acme\\state\\guard-check\\absent.json"), "a Windows path into the folder");
+  for (const c of ["grep -n ABSENT scripts/lib/guard-check.mjs", "node --test scripts/hooks.test.mjs", 'grep -n "guard-check\\|guard check" docs/platforms.md | head', "npm run check > $TMPDIR/check.log 2>&1", "rm -rf node_modules/*", "rm -f dist/*.js", "echo the guard check passed > notes.md"])
+    for (const root of [tempRoot(), FULL.root]) assert.equal(allowed(root, sh(undefined, c)), true, c);
+  const none = tempRoot();
+  assert.equal(allowed(none, call(undefined, "Write", { file_path: path.join(none, "scripts/lib/guard-check.mjs") })), true, "a file named like the folder is not the folder");
+  // a link inside a folder the caller may write, into the folder (last: an OS without links skips only this)
+  const L = startRun();
+  const link = path.join(L.root, "artifacts/acme/modules/contacts/link");
+  mkdirSync(path.dirname(link), { recursive: true });
+  try {
+    symlinkSync(path.join(L.root, "artifacts/acme/state/guard-check"), link, "junction");
+  } catch (e) {
+    t.skip(`this OS can't create a junction or symlink here: ${e.code}`);
+    return;
+  }
+  refused(L.root, call(undefined, "Write", { file_path: path.join(link, "claude-code--orchestrator-agent.json") }), "a write through a link");
+  refused(L.root, sh(undefined, `echo {} > ${path.join(link, "x.json")}`), "a shell write through a link");
+});
+
+test("the framework's hook scripts run only as the host runs them: no tool call starts one, for any caller, mode or host, in or out of a run (D-037)", () => {
+  const refused = refusedBy("hook-script");
+  const cmds = [
+    "node scripts/hooks/pretooluse.mjs --host claude-code < payload.json",
+    "echo '{}' | node scripts/hooks/pretooluse.mjs --host vscode --agent orchestrator-agent",
+    "node packages/core/scripts/hooks/posttooluse.mjs --host claude-code",
+    "node node_modules/@testagentic/atf/scripts/hooks/plugin-session.mjs",
+    "cd scripts/hooks && node pretooluse.mjs --host copilot",
+    "node scripts/hooks/hosts/claude.mjs",
+    "./scripts/hooks/pretooluse.mjs --host claude-code",
+    "ATF_WORKSPACE=. node scripts/hooks/pretooluse.mjs --host codex",
+    "env ATF_WORKSPACE=. nohup node scripts/hooks/pretooluse.mjs",
+    "sh -c \"node scripts/hooks/pretooluse.mjs --host antigravity\"",
+    "node --import ./scripts/hooks/pretooluse.mjs scripts/run.mjs status acme",
+    "node -r ./scripts/hooks/posttooluse.mjs x.js",
+    "node -e \"import('./scripts/hooks/pretooluse.mjs')\"",
+    "node --input-type=module -e \"await import('./scripts/hooks/post'+'tooluse.mjs')\"",
+    "cat scripts/hooks/pretooluse.mjs | node --input-type=module",
+    "node < scripts/hooks/pretooluse.mjs",
+    "node scripts/hooks/pre*.mjs --host claude-code",
+    "node scripts/hooks/*",
+    "node scripts/hooks/hosts/c*.mjs",
+    "npx tsx scripts/hooks/pretooluse.mjs",
+    "bun run scripts/hooks/pretooluse.mjs",
+    "deno run -A scripts/hooks/pretooluse.mjs",
+    "node --test scripts/hooks.test.mjs scripts/hooks/pretooluse.mjs",
+    "node.exe C:\\atf\\scripts\\hooks\\pretooluse.mjs --host vscode",
+    "npm exec -- node scripts/hooks/pretooluse.mjs",
+    "find scripts -name pretooluse.mjs | xargs node",
+    "node scripts/run.mjs status acme && node scripts/hooks/pretooluse.mjs --host claude-code",
+    "node scripts/hooks/pretoo''luse.mjs",
+    "echo $(node scripts/hooks/pretooluse.mjs --host claude-code)",
+    "echo \"$(node scripts/hooks/pretooluse.mjs --host claude-code)\"",
+    "echo \"`node scripts/hooks/pretooluse.mjs`\"",
+    "bash -lc 'node scripts/hooks/pretooluse.mjs --host codex'",
+    "echo \"node scripts/hooks/pretooluse.mjs --host codex\" | sh",
+    "bash <<'EOF'\nnode scripts/hooks/pretooluse.mjs --host claude-code\nEOF",
+    "python3 - <<'EOF'\nimport subprocess\nsubprocess.run(['node', 'scripts/hooks/pretooluse.mjs'])\nEOF",
+    "python3 -c \"import subprocess; subprocess.run(['node', 'scripts/hooks/pretooluse.mjs'])\"",
+    "sudo -u me node scripts/hooks/pretooluse.mjs",
+    "timeout 10 node scripts/hooks/posttooluse.mjs --host vscode",
+    "eval \"node scripts/hooks/pretooluse.mjs\"",
+  ];
+  for (const { root } of [RO, FULL]) for (const agent of AGENTS()) for (const c of cmds) refused(root, sh(agent, c), `${agent}: ${c}`);
+  for (const root of [FULL.root, RO.root, tempRoot()])
+    for (const c of cmds) {
+      for (const who of [undefined, "other:x"]) refused(root, sh(who, c), `${who ?? "human session"}: ${c}`);
+      for (const host of HOSTS_ALL) refused(root, unnamedShell(host, c), `${host}: ${c}`);
+    }
+  // the tests that spawn them, and naming one as another program's argument, stay allowed
+  const fine = [
+    "npm test", "npm run check", "node --test scripts/hooks.test.mjs scripts/codex-hooks.test.mjs", "node --test",
+    "node scripts/decisions.mjs for packages/core/scripts/hooks/pretooluse.mjs packages/core/scripts/hooks/hosts/claude.mjs --full",
+    "grep -n emit scripts/hooks/hosts/claude.mjs", "git diff -- scripts/hooks/pretooluse.mjs", "cat scripts/hooks/pretooluse.mjs",
+    "node scripts/build-agents.mjs", "git commit -m \"fix: pretooluse.mjs; posttooluse.mjs\"",
+    // a separator inside quotes is text; a here-document's body is data for its own command
+    "sed -n 1,8p scripts/hooks/posttooluse.mjs; grep -n \"post_tool_use\\|posttooluse\" scripts/lib/hook-registrations.mjs",
+    "grep -n \"Bash\" x.json | grep \"pretooluse|posttooluse\"",
+    "cat > notes.md <<'EOF'\nnode scripts/hooks/pretooluse.mjs is run by the host\nEOF",
+    "gh pr create --body-file - <<'EOF'\n## Why\nposttooluse.mjs; pretooluse.mjs\nEOF",
+    "cat >> a.test.mjs <<'EOF'\nawait import(\"./hooks/hosts/claude.mjs\");\nEOF\npython3 - <<'EOF'\nprint(1)\nEOF",
+  ];
+  for (const root of [FULL.root, RO.root, tempRoot()]) for (const c of fine) assert.equal(allowed(root, sh(undefined, c)), true, c);
+});
+
 test("readonly input (D-076): typing, selecting and key presses pass only while the browser server runs the framework's network guard", () => {
   const ro = startRun({ mode: "readonly" });
   const b = (agent, tool) => allowed(ro.root, call(agent, `mcp__playwright__browser_${tool}`, {}));

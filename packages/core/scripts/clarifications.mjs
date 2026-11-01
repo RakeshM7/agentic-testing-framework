@@ -16,6 +16,7 @@
 //   clarifications.mjs status    <product> [<module>]              {total, answered, proposed[], unconfirmed[]} per module
 //   clarifications.mjs summary   <product> <module>                writes clarifications-summary.md from the CSV
 //                                                                  -> {file, total, answered, proposed, unconfirmed: [{id, next}]}
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";

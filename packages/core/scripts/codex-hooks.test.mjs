@@ -355,7 +355,8 @@ test("hook entry: Codex gets a deny decision on stdout with exit 0, allow is sil
   const { root } = startRun({ mode: "full-run", verified: false });
   const c = hook(["--host", "codex"], cx_(root, "Bash", { command: "node scripts/run.mjs guard-check acme" }));
   assert.deepEqual([c.status, JSON.parse(c.stdout).hookSpecificOutput.permissionDecision], [0, "deny"]);
-  assert.match(c.stderr, /\(canary\)/);
+  const passed = "Guard check passed: this block is the test (the framework guard is active on Codex, caller: unidentified)";
+  assert.deepEqual([JSON.parse(c.stdout).hookSpecificOutput.permissionDecisionReason, c.stderr], [passed, `${passed}\n`]);
   assert.deepEqual(readdirSync(path.join(root, "artifacts/acme/state/guard-check")), ["codex--unidentified.json"]);
   assert.equal(guardStatus("acme", "full-run", root).ready, true, "a host without identity is verified by any block (D-037)");
 });

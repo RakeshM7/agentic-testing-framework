@@ -40,7 +40,7 @@
 // The aliases the docs say matchers also see (`Edit`, `Write` for apply_patch, `Agent` for spawn_agent) are unmapped too
 // until the spike shows which name arrives in the payload.
 import path from "node:path";
-import { resolveHost } from "../../lib/hosts.mjs";
+import { denyMessage, resolveHost } from "../../lib/hosts.mjs";
 import { toolCall } from "../../lib/tool-call.mjs";
 
 // UNVERIFIED (Codex spike pending, docs/codex-spike/): the tool names and the kind of each.
@@ -163,7 +163,7 @@ export function normalize(payload, { env = process.env, host = "codex", agent } 
 export function emit({ decision, rule, reason }) {
   if (decision === "allow") return 0;
   const message =
-    decision === "deny" ? `Blocked by the framework guard (${rule}): ${reason}` : `Needs the user's confirmation, which Codex hooks can't ask for: ${reason}`;
+    decision === "deny" ? denyMessage(rule, reason) : `Needs the user's confirmation, which Codex hooks can't ask for: ${reason}`;
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: message } }));
   process.stderr.write(`${message}\n`);
   return 0;

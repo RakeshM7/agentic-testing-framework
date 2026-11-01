@@ -22,6 +22,7 @@
 //                                            --static skips the compile commands and stamps nothing.
 //   api-code.mjs paths <product> <module>     the files the writers read and write
 // Exits: 0 ok, 1 problems ({problems} or {errors}), 2 usage.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

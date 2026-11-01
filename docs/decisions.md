@@ -172,6 +172,13 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-114 | A stage's time in the effort telemetry and the report counts every attempt, not only the last | Accepted | 2026-11-01 |
 | D-115 | Codex (CLI, app, IDE extension) is a supported host | Accepted | 2026-11-01 |
 | D-116 | On Codex, hosted web search is off: the guard can't see it | Accepted | 2026-11-01 |
+| D-117 | The framework's own requests go through the environment's proxy; the doctor names a sandbox or proxy refusal | Accepted | 2026-11-01 |
+| D-118 | The login opens the OS default browser when it is Chromium-based and closes by itself once signed in | Accepted | 2026-11-01 |
+| D-119 | A framework issue met before any run is kept at product level and exported | Accepted | 2026-11-01 |
+| D-120 | The guard check stays a deny, worded as a pass; no tool call writes its records or runs a hook script | Accepted | 2026-11-01 |
+| D-121 | `atf run` installs what the chosen stages safely need and offers the login before the session opens | Accepted | 2026-11-01 |
+| D-122 | The orchestrator asks one question at a time with a default, never re-asks set steps, and keeps its messages short | Accepted | 2026-11-01 |
+| D-123 | On a machine whose default Node.js is older than 20, atf finds a newer one and uses it for hooks, the browser server, the CLI and agents' scripts | Accepted | 2026-11-01 |
 
 ## Decisions
 
@@ -2367,3 +2374,132 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Known limits:** research-heavy agents (knowledge-generator, api-discoverer, the scaffolders) find less on Codex than on the other hosts. If the spike shows the key is wrong, hosted search may still be on until the key is corrected.
 - **Affects:** `packages/core/scripts/lib/codex-config.mjs`
 - **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("Turn it off").
+
+### D-117 · The framework's own requests go through the environment's proxy; the doctor names a sandbox or proxy refusal
+- **Status:** Accepted · **Date:** 2026-11-01 · **Source:** conversation with the user, 2026-11-01: a run in test-run-3 stopped on "target unreachable" (ENOTFOUND) for a site that answers, and the doctor told the human to check their VPN. Inside Claude Code's sandbox the session reaches the network only through a proxy (HTTPS_PROXY), and Node's fetch ignores it. The user asked to remove friction of this kind ("make this framework extremely user friendly").
+- **Decision:**
+  - `scripts/lib/net.mjs` `netFetch` is the default fetch of every framework request: the doctor's target check, the API discovery probes (`probe.mjs`), the knowledge snapshots and the leftover sweep. When HTTPS_PROXY or HTTP_PROXY is set, it routes fetch and http(s) through it for the process (`http.setGlobalProxyFromEnv()`, Node.js 24; a process started with `NODE_USE_ENV_PROXY=1` already does), honouring NO_PROXY. Without a proxy nothing changes.
+  - The doctor's `target` check says why a host doesn't answer: Claude Code's sandbox refused it (allow it with `/sandbox`, or turn the sandbox off for a live run), the network proxy refused it (the network team, or NO_PROXY), a proxy is set that this Node.js can't use (Node.js 24, or `NODE_USE_ENV_PROXY=1`), or the host itself (the URL, the network or VPN).
+  - Inside Claude Code's sandbox (`SANDBOX_RUNTIME=1`) the `base` group adds a `sandbox` warning: installs can't run there and the target is reached only through the sandbox's proxy. It never blocks.
+- **Why:** a correct target looked unreachable, and the fix sent the human after the wrong cause. A client behind a corporate proxy meets the same failure outside any sandbox.
+- **Known limits:** a Node.js older than 24 without `NODE_USE_ENV_PROXY=1` still can't use the proxy; the doctor says so. The guard, the probes' host allow-list and readonly GET-only rules are unchanged: the proxy changes only the route. The product's Playwright tests and k6 have their own network settings and are not covered here.
+- **Affects:** `packages/core/scripts/lib/net.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/probe.mjs`, `packages/core/scripts/lib/knowledge.mjs`, `packages/core/scripts/lib/sweep.mjs`
+- **Extends:** D-064 (the dependency check) · **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("yes, reduce any kind of friction in this framework").
+
+### D-118 · The login opens the OS default browser when it is Chromium-based and closes by itself once signed in
+- **Status:** Accepted · **Date:** 2026-11-01 · **Source:** conversation with the user, 2026-11-01 (friction plan W4, `docs/friction-plan.md`). In test-run-1 the user reported "the framework currently opens microsoft edge only, i want the tool to open the default browser"; the login also ran on a 60 s or 120 s clock the orchestrator asked about.
+- **Decision:**
+  - **Which browser.** `run.mjs login` opens the OS default browser when it is Chromium-based (Chrome, Edge, Brave, Arc, Vivaldi, Chromium). Otherwise it opens Edge, then Chrome, then Playwright's Chromium.
+    - The default comes from the macOS LaunchServices `https` handler, the Windows UserChoice ProgId, or `xdg-settings` on Linux.
+    - It is mapped to a Playwright channel or an executable path (`doctor.mjs` `defaultBrowserId`, `chromiumFromId`, `loginBrowser`).
+  - **When the window closes.** It closes by itself once the session is saved. That means a cookie for the target's host (or a module's entry host) that is new or changed against the snapshot taken before the window opened, that stays so for about 3 s, and a page that has left the landing page.
+    - The ceiling is 5 minutes. `--seconds` (`atf login --wait`) is an override from 10 to 900.
+    - A human who closes the window earlier keeps what was captured.
+  - **The question.** The orchestrator asks only "Open the login window?". `atf run`'s preflight (D-121), `atf config` and `atf login` no longer pass a fixed 60 s.
+- **Why:** a fixed clock either cut the human off during a single sign-on with MFA or made them wait. Edge-only made people install a browser they already had a Chromium equivalent of. A real browser with its own profile is kept, since some single sign-on providers refuse an automated Chromium.
+- **Known limits:**
+  - **Some logins never count as signed in.** A single-page app that signs in on the same path, or a profile already signed in with no cookie change, runs to the ceiling unless the human closes the window.
+  - **Some defaults are ignored.** A default browser that is not Chromium-based, or not at its usual install path, falls back. Chrome Beta, Dev and Canary, Opera, and snap or flatpak ids are not mapped.
+- **Affects:** `packages/core/scripts/lib/login.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/cli.mjs`, `packages/core/agents/orchestrator-agent.md`
+- **Extends:** D-069 (the browser order, the timer and the question; its session format and check, the persistent git-ignored profile, the single navigation, never typing and never asking for a password are unchanged) · **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("Default browser, close when signed in").
+
+### D-119 · A framework issue met before any run is kept at product level and exported
+- **Status:** Accepted · **Date:** 2026-11-01 · **Source:** conversation with the user, 2026-11-01 (friction plan W6). In test-run-1 an agent met a framework problem during setup, and `framework-issues.mjs add` failed with "no active run for product 'eventhub'", so the issue was lost.
+- **Decision:**
+  - **With no active run,** `framework-issues.mjs add` and `list` use `artifacts/<product>/framework-issues.json`, and the result carries `noRun: true`. Duplicates merge as in a run's file. With a run active nothing changes (D-083): the run's own file.
+  - **The export.** An unfiltered `atf issues export` includes that file as a `pre-run-<product>` entry marked `noRun`. With `--run` or `--since` it is left out. The import renders its context as "recorded with no run active".
+- **Why:** problems met before the first run are the first a client meets, and they were the ones lost.
+- **Known limits:**
+  - **After a run ends,** `add` writes to the product-level file, so the issue reaches the bundle but not that run's feedback.
+  - **No versions.** The product-level file isn't stamped with versions.
+  - **Repeated exports.** Its entries repeat on every unfiltered export until the file is cleared by hand.
+- **Affects:** `packages/core/scripts/framework-issues.mjs`, `packages/core/scripts/lib/framework-issues.mjs`, `packages/core/scripts/lib/issues-bundle.mjs`
+- **Extends:** D-083 · **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("yes, reduce any kind of friction in this framework").
+
+### D-120 · The guard check stays a deny, worded as a pass; no tool call writes its records or runs a hook script
+- **Status:** Accepted · **Date:** 2026-11-01 · **Source:** conversation with the user, 2026-11-01 (friction plan W3). Every run showed a red "PreToolUse:Bash hook error … Blocked by the framework guard (canary) … this block is expected", which reads as a failure in front of a client. A silent check was considered and rejected: only a deny proves that the host obeys the guard's denies (D-037; the D-040 incident), and it is the fail-safe Antigravity and Codex rely on until their spikes run. The user chose "Keep the block, make it calm", and "Yes, close it" for the gap the review found.
+- **Decision:**
+  - **The canary stays a deny on every host,** in the same protocol as every other deny on that host. Claude Code keeps exit 2: a JSON deny depends on the Claude Code version and on clean stdout, and outside a run nothing would catch a version that ignored it.
+  - **Its reason reads as a pass:** "Guard check passed: this block is the test (the framework guard is active on <host>, caller: <caller>)". Every adapter shows it without the "Blocked by the framework guard" prefix (`lib/hosts.mjs` `denyMessage`).
+  - **The orchestrator's line.** `run.mjs status` gives `guard.host`. After `guard.ready` the orchestrator says one line, "Guard active on <host> ✓", and nothing about the block unless asked. `atf run` says beforehand that one such block is expected (D-121).
+  - **Rule `guard-record`.** No tool call, by any caller, in any mode, on any host, in a run or not, writes, moves or deletes anything under a `state/guard-check/` folder. That includes case, 8.3 and NTFS-stream variants, globs, symlinks and `cd`. A shell line naming such a path is refused, reads included, as for `sweep-confirm`.
+  - **Rule `hook-script`.** No tool call runs a hook entry under `scripts/hooks/` by hand: as a program, through runners and wrappers, `--import`/`--require`/`--loader`, `-e`/`-c` code, here-documents, `sh -c`, `eval` or command substitution. `npm test`, `node --test` of test files, and the hosts' own hook runs are unaffected.
+- **Why:**
+  - The deny keeps the proof that matters, and only its wording looked like a failure.
+  - Before this decision, an unnamed caller (in readonly, or VS Code chat outside a custom agent) could write a guard-check record. It could also forge one, a decision confirmation or the plugin's recorded version by running a hook entry on a made-up payload.
+- **Known limits:**
+  - **The label stays.** Claude Code still labels the canary "PreToolUse:Bash hook error"; that label is Claude Code's own.
+  - **Some text can't be read.** Code the guard can't read (a caller's own file that imports a hook, a program word made only of expansions) is the usual limit of reading command text.
+  - **No hooks, no enforcement.** A session with no hooks running enforces nothing (D-037).
+- **Affects:** `packages/core/scripts/lib/guard.mjs`, `packages/core/scripts/lib/guard-check.mjs`, `packages/core/scripts/lib/hosts.mjs`, `packages/core/scripts/hooks/hosts/claude.mjs`, `packages/core/scripts/hooks/hosts/copilot.mjs`, `packages/core/scripts/hooks/hosts/vscode.mjs`, `packages/core/scripts/hooks/hosts/antigravity.mjs`, `packages/core/scripts/hooks/hosts/codex.mjs`, `packages/core/agents/orchestrator-agent.md`
+- **Extends:** D-037, D-040 (only adds denials) · **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("Keep the block, make it calm"; "Yes, close it").
+
+### D-121 · `atf run` installs what the chosen stages safely need and offers the login before the session opens
+- **Status:** Accepted · **Date:** 2026-11-01 · **Source:** conversation with the user, 2026-11-01 (friction plan W2). In real sessions the agent stopped mid-run and asked the human to install the Playwright repo, the browsers and the browser server's Chromium in their own terminal. The user chose "Auto preflight".
+- **Decision:**
+  - **What it covers.** `atf run`, `resume`, the stage shortcuts and `automate` first run `doctor.mjs <config> --preflight [--stage …]`.
+  - **What it does.** It checks the chosen stages, then applies only the doctor's safe installs (D-064), one progress line each ("Installing the Playwright repo for eventhub… done"), and checks again.
+  - **The login.** For a failing `session` check on a terminal it asks "Open the login window now? [Y/n]" (D-118).
+  - **What is left.** It shows what is still wrong once, each with its fix, and the stages it blocks. It always exits 0: the session opens, and the run's stage gate skips exactly the blocked stages.
+  - **When it does nothing.** Inside Claude Code's sandbox (D-117) it installs and asks nothing. Without a terminal it asks nothing. `--no-preflight` skips it.
+  - **The guard note.** The session step prints that one blocked guard-check command is expected (D-120).
+- **Why:** the human is at the terminal before the session, which is where installs belong (an agent never installs). A stall in the middle of a run is the worst moment for one.
+- **Known limits:**
+  - **The login only.** The login is offered for `session` only.
+  - **Some installs need a new terminal.** k6 installed through the OS package manager needs one.
+  - **No prompt in VS Code.** The VS Code extension runs the same step without a terminal, so it gets no prompt and doesn't print the guard note.
+  - **Labels are a heuristic.** The progress lines' labels are read from the install's command and folder.
+- **Affects:** `packages/core/scripts/doctor.mjs`, `packages/core/scripts/lib/cli.mjs`
+- **Extends:** D-064 · **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("Auto preflight (Recommended)").
+
+### D-122 · The orchestrator asks one question at a time with a default, never re-asks set steps, and keeps its messages short
+- **Status:** Accepted · **Date:** 2026-11-01 · **Source:** conversation with the user, 2026-11-01 (friction plan W5). In the test-run sessions the orchestrator:
+  - opened with a 7-point wall of questions, and answers landed on the wrong question;
+  - collapsed a module list into one module with a 60-character slug;
+  - asked for the steps twice, and for the start confirmation twice per session;
+  - chained shell commands that restricted shells refused;
+  - ended with 200–300-word instruction blocks.
+- **Decision:**
+  - **The interview.** One question at a time, each with a proposed default the human accepts as is. The product name comes from the URL host, and public or internal is inferred. The run's steps are never asked when the run-config sets them: they appear in the one summary confirmation per session, and change only when the human asks.
+  - **Modules.** `run-config-draft.mjs` `splitModuleNames` splits a module answer on commas, semicolons and newlines, and on a standalone "and" only in the last item of such a list ("A, B and C"), so a name like "Terms and Conditions" stays one module. `run-config.mjs validate` warns, never fails, for a module slug over 40 characters and for a `nav_path` entry containing a comma.
+  - **The orchestrator's rules.**
+    - One shell command per tool call (no `;`, `&&`, `||` or pipes).
+    - Messages to the human of about 5 lines, with the exact command and no history of failed attempts.
+    - The doctor's `sandbox` warning (D-117) said once, up front.
+    - Installs pointed to `npx atf doctor <p>` or `npx atf run <p>` (D-121).
+  - **The doctor's no-cookie `session` warning** reads "nothing to fix …" and isn't raised with the human.
+- **Why:** each of these made a correct run look broken or slow in front of the people watching it.
+- **Known limits:**
+  - **A mid-list "and" stays.** "Bookings and Admin" in the middle of a list stays one name; the summary shows the modules for the human to correct.
+  - **The shell rule is the orchestrator's only.** Other agents' restricted shells still refuse chains.
+- **Affects:** `packages/core/agents/orchestrator-agent.md`, `packages/core/scripts/lib/run-config-draft.mjs`, `packages/core/scripts/run-config.mjs`, `packages/core/scripts/lib/doctor.mjs`
+- **Extends:** D-066 · **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("reduce any kind of friction in this framework … make this framework extremely user friendly").
+
+### D-123 · On a machine whose default Node.js is older than 20, atf finds a newer one and uses it for hooks, the browser server, the CLI and agents' scripts
+- **Status:** Accepted · **Date:** 2026-11-01 · **Source:** conversation with the user, 2026-11-01 (friction plan W1). In 5 of 7 test-run sessions Homebrew's node@18 came first in PATH while nvm's Node 24 was installed. The guard refused every call (D-109), the browser server crashed, and every fix was "use the newer Node". The user chose "Auto-pin a Node ≥20".
+- **Decision:**
+  - **`findNode`** (`scripts/lib/node-version.mjs`) returns a Node.js ≥ 20 installed on the machine.
+    - Where it looks: the current process, PATH, nvm, fnm, Volta, asdf, Homebrew, `/usr/local/bin` and `/usr/bin`; on Windows, nvm-windows, fnm, Volta and `%ProgramFiles%\nodejs`.
+    - It prefers the workspace's `.nvmrc` major (what `atf init` writes), then the newest even (LTS-line) major, then the newest.
+  - **The pin.** In an installed workspace whose PATH `node` is older than 20, `atf sync` pins that Node.
+    - Every hook command gets its absolute path in place of `node`: Claude Code, both VS Code and Copilot `framework-guard.json` files, Antigravity, Codex, and the Copilot identity hooks.
+    - Every `npx` or `node` MCP server runs that Node's own npx, with its folder first in the server's PATH.
+    - The record is the machine-local `atf/machine.json` `{ "node": { path, version, pinnedAt } }`. Sync writes it, removes it when no longer needed, and lists it in its `.gitignore` block. It sits under `atf/` so that only a human writes it, since the scripts run what it names.
+    - Check and the doctor render with the recorded pin and never decide. A pin that is gone or malformed is an error. The doctor's `node` check reports the pin.
+  - **`npx atf …`** (`bin/atf.mjs`) started on Node < 20 runs itself again under that Node, with one line ("using Node.js 24.x (nvm); your default node is 18.x"). With none found, it prints one line with the install command.
+  - **Agents' scripts.** Every framework script an agent runs imports `scripts/lib/node-gate.mjs` first. On Node < 20 the script runs again under the pin (or `findNode`), silently, with that Node first in PATH. It passes the exit code and signals through, using `bin/atf.mjs`'s loop guard. The commands agents type and the guard's allow-lists don't change.
+  - **What stays as it was.**
+    - With no Node ≥ 20 installed at all, run.mjs and run-config.mjs refuse as before (D-109).
+    - The guard hook itself keeps refusing an old Node; sync pins its interpreter.
+    - A source checkout and what the cloud-agent opt-in commits under `.github/` (D-093) are never pinned.
+    - The VS Code extension's `atf.nodePath` (D-110) is unchanged and takes precedence in its terminals.
+- **Why:** the failure that ended most sessions had a fix that is always the same and needs no judgment. Teams commit `atf/atf.json`, so a per-machine path doesn't belong there.
+- **Known limits:**
+  - **The gate runs late.** A gated script's other static imports still load on the old Node while the child runs: a syntax or link error there would fail before the gate. All 26 scripts load on Node 18.20.8 today, but no CI job runs an old Node.
+  - **It costs a start-up.** Each rerun adds one Node start-up.
+  - **No pin for the plugin.** In plugin mode the plugin's `.mcp.json` is not pinned.
+  - **Windows is unverified.** Quoting of a pinned path in Windows shells is not verified live.
+  - **A missing interpreter fails open.** A pinned Node that disappears exits 127, which Claude Code doesn't treat as a block. The guard check (D-037), `atf check` and the doctor catch it.
+  - **build-agents.mjs isn't gated.**
+- **Affects:** `packages/core/scripts/lib/node-version.mjs`, `packages/core/scripts/lib/node-gate.mjs`, `packages/core/bin/atf.mjs`, `packages/core/scripts/lib/sync.mjs`, `packages/core/scripts/build-agents.mjs`, `packages/core/scripts/lib/hook-registrations.mjs`, `packages/core/scripts/lib/mcp.mjs`, `packages/core/scripts/lib/doctor.mjs`, `packages/core/scripts/lib/cli.mjs`
+- **Extends:** D-109, D-089, D-092, D-093, D-110 · **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("Auto-pin a Node ≥20 (Recommended)").

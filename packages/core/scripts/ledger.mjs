@@ -12,6 +12,7 @@
 //                      HUMAN-ONLY, the same, confirmed in the VS Code extension's dialog instead of a terminal
 //                      (scripts/lib/confirm.mjs: the environment's state folder, read there only, deleted before use)
 // Agents MUST run `owns` before any delete/cancel/remove, and `add` immediately after creating anything.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";

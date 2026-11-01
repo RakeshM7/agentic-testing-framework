@@ -3,6 +3,17 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
+## Unreleased
+
+A smoother first run: none of the earlier test sessions got past setup, for the reasons below.
+- **An older Node.js no longer stops a session.** When the default `node` is older than 20, atf finds a newer one on the machine (nvm, fnm, Volta, asdf, Homebrew) and uses it for the hooks, the browser server and its own scripts.
+- **`atf run` gets the machine ready first.** It installs what the chosen steps need, one line each ("Installing the Playwright repo for eventhub… done"), offers the login, then opens the session (D-121; `--no-preflight` skips it).
+- **The login uses your browser and closes when you're signed in.** It opens your default browser when it is Chromium-based (Chrome, Edge, Brave, Arc, Vivaldi; otherwise Edge, then Chrome) and closes by itself once you are signed in, within 5 minutes, instead of on a 60-second clock (D-118).
+- **The guard check reads as a pass:** "Guard check passed: this block is the test", then "Guard active on <host> ✓". It is still a real block, which proves the host obeys the guard. The guard now also refuses any tool call that writes the check's records or runs a hook script by hand (D-120).
+- **A shorter interview.** The orchestrator asks one question at a time, each with a proposed answer. It derives the product name from the URL, splits a module list into modules, never re-asks steps the config sets, and keeps its messages short (D-122).
+- **Proxies and sandboxes:** the framework's own requests go through `HTTPS_PROXY` (corporate proxies, Claude Code's sandbox). An unreachable target now names the real cause (the sandbox, the proxy or the host) instead of suggesting your VPN (D-117).
+- **Setup problems are kept:** a framework issue met before the first run is saved and exported (D-119).
+
 ## 0.1.6
 
 - **Codex is a supported host** (the CLI, the app and the IDE extension): `atf sync` generates `.codex/` (an agent
