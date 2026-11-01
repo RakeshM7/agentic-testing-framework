@@ -75,3 +75,25 @@ platforms:
     # 3). Until it is, the guard can't tell which agent is calling, so a full-run call gets the run's combined ceiling,
     # as on the Copilot CLI hosts (D-035). Add the hook here once the spike shows its shape.
     forbidden_in_body: [view_file, list_dir, grep_search, find_by_name, write_to_file, replace_file_content, run_command, read_url_content, search_web, invoke_subagent, ask_question, "mcp_playwright_browser_"]
+
+  # One file serves all three Codex surfaces: the Codex CLI, the Codex app and the IDE extension (they all read the
+  # project's .codex/). Not verified live yet: the names below are learn.chatgpt.com/docs' (read 2026-11-01), all
+  # UNVERIFIED (Codex spike pending, docs/codex-spike/). Codex has no per-agent tool list, sandbox or MCP servers (a
+  # subagent inherits its parent's), so `tools` only names things for forbidden_in_body and the docs; the guard enforces
+  # each agent's permissions through .codex/hooks.json. Hosted web search is off (.codex/config.toml); the MCP servers go
+  # into that file's atf block, so there is no mcp_config here. Codex's hook payload names no calling subagent, so a
+  # full-run call gets the run's combined ceiling (D-035).
+  codex:
+    renderer: codex
+    output: ".codex/agents/{name}.toml"
+    tools:
+      read: []
+      search: []
+      write: [apply_patch]
+      shell: [Bash]
+      web_fetch: []
+      web_search: []                      # hosted web search is off: the guard can't see it
+      spawn: "spawn_agent"
+      browser: "mcp__{server}__browser_{tool}"
+      ask: []                             # the human answers in the main session's chat
+    forbidden_in_body: [spawn_agent, apply_patch, update_plan, exec_command]

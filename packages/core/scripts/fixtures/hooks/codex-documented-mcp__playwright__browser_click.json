@@ -1,0 +1,15 @@
+{
+  "session_id": "cx-sess-0001",
+  "transcript_path": "{root}/.codex/sessions/rollout.jsonl",
+  "cwd": "{root}",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-5-codex",
+  "turn_id": "turn-0001",
+  "tool_name": "mcp__playwright__browser_click",
+  "tool_use_id": "call-0001",
+  "tool_input": {
+    "element": "Save",
+    "ref": "e12"
+  },
+  "permission_mode": "default"
+}

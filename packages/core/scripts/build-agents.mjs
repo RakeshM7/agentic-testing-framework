@@ -22,7 +22,8 @@
 // (D-018); a dev agent with a framework agent's name, or without a permissions row, is an error naming its source.
 // Nothing generated is ever edited by hand: change a source or config, then rebuild.
 //
-// An agent file with no source in the agent folders (.claude/agents/*.md, .github/agents/*.agent.md, .agents/agents/*.md):
+// An agent file with no source in the agent folders (.claude/agents/*.md, .github/agents/*.agent.md, .agents/agents/*.md,
+// .codex/agents/*.toml):
 //   source checkout (this monorepo)   always an error: every file there is ours (D-018)
 //   installed (a client's workspace)  the folders are shared with the client's own agents, told apart by the generated
 //                                     marker (renderers/common.mjs isGenerated): a marked file is an agent the package
@@ -62,14 +63,27 @@ import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { checkBodyLimit, forbiddenIdentifiers, lintBody, lintFwToken } from "./lib/agents/lint.mjs";
 import { loadSources, splitFrontmatter } from "./lib/agents/source.mjs";
 import { foreignMcpEntries, renderMcpConfig, validateMcp } from "./lib/mcp.mjs";
-import { ANTIGRAVITY_HOOKS, CLAUDE_SETTINGS, HOOKS_CONFIG, formatJson, postModeOf, renderHookRegistrations, setPostMode } from "./lib/hook-registrations.mjs";
+import { ANTIGRAVITY_HOOKS, CLAUDE_SETTINGS, CODEX_HOOKS, HOOKS_CONFIG, formatJson, postModeOf, renderHookRegistrations, setPostMode } from "./lib/hook-registrations.mjs";
+import { CODEX_CONFIG, renderCodexConfig } from "./lib/codex-config.mjs";
 import { PLUGIN, PLUGIN_ID, claudeMode } from "./lib/provenance.mjs";
 import { isGenerated } from "./lib/agents/renderers/common.mjs";
 import * as claude from "./lib/agents/renderers/claude.mjs";
 import * as copilot from "./lib/agents/renderers/copilot.mjs";
 import * as antigravity from "./lib/agents/renderers/antigravity.mjs";
+import * as codex from "./lib/agents/renderers/codex.mjs";
 
-const RENDERERS = { claude, copilot, antigravity };
+const RENDERERS = { claude, copilot, antigravity, codex };
+
+// A Codex agent file's `name` (a top-level `name = "…"` line, basic or literal string), for the check of a client's own agent names;
+// null when there is none. The host knows the agent by it, as the others by their frontmatter name.
+export function tomlName(text) {
+  for (const line of String(text).split(/\r?\n/)) {
+    if (/^\s*\[/.test(line)) return null; // past the top-level keys
+    const m = /^\s*name\s*=\s*(?:"((?:[^"\\]|\\.)*)"|'([^']*)')\s*(?:#.*)?$/.exec(line);
+    if (m) return m[2] ?? JSON.parse(`"${m[1]}"`);
+  }
+  return null;
+}
 
 // The platform whose agents and MCP servers the Claude Code plugin supplies in plugin mode: Claude Code's renderer.
 export const pluginSupplies = (platform) => platform?.renderer === "claude";
@@ -235,13 +249,16 @@ export function build({ check = false, postHook, root, framework } = {}) {
           errors.push(`${rel}: your own agent (no GENERATED marker), but the framework's agent '${own}' is written to this file, so atf sync would overwrite it: rename your file and its name: to one the framework does not use`);
           continue;
         }
-        // the hosts know an agent by its frontmatter name, and the guard keys a framework agent's ceiling on it (D-021)
+        // the hosts know an agent by its frontmatter name (a Codex agent file: its TOML `name`), and the guard keys a
+        // framework agent's ceiling on it (D-021)
         let meta;
-        try {
-          ({ meta } = splitFrontmatter(text, rel));
-        } catch {
-          continue; // not ours to judge: the host will report a file it can't load
-        }
+        if (rel.endsWith(".toml")) meta = { name: tomlName(text) };
+        else
+          try {
+            ({ meta } = splitFrontmatter(text, rel));
+          } catch {
+            continue; // not ours to judge: the host will report a file it can't load
+          }
         if (typeof meta?.name === "string" && Object.hasOwn(sources, meta.name))
           errors.push(`${rel}: your own agent is named '${meta.name}', the name of a framework agent; rename it (its name: and file) to one the framework does not use`);
       }
@@ -275,11 +292,21 @@ export function build({ check = false, postHook, root, framework } = {}) {
       return existsSync(file) ? readFileSync(file, "utf8") : undefined;
     };
     try {
-      for (const [rel, content] of renderHookRegistrations(post.mode, current(CLAUDE_SETTINGS), fw, { antigravityHooks: current(ANTIGRAVITY_HOOKS) }))
+      for (const [rel, content] of renderHookRegistrations(post.mode, current(CLAUDE_SETTINGS), fw, { antigravityHooks: current(ANTIGRAVITY_HOOKS), codexHooks: current(CODEX_HOOKS) }))
         outputs.set(rel, rel === CLAUDE_SETTINGS ? withPluginSettings(content, plugin) : content);
     } catch (e) {
       errors.push(`${e.file ?? CLAUDE_SETTINGS}: ${e.message}`);
     }
+  }
+  // Codex's project config (D-115): only the framework's atf block (the MCP servers, the subagent depth, hosted web
+  // search off) is rendered; the client's own settings before and after it are kept (lib/codex-config.mjs)
+  try {
+    outputs.set(CODEX_CONFIG, renderCodexConfig((() => {
+      const file = path.join(ws, CODEX_CONFIG);
+      return existsSync(file) ? readFileSync(file, "utf8") : undefined;
+    })(), mcp, fw));
+  } catch (e) {
+    errors.push(`${e.file ?? CODEX_CONFIG}: ${e.message}`);
   }
 
   const changed = [];

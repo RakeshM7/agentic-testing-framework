@@ -1,0 +1,14 @@
+{
+  "session_id": "cx-sess-0001",
+  "transcript_path": "{root}/.codex/sessions/rollout.jsonl",
+  "cwd": "{root}",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-5-codex",
+  "turn_id": "turn-0001",
+  "tool_name": "apply_patch",
+  "tool_use_id": "call-0001",
+  "tool_input": {
+    "command": "*** Begin Patch\n*** Update File: {root}/playwright-tests/acme/pages/contacts/contacts.page.ts\n@@\n-old\n+new\n*** End Patch\n"
+  },
+  "permission_mode": "default"
+}

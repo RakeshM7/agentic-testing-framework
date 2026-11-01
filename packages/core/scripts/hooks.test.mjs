@@ -379,10 +379,13 @@ test("hook registrations: every host runs the same entry with a valid --host", (
     // Antigravity (D-099): the framework's own named set in the shared .agents/hooks.json
     ...Object.values(JSON.parse(readFileSync(path.join(workspaceRoot, ".agents", "hooks.json"), "utf8"))["atf-guard"])
       .filter(Array.isArray).flatMap((xs) => xs.flatMap((x) => x.hooks.map((h) => h.command))),
+    // Codex (D-115): the framework's entries in the shared .codex/hooks.json
+    ...Object.values(JSON.parse(readFileSync(path.join(workspaceRoot, ".codex", "hooks.json"), "utf8")).hooks).flatMap((xs) => xs.flatMap((x) => x.hooks.map((h) => h.command))),
   ];
-  assert.ok(commands.length >= 8);
+  assert.ok(commands.length >= 10);
   assert.ok(commands.some((c) => c.endsWith("pretooluse.mjs --host antigravity")), "Antigravity registers the guard");
-  for (const c of commands) assert.match(c, /scripts\/hooks\/(pre|post)tooluse\.mjs"? --host (claude-code|vscode|copilot|antigravity)$/, c);
+  assert.ok(commands.some((c) => c.endsWith("pretooluse.mjs --host codex")), "Codex registers the guard");
+  for (const c of commands) assert.match(c, /scripts\/hooks\/(pre|post)tooluse\.mjs"? --host (claude-code|vscode|copilot|antigravity|codex)$/, c);
   assert.ok(!existsSync(path.join(workspaceRoot, ".claude", "hooks")), "the old Claude-only hook is gone");
 });
 

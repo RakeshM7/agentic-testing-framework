@@ -17,7 +17,7 @@
 //     editor tab (atf.openCockpit). Every session on a run's stages (GATED_COMMANDS: run, resume and the intents'
 //     commands) starts only after its check (gateSession): a Node.js the framework accepts, always; the product's
 //     dependency check, unless the human chooses Start anyway.
-//   - An agent session (run, resume, the interview) follows atf.host: `claude` and `copilot-cli` run `npx --no atf …
+//   - An agent session (run, resume, the interview) follows atf.host: `claude`, `copilot-cli` and `codex` run `npx --no atf …
 //     --host` in a terminal shown as a tab in the editor area (the agent CLI is an interactive program, the one thing
 //     that needs a terminal); `copilot-chat` runs the CLI's own pre-check in the background, then opens VS Code Chat
 //     with the CLI's own first prompt, for the human to send.
@@ -67,7 +67,7 @@ export const STAGES = ["knowledge", "module-knowledge", "explore", "clarificatio
 
 // claude: Claude Code's CLI (its panel can't pick the agent, so `claude --agent orchestrator-agent` in an editor-area
 // terminal); copilot-cli: Copilot CLI the same way; copilot-chat: VS Code Chat with the orchestrator-agent.
-export const HOSTS = ["claude", "copilot-chat", "copilot-cli"];
+export const HOSTS = ["claude", "copilot-chat", "copilot-cli", "codex"];
 export const LEGACY_HOSTS = { copilot: "copilot-cli" }; // the setting's value before 2026-10-29: `atf … --host copilot`
 // The setting as read: an old value migrated, anything unknown the default.
 export const hostOf = (value) => {
@@ -75,7 +75,7 @@ export const hostOf = (value) => {
   return LEGACY_HOSTS[v] ?? (HOSTS.includes(v) ? v : "claude");
 };
 // The CLI's --host for a terminal session (claude is its default).
-export const hostCliArgs = (host) => (host === "copilot-cli" ? ["--host", "copilot"] : []);
+export const hostCliArgs = (host) => (host === "copilot-cli" ? ["--host", "copilot"] : host === "codex" ? ["--host", "codex"] : []);
 // VS Code Chat: the command that opens it with a query, and the custom agent (mode) to start it in.
 export const CHAT_OPEN = "workbench.action.chat.open";
 export const CHAT_MODE = "orchestrator-agent";

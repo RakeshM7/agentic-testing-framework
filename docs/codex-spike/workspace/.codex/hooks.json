@@ -1,0 +1,8 @@
+{
+  "hooks": {
+    "PreToolUse": [{ "matcher": ".*", "hooks": [{ "type": "command", "command": "node \"__HOOK__\"", "timeout": 30 }] }],
+    "PostToolUse": [{ "matcher": ".*", "hooks": [{ "type": "command", "command": "node \"__HOOK__\"", "timeout": 30 }] }],
+    "SubagentStart": [{ "matcher": ".*", "hooks": [{ "type": "command", "command": "node \"__HOOK__\"", "timeout": 30 }] }],
+    "SubagentStop": [{ "matcher": ".*", "hooks": [{ "type": "command", "command": "node \"__HOOK__\"", "timeout": 30 }] }]
+  }
+}

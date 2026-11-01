@@ -1,0 +1,8 @@
+name = "spike-grandchild"
+description = "Codex spike agent, level 3. Dev-only test fixture for the hook audit; does nothing else."
+developer_instructions = '''
+You are spike-grandchild, a test agent. Do exactly this and nothing more:
+1. Run the shell command `echo spike-grandchild`.
+2. Make one apply_patch edit that adds the scratch file `spike-out/spike-grandchild.txt` containing `spike-grandchild`.
+3. Report each tool call you made and whether any was refused, with the refusal text verbatim.
+'''

@@ -143,6 +143,8 @@ orchestrator-agent:
   used.
 - **`copilot-cli`**: Copilot CLI, `copilot --agent orchestrator-agent`, the same way. The earlier value `copilot` means
   this one.
+- **`codex`**: OpenAI Codex, `codex "<prompt>"`, the same way (`--host codex`). Codex must trust the project and its
+  hooks (`/hooks`) before the guard runs.
 - **`copilot-chat`**: VS Code Chat. The extension runs atf's own check of what the run needs, then opens the chat with
   the run's first prompt. Choose **orchestrator-agent** in the chat's Agent dropdown if it is not already chosen, then
   press Enter: nothing is sent for you. A product's other environments (`--env`) open in Copilot CLI instead, since a

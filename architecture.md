@@ -6,7 +6,7 @@
 2. **One job per agent.** 34 small agents with declared inputs and outputs, in three layers: the main orchestrator → domain orchestrators → workers (native nested subagents). Workers never spawn and never talk to each other; every hand-off goes through the parent orchestrator as a file. Roster and flow: [`docs/agent-architecture.md`](docs/agent-architecture.md).
 3. **Product-level knowledge.** Everything accumulates under `artifacts/<product>/` across runs (knowledge, module exploration, clarifications); per-run outcomes are archived under `results/<run-id>/`. One active run per product. Contract: [`packages/core/docs/artifact-contract.md`](packages/core/docs/artifact-contract.md).
 4. **Permissions are data, enforced in code.** `packages/core/config/permissions.yaml` is the ceiling for each agent; the run's `authorizations.mode` caps everyone (readonly ⇒ read-only for all). The guard identifies the calling agent and enforces spawns, shell, HTTP/load, browser and file writes. On a host that can't name the agent, it applies the run's combined ceiling instead. Deletes are limited to entities the current run created.
-5. **Platform-neutral core, generated platform shells.** Each agent is written once (`packages/core/agents/`); its Claude Code, GitHub Copilot and Google Antigravity files are generated from it and `packages/core/config/` (tools from permissions, syntax from `packages/core/config/platforms.yaml`). Every host runs the same hook entry through a thin adapter. Hosts: [`packages/core/docs/platforms.md`](packages/core/docs/platforms.md).
+5. **Platform-neutral core, generated platform shells.** Each agent is written once (`packages/core/agents/`); its Claude Code, GitHub Copilot, Google Antigravity and OpenAI Codex files are generated from it and `packages/core/config/` (tools from permissions, syntax from `packages/core/config/platforms.yaml`). Every host runs the same hook entry through a thin adapter. Hosts: [`packages/core/docs/platforms.md`](packages/core/docs/platforms.md).
 6. **Intentional design is recorded.** [`docs/decisions.md`](docs/decisions.md) says why each piece is the way it is; changing a file a decision governs needs the user's confirmation, enforced by the hook.
 
 ## Components
@@ -25,7 +25,7 @@ flowchart LR
   W -->|declared outputs| ART[(artifacts/&lt;product&gt;/modules, knowledge, results)]
   W -->|clarifications.mjs| CSV[(modules/&lt;m&gt;/clarifications.csv)]
   W -->|ledger.mjs add / owns| LED[(state/ledger.jsonl)]
-  SRC[packages/core/agents/ + packages/core/config/] -->|npm run build-agents| GEN[.claude/agents, .github/agents, .agents/agents, MCP configs, hook registrations]
+  SRC[packages/core/agents/ + packages/core/config/] -->|npm run build-agents| GEN[.claude/agents, .github/agents, .agents/agents, .codex/agents, MCP configs, hook registrations]
   HOOK[packages/core/scripts/hooks/pretooluse.mjs + host adapters] --> GUARD[packages/core/scripts/lib/guard.mjs]
   HOOK --> DEC[packages/core/scripts/lib/decisions.mjs]
   GUARD -.reads.-> STATE
@@ -53,7 +53,8 @@ flowchart LR
 - **Done:** GitHub Copilot support from the same sources (VS Code Copilot Chat, Copilot CLI, cloud coding agent), one hook entry for every host, the decision log and its confirmation hook, CI running `npm run check` on Linux, macOS and Windows, and the `atf` CLI for every human command (D-087).
 - **Done:** end-to-end harnesses (D-084): `packages/core/scripts/pipeline.test.mjs` drives `run.mjs next` from init to a verified report with stand-in agents on every `npm test`; `atf e2e` runs the rendered foundation against a local demo app in a real browser, readonly and full-run, then the human's ledger sweep.
 - **Built, not yet verified live:** Google Antigravity support (App, `agy` CLI, IDE; D-099 – D-101), from its documentation. The spike kit in `docs/antigravity-spike/` settles the provisional values.
-- **Next:** verify the Copilot and Antigravity runtime facts listed in `packages/core/docs/platforms.md` on live sessions, a first agent-driven run against a real product, per-role models in `packages/core/config/models.yaml`.
+- **Built, not yet verified live:** OpenAI Codex support (CLI, app, IDE extension; D-115, D-116), from its documentation. Generated: `.codex/agents/`, `.codex/config.toml`, `.codex/hooks.json`. The spike kit in `docs/codex-spike/` settles the provisional values.
+- **Next:** verify the Copilot, Antigravity and Codex runtime facts listed in `packages/core/docs/platforms.md` on live sessions, a first agent-driven run against a real product, per-role models in `packages/core/config/models.yaml`.
 
 ## Control flow (D-060)
 

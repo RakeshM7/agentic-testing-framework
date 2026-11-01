@@ -9,6 +9,8 @@
 #            picker when changing it (an unknown name falls back to the surface's default model).
 #   antigravity: inherit -- the agent runs the model picked in Antigravity's model picker; the docs tell the human to
 #            pick Claude Opus 5.5 there. A per-platform exception to D-017, like D-034 (docs/decisions.md D-100).
+#   codex:   inherit -- the agent runs the session's model (picked in Codex); the renderer writes no `model` key, as on
+#            antigravity (D-100).
 #
 # Per-role tiering (e.g. stronger models for planners/reviewers/triagers) is not decided yet: everything uses the
 # default until it is.
@@ -17,5 +19,6 @@ default:
   claude: claude-opus-5-5
   copilot: gpt-6-luna
   antigravity: inherit
+  codex: inherit
 
 agents: {}

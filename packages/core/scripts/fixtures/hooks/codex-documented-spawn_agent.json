@@ -1,0 +1,15 @@
+{
+  "session_id": "cx-sess-0001",
+  "transcript_path": "{root}/.codex/sessions/rollout.jsonl",
+  "cwd": "{root}",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-5-codex",
+  "turn_id": "turn-0001",
+  "tool_name": "spawn_agent",
+  "tool_use_id": "call-0001",
+  "tool_input": {
+    "agent_type": "pw-ui-fixer",
+    "message": "Fix the findings in artifacts/acme/modules/contacts/playwright-ui/review-findings.md"
+  },
+  "permission_mode": "default"
+}

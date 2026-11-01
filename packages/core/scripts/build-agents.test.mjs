@@ -6,7 +6,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
-import { build } from "./build-agents.mjs";
+import { build, tomlName } from "./build-agents.mjs";
 import { renderHookRegistrations } from "./lib/hook-registrations.mjs";
 import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { forbiddenIdentifiers, lintBody } from "./lib/agents/lint.mjs";
@@ -32,7 +32,9 @@ const scriptOnly = resolvePermissions({
 const probeTools = (platform) => toolNames(capabilitiesFor(scriptOnly), platforms[platform], server);
 const generated = (rel) => splitFrontmatter(readFileSync(path.join(workspaceRoot, rel), "utf8"), rel).meta;
 // An agent's generated file on every platform (config/platforms.yaml `output`).
-const OUTS = (name) => [`.claude/agents/${name}.md`, `.github/agents/${name}.agent.md`, `.agents/agents/${name}.md`];
+// the markdown agent files (frontmatter + body), and every agent file, Codex's TOML one included
+const MD_OUTS = (name) => [`.claude/agents/${name}.md`, `.github/agents/${name}.agent.md`, `.agents/agents/${name}.md`];
+const OUTS = (name) => [...MD_OUTS(name), `.codex/agents/${name}.toml`];
 
 // A throwaway repo root with the real config/ and agents/, so tests can break things safely.
 function scratch() {
@@ -296,7 +298,7 @@ test("the fragment directory is not an agent: no stray-source error, no generate
   writeFileSync(path.join(root, "agents", "_shared", "other.md"), "No frontmatter here.\n");
   const { errors } = build({ root });
   assert.deepEqual(errors, []);
-  for (const rel of [".claude/agents", ".github/agents", ".agents/agents"]) assert.ok(!readdirSync(path.join(root, rel)).some((f) => /probe|other|_shared/.test(f)));
+  for (const rel of [".claude/agents", ".github/agents", ".agents/agents", ".codex/agents"]) assert.ok(!readdirSync(path.join(root, rel)).some((f) => /probe|other|_shared/.test(f)));
 });
 
 // ---- G10 (D-060): orchestrators are pure loops over script decisions; workers record requests through the script ----
@@ -311,7 +313,7 @@ test("the five domain orchestrators are the shared loop body plus a short domain
     assert.match(src, /<!-- include: _shared\/domain-loop.md -->/, `${name} includes the shared body`);
     assert.ok(src.split("\n").length < 24, `${name}: a short domain section`);
     assert.ok(src.includes(`\`<domain>\` is \`${domain}\``), `${name} names its domain`);
-    for (const rel of OUTS(name)) {
+    for (const rel of MD_OUTS(name)) {
       const text = body(rel).replace(/\r\n/g, "\n");
       assert.ok(text.includes(shared), `${rel} holds the expanded shared body`);
       assert.ok(!text.includes("<!-- include"), `${rel}: no include marker left`);
@@ -369,13 +371,18 @@ test("a fragment is appended under the fixed heading in every platform's file; n
   writeFileSync(fragmentFile(ws, "pw-ui-fixer"), "\n\nHouse rule: run `npm run lint` before reporting.\n- second line\n\n\n");
   assert.deepEqual(run().errors, []);
   const eol = readFileSync(path.join(framework, "agents", "pw-ui-fixer.md"), "utf8").includes("\r\n") ? "\r\n" : "\n";
-  for (const rel of OUTS("pw-ui-fixer")) {
+  for (const rel of MD_OUTS("pw-ui-fixer")) {
     const expected = before[rel].replace(/(\r?\n)+$/, "") + [eol, HEADING, "", "House rule: run `npm run lint` before reporting.", "- second line"].join(eol) + eol;
     assert.equal(read(rel), expected, `${rel}: one blank line, the heading, one blank line, the trimmed fragment`);
   }
+  // Codex: the same text at the end of developer_instructions
+  const toml = read(".codex/agents/pw-ui-fixer.toml");
+  assert.ok(toml.includes([HEADING, "", "House rule: run `npm run lint` before reporting.", "- second line", "'''"].join(eol)), ".codex/agents/pw-ui-fixer.toml: the fragment ends the instructions");
   for (const rel of OUTS("testcase-writer")) assert.equal(read(rel), before[rel], `${rel}: another agent is untouched`);
   // identity is the framework's and config's only: the frontmatter is unchanged
-  for (const rel of OUTS("pw-ui-fixer")) assert.deepEqual(splitFrontmatter(read(rel), rel).meta, splitFrontmatter(before[rel], rel).meta);
+  for (const rel of MD_OUTS("pw-ui-fixer")) assert.deepEqual(splitFrontmatter(read(rel), rel).meta, splitFrontmatter(before[rel], rel).meta);
+  const tomlHead = (text) => text.split("developer_instructions")[0];
+  assert.equal(tomlHead(read(".codex/agents/pw-ui-fixer.toml")), tomlHead(before[".codex/agents/pw-ui-fixer.toml"]));
   // removing it puts the files back
   rmSync(fragmentFile(ws, "pw-ui-fixer"));
   assert.deepEqual(run({ check: true }).changed.sort(), OUTS("pw-ui-fixer").sort());
@@ -450,13 +457,15 @@ test("a CRLF source keeps CRLF through its fragment; a workspace that is its own
     const text = readFileSync(path.join(root, rel), "utf8");
     // the fragment's lines, and the line its `<!-- include: _shared/fixer.md -->` stood on, as a Windows checkout has them
     assert.ok(!/(^|[^\r])\n/.test(text), `${rel}: CRLF throughout`);
-    assert.ok(text.endsWith(`\r\n\r\n${HEADING}\r\n\r\nLine one.\r\nLine two.\r\n`), rel);
+    const tail = `\r\n\r\n${HEADING}\r\n\r\nLine one.\r\nLine two.\r\n`;
+    assert.ok(rel.endsWith(".toml") ? text.includes(`${tail}'''`) : text.endsWith(tail), rel);
   }
 });
 
 // ---- a client's workspace (docs/packaging.md §3.5–3.6): the framework installed in node_modules, its sources not the
 // client's to edit, and the agent folders shared with the client's own agents
-const noteOf = (root, rel) => readFileSync(path.join(root, rel), "utf8").split(/\r?\n/)[1];
+// the generated note: the line after `---` in a markdown agent file, the first line of a Codex TOML one
+const noteOf = (root, rel) => readFileSync(path.join(root, rel), "utf8").split(/\r?\n/)[rel.endsWith(".toml") ? 0 : 1];
 const put = (root, rel, text) => {
   mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
   writeFileSync(path.join(root, rel), text);
@@ -823,7 +832,7 @@ test("a dev agent is rendered from the folder atf.json names, in every platform'
     const text = readFileSync(path.join(ws, rel), "utf8");
     assert.equal(noteOf(ws, rel), `# GENERATED from dev/agents/${DEV}.md by ${fw}/scripts/build-agents.mjs -- edit the source, then run npm run build-agents.`, rel);
     assert.ok(isGenerated(text), rel);
-    assert.equal(splitFrontmatter(text, rel).meta.name, DEV);
+    assert.equal(rel.endsWith(".toml") ? tomlName(text) : splitFrontmatter(text, rel).meta.name, DEV);
     assert.match(text, /Maintain the framework from feedback files\./);
   }
   // its tools come from its row like any agent's; the framework's agents are rendered beside it, unchanged

@@ -100,8 +100,9 @@ Running and resuming (a finished stage stays done):
 
 Options for every command:
   --env <env>        another environment of the product: config/<product>-<env>.yaml, run with ATF_ENV=<env>
-  --host claude|copilot|antigravity   the CLI that opens the orchestrator-agent session (default claude; the
-                     plugin's atf:orchestrator-agent in Claude Code plugin mode; antigravity runs agy);
+  --host claude|copilot|antigravity|codex   the CLI that opens the orchestrator-agent session (default claude; the
+                     plugin's atf:orchestrator-agent in Claude Code plugin mode; antigravity runs agy; codex runs
+                     codex, which has no --agent flag, so the prompt asks it to spawn the orchestrator-agent subagent);
                      ATF_AGENT="<command>" overrides it with any command that takes the first prompt as its last argument`;
 
 // The commands that open an orchestrator-agent session with a first prompt. On Claude Code in plugin mode without a
@@ -114,7 +115,14 @@ export const HOSTS = {
   // UNVERIFIED (Antigravity spike pending, docs/antigravity-spike/): the agy CLI's agent flag, and that it opens an
   // interactive session taking the first prompt as its last argument, come from the docs. The spike settles the flags.
   antigravity: ["agy", "--agent", ORCHESTRATOR],
+  // UNVERIFIED (Codex spike pending, docs/codex-spike/): Codex CLI has no --agent flag; the interactive session takes
+  // the first prompt as its last argument and is asked, in that prompt, to spawn the orchestrator-agent subagent.
+  codex: ["codex"],
 };
+
+// The first prompt for host codex (codex-plan K5): the host-neutral prompt, handed to the orchestrator-agent subagent
+// word for word. Pure; every other host gets the neutral prompt unchanged.
+export const codexPrompt = (prompt) => `Spawn the ${ORCHESTRATOR} subagent and give it this task word for word, then relay its questions to me and my answers to it: ${prompt}`;
 const STAGE_SHORTCUTS = ["explore", "clarifications", "testcases", "k6", "report"];
 const STAGE_NAMES = Object.keys(STAGES);
 
@@ -195,7 +203,9 @@ export function plan(argv, ctx = {}) {
   const agent = (prompt) => {
     const launch = agentCommand(v.host, env, { workspace, framework });
     if (launch.error) return launch;
-    return { cmd: launch.cmd[0], args: [...launch.cmd.slice(1), expandFw(prompt, rel)], agent: true };
+    const text = expandFw(prompt, rel);
+    const codex = !env.ATF_AGENT?.trim() && v.host === "codex";
+    return { cmd: launch.cmd[0], args: [...launch.cmd.slice(1), codex ? codexPrompt(text) : text], agent: true };
   };
   const steps = (...list) => {
     const bad = list.find((s) => s.error);

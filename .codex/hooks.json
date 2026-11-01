@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": "node packages/core/scripts/hooks/pretooluse.mjs --host codex", "timeout": 30 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": "node packages/core/scripts/hooks/posttooluse.mjs --host codex", "timeout": 30 }
+        ]
+      }
+    ]
+  }
+}

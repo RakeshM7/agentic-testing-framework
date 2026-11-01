@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { HOSTS, ISSUES_SCRIPT, USAGE, agentCommand, configFromExample, plan, run, versionInfo, windowsCommandLine, workspaceError } from "./lib/cli.mjs";
+import { HOSTS, ISSUES_SCRIPT, USAGE, agentCommand, codexPrompt, configFromExample, plan, run, versionInfo, windowsCommandLine, workspaceError } from "./lib/cli.mjs";
 import { CONTRACT_VERSION } from "./lib/contract.mjs";
 import { frameworkRoot } from "./lib/roots.mjs";
 import { put, tempRoot } from "./test-helpers.mjs";
@@ -92,6 +92,24 @@ test("--host antigravity opens the orchestrator-agent session through agy, the p
   assert.deepEqual([step.cmd, ...step.args.slice(0, -1)], HOSTS.antigravity);
   assert.equal(step.agent, true);
   assert.match(USAGE, /--host claude\|copilot\|antigravity/);
+});
+
+test("--host codex starts `codex` with the wrapped prompt last; other hosts get the neutral prompt", () => {
+  const root = ws();
+  assert.deepEqual(HOSTS.codex, ["codex"]);
+  assert.deepEqual(agentCommand("codex", {}, { workspace: root }).cmd, ["codex"]);
+  const neutral = plan(["run", "acme", "--host", "copilot"], ctx(root)).steps.at(-1).args.at(-1);
+  const step = plan(["run", "acme", "--host", "codex"], ctx(root)).steps.at(-1);
+  assert.equal(step.cmd, "codex");
+  assert.equal(step.args.length, 1);
+  assert.equal(step.args[0], codexPrompt(neutral));
+  assert.equal(step.args[0], `Spawn the orchestrator-agent subagent and give it this task word for word, then relay its questions to me and my answers to it: ${neutral}`);
+  assert.equal(step.agent, true);
+  assert.equal(plan(["run", "acme", "--host", "claude"], ctx(root)).steps.at(-1).args.at(-1), neutral);
+  // ATF_AGENT overrides the host and its prompt wrapping
+  const custom = plan(["run", "acme", "--host", "codex"], ctx(root, { env: { ATF_AGENT: "my-cli" } })).steps.at(-1);
+  assert.equal(custom.args.at(-1), neutral);
+  assert.match(USAGE, /--host claude\|copilot\|antigravity\|codex/);
 });
 
 test("--env names the environment's config and runs every step with ATF_ENV (D-081)", () => {
