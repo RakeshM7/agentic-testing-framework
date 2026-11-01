@@ -3,7 +3,7 @@
 The extension is released together with `@testagentic/atf`, under the same version: use the extension whose version
 matches the package installed in your workspace.
 
-## Unreleased
+## 0.1.7
 
 A smoother first run: none of the earlier test sessions got past setup, for the reasons below.
 - **An older Node.js no longer stops a session.** When the default `node` is older than 20, atf finds a newer one on the machine (nvm, fnm, Volta, asdf, Homebrew) and uses it for the hooks, the browser server and its own scripts.
