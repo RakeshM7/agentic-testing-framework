@@ -273,7 +273,7 @@ export function rerun({ cmd, args, env }, { spawn = spawnChild, proc = process }
 // workspace: the workspace root (roots.mjs workspaceRoot); spawn, proc and reexecPlan's injections: tests.
 export async function gateNode({ workspace = null, proc = process, spawn, read, ...where } = {}) {
   if (nodeMajor(String(proc.versions.node)) >= MIN_NODE) return null;
-  const plan = reexecPlan({ argv: proc.argv, execArgv: proc.execArgv, version: proc.versions.node, env: proc.env, pid: proc.pid, ppid: proc.ppid, local: readLocalNode(workspace, read ? { read } : {}), ...where });
+  const plan = reexecPlan({ argv: proc.argv, execArgv: proc.execArgv, version: proc.versions.node, env: proc.env, pid: proc.pid, ppid: proc.ppid, platform: proc.platform, local: readLocalNode(workspace, read ? { read } : {}), ...where });
   if (!plan?.run) return plan;
   proc.on("uncaughtException", () => {});
   const { code, signal } = await rerun(plan.run, { spawn, proc });
