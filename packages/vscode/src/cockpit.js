@@ -60,6 +60,13 @@ export function sessionRow(found, { pinned, nodes = [], nodePath } = {}) {
   };
 }
 
+// Why the Cockpit could not load a product, in words: the script's own reason (a CliError's), never the command line
+// and its exit code, which the atf output channel keeps.
+export function loadError(product, e) {
+  const why = String(e?.reason ?? e?.message ?? e).trim().replace(/[.;:\s]+$/, "");
+  return `Couldn't load ${product}: ${why}. The atf output has the details.`;
+}
+
 // The products as the panel lists them: [{ product, environment, config, active, status }].
 export function productRows(workspace) {
   if (!workspace.ok) return [];
@@ -184,14 +191,15 @@ export function registerCockpit(context, { vscode, workspace, output, cli }, { e
     Object.assign(cock, { loading: true, error: null });
     send();
     try {
-      const json = await cli.runJson([sel.product, "--json"], { script: COCKPIT_SCRIPT, env: { ATF_ENV: sel.environment } });
+      // exit 1 carries the script's {"error"} (cockpit.mjs), shown as it is, as the editor tab does
+      const json = await cli.runJson([sel.product, "--json"], { script: COCKPIT_SCRIPT, env: { ATF_ENV: sel.environment }, allowExit: [0, 1] });
       if (seq !== loadSeq) return;
       if (json?.error) throw new Error(String(json.error));
       cock.data = { run: json.run ?? null, overview: json.overview ?? null, missing: json.missing ?? [] };
       cock.error = null;
     } catch (e) {
       if (seq !== loadSeq) return;
-      cock.error = e.message;
+      cock.error = loadError(sel.product, e);
       cock.data = null;
     }
     cock.loading = false;

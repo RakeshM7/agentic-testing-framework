@@ -174,6 +174,20 @@ test("no run yet: the empty shape, exit code 0", async () => {
   assert.equal(JSON.parse(cli.stdout).run, null);
 });
 
+test("no run yet: a product the interview just drafted (a run-config, no artifacts/<product>) is empty, not unknown", async () => {
+  const root = workspace();
+  writeFileSync(path.join(root, "config", "eventhub.yaml"), readFileSync(path.join(root, "config", "acme.yaml"), "utf8").replace(/^product: .*$/m, "product: eventhub"));
+  assert.ok(!existsSync(path.join(root, "artifacts", "eventhub")));
+  const d = await cockpitData("eventhub", { root });
+  assert.equal(d.run, null);
+  assert.equal(d.safety.configFile, "config/eventhub.yaml");
+  assert.deepEqual(d.missing, [{ section: "run", module: null, reason: "no run yet" }]);
+  const cli = spawnSync(process.execPath, [SCRIPT, "eventhub", "--json"], { env: { ...process.env, ATF_WORKSPACE: root }, encoding: "utf8" });
+  assert.equal(cli.status, 0, cli.stdout);
+  assert.equal(JSON.parse(cli.stdout).product, "eventhub");
+  assert.ok(!existsSync(path.join(root, "artifacts", "eventhub")), "read-only: nothing made");
+});
+
 test("no run yet: a run-config's full-run, own permissions_file and a workspace overlay are shown; no run-config, no mode", async () => {
   const root = workspace();
   rmSync(path.join(root, "artifacts", "acme", "state", "run.json"));

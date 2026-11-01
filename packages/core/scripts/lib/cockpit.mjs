@@ -52,6 +52,24 @@ const emptyData = (product, environment, generatedAt, reason, root) => ({
   missing: [{ section: "run", module: null, reason }],
 });
 
+// A run-config in config/ names the product (the interview has drafted it, the run has not made artifacts/<product> yet).
+// The extension lists a product from the same field, so the Cockpit asks for it before its first run.
+function configured(product, root) {
+  let files = [];
+  try {
+    files = readdirSync(path.join(root, "config")).filter((f) => /\.ya?ml$/i.test(f));
+  } catch {
+    return false;
+  }
+  return files.some((f) => {
+    try {
+      return yaml.load(readFileSync(path.join(root, "config", f), "utf8"))?.product === product;
+    } catch {
+      return false;
+    }
+  });
+}
+
 // Before the first run: the mode and permissions the next run would take from the product's run-config
 // (config/<product>[-<env>].yaml, read only; run.mjs start resolves the mode into run.json when the run starts, and a
 // missing mode is readonly there too). `planned: true` says it is not a run's resolved mode.
@@ -212,7 +230,10 @@ function failuresOf(p, run, report) {
 export async function cockpitData(product, { root = workspaceRoot } = {}) {
   const p = paths(product, root);
   const generatedAt = new Date().toISOString();
-  if (!existsSync(p.productDir)) throw new Error(`unknown product '${product}': no artifacts/${product} in this workspace`);
+  if (!existsSync(p.productDir)) {
+    if (configured(product, root)) return emptyData(product, p.environment, generatedAt, "no run yet", root);
+    throw new Error(`unknown product '${product}': no artifacts/${product} and no run-config for it in this workspace`);
+  }
   if (!existsSync(p.runFile)) return emptyData(product, p.environment, generatedAt, "no run yet", root);
   const run = tryReadJson(p.runFile);
   if (!run) return emptyData(product, p.environment, generatedAt, "run.json is not valid JSON", root);

@@ -283,10 +283,13 @@ export const npmEnv = (env) => Object.fromEntries(Object.entries(env).filter(([k
 // An environment key that carries the registry token: ATF_NPM_TOKEN, or an npm auth setting (npm_config_…_authToken).
 export const isRegistrySecretKey = (k) => /^ATF_NPM_TOKEN$/i.test(k) || /^npm_config_.*:_auth(token)?$/i.test(k);
 
+// reason: why, in words, without the command line that the message leads with (a view shows it; the atf output channel
+// keeps the command and its exit code).
 export class CliError extends Error {
-  constructor(message, { code = null, json, stderr = "", timedOut = false } = {}) {
+  constructor(message, { code = null, json, stderr = "", timedOut = false, reason } = {}) {
     super(message);
     this.name = "CliError";
+    this.reason = reason ?? message;
     this.code = code;
     this.json = json;
     this.stderr = stderr;
@@ -438,24 +441,26 @@ export function createCli({ vscode, workspace, output, spawn = nodeSpawn, platfo
         finish(() => {
           const msg = e.code === "ENOENT" ? `${node} not found: install Node.js, or set atf.nodePath to it` : e.message;
           log(`  failed: ${msg}`);
-          reject(new CliError(`${label}: ${msg}`, { stderr }));
+          reject(new CliError(`${label}: ${msg}`, { stderr, reason: msg }));
         }),
       );
       child.on("close", (code) =>
         finish(() => {
           log(`  exit ${timedOut ? "(timed out)" : code} in ${now() - started} ms${stderr.trim() ? `\n${tail(stderr).replace(/^/gm, "  ")}` : ""}`);
-          if (timedOut) return reject(new CliError(`${label}: no answer in ${Math.round(timeoutMs / 1000)} s; stopped`, { timedOut: true, stderr }));
-          if (size > MAX_STDOUT) return reject(new CliError(`${label}: printed more than ${MAX_STDOUT} bytes; stopped`, { code, stderr }));
+          if (timedOut) return reject(new CliError(`${label}: no answer in ${Math.round(timeoutMs / 1000)} s; stopped`, { timedOut: true, stderr, reason: `it gave no answer in ${Math.round(timeoutMs / 1000)} s, so it was stopped` }));
+          if (size > MAX_STDOUT) return reject(new CliError(`${label}: printed more than ${MAX_STDOUT} bytes; stopped`, { code, stderr, reason: "it printed more than expected, so it was stopped" }));
           const text = Buffer.concat(out).toString("utf8").trim();
           let json;
           try {
             json = JSON.parse(text);
           } catch {
-            return reject(new CliError(`${label} printed no JSON (exit ${code})${stderr.trim() ? `: ${tail(stderr, 400)}` : ""}`, { code, stderr }));
+            return reject(new CliError(`${label} printed no JSON (exit ${code})${stderr.trim() ? `: ${tail(stderr, 400)}` : ""}`, { code, stderr, reason: "it stopped without a result" }));
           }
           if (!allowExit.includes(code)) {
-            const why = Array.isArray(json?.errors) && json.errors.length ? json.errors.join("; ") : tail(stderr, 400) || `exit ${code}`;
-            return reject(new CliError(`${label}: ${why}`, { code, json, stderr }));
+            // run.mjs refuses with {errors: [...]}; cockpit.mjs and others with {error: "..."}
+            const said = Array.isArray(json?.errors) && json.errors.length ? json.errors.join("; ") : typeof json?.error === "string" && json.error.trim() ? json.error.trim() : null;
+            const why = said ?? (tail(stderr, 400) || `exit ${code}`);
+            return reject(new CliError(`${label}: ${why}`, { code, json, stderr, reason: said ?? "it failed without saying why" }));
           }
           resolve(json);
         }),
