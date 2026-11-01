@@ -12,7 +12,7 @@ import { logHookError } from "./lib/hook-log.mjs";
 import { frameworkRoot, workspaceRoot } from "./lib/contract.mjs";
 import { initRun, setStage, status } from "./run.mjs";
 import * as claude from "./hooks/hosts/claude.mjs";
-import { PLUGIN_MCP_PREFIX, PLUGIN_NAME, detectShellHost, identityOf, labelOf, resolveHost } from "./lib/hosts.mjs";
+import { PLUGIN_MCP_PREFIX, PLUGIN_NAME, denyMessage, detectShellHost, identityOf, labelOf, resolveHost } from "./lib/hosts.mjs";
 import * as copilot from "./hooks/hosts/copilot.mjs";
 import * as antigravity from "./hooks/hosts/antigravity.mjs";
 import { startRun, tempRoot, writeConfig } from "./test-helpers.mjs";
@@ -196,8 +196,16 @@ test("a Copilot block of the canary (exit 2, shown by the host as 'hook errored'
   assert.equal((await status("acme", { root })).guard.ready, false, "nothing recorded yet");
   const r = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "pretooluse.mjs"), "--host", "copilot"], { input: JSON.stringify({ cwd: root, toolName: "powershell", toolArgs: { command: "node scripts/run.mjs guard-check acme" } }), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });
   assert.equal(r.status, 2);
-  assert.match(r.stderr, /\(canary\)/);
-  assert.deepEqual((await status("acme", { root })).guard, { ready: true });
+  assert.equal(r.stderr, "Guard check passed: this block is the test (the framework guard is active on Copilot CLI, caller: unidentified)\n", "it reads as the check passing");
+  assert.deepEqual(JSON.parse(r.stdout).permissionDecision, "deny", "still a deny: only a deny proves the host honours one (D-040)");
+  assert.deepEqual((await status("acme", { root })).guard, { ready: true, host: "Copilot CLI" });
+});
+
+test("every adapter shows the canary's block as the check passing, and every other deny as the guard's (D-037)", () => {
+  assert.equal(denyMessage("canary", "Guard check passed: this block is the test (x)"), "Guard check passed: this block is the test (x)");
+  assert.equal(denyMessage("fs-write", "no"), "Blocked by the framework guard (fs-write): no");
+  const v = checkTool(cli({ tool_name: "bash", tool_input: { command: "node scripts/run.mjs guard-check acme" } }), FULL.root, {}, { framework: FULL.root });
+  assert.deepEqual([v.allowed, v.rule, v.reason], [false, "canary", "Guard check passed: this block is the test (the framework guard is active on Copilot CLI, caller: unidentified)"]);
 });
 
 test("liveness canary: always blocked; the session is verified per mode; init and resume reset it", () => {
@@ -212,12 +220,15 @@ test("liveness canary: always blocked; the session is verified per mode; init an
   assert.equal(guardStatus("acme", "full-run", root).ready, false);
   recordCanary("acme", root, { host: "vscode" });
   assert.match(guardStatus("acme", "full-run", root).reason, /full-run on VS Code's local agent needs the custom agents' own hooks/, "there an unidentified caller is unmanaged");
-  assert.equal(guardStatus("acme", "readonly", root).ready, true);
+  assert.deepEqual(guardStatus("acme", "readonly", root), { ready: true, host: "VS Code's local agent" }, "the host the orchestrator names: Guard active on <host>");
   recordCanary("acme", root, { host: "vscode", agent: "orchestrator-agent" });
-  assert.equal(guardStatus("acme", "full-run", root).ready, true);
+  assert.deepEqual(guardStatus("acme", "full-run", root), { ready: true, host: "VS Code's local agent" });
   const { root: cliRoot } = startRun({ mode: "full-run", verified: false });
   recordCanary("acme", cliRoot, { host: "copilot-cli" });
   assert.equal(guardStatus("acme", "full-run", cliRoot).ready, true, "Copilot CLI: unidentified calls get the combined permissions");
+  recordCanary("acme", cliRoot, { host: "vscode" });
+  assert.deepEqual(guardStatus("acme", "full-run", cliRoot), { ready: true, host: "Copilot CLI" }, "only the hosts whose record passed are named");
+  assert.deepEqual(guardStatus("acme", "readonly", cliRoot), { ready: true, host: "Copilot CLI, VS Code's local agent" });
   markAbsent("acme", root);
   assert.equal(guardStatus("acme", "readonly", root).ready, false, "a session where the canary ran is never verified");
   recordCanary("acme", root, { host: "claude-code" });
@@ -251,7 +262,8 @@ test("hook entry: Claude Code blocks with exit 2 and records the canary", () => 
   assert.match(r.stderr, /http-mutate/);
   const { root } = startRun({ verified: false });
   const c = hook(["--host", "claude-code"], { agent_type: "orchestrator-agent", tool_name: "Bash", tool_input: { command: "node scripts/run.mjs guard-check acme" } }, { CLAUDE_PROJECT_DIR: root });
-  assert.equal(c.status, 2);
+  assert.equal(c.status, 2, "the canary takes the path of every other deny on Claude Code: exit 2");
+  assert.deepEqual([c.stdout, c.stderr], ["", "Guard check passed: this block is the test (the framework guard is active on Claude Code, caller: orchestrator-agent)\n"], "it reads as the check passing, not as a refusal");
   assert.deepEqual(readdirSync(path.join(root, "artifacts/acme/state/guard-check")), ["claude-code--orchestrator-agent.json"]);
 });
 
@@ -306,6 +318,7 @@ test("hook entry: VS Code blocks with a deny decision and exit 0, never by exit 
   const { root } = startRun({ mode: "full-run", verified: false });
   const c = hook(["--host", "vscode", "--agent", "orchestrator-agent"], { cwd: root, tool_name: "run_in_terminal", tool_input: { command: "node scripts/run.mjs guard-check acme" } });
   assert.deepEqual([c.status, JSON.parse(c.stdout).hookSpecificOutput.permissionDecision], [0, "deny"], "the guard-check canary from orchestrator-agent");
+  assert.equal(JSON.parse(c.stdout).hookSpecificOutput.permissionDecisionReason, "Guard check passed: this block is the test (the framework guard is active on VS Code's local agent, caller: orchestrator-agent)");
   assert.deepEqual(readdirSync(path.join(root, "artifacts/acme/state/guard-check")), ["vscode--orchestrator-agent.json"]);
   assert.equal(guardStatus("acme", "full-run", root).ready, true);
 });
@@ -720,7 +733,8 @@ test("hook entry: Antigravity gets a decision on stdout with exit 0, and records
   const { root } = startRun({ mode: "full-run", verified: false });
   const c = hook(["--host", "antigravity"], { ...agPayload("run_command", root), toolCall: { name: "run_command", args: { CommandLine: "node scripts/run.mjs guard-check acme" } } });
   assert.deepEqual([c.status, JSON.parse(c.stdout).decision], [0, "deny"]);
-  assert.match(c.stderr, /\(canary\)/);
+  const passed = "Guard check passed: this block is the test (the framework guard is active on Antigravity, caller: unidentified)";
+  assert.deepEqual([JSON.parse(c.stdout).reason, c.stderr], [passed, `${passed}\n`]);
   assert.deepEqual(readdirSync(path.join(root, "artifacts/acme/state/guard-check")), ["antigravity--unidentified.json"]);
   assert.equal(guardStatus("acme", "full-run", root).ready, true, "a host without identity is verified by any block (D-037)");
   const post = spawnSync(process.execPath, [path.join(frameworkRoot, "scripts", "hooks", "posttooluse.mjs"), "--host", "antigravity"], { input: JSON.stringify(agPayload("invoke_subagent", root)), cwd: root, encoding: "utf8", env: { PATH: process.env.PATH } });

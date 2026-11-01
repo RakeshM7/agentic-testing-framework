@@ -24,6 +24,27 @@ const SPEC_RE = /openapi|swagger|\.(json|ya?ml)(\?|#|$)/i;
 // Documents the agents' file reader cannot open as text.
 const OPAQUE_RE = /\.(xlsx?|docx?|pptx?)$/i;
 
+// A module answer written as one text ("Home, Events; Bookings and Admin") is several modules, never one: split on
+// commas, semicolons and newlines, and on a standalone "and" only in the last item of such a list ("A, B and C"), so
+// a name that is one module ("Orders and Returns", "Terms and Conditions") stays whole. An object whose name is a
+// list gets its other keys only when the split leaves one name.
+export function splitModuleNames(text) {
+  const items = String(text ?? "").split(/\s*[,;\n]\s*/).map((s) => s.trim()).filter(Boolean);
+  if (items.length < 2) return items;
+  const last = items.pop().split(/\s+and\s+/i).map((s) => s.trim()).filter(Boolean);
+  return [...items, ...last];
+}
+export function splitModuleAnswers(raw) {
+  return raw.flatMap((m) => {
+    if (typeof m === "string") return splitModuleNames(m);
+    if (m && typeof m === "object" && typeof m.name === "string") {
+      const names = splitModuleNames(m.name);
+      return names.length > 1 ? names : [m];
+    }
+    return [m];
+  });
+}
+
 export function slugify(text) {
   return String(text ?? "")
     .normalize("NFKD")
@@ -73,7 +94,7 @@ export function buildDraft(answers, { root = process.cwd(), exists = (p) => exis
 
   const slugs = new Set();
   const modules = [];
-  const rawModules = Array.isArray(a.modules) ? a.modules : [];
+  const rawModules = splitModuleAnswers(Array.isArray(a.modules) ? a.modules : typeof a.modules === "string" ? [a.modules] : []);
   if (!rawModules.length) errors.push("modules: list at least one module to run (e.g. Contacts, Deals)");
   rawModules.forEach((m, i) => {
     const mod = typeof m === "string" ? { name: m } : m && typeof m === "object" ? m : {};

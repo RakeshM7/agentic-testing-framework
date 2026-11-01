@@ -140,6 +140,10 @@ Built from Codex's documentation; not yet verified live. Until the spike ([Verif
 
 ## When the guard check fails
 
+The guard check is a command the guard always blocks (D-037). The block is the test: it proves the host runs the guard and obeys its denies. Its message reads "Guard check passed: this block is the test …". Claude Code still labels it "hook error", which is Claude Code's own label. The orchestrator then says "Guard active on <host> ✓" (D-120).
+
+No tool call may write, move or delete the check's records in `artifacts/<product>/state/guard-check/`, or run a hook script under `scripts/hooks/` by hand. The guard refuses both for every caller (D-120).
+
 `run.mjs stage … start` refuses until the session's guard is verified (D-024).
 - **"the guard did not intercept guard-check"**: hooks are not running in this session.
   - VS Code: trust the workspace, keep `chat.useHooks` on, keep `.vscode/settings.json` as committed.
@@ -155,10 +159,15 @@ Built from Codex's documentation; not yet verified live. Until the spike ([Verif
 
 ## When the dependency check fails
 
-`run.mjs stage … start` refuses a stage whose needs are missing on this machine (D-064), with each failing check and its fix. Run `npx atf doctor <product>` in your terminal: it applies the safe installs (`npm install`, the Playwright browser builds) and lists the rest. Then the orchestrator runs `run.mjs doctor <product>` again. `node scripts/doctor.mjs --machine` (no product) checks what this machine needs for any product: Node.js, the framework's dependencies, the login browser, the browser server's browser and k6; a missing k6 only warns, and `--fix` does not install it (D-110). `--json` marks each check `fixable` when `--fix` could install it.
+`run.mjs stage … start` refuses a stage whose needs are missing on this machine (D-064), with each failing check and its fix. `npx atf run <product>` checks this before the session opens, applies the safe installs one progress line at a time, and offers the login (D-121; `--no-preflight` skips it). Inside a session, run `npx atf doctor <product>` in your terminal: it applies the safe installs (`npm install`, the Playwright browser builds) and lists the rest. Then the orchestrator runs `run.mjs doctor <product>` again. `node scripts/doctor.mjs --machine` (no product) checks what this machine needs for any product: Node.js, the framework's dependencies, the login browser, the browser server's browser and k6; a missing k6 only warns, and `--fix` does not install it (D-110). `--json` marks each check `fixable` when `--fix` could install it.
 - **The browser server's init page** (`--init-page scripts/browser/init-page.cjs` in `config/mcp.yaml`, D-076) must be there, with no `--storage-state`: it loads the active run's `session_state_file` into every new browser and aborts every write to the product in a readonly run. After a change to `config/mcp.yaml`, run `npm run build-agents` and start a new session: the MCP server reads its arguments at start-up.
 - **A Playwright browser build is not downloaded**: a Playwright update without its browser. `atf doctor` installs it.
-- **The saved session is missing, empty or expired**: `npx atf login <product>`, or let the orchestrator open the login window (it asks first). Microsoft Edge opens on the target with its own profile; sign in within 60 seconds and it closes by itself (D-069). A session with no cookie on the target's host (usual after a single sign-on login) is only a warning.
+- **The saved session is missing, empty or expired**: `npx atf login <product>`, or let the orchestrator open the login window (it asks first). Your default browser opens on the target with its own profile, when it is Chromium-based (Chrome, Edge, Brave, Arc, Vivaldi); otherwise Microsoft Edge, then Google Chrome. Sign in yourself; the window closes by itself once you are signed in, within 5 minutes (D-069, D-118).
+- **The target does not answer**: the check names the cause (D-117).
+  - **Claude Code's sandbox refused the host:** allow it with `/sandbox`, or turn the sandbox off for a live run. Installs can't run inside the sandbox either; the doctor warns about it (`sandbox`).
+  - **A network proxy (HTTPS_PROXY) refused it:** ask your network team, or add the host to NO_PROXY.
+  - **A proxy is set that this Node.js can't use:** use Node.js 24.
+  - **Otherwise the host itself:** check the URL, your network or VPN. A session with no cookie on the target's host (usual after a single sign-on login) is only a warning.
 - **A stage meets a sign-in page right after a successful login**: the browser server still has a browser open with the old session. Start a new agent session and resume the run.
 - **k6 is not installed**: `atf doctor` installs it with winget (Windows) or Homebrew (macOS); on Linux, follow the link it prints. Then open a new terminal, since an install updates PATH for new terminals only. `doctor.mjs --machine` only warns about it.
 

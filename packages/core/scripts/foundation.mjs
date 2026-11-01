@@ -20,6 +20,7 @@
 //   foundation.mjs paths <product> [--side S]
 //        the overlay, manifest, managed files and extension files of each side
 // Exits: 0 ok, 1 problems ({problems} or {errors}), 2 usage.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";

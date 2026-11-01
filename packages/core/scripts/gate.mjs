@@ -7,6 +7,7 @@
 //   gate.mjs <product> <module> testcases|playwright-ui|playwright-api|k6 [--static]
 //        -> {verdict, file, counts}; exit 0 = pass, 1 = changes-required, 2 = usage/state error
 //   --static skips the compile/list/inspect commands (tsc, playwright --list, k6 inspect).
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

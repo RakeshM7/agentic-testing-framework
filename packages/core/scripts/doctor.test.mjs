@@ -224,7 +224,7 @@ test("session: present is enough (no target cookie only warns, for single sign-o
   save([{ name: "ESTSAUTH", domain: ".login.microsoftonline.com", expires: at(100) }]);
   let check = (await runChecks(cfg(auth), ["session"], m.opts))[0];
   assert.deepEqual([check.ok, check.level], [true, "warn"], "no cookie on the target's host passes with a warning");
-  assert.match(check.detail, /no cookie for app\.acme\.test \(usual after a single sign-on login\): the login is confirmed when a stage opens the target/);
+  assert.match(check.detail, /^nothing to fix: the saved session has no cookie for app\.acme\.test \(usual after a single sign-on login\); the login is confirmed when a stage opens the target/);
   assert.match(check.fix, /if a stage meets a sign-in page, npx atf login acme/);
   save([{ name: "ESTSAUTH", domain: ".login.microsoftonline.com", expires: at(-1) }]);
   assert.match((await runChecks(cfg(auth), ["session"], m.opts))[0].detail, /every cookie in the saved session has expired/);
@@ -463,4 +463,66 @@ test("base, cloud-agent opt-in: the setup workflow must install the framework wi
   // a narrower line that a later `!` line re-includes: not ignored
   writeFileSync(path.join(ws.root, ".gitignore"), `*.yml\n!/.github/workflows/*.yml\n${own}`);
   assert.equal((await base())["cloud-agent-git"].level, undefined);
+});
+
+test("doctor.mjs --preflight: each safe install is one progress line, the login is offered for a failed session, leftovers are shown once, exit 0, nothing in a sandbox or without a terminal (friction W2)", async () => {
+  const root = tempRoot();
+  put(root, "config/acme.yaml", "product: acme\ntarget: {url: 'https://app.acme.test'}\nmodules:\n  - {slug: contacts, name: Contacts, nav_path: [Contacts]}\n");
+  const file = path.join(root, "config", "acme.yaml");
+  const pw = path.join(root, "playwright-tests", "acme");
+  const repoStep = { cmd: "npm", args: ["install"], cwd: pw };
+  const mcpStep = { cmd: "npx", args: ["-y", "playwright@1.64.0", "install", "chromium"], cwd: root };
+  const bad = [
+    { group: "repo", id: "repo", ok: false, level: "fail", detail: "repo not installed", fix: "npm install", autofix: { steps: [repoStep] } },
+    { group: "browser", id: "mcp-browser", ok: false, level: "fail", detail: "chromium missing", fix: "npx -y playwright install chromium", autofix: mcpStep },
+    { group: "login", id: "session", ok: false, level: "fail", detail: "the saved session is missing", fix: "atf login acme" },
+  ];
+  const setup = (over = {}) => {
+    const out = [];
+    const ran = [];
+    const asked = [];
+    let logged = 0;
+    let calls = 0;
+    const o = {
+      root, env: {}, interactive: true,
+      log: (s) => out.push(`${s}\n`), write: (s) => out.push(s),
+      check: async () => (calls++ ? bad.filter((c) => c.id === "session" && !logged) : bad),
+      exec: (s) => (ran.push(s), s.cmd === "npm" ? true : { ok: false, detail: "ENOTFOUND registry" }),
+      ask: async (q) => (asked.push(q), ""),
+      login: () => (logged++, true),
+      ...over,
+    };
+    return { o, text: () => out.join(""), ran, asked, logged: () => logged };
+  };
+
+  let t = setup();
+  assert.equal(await main([file, "--preflight"], t.o), 0);
+  assert.equal(t.ran.length, 2);
+  assert.match(t.text(), /^Installing the Playwright repo for acme… done\n/);
+  assert.match(t.text(), /Installing the browser server's Chromium… failed: ENOTFOUND registry\n/);
+  assert.deepEqual(t.asked, ["Open the login window now? [Y/n] "]);
+  assert.equal(t.logged(), 1);
+  assert.match(t.text(), /Login finished\./);
+  assert.match(t.text(), /Preflight: everything the chosen stages need is ready\./, "the recheck after the login");
+
+  // a declined login, and a failure that stays: one line each, with its fix, once
+  t = setup({ ask: async () => "n" });
+  assert.equal(await main([file, "--preflight"], t.o), 0);
+  assert.equal(t.logged(), 0);
+  assert.equal(t.text().split("the saved session is missing -- fix: atf login acme").length, 2);
+
+  // no terminal: no prompt, no login
+  t = setup({ interactive: false });
+  assert.equal(await main([file, "--preflight"], t.o), 0);
+  assert.deepEqual([t.asked.length, t.logged()], [0, 0]);
+  assert.match(t.text(), /still not ready/);
+
+  // a sandbox: nothing installed, nothing asked, the problems reported
+  t = setup({ env: { SANDBOX_RUNTIME: "1" } });
+  assert.equal(await main([file, "--preflight"], t.o), 0);
+  assert.deepEqual([t.ran.length, t.asked.length], [0, 0]);
+  assert.match(t.text(), /Inside a sandbox: nothing is installed/);
+  assert.match(t.text(), /repo not installed -- fix: npm install/);
+
+  assert.equal(await main([file, "--preflight", "--json"], setup().o), 2);
 });

@@ -11,6 +11,7 @@
 //                                 report-check.json (the `report` stage requires the stamp); a failure removes it.
 //   report.mjs paths <product>    the files of the report
 // Exits: 0 ok, 1 problems, 2 usage.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

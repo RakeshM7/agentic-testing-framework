@@ -39,7 +39,7 @@ import { hostname } from "node:os";
 import path from "node:path";
 import { isInputBrowserTool, isMutatingBrowserTool, networkGuarded } from "./browser-tools.mjs";
 import { shellWriteTargets } from "./decisions.mjs";
-import { canIdentify, deniesUnknownInRun, labelOf } from "./hosts.mjs";
+import { HOSTS, canIdentify, deniesUnknownInRun, labelOf } from "./hosts.mjs";
 import { live } from "./ledger.mjs";
 import { atLeast, canWrite, effectiveLiveTarget, isManaged, normalizeWritePath, runCeiling, shellAllowed, shellSegments } from "./permissions.mjs";
 import { devAgentsDir, expandFw, frameworkRel, frameworkRoot, isInstalled, sameDir } from "./roots.mjs";
@@ -109,6 +109,8 @@ const K6_LIVE = /\bk6(\.exe)?\s+(run|cloud)\b/i;
 const DELETE_RE = /(-X|--request)[\s=]*['"]?DELETE\b|--method[\s=]*['"]?DELETE\b|-Method\s+['"]?Delete\b|method\s*[:=]\s*['"]DELETE['"]|\b(requests|httpx|axios|got|ky)\.delete\b/i;
 // The liveness canary: an agent runs this before a run's stages; a working hook always blocks it (and the hook entry
 // records which host/agent blocked it). If it ever executes, no guard intercepted it (scripts/run.mjs guard-check).
+// The block is the check passing, so its reason says so (D-037); the adapters show it without the "Blocked by" prefix
+// (scripts/lib/hosts.mjs denyMessage). It stays a deny on every host: only a deny proves the host honours the guard's.
 // Matched as any command of a compound line and by any path to run.mjs: agents often write `cd <repo> && node …`.
 const CANARY = /(?:^\s*|[;&|(]\s*)node\s+(?:\S*\/)?scripts\/run\.mjs\s+guard-check\s+([a-z0-9]+(?:-[a-z0-9]+)*)(?![\w-])/;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -289,6 +291,225 @@ function humanOnly(call) {
   }
   return call.kind === "write" && call.paths.some((p) => HUMAN_ONLY_PATH.test(String(p)));
 }
+
+// What the canary's block says: the check passed (D-037).
+const canaryReason = (call) => `Guard check passed: this block is the test (the framework guard is active on ${labelOf(call.host)}, caller: ${call.agent ?? "unidentified"})`;
+
+// The guard check's records (state/guard-check/, D-037) belong to the hook alone: the hook entry writes the record of
+// the host and caller that blocked the canary (scripts/lib/guard-check.mjs recordCanary), the canary command itself the
+// `absent` record when no hook stopped it, and `run.mjs init` clears them. No tool call writes, moves or deletes one, in
+// or out of a run, for any caller and mode, as for the extension's confirmation files: a written path or a shell write
+// target with a guard-check folder in it (any product's or environment's; another case, Windows' trailing dots and
+// spaces, a stream, its 8.3 short name), a shell line naming a path into or onto that folder or one of its record names
+// (absent.json, <host>--<caller>.json), a shell write target whose glob could be that folder, and every write the hook
+// can resolve into an existing state folder's guard-check/ (a symlink, a cd, the host's cwd: writeUnder). Reading the
+// records with a read tool stays allowed, and `run.mjs status` reports them. A write the hook can't read (code it can't
+// see, a whole state folder moved or deleted) is the known limit of reading command text; restricted agents' allow-lists
+// never vouch for one.
+const GUARD_DIR = String.raw`(?:guard-check|guard-?~\d)`;
+const GUARD_RECORD_PATH = new RegExp(String.raw`(?:^|[\\/])${GUARD_DIR}[. ]*(?::[^\\/]*)?(?:[\\/]|$)`, "i");
+const GUARD_RECORD_NAMES = String.raw`(?:absent|(?:${Object.keys(HOSTS).map(escapeRe).join("|")})--[\w.-]*)\.json`;
+const GUARD_RECORD_FILE = new RegExp(String.raw`(?:^|[\\/])${GUARD_RECORD_NAMES}[. ]*(?::[^\\/]*)?$`, "i");
+// After the folder's name, a backslash is a Windows separator only when a path character follows it: `guard-check\|`
+// in a grep pattern is the regex alternation, not a path.
+const GUARD_RECORD_LINE = new RegExp(
+  String.raw`(?:^|[^\w.-])${GUARD_DIR}\.*(?:::\$\w+)?(?:\/|\\(?=[\w.$%~\[{\\-]))|[\\/]${GUARD_DIR}\.*(?:::\$\w+)?(?=$|[\s"';&|)<>\x60\\/])|(?:^|[^\w.-])${GUARD_RECORD_NAMES}\b`,
+  "i",
+);
+// a write target's glob that could be the folder: one of its own (`guard-*`, at the start or under a folder that could
+// be state/), or any glob under a state/ folder (`state/*`). A word that is all expansion (`$TMPDIR/x`) is not one.
+const globIsGuardDir = (target) => {
+  const segs = String(target).split(/[\\/]+/).filter(Boolean);
+  const could = (glob, name) => globRegex(glob, false).test(name);
+  const stateAbove = (i) => i > 0 && literalOf(segs[i - 1], false).length >= 3 && could(segs[i - 1], "state");
+  return segs.some((s, i) => GLOBBY.test(s) && could(s, "guard-check") &&
+    (stateAbove(i) || (literalOf(s, false).length >= 3 && (i === 0 || segs[i - 1] === "." || could(segs[i - 1], "state")))));
+};
+function guardRecordWrite(call, root) {
+  if (call.kind === "write") {
+    if ((call.paths ?? []).some((p) => GUARD_RECORD_PATH.test(String(p)))) return true;
+  } else if (call.kind === "shell") {
+    const lines = spellings(call.command);
+    if (lines.some((cmd) => GUARD_RECORD_LINE.test(cmd))) return true;
+    if (lines.flatMap((cmd) => shellWriteTargets(cmd)).some((t) => GUARD_RECORD_PATH.test(t) || GUARD_RECORD_FILE.test(t) || globIsGuardDir(t))) return true;
+  } else return false;
+  for (const { state } of stateDirs(root)) {
+    const hit = writeUnder(call, root, path.join(state, "guard-check"));
+    if (hit && hit !== UNKNOWN_TARGET) return true;
+  }
+  return false;
+}
+const GUARD_RECORD_REASON = "the guard check's records (artifacts/<product>/state/guard-check/) are written by the framework's hook alone (D-037): no tool call writes, moves or deletes them. Run `node {fw}/scripts/run.mjs guard-check <product>`, then read `node {fw}/scripts/run.mjs status <product>`";
+
+// The framework's hook entries (scripts/hooks/pretooluse.mjs, posttooluse.mjs, plugin-session.mjs) and host adapters
+// (scripts/hooks/hosts/*.mjs) run only as a host runs them around a tool call, which is no tool call itself. Run by hand
+// on a payload the caller makes up, the PreToolUse entry would write a guard-check record (D-037), the PostToolUse entry
+// a decision confirmation (D-031) or a spawn record (D-079), and the plugin's SessionStart entry the plugin's recorded
+// version (D-098). So no tool call runs one, in or out of a run, for any caller and mode: a command whose program is a
+// hook script (also after env, sudo, exec, npm/pnpm/yarn exec or run, and a runner -- node, bun, deno, npx, tsx -- with
+// its options; a glob that could name one; from inside the folder), every file `node --test` or `bun test` is given, the
+// module a runner's --import/--require/--loader loads, a code runner (node and the like, python, perl, ruby, php) that
+// reads its code from -e/-c/-p, stdin or a here-document on a line that names a hook script, and any of these inside a
+// shell's -c string or here-document, eval, or a substitution. The line is read as a shell splits it (commandsOf), so a
+// separator inside quotes is text and a here-document's body is data for its command. Naming one as another program's
+// argument (`grep`, `git diff`, `decisions.mjs for`), and the tests that spawn them (`npm test`, `node --test` of the
+// test files), stay allowed. A file of the caller's own that imports one, or a program word that is all expansion
+// (`node $H`), is the known limit of reading command text.
+const HOOK_ENTRY = String.raw`(?:pretooluse|posttooluse|plugin-session|pretoo~\d|postto~\d)(?:\.mjs)?`;
+const HOOK_ADAPTERS = ["claude", "copilot", "vscode", "antigravity", "codex", "index"];
+const HOOK_ADAPTER = String.raw`hosts[\\/]+(?:${HOOK_ADAPTERS.join("|")})\.mjs`;
+const HOOK_SCRIPT = new RegExp(String.raw`(?:^|[\\/])(?:${HOOK_ENTRY}|${HOOK_ADAPTER})[. ]*$`, "i");
+const HOOK_REF = new RegExp(String.raw`(?:^|[^\w-])(?:${HOOK_ENTRY}|${HOOK_ADAPTER})(?![\w-])`, "i");
+const CODE_RUNNER = /^(?:node|nodejs|bun|bunx|deno|tsx|ts-node|npx|python[\d.]*|py|perl|ruby|php|lua|osascript)(?:\.exe|\.cmd)?$/i;
+const SHELLS = /^(?:sh|bash|zsh|dash|ksh|ash|fish|csh|tcsh|busybox|su|cmd|pwsh|powershell)(?:\.exe)?$/i;
+const STRING_EVAL = /^(?:eval|watch|iex|invoke-expression)$/i;
+const PROGRAM_WRAPPER = /^(?:env|sudo|doas|exec|command|nohup|time|timeout|nice|xargs|start-process|wsl|npm|pnpm|yarn|run|run-script|x|dlx|--)(?:\.exe|\.cmd)?$/i;
+const WRAPPER_VALUE_OPTS = new Set(["-u", "-g", "-n", "-C", "-D", "-U", "-S", "--user", "--group", "--chdir", "--adjustment"]);
+const RUNNER_VALUE_OPTS = new Set(["-r", "--require", "--import", "--loader", "--experimental-loader", "--env-file", "-C", "--conditions", "--input-type", "--cwd"]);
+const CODE_OPTS = new Set(["-e", "--eval", "-p", "--print", "-c", "--command"]);
+const SHELL_STRING_OPT = /^(?:-[a-z]*c|\/c|\/k|-command|--command)$/i;
+// On a line with a word that runs a string as a shell line, the line is also read with every quote dropped (stricter).
+const SHELL_STRING_RUNNER = /(?<![\w.-])(?:sh|bash|zsh|dash|ksh|ash|fish|csh|tcsh|busybox|cmd|pwsh|powershell|eval|iex|invoke-expression|invoke-command|start-job|start-process|ssh|wsl|su|sudo|doas|runas|runuser|watch|flock|tmux|screen|parallel|xargs|exec)(?:\.exe)?(?![\w.-])/i;
+const closingParen = (s, open) => {
+  for (let k = open + 1, depth = 1; k < s.length; k++) if (s[k] === "(") depth++; else if (s[k] === ")" && --depth === 0) return k;
+  return -1;
+};
+// A shell line as a shell splits it, leniently: segments at each unquoted `;`, `&`, `|`, `(`, `)`, line break, `$(` and
+// backtick, each the list of its words with their quotes removed (a backslash outside quotes stays: Windows paths); a
+// here-document's body is its segment's stdin, never commands; a `$(…)` or backtick inside double quotes is a command
+// line of its own (subs); `bare` is the line outside quotes and here-document bodies.
+// -> { segs: [{ words, stdin }], subs, bare }
+function commandsOf(line) {
+  const segs = [];
+  const subs = [];
+  const heredocs = [];
+  let cur = { words: [], stdin: "" };
+  let word = null;
+  let q = null;
+  let bare = "";
+  const endWord = () => {
+    if (word !== null) cur.words.push(word);
+    word = null;
+  };
+  const endSeg = () => {
+    endWord();
+    if (cur.words.length) segs.push(cur);
+    cur = { words: [], stdin: "" };
+  };
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (!q && c !== "'" && c !== '"') bare += c;
+    if (q === "'") {
+      if (c === "'") q = null;
+      else word += c;
+    } else if (q === '"') {
+      if (c === '"') q = null;
+      else if (c === "\\" && '"\\$`'.includes(line[i + 1] ?? "")) word += line[++i];
+      else if (c === "`" || (c === "$" && line[i + 1] === "(")) {
+        const close = c === "`" ? line.indexOf("`", i + 1) : closingParen(line, i + 1);
+        const end = close < 0 ? line.length : close;
+        subs.push(line.slice(c === "`" ? i + 1 : i + 2, end));
+        word += line.slice(i, end + 1);
+        i = end;
+      } else word += c;
+    } else if (c === "'" || c === '"') {
+      q = c;
+      word ??= "";
+    } else if (c === "<" && line[i + 1] === "<" && line[i + 2] !== "<" && /^<<-?\s*(['"]?)[^\s'"<>;&|()]+\1/.test(line.slice(i))) {
+      const m = /^<<(-?)\s*(['"]?)([^\s'"<>;&|()]+)\2/.exec(line.slice(i));
+      endWord();
+      heredocs.push({ delim: m[3], dash: m[1] === "-", seg: cur });
+      i += m[0].length - 1;
+    } else if (c === "\n") {
+      endSeg();
+      // the bodies of the here-documents this line opened, up to their delimiter lines
+      for (const h of heredocs.splice(0)) {
+        const body = [];
+        let j = i + 1;
+        while (j < line.length) {
+          const nl = line.indexOf("\n", j);
+          const ln = line.slice(j, nl < 0 ? line.length : nl).replace(/\r$/, "");
+          j = nl < 0 ? line.length : nl + 1;
+          if ((h.dash ? ln.replace(/^\t+/, "") : ln) === h.delim) break;
+          body.push(ln);
+        }
+        h.seg.stdin += `${body.join("\n")}\n`;
+        i = j - 1;
+      }
+    } else if (";&|()`\r".includes(c) || (c === "$" && line[i + 1] === "(")) {
+      endSeg();
+      if (c === "$") i++;
+    } else if (/\s/.test(c)) endWord();
+    else word = (word ?? "") + c;
+  }
+  endSeg();
+  return { segs, subs, bare };
+}
+function isHookWord(w) {
+  const word = w.replace(/^[({]+|[)};,]+$/g, "");
+  if (HOOK_SCRIPT.test(word)) return true;
+  if (!GLOBBY.test(word) || literalOf(word, false).length < 3) return false;
+  const segs = word.split(/[\\/]+/);
+  const [last, prev] = [segs.at(-1), segs.at(-2)];
+  const could = (glob, name) => globRegex(glob, false).test(name);
+  return (["pretooluse", "posttooluse", "plugin-session"].some((n) => could(last, `${n}.mjs`)) && (prev === undefined || prev === "." || could(prev, "hooks"))) ||
+    (HOOK_ADAPTERS.some((n) => could(last, `${n}.mjs`)) && prev !== undefined && could(prev, "hosts"));
+}
+// Whether one command (its words, and its here-document's body) runs a hook script; `named`: the whole line names one
+// (what a pipe may feed a code runner).
+function segmentRunsHook({ words, stdin }, named, depth) {
+  const ws = words.map((w) => w.replace(/^[({]+/, "")).filter(Boolean);
+  let runner = false; // a code runner started, its program file still to come
+  let shell = false; // a shell started, its script still to come
+  let tests = false; // `node --test`, `bun test`: every file it is given runs
+  let program = false;
+  let input = null; // the file a `<` redirect feeds it
+  for (let i = 0; i < ws.length && !program; i++) {
+    const w = ws[i];
+    const base = w.split(/[\\/]/).pop();
+    if (/^\d*[<>]/.test(w)) {
+      const apart = /^\d*[<>]+&?$/.test(w); // a redirect, and its target when apart
+      if (/^\d*</.test(w)) input = apart ? ws[i + 1] ?? "" : w.replace(/^\d*<+/, "");
+      if (apart) i++;
+    } else if (/^\w+=/.test(w)) continue; // an assignment before the program
+    else if (CODE_RUNNER.test(base)) runner = true;
+    else if (SHELLS.test(base)) shell = true;
+    else if (STRING_EVAL.test(base)) return hookRunIn(ws.slice(i + 1).join(" "), depth + 1);
+    else if (runner && w === "test") tests = true;
+    else if (PROGRAM_WRAPPER.test(base) || (!runner && /^\d+(?:\.\d+)?[smhd]?$/.test(w))) continue;
+    else if (/^-/.test(w) || /^\/[a-z]$/i.test(w)) {
+      const [opt, value] = w.split(/=(.*)/s);
+      if (shell && !runner && SHELL_STRING_OPT.test(opt)) return hookRunIn(value ?? ws[i + 1] ?? "", depth + 1);
+      // code given inline: it, and the arguments it is given, name a hook script
+      if (runner && CODE_OPTS.has(opt)) return HOOK_REF.test([value ?? "", ...ws.slice(i + 1)].join(" "));
+      if (runner && opt === "--test") tests = true;
+      if (runner && RUNNER_VALUE_OPTS.has(opt) && isHookWord(value ?? ws[++i] ?? "")) return true;
+      if (!runner && WRAPPER_VALUE_OPTS.has(opt) && value === undefined) i++;
+    } else {
+      if (tests ? ws.slice(i).some(isHookWord) : isHookWord(w)) return true;
+      program = true;
+    }
+  }
+  if (program) return false;
+  // a shell reading commands from stdin: its here-document, or a pipe
+  if (shell && !runner) return stdin ? hookRunIn(stdin, depth + 1) : input === null && named;
+  // a code runner reading its code from stdin: its here-document, the file it is redirected from, or a pipe
+  if (!runner) return false;
+  return stdin ? HOOK_REF.test(stdin) : input !== null ? isHookWord(input) || HOOK_REF.test(input) : named;
+}
+function hookRunIn(line, depth = 0) {
+  if (depth > 4) return false;
+  const named = HOOK_REF.test(line);
+  // as written, and with a backslash or cmd.exe's caret inside a word dropped (`pre\tooluse.mjs`)
+  const forms = [...new Set([line, line.replace(/[\\^](?=[a-z])/gi, "")])];
+  const readings = forms.flatMap((f) => {
+    const read = commandsOf(f);
+    return SHELL_STRING_RUNNER.test(read.bare) ? [read, commandsOf(f.replace(/['"]/g, ""))] : [read];
+  });
+  return readings.some(({ segs, subs }) => subs.some((s) => hookRunIn(s, depth + 1)) || segs.some((s) => segmentRunsHook(s, named, depth)));
+}
+const runsHookScript = (call) => call.kind === "shell" && hookRunIn(String(call.command ?? "").replace(JOIN_CONCAT, ""));
+const HOOK_SCRIPT_REASON = "the framework's hook scripts ({fw}/scripts/hooks/) run only as the host runs them around a tool call, never as a tool call: run by hand, they would write the guard check's records, decision confirmations or the plugin's recorded version (D-037)";
 
 const deny = (rule, reason) => ({ allowed: false, rule, reason });
 const ALLOW = { allowed: true };
@@ -553,9 +774,11 @@ export function checkTool(call, root, env = process.env, { framework = framework
   const fw = (text) => expandFw(text, frameworkRel(root, framework));
   const canary = call.kind === "shell" ? CANARY.exec(call.command ?? "") : null;
   if (canary)
-    return { allowed: false, rule: "canary", reason: `guard is active on ${labelOf(call.host)} (caller: ${call.agent ?? "unidentified"}); this block is expected`, canary: { product: canary[1] } };
+    return { allowed: false, rule: "canary", reason: canaryReason(call), canary: { product: canary[1] } };
   if (humanOnly(call)) return deny("human-only", fw(HUMAN_ONLY_REASON));
   if (humanOnlySweep(call)) return deny("human-only", fw(SWEEP_REASON));
+  if (guardRecordWrite(call, root)) return deny("guard-record", fw(GUARD_RECORD_REASON));
+  if (runsHookScript(call)) return deny("hook-script", fw(HOOK_SCRIPT_REASON));
   const fwFile = frameworkWrite(call, root, framework);
   if (fwFile === UNKNOWN_TARGET) return deny("framework-readonly", `could not tell which file ${call.tool} writes, and the framework (${framework}) is installed read-only (D-085); refusing`);
   if (fwFile)

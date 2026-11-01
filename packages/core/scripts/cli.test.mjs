@@ -35,6 +35,7 @@ test("every make target has its atf command, with the same script calls", () => 
     ["node", "scripts/doctor.mjs", "config/acme.yaml", "--for", "login", "--fix"],
     ["node", "scripts/run.mjs", "login", "config/acme.yaml", "--seconds", "120"],
   ]);
+  assert.deepEqual(steps("login", "acme").at(-1), ["node", "scripts/run.mjs", "login", "config/acme.yaml"], "no --wait: closes once signed in");
   assert.deepEqual(steps("status", "acme"), [["node", "scripts/run.mjs", "status", "acme"]]);
   assert.deepEqual(steps("next", "acme"), [["node", "scripts/run.mjs", "next", "acme"]]);
   assert.deepEqual(steps("diff", "acme"), [["node", "scripts/run.mjs", "diff", "acme"]]);
@@ -51,7 +52,8 @@ test("run, resume, the stage shortcuts, automate and interview check first, then
   const root = ws();
   const p = (...argv) => plan(argv, ctx(root));
   const run1 = p("run", "acme").steps;
-  assert.deepEqual(shown(run1[0]), ["node", "scripts/doctor.mjs", "config/acme.yaml", "--fix", "--warn-only"]);
+  assert.deepEqual(shown(run1[0]), ["node", "scripts/doctor.mjs", "config/acme.yaml", "--preflight"]);
+  assert.match(run1[1].note, /^The first thing the agent does is check the framework guard: one blocked command marked 'guard check passed' is expected\.$/);
   assert.deepEqual(run1[1].args.slice(0, -1), ["--agent", "orchestrator-agent"]);
   assert.equal(run1[1].cmd, "claude");
   assert.equal(run1[1].agent, true);
@@ -60,7 +62,7 @@ test("run, resume, the stage shortcuts, automate and interview check first, then
   assert.doesNotMatch(prompt, /\{fw\}/, "the prompt names the framework's real path");
 
   const k6 = p("k6", "acme", "--module", "deals").steps;
-  assert.deepEqual(shown(k6[0]), ["node", "scripts/doctor.mjs", "config/acme.yaml", "--fix", "--stage", "k6"]);
+  assert.deepEqual(shown(k6[0]), ["node", "scripts/doctor.mjs", "config/acme.yaml", "--preflight", "--stage", "k6"]);
   assert.match(k6[1].args.at(-1), /Start only the k6 stage for module deals and the stages that depend on it/);
   assert.deepEqual(shown(p("resume", "acme", "--stage", "api-discovery").steps[0]).slice(-2), ["--stage", "api-discovery"]);
   assert.match(p("resume", "acme").error, /needs --stage <one of: knowledge .* report>/);
@@ -110,6 +112,16 @@ test("--host codex starts `codex` with the wrapped prompt last; other hosts get 
   const custom = plan(["run", "acme", "--host", "codex"], ctx(root, { env: { ATF_AGENT: "my-cli" } })).steps.at(-1);
   assert.equal(custom.args.at(-1), neutral);
   assert.match(USAGE, /--host claude\|copilot\|antigravity\|codex/);
+});
+
+test("--no-preflight skips the doctor step of every session command, and keeps the guard line before the session (friction W2)", () => {
+  const root = ws();
+  for (const argv of [["run", "acme"], ["resume", "acme", "--stage", "k6"], ["explore", "acme"], ["automate", "acme"]]) {
+    const steps = plan([...argv, "--no-preflight"], ctx(root)).steps;
+    assert.equal(steps.length, 1, argv.join(" "));
+    assert.ok(steps[0].agent && /guard check passed/.test(steps[0].note));
+  }
+  assert.match(plan(["doctor", "acme", "--no-preflight"], ctx(root)).error, /unknown option/i);
 });
 
 test("--env names the environment's config and runs every step with ATF_ENV (D-081)", () => {
@@ -184,7 +196,7 @@ test("atf config writes the run-config from the example, then logs in unless --n
   const p = plan(["config", "crm", "--url", "https://crm.example.com"], ctx(root));
   assert.deepEqual(p.steps.slice(1).map(shown), [
     ["node", "scripts/doctor.mjs", "config/crm.yaml", "--for", "login", "--fix"],
-    ["node", "scripts/run.mjs", "login", "config/crm.yaml", "--seconds", "60"],
+    ["node", "scripts/run.mjs", "login", "config/crm.yaml"],
   ]);
   const quiet = plan(["config", "crm", "--url", "https://crm.example.com", "--no-login"], ctx(root));
   const logs = [];
@@ -353,8 +365,10 @@ test("run() stops at the first failing step, in the workspace, and reports a mis
   assert.equal(calls[0].opts.cwd, root);
   assert.equal(calls[0].opts.stdio, "inherit", "approve and sweep read the human's own terminal");
   calls.length = 0;
-  assert.equal(run(p, { workspace: root, platform: "linux", spawn: spawn(() => 0), out: quiet }), 0);
+  const logged = [];
+  assert.equal(run(p, { workspace: root, platform: "linux", spawn: spawn(() => 0), out: { log: (m) => logged.push(m), error() {} } }), 0);
   assert.equal(calls.length, 2);
+  assert.deepEqual(logged, [p.steps[1].note], "the guard note is printed once, before the session");
   assert.equal(calls[1].opts.shell, undefined, "no shell outside Windows: the prompt is one argument");
   const errors = [];
   const missing = () => ({ error: Object.assign(new Error("spawn claude ENOENT"), { code: "ENOENT" }) });

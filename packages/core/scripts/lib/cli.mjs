@@ -40,7 +40,7 @@ import { DOCTOR_BASE_SCRIPT, SYNC_SCRIPT, applyInit, initPlan, initRefusal, inst
 import { spawnEnv } from "./npm-env.mjs";
 import { claudeAgentName, claudeMode, packageOf, pluginProvenance } from "./provenance.mjs";
 import { WORKSPACE_MARKER, expandFw, findWorkspace, frameworkRel, frameworkRoot, isInstalled, isWithin, sameDir, workspaceRoot } from "./roots.mjs";
-import { SETUP_WORKFLOW, TOKEN_ENV, claudeModeLine, sync } from "./sync.mjs";
+import { SETUP_WORKFLOW, TOKEN_ENV, claudeModeLine, nodePinLine, sync } from "./sync.mjs";
 
 export const USAGE = `atf <command> [<product>] [options]       every command works the same on macOS, Windows and Linux
 
@@ -51,7 +51,8 @@ One-time setup:
   atf setup                                         install dependencies and a browser
   atf config <product> --url <url> [--no-login]     create config/<product>.yaml from the example, then log in
   atf interview                                     or: the orchestrator asks a few questions and writes the config
-  atf login <product> [--wait <seconds>]            log in once in Microsoft Edge and save the session (default 60 s)
+  atf login <product> [--wait <seconds>]            log in once in your browser and save the session; the window
+                                                    closes by itself once you are signed in (--wait: a fixed limit)
   atf validate <product>                            check the run-config
   atf doctor <product> [--no-fix]                   check (and install what it safely can) what every stage needs;
                                                     login, run, resume and automate run it first
@@ -85,7 +86,9 @@ Config:
                                                     where it replaces the package's copy entirely; never overwrites
 
 Running and resuming (a finished stage stays done):
-  atf run <product>                                 start the run, or continue the active one
+  atf run <product> [--no-preflight]                start the run, or continue the active one; first installs what
+                                                    the chosen stages safely need and offers the login (--no-preflight
+                                                    skips that; resume, the stage shortcuts and automate do it too)
   atf status <product>                              every stage and whether it is done
   atf next <product>                                what the run does next
   atf diff <product> [<run-a> <run-b>]              what changed between two ended runs (default: the last two)
@@ -108,6 +111,7 @@ Options for every command:
 // The commands that open an orchestrator-agent session with a first prompt. On Claude Code in plugin mode without a
 // Claude-affecting customization, the plugin supplies the agents, so the session opens the plugin's scoped
 // atf:orchestrator-agent instead (agentCommand; lib/provenance.mjs claudeMode).
+const GUARD_NOTE = "The first thing the agent does is check the framework guard: one blocked command marked 'guard check passed' is expected.";
 export const ORCHESTRATOR = "orchestrator-agent";
 export const HOSTS = {
   claude: ["claude", "--agent", ORCHESTRATOR],
@@ -127,6 +131,7 @@ const STAGE_SHORTCUTS = ["explore", "clarifications", "testcases", "k6", "report
 const STAGE_NAMES = Object.keys(STAGES);
 
 const COMMON = { env: { type: "string" }, host: { type: "string" }, help: { type: "boolean", short: "h" } };
+const NO_PREFLIGHT = { "no-preflight": { type: "boolean" } };
 // positionals: names, `?` optional, `...` the rest
 const COMMANDS = {
   help: { args: [] },
@@ -150,10 +155,10 @@ const COMMANDS = {
   status: { args: ["product"] },
   next: { args: ["product"] },
   diff: { args: ["product", "runs..."] },
-  run: { args: ["product"] },
-  resume: { args: ["product"], options: { stage: { type: "string" }, module: { type: "string" } } },
-  ...Object.fromEntries(STAGE_SHORTCUTS.map((s) => [s, { args: ["product"], options: { module: { type: "string" } } }])),
-  automate: { args: ["product"], options: { module: { type: "string" } } },
+  run: { args: ["product"], options: NO_PREFLIGHT },
+  resume: { args: ["product"], options: { stage: { type: "string" }, module: { type: "string" }, ...NO_PREFLIGHT } },
+  ...Object.fromEntries(STAGE_SHORTCUTS.map((s) => [s, { args: ["product"], options: { module: { type: "string" }, ...NO_PREFLIGHT } }])),
+  automate: { args: ["product"], options: { module: { type: "string" }, ...NO_PREFLIGHT } },
   steps: { args: ["product", "steps"] },
   import: { args: ["product", "module"], options: { file: { type: "string" }, approved: { type: "boolean" } } },
   approve: { args: ["product", "module"] },
@@ -200,12 +205,17 @@ export function plan(argv, ctx = {}) {
   const hasConfig = () => config && exists(path.join(workspace, config));
   const doctor = (...flags) => node("doctor.mjs", config, ...flags);
   const fix = v["no-fix"] ? [] : ["--fix"];
+  // The preflight of a session command (friction W2): the doctor installs what it safely can, one progress line each, and
+  // offers the login; --no-preflight skips it. The session step carries the guard note, which run() prints just before the
+  // session opens (a step of its own would be one the VS Code extension's plan reader can't run).
+  const preflight = (...flags) => (v["no-preflight"] ? [] : [doctor("--preflight", ...flags)]);
+
   const agent = (prompt) => {
     const launch = agentCommand(v.host, env, { workspace, framework });
     if (launch.error) return launch;
     const text = expandFw(prompt, rel);
     const codex = !env.ATF_AGENT?.trim() && v.host === "codex";
-    return { cmd: launch.cmd[0], args: [...launch.cmd.slice(1), codex ? codexPrompt(text) : text], agent: true };
+    return { cmd: launch.cmd[0], args: [...launch.cmd.slice(1), codex ? codexPrompt(text) : text], agent: true, note: GUARD_NOTE };
   };
   const steps = (...list) => {
     const bad = list.find((s) => s.error);
@@ -228,14 +238,15 @@ export function plan(argv, ctx = {}) {
         "authorizations.mode stays readonly; set full-run yourself only for a target you are authorized to test.",
       ];
       if (v["no-login"]) return { steps: [write], notes };
-      return { steps: [write, { ...doctor("--for", "login", "--fix"), env: childEnv }, { ...node("run.mjs", "login", config, "--seconds", "60"), env: childEnv }], notes };
+      return { steps: [write, { ...doctor("--for", "login", "--fix"), env: childEnv }, { ...node("run.mjs", "login", config), env: childEnv }], notes };
     }
     case "interview":
       return steps(agent("I have no run-config yet. Interview me for it (short, one message of questions), draft it with node {fw}/scripts/run-config.mjs draft, show me the summary, then start the run if I say so."));
     case "login": {
-      const wait = v.wait ?? "60";
-      if (!/^[1-9]\d*$/.test(wait)) return fail(`--wait '${wait}' must be a whole number of seconds`);
-      return needConfig(`. Run atf config ${product} --url <target url> first`) ?? steps(doctor("--for", "login", ...fix), node("run.mjs", "login", config, "--seconds", wait));
+      // without --wait the window closes by itself once signed in, within run.mjs login's ceiling (D-069 as extended)
+      const wait = v.wait;
+      if (wait !== undefined && !/^[1-9]\d*$/.test(wait)) return fail(`--wait '${wait}' must be a whole number of seconds`);
+      return needConfig(`. Run atf config ${product} --url <target url> first`) ?? steps(doctor("--for", "login", ...fix), node("run.mjs", "login", config, ...(wait ? ["--seconds", wait] : [])));
     }
     case "validate":
       return steps(node("run-config.mjs", "validate", config));
@@ -286,7 +297,7 @@ export function plan(argv, ctx = {}) {
     case "run":
       return (
         needConfig(`. Run atf config ${product} --url <target url>, or atf interview to be asked instead`) ??
-        steps(doctor("--fix", "--warn-only"), agent(`Start or resume the run for ${config}: node {fw}/scripts/run.mjs init ${config} (add --resume when a run is active), then follow run.mjs next. Finished stages stay done.`))
+        steps(...preflight(), agent(`Start or resume the run for ${config}: node {fw}/scripts/run.mjs init ${config} (add --resume when a run is active), then follow run.mjs next. Finished stages stay done.`))
       );
     case "resume":
     case "explore":
@@ -299,13 +310,13 @@ export function plan(argv, ctx = {}) {
       if (!STAGE_NAMES.includes(stage)) return fail(`Unknown --stage ${stage}. One of: ${STAGE_NAMES.join(" ")}`);
       return (
         needConfig() ??
-        steps(doctor("--fix", "--stage", stage), agent(`Resume the active run for ${config} (node {fw}/scripts/run.mjs init ${config} --resume; if none is active, start one). Do not redo completed stages. Start only the ${stage} stage${v.module ? ` for module ${v.module}` : ""} and the stages that depend on it, following run.mjs next; skip every other stage.`))
+        steps(...preflight("--stage", stage), agent(`Resume the active run for ${config} (node {fw}/scripts/run.mjs init ${config} --resume; if none is active, start one). Do not redo completed stages. Start only the ${stage} stage${v.module ? ` for module ${v.module}` : ""} and the stages that depend on it, following run.mjs next; skip every other stage.`))
       );
     }
     case "automate":
       return (
         needConfig() ??
-        steps(doctor("--fix", "--stage", "playwright-ui,playwright-api"), agent(`Resume the active run for ${config} (node {fw}/scripts/run.mjs init ${config} --resume). Do not redo completed stages. Start only the playwright-ui and playwright-api stages${v.module ? ` for module ${v.module}` : ""} and what they unlock, following run.mjs next. A module with no human-approved test case is awaiting-approval: report it, do not force it.`))
+        steps(...preflight("--stage", "playwright-ui,playwright-api"), agent(`Resume the active run for ${config} (node {fw}/scripts/run.mjs init ${config} --resume). Do not redo completed stages. Start only the playwright-ui and playwright-api stages${v.module ? ` for module ${v.module}` : ""} and what they unlock, following run.mjs next. A module with no human-approved test case is awaiting-approval: report it, do not force it.`))
       );
     case "steps":
       return steps(node("run-config.mjs", "set", config, "--steps", named.steps));
@@ -491,6 +502,10 @@ function syncStep({ workspace, framework, check = false, postinstall = false }, 
   // the Claude Code plugin's mode, and why (atf.json "claude_plugin"): said every time, so a customization's effect shows
   const mode = claudeModeLine(r.claude);
   if (mode) out.log(`${label}: ${mode}`);
+  // the pinned Node.js (sync.mjs, atf/machine.json "node"): decided by sync only, so said by sync only
+  const node = check ? null : nodePinLine(r.node);
+  if (node && r.node?.problem) out.error(`${label}: ${node}`);
+  else if (node) out.log(`${label}: ${node}`);
   for (const f of r.changed) out.log(`${label}: ${check ? "out of date" : "updated"}: ${f}`);
   // the cloud agent's setup workflow (atf.json "cloud_agent"): written once, then the client's
   for (const f of created) out.log(check ? `${label}: missing: ${f} (${SYNC_FIX} creates it)` : `${label}: created: ${f}: the Copilot cloud agent's setup steps, yours from now on. Commit it, merge it to the default branch, and add the Agents secret ${TOKEN_ENV}.`);
@@ -610,6 +625,7 @@ export function run(p, { workspace = workspaceRoot, platform = process.platform,
       for (const n of p.notes ?? []) out.log(n);
       continue;
     }
+    if (step.note) out.log(step.note);
     // npm and npx without an allow-scripts setting npx exported to this process (npm-env.mjs, D-108)
     const env = spawnEnv(step.cmd, { ...process.env, ...step.env });
     const shell = platform === "win32" && (step.shell || step.agent);

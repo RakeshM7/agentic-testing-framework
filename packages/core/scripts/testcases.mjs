@@ -48,6 +48,7 @@
 //                                              slug typed to confirm, or the extension dialog's confirmation file
 //                                              (action import-approved); the guard denies it to every tool call it sees.
 // Exits: 0 ok, 1 problems ({problems} or {errors}), 2 usage.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

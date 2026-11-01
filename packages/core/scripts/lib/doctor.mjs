@@ -9,8 +9,8 @@
 //            an installed framework, the host files in sync with it (atf check), with the cloud-agent opt-in its
 //            setup workflow and the committed files git must not ignore, and with the Claude Code plugin opt-in the
 //            plugin's version against the package's and its entry in .claude/settings.json
-//   login    the browser the login opens (lib/login.mjs, D-069): Microsoft Edge, else Google Chrome, else the
-//            Chromium build of the framework's Playwright
+//   login    the browser the login opens (lib/login.mjs, D-069): the default browser when Chromium-based, else
+//            Microsoft Edge, else Google Chrome, else the Chromium build of the framework's Playwright
 //   browser  the Playwright MCP server's browser, and its init page (which loads the run's session, D-076)
 //   session  the saved session (present, not empty, not expired) and the credentials files the run-config names
 //   repo     the product Playwright repo's node_modules and its Chromium builds
@@ -22,13 +22,15 @@
 // manager (K6_INSTALL).
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { INIT_PAGE } from "./browser-tools.mjs";
 import { configLocation, ejectedRel, loadConfig, overlayRel } from "./config.mjs";
 import { CONTRACT_VERSION, STAGES, UNRECORDED_CONTRACT, contractProblem, frameworkRoot, paths, workspaceContract } from "./contract.mjs";
 import { tryReadJson, writeJson } from "./files.mjs";
-import { nodeProblem } from "./node-version.mjs";
+import { inSandbox, netFetch, networkError, proxyUnsupported } from "./net.mjs";
+import { MIN_NODE, NODE_PIN_FILE, nodeProblem, readLocalNode } from "./node-version.mjs";
 import { PLUGIN_ID, claudeMode, pluginVersionCheck } from "./provenance.mjs";
 import { expandFw, isInstalled } from "./roots.mjs";
 
@@ -103,9 +105,21 @@ export function packageDir(name, from) {
 // its host files.
 async function base(ctx) {
   const out = deps(ctx);
+  if (inSandbox(ctx.sys.env)) out.push(sandboxCheck(ctx));
   if (ctx.root) out.push(contractCheck(ctx));
   if (ctx.root && isInstalled(ctx.framework)) out.push(...(await hostFiles(ctx)), ...plugin(ctx));
   return out;
+}
+
+// The check runs inside Claude Code's sandbox (D-117): a warning, never a block. The sandbox reaches the network only
+// through its proxy (netFetch routes the framework's requests there) and only to the hosts it allows, and it can't
+// write the npm cache or the Playwright browsers folder, so the installs fail there and a live run may be refused.
+function sandboxCheck({ product }) {
+  return {
+    id: "sandbox", ok: false, level: "warn",
+    detail: "this check runs inside Claude Code's sandbox: installs (npm, Playwright browsers, k6) can't run there, and the target is reached only through the sandbox's proxy, for the hosts it allows",
+    fix: `for a live run, turn the sandbox off in the agent session (/sandbox); run the installs in your own terminal: npx atf doctor${product ? ` ${product}` : ""} --fix`,
+  };
 }
 
 // The Claude Code plugin (atf/atf.json "claude_plugin", docs/packaging.md §3.12, draft P-11), in plugin mode only:
@@ -141,13 +155,26 @@ function contractCheck({ root }) {
   return { id: "workspace-contract", ok: true, detail: `artifact contract ${CONTRACT_VERSION}${recorded ? "" : ` (not recorded in atf/atf.json, ${UNRECORDED_CONTRACT} assumed)`}` };
 }
 
+// The Node.js check: this process's Node, and in a client's workspace the Node.js atf sync pinned for the hooks and the
+// browser server when the PATH's node is older (the machine-local NODE_PIN_FILE, lib/sync.mjs; the framework's scripts
+// run themselves again under it when an agent starts them on an older Node, lib/node-gate.mjs): reported, and a failure
+// when its file is gone (host-files fails on it too; this says which Node).
+function nodeCheck({ root, framework, nodeVersion, exists }) {
+  const old = nodeProblem(nodeVersion);
+  if (old) return { id: "node", ok: false, level: "fail", ...old };
+  const pin = root && isInstalled(framework) ? readLocalNode(root).pin : null;
+  if (!pin) return { id: "node", ok: true, detail: `Node.js ${nodeVersion}` };
+  const pinned = `${NODE_PIN_FILE} pins Node.js ${pin.version} (${pin.path}) for the hooks, the browser server and the scripts`;
+  if (!exists(pin.path)) return { id: "node", ok: false, level: "fail", detail: `Node.js ${nodeVersion}; ${pinned}, but that file is gone`, fix: "npx atf sync (in the workspace) finds another" };
+  return { id: "node", ok: true, detail: `Node.js ${nodeVersion}; ${pinned}, since your PATH's node is older than ${MIN_NODE}` };
+}
+
 // The framework's own dependencies: its package.json, each resolved from the framework root the way Node resolves it
 // (D-085). Its peer dependencies (playwright) are the workspace's own install, so they must resolve from the workspace
 // root, at the version the framework pins.
-function deps({ root, framework, nodeVersion }) {
+function deps({ root, framework, nodeVersion, exists = existsSync }) {
   const out = [];
-  const old = nodeProblem(nodeVersion);
-  out.push(old ? { id: "node", ok: false, level: "fail", ...old } : { id: "node", ok: true, detail: `Node.js ${nodeVersion}` });
+  out.push(nodeCheck({ root, framework, nodeVersion, exists }));
   const pkg = tryReadJson(path.join(framework, "package.json"));
   if (!pkg) return out;
   const wanted = { ...pkg.dependencies, ...pkg.devDependencies };
@@ -245,9 +272,12 @@ function committedButIgnored({ root, files, env }) {
 }
 
 // The login needs a real browser window: some single sign-on providers refuse Playwright's own Chromium, so the login
-// prefers an installed Microsoft Edge, then Google Chrome (lib/login.mjs picks the same way).
+// opens the OS default browser when it is Chromium-based, else an installed Microsoft Edge, then Google Chrome
+// (lib/login.mjs picks the same way, through loginBrowser).
 function login({ framework, sys, exists }) {
-  const channel = loginChannel({ sys, exists });
+  const picked = loginBrowser({ sys, exists });
+  if (picked.source === "default") return [{ id: "login-browser", ok: true, detail: `the login opens ${picked.name} (your default browser)` }];
+  const channel = picked.channel ?? null;
   if (channel === "msedge") return [{ id: "login-browser", ok: true, detail: "the login opens Microsoft Edge" }];
   if (channel === "chrome") return [{ id: "login-browser", ok: true, level: "warn", detail: "Microsoft Edge is not installed: the login opens Google Chrome", fix: "install Microsoft Edge if your identity provider blocks Chrome" }];
   const b = browserBuilds(packageDir("playwright-core", framework) ?? path.join(framework, "node_modules", "playwright-core"), ["chromium"], sys);
@@ -273,9 +303,83 @@ export function channelPaths(channel, { env = process.env, platform = process.pl
   return table[channel]?.[platform === "win32" || platform === "darwin" ? platform : "linux"] ?? null;
 }
 
-// The branded browser the login opens: "msedge" or "chrome" when installed, else null (Playwright's own Chromium).
+// The branded browser the login falls back to: "msedge" or "chrome" when installed, else null (Playwright's own Chromium).
 export function loginChannel({ sys = {}, exists = existsSync } = {}) {
   return ["msedge", "chrome"].find((ch) => (channelPaths(ch, sys) ?? []).some((p) => exists(p))) ?? null;
+}
+
+// Chromium-based browsers the login can open when one is the OS default. Keyed by what each platform reports: macOS
+// bundle id (lower-cased), Windows ProgId prefix (lower-cased), Linux desktop file (without ".desktop"). A channel is
+// Playwright's own name for Chrome and Edge; the others launch by executable path (win/mac/linux candidate lists).
+const win = (env, rel) => [env.ProgramFiles, env["ProgramFiles(x86)"], env.LOCALAPPDATA].filter(Boolean).map((d) => path.join(d, rel));
+const CHROMIUM_BROWSERS = [
+  { name: "Google Chrome", channel: "chrome", mac: ["com.google.chrome"], win: ["chromehtml"], linux: ["google-chrome", "google-chrome-stable"] },
+  { name: "Microsoft Edge", channel: "msedge", mac: ["com.microsoft.edgemac"], win: ["msedgehtm"], linux: ["microsoft-edge", "microsoft-edge-stable"] },
+  { name: "Brave", mac: ["com.brave.browser"], win: ["bravehtml"], linux: ["brave-browser", "brave"], paths: { darwin: ["/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"], linux: ["/usr/bin/brave-browser", "/opt/brave.com/brave/brave"], win32: (e) => win(e, "BraveSoftware\\Brave-Browser\\Application\\brave.exe") } },
+  { name: "Arc", mac: ["company.thebrowser.browser"], paths: { darwin: ["/Applications/Arc.app/Contents/MacOS/Arc"] } },
+  { name: "Vivaldi", mac: ["com.vivaldi.vivaldi"], win: ["vivaldihtm"], linux: ["vivaldi-stable", "vivaldi"], paths: { darwin: ["/Applications/Vivaldi.app/Contents/MacOS/Vivaldi"], linux: ["/usr/bin/vivaldi-stable", "/opt/vivaldi/vivaldi"], win32: (e) => win(e, "Vivaldi\\Application\\vivaldi.exe") } },
+  { name: "Chromium", mac: ["org.chromium.chromium"], win: ["chromiumhtm"], linux: ["chromium", "chromium-browser"], paths: { darwin: ["/Applications/Chromium.app/Contents/MacOS/Chromium"], linux: ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/snap/bin/chromium"], win32: (e) => win(e, "Chromium\\Application\\chrome.exe") } },
+];
+
+// The default https handler as the platform names it (a bundle id, a ProgId or a desktop file), or null. run(cmd, args)
+// -> stdout text or null (injectable; the default runs the command with a short timeout).
+function runCommand(cmd, args) {
+  try {
+    const r = spawnSync(cmd, args, { encoding: "utf8", timeout: 4000, windowsHide: true });
+    return r.status === 0 ? r.stdout : null;
+  } catch {
+    return null;
+  }
+}
+
+// macOS: the `defaults read ... LSHandlers` text is a list of { key = value; } blocks.
+export function parseMacHandlers(text) {
+  for (const block of String(text ?? "").split(/\}\s*,?/)) {
+    const scheme = /LSHandlerURLScheme\s*=\s*"?([A-Za-z0-9.+-]+)"?\s*;/.exec(block)?.[1];
+    if (scheme?.toLowerCase() !== "https") continue;
+    const role = /LSHandlerRole(?:All|Viewer)\s*=\s*"?([^";\s]+)"?\s*;/.exec(block)?.[1];
+    if (role) return role;
+  }
+  return null;
+}
+
+export function defaultBrowserId({ platform = process.platform, run = runCommand } = {}) {
+  if (platform === "darwin") return parseMacHandlers(run("defaults", ["read", "com.apple.LaunchServices/com.apple.launchservices.secure", "LSHandlers"]));
+  if (platform === "win32") {
+    const out = run("reg", ["query", "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https\\UserChoice", "/v", "ProgId"]);
+    return /ProgId\s+REG_SZ\s+(\S+)/i.exec(out ?? "")?.[1] ?? null;
+  }
+  const out = String(run("xdg-settings", ["get", "default-web-browser"]) ?? "").trim();
+  return out || null;
+}
+
+// Maps a platform's default-browser id to a Chromium browser the login can open: {name, channel} or {name,
+// executablePath} (the first candidate path that exists), or null when it is not Chromium-based or not found.
+export function chromiumFromId(id, { platform = process.platform, env = process.env, exists = existsSync } = {}) {
+  if (!id) return null;
+  const key = String(id).toLowerCase().replace(/\.desktop$/, "");
+  const os3 = platform === "darwin" ? "mac" : platform === "win32" ? "win" : "linux";
+  const entry = CHROMIUM_BROWSERS.find((b) => (b[os3] ?? []).some((m) => (os3 === "win" ? key.startsWith(m) : key === m)));
+  if (!entry) return null;
+  if (entry.channel) return (channelPaths(entry.channel, { env, platform }) ?? []).some((p) => exists(p)) ? { name: entry.name, channel: entry.channel } : null;
+  const list = entry.paths?.[platform === "win32" || platform === "darwin" ? platform : "linux"];
+  const candidates = typeof list === "function" ? list(env) : (list ?? []);
+  const found = candidates.find((p) => exists(p));
+  return found ? { name: entry.name, executablePath: found } : null;
+}
+
+// The browser the login opens: the OS default when it is Chromium-based, else Edge, Chrome, then Playwright's Chromium.
+// -> {name, channel?, executablePath?, source: "default" | "fallback"}
+// A caller that passes its own `sys.platform` (a test, or a faked machine) never reads the real OS default unless it
+// also passes `run`: the detection is of the real machine only when nothing is faked.
+export function loginBrowser({ sys = {}, exists = existsSync, run } = {}) {
+  const platform = sys.platform ?? process.platform;
+  const env = sys.env ?? process.env;
+  const runner = run ?? (sys.platform ? () => null : runCommand);
+  const def = chromiumFromId(defaultBrowserId({ platform, run: runner }), { platform, env, exists });
+  if (def) return { ...def, source: "default" };
+  const channel = loginChannel({ sys, exists });
+  return { name: channel === "msedge" ? "Microsoft Edge" : channel === "chrome" ? "Google Chrome" : "Playwright's Chromium", ...(channel ? { channel } : {}), source: "fallback" };
 }
 
 // The playwright-core of an npx-cached package@version (Playwright MCP runs through npx -y).
@@ -393,7 +497,7 @@ function session({ root, cfg, now, product }) {
       if (!all.length && !stored) out.push({ id: "session", ok: false, level: "fail", detail: `the saved session ${slash(auth.session_state_file)} is empty (no cookie, no local storage): the login did not finish`, fix: relogin });
       else if (cookies.length && !live.length) out.push({ id: "session", ok: false, level: "fail", detail: `every cookie for ${host} in the saved session has expired`, fix: relogin });
       else if (all.length && !liveOf(all).length) out.push({ id: "session", ok: false, level: "fail", detail: "every cookie in the saved session has expired", fix: relogin });
-      else if (!cookies.length) out.push({ id: "session", ok: true, level: "warn", detail: `the saved session has no cookie for ${host} (usual after a single sign-on login): the login is confirmed when a stage opens the target`, fix: `if a stage meets a sign-in page, ${relogin}` });
+      else if (!cookies.length) out.push({ id: "session", ok: true, level: "warn", detail: `nothing to fix: the saved session has no cookie for ${host} (usual after a single sign-on login); the login is confirmed when a stage opens the target`, fix: `only if a stage meets a sign-in page, ${relogin}` });
       else {
         const ends = live.filter((c) => c.expires > 0).map((c) => c.expires).sort((a, b) => a - b)[0];
         const soon = ends && ends - t < 24 * 3600;
@@ -452,7 +556,7 @@ function k6({ which, exists, sys }) {
   return [{ id: "k6", ok: false, level: "fail", detail: "k6 is not installed", fix: `${fix}, then open a new terminal` }];
 }
 
-async function target({ cfg, fetchImpl }) {
+async function target({ cfg, fetchImpl, sys, httpApi }) {
   const urls = [cfg.target?.url, ...(cfg.target?.api_urls ?? [])].filter(Boolean);
   const out = [];
   for (const url of urls) {
@@ -460,10 +564,31 @@ async function target({ cfg, fetchImpl }) {
       const res = await fetchImpl(url, { method: "HEAD", redirect: "manual", signal: AbortSignal.timeout(10_000) });
       out.push({ id: `target:${url}`, ok: true, detail: `${url} answers (HTTP ${res.status})` });
     } catch (e) {
-      out.push({ id: `target:${url}`, ok: false, level: "fail", detail: `${url} does not answer: ${e.cause?.code ?? e.cause?.message ?? e.message}`, fix: "check the URL in the run-config, your network or VPN, then run the check again" });
+      out.push({ id: `target:${url}`, ok: false, level: "fail", ...unreachable(url, networkError(e), sys.env, httpApi) });
     }
   }
   return out;
+}
+
+// Why a target didn't answer, and its fix (D-117): the sandbox's or the network's proxy refused the host, a proxy is
+// set that this Node.js can't use, the sandbox without a proxy, or the host itself.
+export function unreachable(url, err, env = process.env, httpApi = http) {
+  let host;
+  try {
+    host = new URL(url).host;
+  } catch {
+    host = url;
+  }
+  const again = "then run the check again";
+  if (err.proxyStatus && inSandbox(env))
+    return { detail: `${url}: Claude Code's sandbox does not allow ${host} (its proxy answered ${err.proxyStatus})`, fix: `allow ${host} in the agent session's sandbox (/sandbox), or turn the sandbox off for a live run, ${again}` };
+  if (err.proxyStatus)
+    return { detail: `${url}: the network proxy (HTTPS_PROXY) refused ${host} (it answered ${err.proxyStatus})`, fix: `ask your network team to allow ${host} through the proxy, or add it to NO_PROXY if it is reachable directly, ${again}` };
+  if (proxyUnsupported(env, httpApi))
+    return { detail: `${url} does not answer (${err.message}): a network proxy is set (HTTPS_PROXY), but Node.js ${process.versions.node} can't send requests through it`, fix: `use Node.js 24 or newer, or start the command with NODE_USE_ENV_PROXY=1, ${again}` };
+  if (inSandbox(env))
+    return { detail: `${url} does not answer (${err.message}) from inside Claude Code's sandbox`, fix: `allow ${host} in the agent session's sandbox (/sandbox), or turn the sandbox off for a live run; npx atf doctor in your own terminal shows whether the host itself answers` };
+  return { detail: `${url} does not answer: ${err.message}`, fix: `check the URL in the run-config, your network or VPN, ${again}` };
 }
 
 const CHECKS = { base, login, browser, session, repo, k6, target };
@@ -479,8 +604,8 @@ const defaultWhich = (cmd, args = ["--version"]) => {
 
 // cfg: a validated run-config (normalized). root: the workspace; framework: the framework root (D-085), whose
 // dependencies and browser config are checked. -> [{group, id, ok, level?, detail, fix?, autofix?}]
-export async function runChecks(cfg, groups, { root, framework = frameworkRoot, env = process.env, platform = process.platform, home = os.homedir(), nodeVersion = process.versions.node, now = Date.now(), fetchImpl = fetch, which = defaultWhich, exists = existsSync } = {}) {
-  const ctx = { root, framework, cfg, product: cfg.product, nodeVersion, now, fetchImpl, which, exists, sys: { env, platform, home } };
+export async function runChecks(cfg, groups, { root, framework = frameworkRoot, env = process.env, platform = process.platform, home = os.homedir(), nodeVersion = process.versions.node, now = Date.now(), fetchImpl = netFetch, httpApi = http, which = defaultWhich, exists = existsSync } = {}) {
+  const ctx = { root, framework, cfg, product: cfg.product, nodeVersion, now, fetchImpl, httpApi, which, exists, sys: { env, platform, home } };
   const out = [];
   for (const g of GROUPS.filter((x) => groups.includes(x))) for (const c of await CHECKS[g](ctx)) out.push({ group: g, level: c.ok ? undefined : "fail", ...c });
   return out;

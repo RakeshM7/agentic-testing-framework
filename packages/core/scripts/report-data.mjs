@@ -23,6 +23,7 @@
 //                      safety ceiling: overlaid, ejected, or a run-config permissions_file) apart from the rest
 // steps, notChosenStages  each step chosen or not for this run, and the stages it did not choose (never failed or blocked;
 //                      `satisfiedBy` when an earlier run's outputs or an imported file stood in for one)
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

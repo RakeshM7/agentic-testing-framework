@@ -17,6 +17,7 @@
 //        *.test.mjs.
 //   feedback.mjs paths <file>     the files the feedback concerns
 // Exits: 0 ok, 1 problems, 2 usage.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { fileURLToPath } from "node:url";
 import { check, feedbackPaths, triage } from "./lib/feedback.mjs";
 import { workspaceRoot } from "./lib/contract.mjs";

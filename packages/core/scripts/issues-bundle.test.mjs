@@ -319,3 +319,53 @@ test("buildBundle numbers runs in the bundle and skips an issue whose id isn't o
   assert.equal(JSON.parse(b.entries[1].data).from, "unnamed");
   assert.equal(JSON.parse(b.entries[2].data).recorded, false, "a run ended before end stamped it");
 });
+
+// Framework issues met with no run active (setup, before the first run) live in artifacts/<product>/framework-issues.json
+// and reach the bundle as a noRun entry; with a run active they go to that run's file as before (D-083).
+test("framework issues with no active run: add stores them product-level, a duplicate is merged, export includes them", async () => {
+  const root = tempRoot();
+  put(root, "atf/atf.json", JSON.stringify({ client: "Globex Labs" }));
+  const add = (summary) => issuesCli(["add", "acme", "--from", "module-explorer", "--kind", "config", "--target", "config/permissions.yaml", "--summary", summary, "--evidence", "seen at https://app.acme.test/setup"], { root });
+  const first = add("setup fails on https://app.acme.test/setup");
+  assert.equal(first.code, 0, JSON.stringify(first.out));
+  assert.equal(first.out.noRun, true);
+  const again = add("setup fails on https://app.acme.test/setup");
+  assert.equal(again.out.duplicate, true);
+  const file = path.join(root, "artifacts/acme/framework-issues.json");
+  const stored = JSON.parse(readFileSync(file, "utf8"));
+  assert.equal(stored.runId, undefined);
+  assert.equal(stored.issues.length, 1);
+  assert.equal(issuesCli(["list", "acme"], { root }).out.issues.length, 1);
+
+  const out = capture();
+  assert.equal(await exportIssues({ workspace: root, framework: frameworkRoot, yes: true, log: out, now: new Date("2026-10-27T09:00:00Z"), home: "/nonexistent-home" }), 0, out.text());
+  const files = unzip(root, "atf-issues-globex-labs-2026-10-27.zip");
+  const m = JSON.parse(files.get("manifest.json"));
+  assert.deepEqual(m.runs.map((r) => [r.run, r.issues.length]), [["run-1", 1]]);
+  const meta = JSON.parse(String(files.get("runs/run-1.json")));
+  assert.equal(meta.noRun, true);
+  assert.equal(meta.recorded, false);
+  for (const [name, data] of files) assert.ok(!String(data).includes("app.acme.test"), `${name} holds an original host`);
+
+  // imported by the maintainers: the finding says it was recorded with no run active
+  const maintainers = tempRoot();
+  const imp = capture();
+  assert.equal(importBundle({ workspace: maintainers, framework: frameworkRoot, zip: path.join(root, "atf-issues-globex-labs-2026-10-27.zip"), log: imp }), 0, imp.text());
+  const md = readdirSync(path.join(maintainers, "feedback/client-globex-labs-2026-10-27")).filter((f) => f.endsWith(".md"));
+  assert.equal(md.length, 1);
+  assert.match(readFileSync(path.join(maintainers, "feedback/client-globex-labs-2026-10-27", md[0]), "utf8"), /recorded with no run active/);
+});
+
+test("framework issues: with a run active, add goes to the run's file and the product-level file is left alone", () => {
+  const root = tempRoot();
+  assert.equal(issuesCli(["add", "acme", "--from", "module-explorer", "--kind", "doc", "--target", "docs/conventions.md", "--summary", "before the first run", "--evidence", "seen"], { root }).out.noRun, true);
+  assert.equal(initRun(writeConfig(root), { root, framework: root, runId: "acme-run-1", env: { CLAUDECODE: "1" } }).errors, undefined);
+  const during = issuesCli(["add", "acme", "--from", "module-explorer", "--kind", "doc", "--target", "docs/conventions.md", "--summary", "during the run", "--evidence", "seen"], { root });
+  assert.equal(during.code, 0, JSON.stringify(during.out));
+  assert.equal(during.out.noRun, undefined);
+  const inRun = JSON.parse(readFileSync(path.join(root, "artifacts/acme/results/acme-run-1/framework-issues.json"), "utf8"));
+  assert.deepEqual(inRun.issues.map((i) => i.summary), ["during the run"]);
+  assert.equal(inRun.runId, "acme-run-1");
+  const preRun = JSON.parse(readFileSync(path.join(root, "artifacts/acme/framework-issues.json"), "utf8"));
+  assert.deepEqual(preRun.issues.map((i) => i.summary), ["before the first run"]);
+});

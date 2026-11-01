@@ -172,7 +172,7 @@ A product starts with its run-config, `config/<product>.yaml`: what to test, and
 
 - **Fill in the form:** the Cockpit's New product form (above).
 - **Set it up myself:** type the product's name (lowercase words joined by hyphens, such as `acme-crm`) and the target's
-  URL, then choose **Log in now** (Microsoft Edge opens: sign in there, and atf saves the session for the run) or
+  URL, then choose **Log in now** (your browser opens: sign in there, and atf saves the session for the run and closes the window) or
   **No login needed**. The extension creates the run-config and shows its progress in a notification, which you can
   cancel; the details are in the **atf** output channel. Then open the config to fill in its modules, or start the run.
 - **Let the orchestrator interview me:** the orchestrator opens as an agent session (see above), asks a few questions

@@ -68,7 +68,7 @@ There is no `artifacts/<run-id>/` directory. Run ids are `<product>-<YYYYMMDD>-<
 
 ```bash
 node {fw}/scripts/run.mjs init config/<product>.yaml [--resume]   # validate config + permissions, take the lock, write state/
-node {fw}/scripts/run.mjs guard-check <product>                   # liveness canary: a working guard BLOCKS this
+node {fw}/scripts/run.mjs guard-check <product>                   # liveness canary: a working guard BLOCKS this ("Guard check passed: this block is the test", D-120); status gives guard.host
 node {fw}/scripts/run.mjs doctor <product>                        # what each stage needs on this machine; {checks, blockedStages}
 node {fw}/scripts/run.mjs prereqs <product>                       # per module and chosen step: ok | missing (with the gap menu) | awaiting-approval
 node {fw}/scripts/run.mjs steps <product> [--add a,b] [--remove c] [--import-mode m] [--reopen m]   # the gap menu's answer (an option's args)

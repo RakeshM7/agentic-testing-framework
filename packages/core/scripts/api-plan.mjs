@@ -11,6 +11,7 @@
 //                                           plan-coverage.json `verified` (exit 1 on problems); reports how many
 //                                           items are deferred over api.plan_budget (resolved, not pending; D-050)
 //   api-plan.mjs paths <product> <module>   the plan's file paths
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

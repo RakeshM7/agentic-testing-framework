@@ -11,6 +11,7 @@
 //        re-renders review-findings.md from a review.json whose stamp is still fresh
 //   review.mjs paths <product> <module> <domain>   the review's files
 // Exits: 0 ok, 1 problems, 2 usage.
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

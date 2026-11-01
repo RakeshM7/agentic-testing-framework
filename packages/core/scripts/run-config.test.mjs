@@ -72,7 +72,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
 import { draftRunConfig } from "./run-config.mjs";
-import { buildDraft, slugify } from "./lib/run-config-draft.mjs";
+import { buildDraft, slugify, splitModuleNames } from "./lib/run-config-draft.mjs";
 
 const interviewRoot = () => {
   const root = mkdtempSync(path.join(tmpdir(), "interview-"));
@@ -295,4 +295,28 @@ test("keys nothing reads are accepted with a warning, never silently (D-083)", (
   assert.equal(r.warnings.length, 2);
   assert.match(r.warnings.join("\n"), /auto_invoke_implementor has no effect[\s\S]*auto_commit has no effect/);
   assert.deepEqual(validateRunConfig(base).warnings, []);
+});
+
+test("validate warns (never fails) for a slug over 40 characters and a nav_path entry with a comma", () => {
+  const slug = "home-events-bookings-admin-manage-events-and-manage-bookings";
+  const r = validateRunConfig({ ...base, modules: [{ slug, name: "Home, Events", nav_path: ["Home, Events and Bookings"] }] });
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.warnings.length, 2);
+  assert.match(r.warnings[0], /longer than 40 characters/);
+  assert.match(r.warnings[1], /nav_path entry .* contains a comma/);
+});
+
+test("a comma-, semicolon- or and-joined module answer is split into separate modules", () => {
+  assert.deepEqual(splitModuleNames("Home, Events; Bookings and Admin\nReports and Billing"), ["Home", "Events", "Bookings and Admin", "Reports", "Billing"], "a mid-list 'and' stays in its name; the last item's splits");
+  assert.deepEqual(splitModuleNames("Brand Identity"), ["Brand Identity"], "'and' inside a word is not a separator");
+  assert.deepEqual(splitModuleNames("Terms and Conditions"), ["Terms and Conditions"], "one name with 'and' is one module");
+  assert.deepEqual(splitModuleNames("Orders and Returns, Settings"), ["Orders and Returns", "Settings"], "'and' splits only the list's last item");
+  assert.deepEqual(splitModuleNames("Home, Events and Bookings"), ["Home", "Events", "Bookings"]);
+  const root = interviewRoot();
+  const d = draftRunConfig({ ...answers, name: "Split Co", modules: ["Home, Events and Bookings", { name: "Admin; Reports" }] }, { root });
+  assert.deepEqual(d.errors, []);
+  assert.deepEqual(d.config.modules.map((m) => m.slug), ["home", "events", "bookings", "admin", "reports"]);
+  assert.deepEqual(d.config.modules[1].nav_path, ["Events"]);
+  const one = draftRunConfig({ ...answers, name: "Split Two", modules: "Contacts, Deals" }, { root });
+  assert.deepEqual(one.config.modules.map((m) => m.slug), ["contacts", "deals"], "a module answer given as one text");
 });

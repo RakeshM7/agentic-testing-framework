@@ -410,7 +410,7 @@ export function cockpitClient(K, kit, stageState) {
       field("References (optional)", "references", { multi: true, placeholder: "https://docs.example.com\ndocs/requirements.md", files: "Add files…", hint: "Links and files (.md, .csv, .pdf), one per line." }),
       field("API (optional)", "api", { multi: true, rows: 2, placeholder: "https://api.example.com/openapi.json", files: "Add a spec file…" }),
       el("label", { class: "inline" }, el("input", { type: "checkbox", checked: !!form.loginNeeded, on: { change: (e) => { set("loginNeeded", e.target.checked); render(); } } }), "It needs a login"),
-      form.loginNeeded ? field("Credentials file (optional)", "credentialsFile", { files: "Choose…", hint: "A path only, never a password. Or log in in Microsoft Edge after creating it." }) : null,
+      form.loginNeeded ? field("Credentials file (optional)", "credentialsFile", { files: "Choose…", hint: "A path only, never a password. Or log in in your browser after creating it." }) : null,
       el("label", { text: "Steps to run" }),
       el("div", {}, K.STEPS.map((s) => el("label", { class: "inline" }, el("input", { type: "checkbox", checked: (form.steps || []).indexOf(s) >= 0, on: { change: (e) => { set("steps", K.STEPS.filter((x) => (x === s ? e.target.checked : (form.steps || []).indexOf(x) >= 0))); render(); } } }), K.STEP_LABELS[s]))),
     );

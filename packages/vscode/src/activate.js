@@ -44,7 +44,7 @@ export const NEW_PRODUCT_WAYS = [
   { label: "$(comment-discussion) Let the orchestrator interview me", description: "atf interview: it asks a few questions and drafts the run-config", how: "interview" },
 ];
 export const LOGIN_CHOICES = [
-  { label: "Log in now", description: "Microsoft Edge opens on the target: you sign in, atf saves the session", login: true },
+  { label: "Log in now", description: "Your browser opens on the target: you sign in, atf saves the session", login: true },
   { label: "No login needed", description: "the target needs no sign-in (or log in later: npx atf login <product>)", login: false },
 ];
 // The arguments of `atf config` (scripts/lib/cli.mjs): the product, its URL, and --no-login when no login is wanted.
@@ -535,7 +535,8 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
   const machine = createEnvironment(deps, { platform: cliOptions.platform ?? process.platform, ...(environmentOptions ?? {}) });
   context.subscriptions.push(machine);
   const productNode = (t) => ({ kind: "product", product: t.product, environment: t.environment });
-  // `atf login <p>` in the background: Microsoft Edge opens on the target, the human signs in, the session is saved
+  // `atf login <p>` in the background: the login browser (the default one when Chromium-based, D-118) opens on the
+  // target, the human signs in, the session is saved and the window closes by itself
   async function login(product) {
     const label = `atf login ${product}`;
     const run = await background(["login", product], { title: `${label}: sign in in the browser window; it closes by itself` });
@@ -720,8 +721,8 @@ export function start(vscode, context, { registerSheets, registerReport, cliOpti
         lines.push({ line, stream });
         if (!login) return;
         const open = /^(.+?) is open on \S+: sign in/.exec(line); // scripts/lib/login.mjs, once the window is up
-        if (open) progress.report({ message: `Waiting for you to sign in in ${open[1]}… It closes by itself when the time is up.` });
-        else if (line.startsWith(`Created ${file}`)) progress.report({ message: "Opening Microsoft Edge for the login…" });
+        if (open) progress.report({ message: `Waiting for you to sign in in ${open[1]}… It closes by itself once you are signed in.` });
+        else if (line.startsWith(`Created ${file}`)) progress.report({ message: "Opening the browser for the login…" });
       };
       try {
         result = await cli.runStreaming(configArgs(product, url, { login }), { env: { ATF_ENV: "" }, onLine, token });

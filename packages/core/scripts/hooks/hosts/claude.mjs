@@ -5,7 +5,7 @@
 // The framework's Claude Code plugin (packaging §3.12, PLUGIN_NAME in scripts/lib/hosts.mjs) scopes what Claude Code
 // reports for it: its agents are `atf:<name>` and its MCP tools `mcp__plugin_atf_<server>__<tool>`. Both are read here
 // as the framework's own (callerOf, frameworkAgent, browserActionOf); nothing else that is scoped is.
-import { PLUGIN_MCP_PREFIX, PLUGIN_NAME, resolveHost } from "../../lib/hosts.mjs";
+import { PLUGIN_MCP_PREFIX, PLUGIN_NAME, denyMessage, resolveHost } from "../../lib/hosts.mjs";
 import { toolCall } from "../../lib/tool-call.mjs";
 
 const KINDS = {
@@ -99,7 +99,7 @@ export function normalize(payload, { env = process.env, host = "claude-code" } =
 // verdict: { decision: "allow" | "ask" | "deny", rule?, reason? } -> exit code
 export function emit({ decision, rule, reason }) {
   if (decision === "deny") {
-    process.stderr.write(`Blocked by the framework guard (${rule}): ${reason}\n`);
+    process.stderr.write(`${denyMessage(rule, reason)}\n`);
     return 2;
   }
   if (decision === "ask")

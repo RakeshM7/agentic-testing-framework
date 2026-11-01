@@ -12,7 +12,7 @@
 // an audit hook when VS Code changes them (docs/platforms.md). An unmapped tool is `unknown`, which the guard blocks
 // during a run for managed agents and, in full-run, for every call it cannot attribute (D-036) -- add it here, with a
 // fixture in scripts/fixtures/hooks/.
-import { resolveHost } from "../../lib/hosts.mjs";
+import { denyMessage, resolveHost } from "../../lib/hosts.mjs";
 import { toolCall } from "../../lib/tool-call.mjs";
 
 const KINDS = {
@@ -89,7 +89,7 @@ export function normalize(payload, { env = process.env, host = "copilot", agent 
 
 export function emit({ decision, rule, reason }) {
   if (decision === "allow") return 0;
-  const message = decision === "deny" ? `Blocked by the framework guard (${rule}): ${reason}` : reason;
+  const message = decision === "deny" ? denyMessage(rule, reason) : reason;
   // Both shapes: top-level for camelCase hooks, hookSpecificOutput for PascalCase (Claude-compatible) hooks.
   process.stdout.write(
     JSON.stringify({

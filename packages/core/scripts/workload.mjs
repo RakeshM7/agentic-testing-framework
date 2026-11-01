@@ -15,6 +15,7 @@
 //                                                            open-model and safety rules; stamps workload-coverage.json
 //                                                            `verified` (exit 1 on problems)
 //   workload.mjs paths <product> <module>                    the workload's file paths
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

@@ -11,6 +11,7 @@
 //                                                                       session; then run build again
 //   endpoints.mjs check      <product> <module>                         schemas, ids vs registry, links, coverage
 //   endpoints.mjs paths      <product> <module>                         the module's api/ file paths
+import "./lib/node-gate.mjs"; // first: on a Node.js older than 20, runs this command again under a newer one
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

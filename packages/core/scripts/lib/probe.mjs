@@ -12,6 +12,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { netFetch } from "./net.mjs";
 
 export const DENY_TOKENS = new Set(
   ("logout log-out logoff signout sign-out delete destroy remove purge cancel revoke unsubscribe confirm verify activate " +
@@ -146,7 +147,7 @@ export function firstItemId(json) {
 
 const defaultSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export function createClient({ cfg, auth, fetchImpl = globalThis.fetch, sleep = defaultSleep, budget, delayMs, timeoutMs = 15000 }) {
+export function createClient({ cfg, auth, fetchImpl = netFetch, sleep = defaultSleep, budget, delayMs, timeoutMs = 15000 }) {
   const allowHosts = firstPartyHosts(cfg);
   const state = { budget, used: 0, stopped: null, serverErrors: 0 };
   async function once(url, headers) {

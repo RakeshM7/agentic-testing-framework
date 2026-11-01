@@ -47,6 +47,12 @@
 // hook registrations are rendered (the guard is never the plugin's, D-020), and .claude/settings.json carries the
 // project's plugin keys (pluginSettings): the marketplace and the enabled plugin with the opt-in, neither without it.
 //
+// A pinned Node.js (`nodePin`, passed only by lib/sync.mjs, in a client's workspace whose PATH node is older than
+// MIN_NODE): every hook command, the Copilot agents' identity hooks included, runs that Node by its absolute path in
+// place of `node`, and the MCP servers run its npx (lib/hook-registrations.mjs nodeWord, lib/mcp.mjs pinnedServers),
+// except for the files under `nodePin.plain` (what the cloud-agent opt-in commits). A source checkout ignores it: its
+// generated files are committed and the same on every machine (D-018).
+//
 //   node scripts/build-agents.mjs           write every generated file that differs
 //   node scripts/build-agents.mjs --check   write nothing; exit 1 on drift, a missing/stray source, or a stray output
 //   node scripts/build-agents.mjs --post-hook <async|sync|off>   save that mode in the framework's config/hooks.yaml,
@@ -62,8 +68,8 @@ import { devAgentsDir, expandFw, frameworkRoot, frameworkRel, isInstalled, works
 import { capabilitiesFor, toolNames } from "./lib/agents/capabilities.mjs";
 import { checkBodyLimit, forbiddenIdentifiers, lintBody, lintFwToken } from "./lib/agents/lint.mjs";
 import { loadSources, splitFrontmatter } from "./lib/agents/source.mjs";
-import { foreignMcpEntries, renderMcpConfig, validateMcp } from "./lib/mcp.mjs";
-import { ANTIGRAVITY_HOOKS, CLAUDE_SETTINGS, CODEX_HOOKS, HOOKS_CONFIG, formatJson, postModeOf, renderHookRegistrations, setPostMode } from "./lib/hook-registrations.mjs";
+import { foreignMcpEntries, pinnedServers, renderMcpConfig, validateMcp } from "./lib/mcp.mjs";
+import { ANTIGRAVITY_HOOKS, CLAUDE_SETTINGS, CODEX_HOOKS, COPILOT_HOOKS, HOOKS_CONFIG, VSCODE_HOOKS, formatJson, postModeOf, renderHookRegistrations, setPostMode } from "./lib/hook-registrations.mjs";
 import { CODEX_CONFIG, renderCodexConfig } from "./lib/codex-config.mjs";
 import { PLUGIN, PLUGIN_ID, claudeMode } from "./lib/provenance.mjs";
 import { isGenerated } from "./lib/agents/renderers/common.mjs";
@@ -130,10 +136,14 @@ function outputPattern(template) {
   return { dir: path.posix.dirname(before + "x"), prefix: path.posix.basename(before + "x").slice(0, -1), suffix };
 }
 
+// A hook command's leading `node` -> the pinned Node's program word.
+export const pinNodeCommand = (command, word) => String(command).replace(/^node(?=\s)/, word);
+
 // root: the workspace the generated files go to; framework: where the sources and config come from. A root given alone
-// is its own framework (a scratch copy of this repo).
+// is its own framework (a scratch copy of this repo). nodePin: { hook: nodeWord, mcp: mcpNodePin, plain: [path
+// prefixes that keep `node`] } (see the header).
 // -> { errors, changed: [workspace-relative paths that differ (or would, with --check)] }
-export function build({ check = false, postHook, root, framework } = {}) {
+export function build({ check = false, postHook, root, framework, nodePin } = {}) {
   const ws = root ?? workspaceRoot;
   const fwRoot = framework ?? root ?? frameworkRoot;
   const opts = { framework: fwRoot, workspace: ws };
@@ -141,6 +151,9 @@ export function build({ check = false, postHook, root, framework } = {}) {
   // a client's workspace (the framework inside node_modules) or a source checkout: decides the generated note's wording
   // and what an agent file without a source is (below)
   const installed = isInstalled(fwRoot);
+  // never in a source checkout's committed files
+  const pin = installed && nodePin ? nodePin : null;
+  const plain = (rel) => (pin?.plain ?? []).some((prefix) => rel.startsWith(prefix));
   if (check && postHook) return { errors: ["--post-hook changes config/hooks.yaml; it cannot be combined with --check"], changed: [] };
   let config;
   try {
@@ -168,7 +181,9 @@ export function build({ check = false, postHook, root, framework } = {}) {
   } catch (e) {
     post = { error: e.message };
   }
-  const { models, mcp } = config;
+  const { models } = config;
+  // the servers as the host files run them: on the pinned Node.js, when there is one
+  const mcp = pin && isMap(config.mcp?.servers) ? { ...config.mcp, servers: pinnedServers(config.mcp.servers, pin.mcp) } : config.mcp;
   const { platforms } = config.platforms;
   const names = Object.keys(perms.resolved.agents);
   const dev = devAgentsDir(ws, fwRoot);
@@ -193,7 +208,12 @@ export function build({ check = false, postHook, root, framework } = {}) {
 
   const outputs = new Map(); // repo-relative path -> content
   const stray = new Set(); // installed only: our marked agent files with no source, removed by a build
-  for (const [key, platform] of Object.entries(platforms)) {
+  for (const [key, declared] of Object.entries(platforms)) {
+    // the identity hook (Copilot's agents) runs the pinned Node.js too, unless its files are committed (`plain`)
+    const hook = declared.identity_hook;
+    const platform = pin && typeof hook?.command === "string" && typeof declared.output === "string" && !plain(declared.output)
+      ? { ...declared, identity_hook: { ...hook, command: pinNodeCommand(hook.command, pin.hook) } }
+      : declared;
     const renderer = RENDERERS[platform.renderer];
     if (!renderer) {
       errors.push(`config/platforms.yaml: ${key}: unknown renderer '${platform.renderer}' (have: ${Object.keys(RENDERERS).join(", ")})`);
@@ -292,7 +312,9 @@ export function build({ check = false, postHook, root, framework } = {}) {
       return existsSync(file) ? readFileSync(file, "utf8") : undefined;
     };
     try {
-      for (const [rel, content] of renderHookRegistrations(post.mode, current(CLAUDE_SETTINGS), fw, { antigravityHooks: current(ANTIGRAVITY_HOOKS), codexHooks: current(CODEX_HOOKS) }))
+      const hooks = [CLAUDE_SETTINGS, COPILOT_HOOKS, VSCODE_HOOKS, ANTIGRAVITY_HOOKS, CODEX_HOOKS];
+      const node = pin ? { node: pin.hook, plainNode: hooks.filter(plain) } : {};
+      for (const [rel, content] of renderHookRegistrations(post.mode, current(CLAUDE_SETTINGS), fw, { antigravityHooks: current(ANTIGRAVITY_HOOKS), codexHooks: current(CODEX_HOOKS), ...node }))
         outputs.set(rel, rel === CLAUDE_SETTINGS ? withPluginSettings(content, plugin) : content);
     } catch (e) {
       errors.push(`${e.file ?? CLAUDE_SETTINGS}: ${e.message}`);
