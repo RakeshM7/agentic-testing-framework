@@ -300,3 +300,33 @@ test("time and effort: stage and step durations, agent spawns per agent, a slide
   assert.match(html, /Stages took 2m 05s in all; 3 agent spawns were recorded, using 1500 tokens/);
   assert.match(html, /<code>module-explorer<\/code><\/td><td[^>]*>2<\/td><td[^>]*>1m 30s<\/td>/);
 });
+
+test("D-114: a stage's time counts every attempt, the ended ones in previous too; the report shows both and its total is every attempt", async () => {
+  const { effort, stageTotalMs } = await import("./lib/telemetry.mjs");
+  const { root } = startRun();
+  const p = paths("acme", root);
+  const r = loadJson(p.runFile);
+  // knowledge: failed after 1m, then done in 2m 05s; explore: failed after 30s, running again now
+  r.stages["_product/knowledge"] = { status: "done", attempts: 2, startedAt: "2026-10-24T10:00:00.000Z", finishedAt: "2026-10-24T10:02:05.000Z", previous: [{ attempt: 1, status: "failed", startedAt: "2026-10-24T09:50:00.000Z", finishedAt: "2026-10-24T09:51:00.000Z" }] };
+  r.stages["contacts/explore"] = { status: "running", attempts: 2, startedAt: "2026-10-24T10:03:00.000Z", previous: [{ attempt: 1, status: "failed", startedAt: "2026-10-24T10:02:10.000Z", finishedAt: "2026-10-24T10:02:40.000Z" }, { attempt: 0, status: "failed", startedAt: "2026-10-24T10:02:00.000Z" }] };
+  writeFileSync(p.runFile, JSON.stringify(r));
+
+  assert.equal(stageTotalMs({ status: "pending" }), null, "nothing timed");
+  assert.equal(stageTotalMs({ status: "running", startedAt: "2026-10-24T10:00:00.000Z" }), null);
+  const e = effort({ run: loadJson(p.runFile), stateDir: p.state });
+  const k = e.stages.find((x) => x.key === "_product/knowledge");
+  const x = e.stages.find((s) => s.key === "contacts/explore");
+  assert.deepEqual([k.durationMs, k.totalMs], [125000, 185000], "the last attempt, and every attempt");
+  assert.deepEqual([x.durationMs, x.totalMs], [null, 30000], "running: only the ended attempts count; one with no finish adds nothing");
+  assert.equal(e.totals.stageMs, 215000);
+
+  const report = await collect("acme", { root });
+  assert.deepEqual(await validateData("report", report), []);
+  assert.equal(report.totals.effort.stageMs, 215000);
+  const html = renderDeck(report);
+  assert.match(html, /Stages took 3m 35s in all/);
+  assert.match(html, /<code>_product\/knowledge<\/code><\/td><td>done<\/td><td[^>]*>2<\/td><td[^>]*>3m 05s<\/td><td[^>]*>2m 05s<\/td>/, "every attempt, then the last");
+  // a report that predates totalMs shows the last attempt's time, as before
+  const old = { ...report, effort: { ...report.effort, stages: report.effort.stages.map(({ totalMs, ...s }) => s) } };
+  assert.match(renderDeck(old), /<code>_product\/knowledge<\/code><\/td><td>done<\/td><td[^>]*>2<\/td><td[^>]*>2m 05s<\/td><td[^>]*>&mdash;<\/td>/);
+});

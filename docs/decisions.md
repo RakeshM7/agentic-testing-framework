@@ -169,6 +169,7 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 | D-111 | The Cockpit's pipeline view: a sidebar and an editor tab, with no chat, over one read-only JSON from `scripts/cockpit.mjs` built from the data the scripts already decide | Accepted | 2026-10-31 |
 | D-112 | The VS Code extension uses the npm.pkg.github.com token already in the user's npm config before asking for one | Accepted | 2026-11-01 |
 | D-113 | A stage keeps its ended attempts in run.json (`previous`), and an ended run's summary keeps each stage's times, for the Cockpit's Run timeline | Accepted | 2026-11-01 |
+| D-114 | A stage's time in the effort telemetry and the report counts every attempt, not only the last | Accepted | 2026-11-01 |
 
 ## Decisions
 
@@ -2326,3 +2327,14 @@ Plain bug fixes, new tests and doc corrections that leave every decision intact 
 - **Known gaps:** the effort telemetry (`lib/telemetry.mjs effort`, the report's stage durations) still counts the last attempt only. The orchestration steps of an earlier attempt are not kept (a domain's loop state is per run, domain and module).
 - **Affects:** `packages/core/scripts/run.mjs`, `packages/core/schemas/run.schema.json`, `packages/core/scripts/lib/cockpit.mjs`, `packages/vscode/src/cockpit-tabs/timeline.js`
 - **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("no build it", to keeping every attempt's times instead of recording the gap). This adds history to run state without changing any rule that reads it: attempts, `MAX_ATTEMPTS`, D-071's interrupted attempts and the guard are untouched.
+
+### D-114 · A stage's time in the effort telemetry and the report counts every attempt, not only the last
+- **Status:** Accepted · **Date:** 2026-11-01 · **Source:** conversation with the user, 2026-11-01: D-113's known gap (the effort telemetry and the report counted a retried stage's last attempt only); the user asked to work on it.
+- **Decision:**
+  - **`totalMs` beside `durationMs`.** `lib/telemetry.mjs effort` gives each stage `durationMs` (the last attempt, as before) and `totalMs` (`stageTotalMs`): the ended attempts in run.json `previous` (D-113) plus the current one. An attempt with no finish (still running, or ended with no time) adds nothing; a stage with no timed attempt is `null`.
+  - **The totals count every attempt.** `totals.stageMs` (the report's `totals.effort.stageMs`, the "Stages took … in all" line and the Cockpit's timeline total) is the sum of `totalMs`, so time spent on failed attempts is no longer missing from the run's effort.
+  - **The report's Stages table** shows **Duration** (every attempt) and **Last attempt** (only when it differs). A report collected before D-114 has no `totalMs` and shows the last attempt's time as before; the schema keeps `totalMs` optional.
+- **Why:** a stage retried after a long failed attempt made the run look shorter than it was; the time is now recorded (D-113), so the effort figures can count it.
+- **Known gaps:** the orchestration steps' times (`steps`) are still the current attempt's (a domain's loop state is per run, domain and module). A run that ended before D-113 has no `previous`, so its totals are unchanged.
+- **Affects:** `packages/core/scripts/lib/telemetry.mjs`, `packages/core/scripts/lib/report.mjs`, `packages/core/schemas/report.schema.json`
+- **Supersedes:** — · **Confirmed by the user on:** 2026-11-01 ("work on the leftover gap"). This extends D-079 (time and effort) and closes the first known gap of D-113; it changes what the totals count, not what any stage or gate decides.
